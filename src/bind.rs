@@ -242,6 +242,7 @@ struct ClassRec {
     super_parts: Option<Vec<String>>,
     interface_parts: Vec<Vec<String>>,
     binary: bool,
+    binary_signature: Option<Arc<ClassSignature>>,
     is_interface: bool,
     type_variables: Vec<String>,
     primitive_owner: bool,
@@ -339,7 +340,7 @@ impl Index {
         #[cfg(test)]
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
-        let binaries = binaries.values().map(|signature| class_from_signature(signature)).collect();
+        let binaries = binaries.values().map(class_from_signature).collect();
         Self::with_reference_names(files, binaries, vec![BTreeSet::from([0])])
     }
 
@@ -877,7 +878,7 @@ impl Index {
             return Some(result);
         }
         // Exact local declaration evidence is separate from hint lookup above.
-        if !proof.expression(receiver, *receiver_at, 0).is_some_and(|c| same_class(c, owner)) {
+        if !proof.expression(receiver, *receiver_at, 0).is_some_and(|c| same_class(c.class, owner)) {
             return Some(result);
         }
         if let Some(member) = proof.select(owner, name, args, args_at)
@@ -1970,6 +1971,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         super_parts: None,
         interface_parts: Vec::new(),
         binary: false,
+        binary_signature: None,
         is_interface: node.kind() == SyntaxKind::Interface,
         type_variables: type_variables(node, start),
         primitive_owner: node.kind() == SyntaxKind::Class
@@ -2437,7 +2439,7 @@ fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
     (at == bytes.len()).then_some(parameters)
 }
 
-fn class_from_signature(sig: &ClassSignature) -> ClassRec {
+fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassRec {
     ClassRec {
         scope: 0,
         path: sig.origin.clone(),
@@ -2450,6 +2452,7 @@ fn class_from_signature(sig: &ClassSignature) -> ClassRec {
         super_parts: sig.super_class.as_ref().map(|name| name.split('.').map(str::to_string).collect()),
         interface_parts: sig.interfaces.iter().map(|name| name.split('.').map(str::to_string).collect()).collect(),
         binary: true,
+        binary_signature: Some(Arc::clone(sig)),
         is_interface: sig.is_interface,
         type_variables: Vec::new(),
         primitive_owner: false,
@@ -3379,12 +3382,61 @@ fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<V
     type_parts(ty, at)
 }
 
+// This is deliberately not Java Unicode preprocessing or text-block typing.
+// Validate the complete ordinary token even though the lossless lexer accepts
+// unknown escapes and escaped physical line breaks during syntax recovery.
+fn ordinary_string_literal(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    if bytes.len() < 2
+        || bytes.first() != Some(&b'"')
+        || bytes.last() != Some(&b'"')
+        || bytes.windows(2).any(|pair| pair == b"\\u")
+    {
+        return false;
+    }
+    let end = bytes.len() - 1;
+    let mut at = 1;
+    while at < end {
+        match bytes[at] {
+            b'"' | b'\r' | b'\n' => return false,
+            b'\\' => {
+                at += 1;
+                if at == end {
+                    return false;
+                }
+                match bytes[at] {
+                    b'b' | b't' | b'n' | b'f' | b'r' | b's' | b'"' | b'\'' | b'\\' => at += 1,
+                    first @ b'0'..=b'7' => {
+                        at += 1;
+                        let more = if first <= b'3' { 2 } else { 1 };
+                        for _ in 0..more {
+                            if at < end && matches!(bytes[at], b'0'..=b'7') {
+                                at += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    _ => return false,
+                }
+            }
+            _ => at += 1,
+        }
+    }
+    true
+}
+
 const REFERENCE_PROOF_DEPTH: usize = 32;
 const REFERENCE_PROOF_WORK: usize = 4096;
 
 // Unlike name-navigation results, this private proof distinguishes actual
 // declared local types, complete raw inventories and justified conversions.
 // One budget covers discovery, arguments, closure and pairwise specificity.
+struct ReferenceValue<'a> {
+    class: &'a ClassRec,
+    string_literal: bool,
+}
+
 struct ReferenceCallProof<'a> {
     index: &'a Index,
     file: &'a FileRec,
@@ -3756,7 +3808,7 @@ impl<'a> ReferenceCallProof<'a> {
         }
         Some(class)
     }
-    fn expression(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<&'a ClassRec> {
+    fn expression(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<ReferenceValue<'a>> {
         if depth > REFERENCE_PROOF_DEPTH {
             self.work_left = 0;
             self.exhausted = true;
@@ -3767,6 +3819,39 @@ impl<'a> ReferenceCallProof<'a> {
             let expressions = delimited_nodes(node, at)?;
             let [(node, at)] = expressions.as_slice() else { return None };
             return self.expression(node, *at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::LiteralExpr {
+            let mut literal = None;
+            for child in node.children() {
+                let token = child.as_token()?;
+                if token.kind().is_trivia() {
+                    continue;
+                }
+                if token.kind() != SyntaxKind::StringLiteral || literal.is_some() {
+                    return None;
+                }
+                self.charge(token.text().len())?;
+                if !ordinary_string_literal(token.text()) {
+                    return None;
+                }
+                literal = Some(());
+            }
+            literal?;
+            // A literal has the platform type independently of lexical String
+            // or java name shadows. Source replacements cannot certify it.
+            let class = self.unique_named(self.file.scope, "java.lang.String")?;
+            if !class.binary
+                || class.access != Access::Public
+                || class.nesting.len() != 1
+                || class.is_interface
+                || class.reference_generic
+                || !class.reference_final
+            {
+                return None;
+            }
+            self.accessible(class)?;
+            self.graph(class)?;
+            return Some(ReferenceValue { class, string_literal: true });
         }
         if node.kind() == SyntaxKind::NewExpr {
             let mut state = 0;
@@ -3798,7 +3883,7 @@ impl<'a> ReferenceCallProof<'a> {
             }
             let class = self.reference_type(self.file, &ty?, at)?;
             self.charge(class.reference_constructor_work?)?;
-            return Some(class);
+            return Some(ReferenceValue { class, string_literal: false });
         }
         if node.kind() != SyntaxKind::ReferenceExpr {
             return None;
@@ -3823,7 +3908,51 @@ impl<'a> ReferenceCallProof<'a> {
         if !matches!(local.kind, TargetKind::Local | TargetKind::Parameter) {
             return None;
         }
-        self.reference_type(self.file, local.reference.as_ref()?, local.start)
+        let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
+        Some(ReferenceValue { class, string_literal: false })
+    }
+    // A literal's platform identity can cross compilation scopes only when
+    // both complete binary closures carry identical supplied evidence. This is
+    // not a general relaxation of snapshot-local declaration identity.
+    fn literal_identity(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<()> {
+        let left = self.graph(actual)?;
+        let right = self.graph(formal)?;
+        self.charge(left.len().max(1))?;
+        if left.len() != right.len() {
+            return None;
+        }
+        for (left, right) in left.iter().zip(&right) {
+            let a = left.binary_signature.as_ref()?;
+            let b = right.binary_signature.as_ref()?;
+            if Arc::ptr_eq(a, b) {
+                continue;
+            }
+            // Charge every variable-length part before comparing its contents.
+            // Distinct copies too large for this proof conservatively refuse.
+            for sig in [a, b] {
+                self.charge(sig.nesting.len() + sig.interfaces.len() + sig.fields.len() + sig.methods.len() + 1)?;
+                for text in [&sig.origin, &sig.binary_name, &sig.dotted_name, &sig.package]
+                    .into_iter()
+                    .chain(sig.nesting.iter())
+                    .chain(sig.interfaces.iter())
+                    .chain(sig.super_class.iter())
+                    .chain(sig.signature.iter())
+                {
+                    self.charge(text.len())?;
+                }
+                for member in sig.fields.iter().chain(&sig.methods) {
+                    self.charge(member.name.len())?;
+                    self.charge(member.descriptor.len())?;
+                    if let Some(signature) = &member.signature {
+                        self.charge(signature.len())?;
+                    }
+                }
+            }
+            if a != b {
+                return None;
+            }
+        }
+        Some(())
     }
     fn converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
         self.graph(actual)?;
@@ -3906,7 +4035,16 @@ impl<'a> ReferenceCallProof<'a> {
             }
             let mut applies = true;
             for (actual, formal) in actuals.iter().zip(parameters) {
-                applies &= self.converts(actual, formal)?;
+                applies &= if actual.string_literal
+                    && actual.class.scope != formal.scope
+                    && formal.package == "java.lang"
+                    && formal.nesting.as_slice() == ["String"]
+                {
+                    self.literal_identity(actual.class, formal)?;
+                    true
+                } else {
+                    self.converts(actual.class, formal)?
+                };
             }
             if applies {
                 applicable.push(i);

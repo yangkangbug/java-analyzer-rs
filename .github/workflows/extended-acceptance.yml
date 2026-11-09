@@ -24,6 +24,10 @@ on:
       - 'scripts/check-constructor-oracle.py'
       - 'scripts/test_constructor_oracle.py'
       - 'scripts/test_constructor_call_acceptance.py'
+      - 'scripts/check-string-call-acceptance.py'
+      - 'scripts/test_string_call_acceptance.py'
+      - 'scripts/check-string-oracle.py'
+      - 'scripts/test_string_oracle.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
       - 'scripts/check-lsp-project.py'
@@ -121,6 +125,11 @@ jobs:
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
           --constructor-calls
+      - name: Additive Gson string-call identities and preserved refusals (no Java)
+        run: >-
+          python3 scripts/check-string-call-acceptance.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
         run: >-
           python3 scripts/check-editor-project.py
@@ -131,7 +140,7 @@ jobs:
           python3 scripts/check-lsp-project.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
-      - name: Independent javac oracle (only this step executes Java)
+      - name: Independent javac oracle (optional Java)
         run: >-
           python3 scripts/check-semantic-oracle.py
           --jdk "$RUNNER_TEMP/acceptance/jdk"
@@ -140,6 +149,11 @@ jobs:
       - name: Independent handwritten constructor oracle (optional Java)
         run: >-
           python3 scripts/check-constructor-oracle.py
+          --jdk "$RUNNER_TEMP/acceptance/jdk"
+          --native target/debug/examples/oracle_bindings
+      - name: Independent handwritten string oracle (optional Java)
+        run: >-
+          python3 scripts/check-string-oracle.py
           --jdk "$RUNNER_TEMP/acceptance/jdk"
           --native target/debug/examples/oracle_bindings
       - name: Remove external inputs (never uploaded or redistributed)

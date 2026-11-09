@@ -548,3 +548,323 @@ fn construction_type_annotations_and_binary_classes_remain_unsupported() {
     );
     refused(&p, "m(new @Marker Leaf())", &[("Calls.java", "m(java.lang.Object x)")]);
 }
+
+// Signature-only String fixtures, never executable Java. The optional Signature
+// and Comparable edge model the conservative behavior of real platform String.
+fn literal_string_binary(flags: u16, signature: Option<&str>, interfaces: &[&str]) -> Vec<u8> {
+    fn u(out: &mut Vec<u8>, n: u16) {
+        out.extend(n.to_be_bytes());
+    }
+    fn utf(out: &mut Vec<u8>, s: &str) {
+        out.push(1);
+        u(out, s.len() as u16);
+        out.extend(s.as_bytes());
+    }
+    let mut b = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61];
+    u(&mut b, (5 + interfaces.len() * 2 + if signature.is_some() { 2 } else { 0 }) as u16);
+    utf(&mut b, "java/lang/String");
+    b.push(7);
+    u(&mut b, 1);
+    utf(&mut b, "java/lang/Object");
+    b.push(7);
+    u(&mut b, 3);
+    for (i, interface) in interfaces.iter().enumerate() {
+        utf(&mut b, interface);
+        b.push(7);
+        u(&mut b, (5 + i * 2) as u16);
+    }
+    if let Some(s) = signature {
+        utf(&mut b, "Signature");
+        utf(&mut b, s);
+    }
+    u(&mut b, flags);
+    u(&mut b, 2);
+    u(&mut b, 4);
+    u(&mut b, interfaces.len() as u16);
+    for i in 0..interfaces.len() {
+        u(&mut b, (6 + i * 2) as u16);
+    }
+    u(&mut b, 0);
+    u(&mut b, 0);
+    u(&mut b, u16::from(signature.is_some()));
+    if signature.is_some() {
+        u(&mut b, (5 + interfaces.len() * 2) as u16);
+        b.extend(2u32.to_be_bytes());
+        u(&mut b, (6 + interfaces.len() * 2) as u16);
+    }
+    b
+}
+fn literal_project(source: &str) -> Project {
+    let mut p = project(source);
+    p.add_class_bytes("String.class", &literal_string_binary(0x31, None, &[])).unwrap();
+    p
+}
+#[test]
+fn string_literals_validate_ordinary_spelling_and_preserve_ranges() {
+    for literal in [r#""""#, r#""hello""#, r#""中文😀""#, r#""\b\t\n\f\r\s\"\'\\""#, r#""\0\07\377\400\777""#] {
+        let source = format!(
+            "/* 😀 */ class C {{ public void m(java.lang.String x) {{}} }} class Calls {{ void run(C c) {{ c.m(({literal})); }} }}"
+        );
+        selected(&literal_project(&source), &format!("m(({literal}))"), "Calls.java", "m(java.lang.String x)");
+    }
+}
+#[test]
+fn string_literals_reject_other_expressions_and_unaudited_spelling() {
+    for literal in [
+        r#""\q""#,
+        r#""\8""#,
+        r#""\u0041""#,
+        r#""\uuuu0041""#,
+        r#""\u0022""#,
+        r#""\u000a""#,
+        r#""\u005c""#,
+        r#""\\u0041""#,
+        "\"a\\\nb\"",
+        "\"a\\\rb\"",
+        "\"\"\"\nhello\n\"\"\"",
+        "null",
+        "1",
+        "true",
+        "'a'",
+        r#""a" + "b""#,
+        r#"(java.lang.String) "a""#,
+    ] {
+        let source = format!(
+            "class C {{ public void m(java.lang.String x) {{}} }} class Calls {{ void run(C c) {{ c.m({literal}); }} }}"
+        );
+        refused(&literal_project(&source), &format!("m({literal})"), &[("Calls.java", "m(java.lang.String x)")]);
+    }
+}
+#[test]
+fn string_literals_do_not_follow_lexical_string_shadows() {
+    let source = r#"class String {} class C { public void m(java.lang.String x) {} public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    selected(&literal_project(source), r#"m("x")"#, "Calls.java", "m(java.lang.String x)");
+    let source =
+        r#"class String {} class C { public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    refused(&literal_project(source), r#"m("x")"#, &[("Calls.java", "m(String x)")]);
+    let source = r#"class java {} class C { public void m(String x) {} } class Calls { class String {} void run(C c) { c.m("x"); } }"#;
+    selected(&literal_project(source), r#"m("x")"#, "Calls.java", "m(String x)");
+}
+#[test]
+fn string_literals_require_unique_complete_binary_platform_identity() {
+    let source = r#"class C { public void m(java.lang.String x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    for missing in ["String.class", "Object.class"] {
+        let mut p = literal_project(source);
+        p.remove_class(missing);
+        refused(&p, r#"m("x")"#, &[("Calls.java", "m(java.lang.String x)")]);
+    }
+    for flags in [0x21, 0x30, 0x231] {
+        let mut p = project(source);
+        p.add_class_bytes("String.class", &literal_string_binary(flags, None, &[])).unwrap();
+        assert_ne!(query(&p, "Calls.java", r#"m("x")"#).status, ResolveStatus::Resolved);
+    }
+    let mut p = project(source);
+    p.insert("String.java", "package java.lang; public final class String {}");
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(java.lang.String x)")]);
+    let mut p = literal_project(source);
+    p.insert("String.java", "package java.lang; public final class String {}");
+    assert_ne!(query(&p, "Calls.java", r#"m("x")"#).status, ResolveStatus::Resolved);
+    let mut p = literal_project(source);
+    p.add_class_bytes("OtherString.class", &literal_string_binary(0x31, None, &[])).unwrap();
+    assert_ne!(query(&p, "Calls.java", r#"m("x")"#).status, ResolveStatus::Resolved);
+    let mut p = project(source);
+    p.add_class_bytes("String.class", &literal_string_binary(0x31, None, &["missing/Interface"])).unwrap();
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(java.lang.String x)")]);
+}
+#[test]
+fn string_literals_preserve_competitor_and_budget_refusals() {
+    for competitor in [
+        "public void m(int x) {}",
+        "public static void m(Object x) {}",
+        "public <T> void m(T x) {}",
+        "public void m(Object... x) {}",
+        "private void m(Object x) {}",
+    ] {
+        let source = format!(
+            "class C {{ public void m(String x) {{}} {competitor} }} class Calls {{ void run(C c) {{ c.m(\"x\"); }} }}"
+        );
+        assert_ne!(query(&literal_project(&source), "Calls.java", "m(\"x\")").status, ResolveStatus::Resolved);
+    }
+    for literal in [format!("\"{}\"", "x".repeat(5000)), format!("{}\"x\"{}", "(".repeat(40), ")".repeat(40))] {
+        let source =
+            format!("class C {{ public void m(String x) {{}} }} class Calls {{ void run(C c) {{ c.m({literal}); }} }}");
+        refused(&literal_project(&source), &format!("m({literal})"), &[("Calls.java", "m(String x)")]);
+    }
+}
+#[test]
+fn string_literal_specificity_requires_proved_binary_edges() {
+    for methods in [
+        "public void m(String x) {} public void m(Object x) {}",
+        "public void m(Object x) {} public void m(String x) {}",
+    ] {
+        let source = format!("class C {{ {methods} }} class Calls {{ void run(C c) {{ c.m(\"x\"); }} }}");
+        selected(&literal_project(&source), "m(\"x\")", "Calls.java", "m(String x)");
+    }
+    // Real String has a generic Signature. Existing conversion deliberately
+    // declines even its Object edge, rather than treating erasure as proof.
+    let source = r#"class C { public void m(String x) {} public void m(Object x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    let mut p = project(source);
+    p.add_class_bytes(
+        "String.class",
+        &literal_string_binary(
+            0x31,
+            Some("Ljava/lang/Object;Ljava/lang/Comparable<Ljava/lang/String;>;"),
+            &["java/lang/Comparable"],
+        ),
+    )
+    .unwrap();
+    let mut comparable = binary("java/lang/Comparable", Some("java/lang/Object"), &[], true);
+    // The class access follows this fixture's four constant-pool entries.
+    let access = 10 + 3 + "java/lang/Comparable".len() + 3 + 3 + "java/lang/Object".len() + 3;
+    comparable[access..access + 2].copy_from_slice(&0x601u16.to_be_bytes());
+    p.add_class_bytes("Comparable.class", &comparable).unwrap();
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(String x)"), ("Calls.java", "m(Object x)")]);
+    p.insert("Calls.java", r#"class C { public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#);
+    selected(&p, r#"m("x")"#, "Calls.java", "m(String x)");
+}
+
+#[test]
+fn string_literals_preserve_arity_and_declaration_site_imports() {
+    let source = r#"class C { public void m(String x) {} public void m(String x, String y) {} } class Calls { void run(C c) { c.m("x", ("😀")); c.m("x"); c.m(); } }"#;
+    let p = literal_project(source);
+    selected(&p, r#"m("x", ("😀"))"#, "Calls.java", "m(String x, String y)");
+    selected(&p, r#"m("x")"#, "Calls.java", "m(String x)");
+    refused(&p, "m();", &[("Calls.java", "m(String x)"), ("Calls.java", "m(String x, String y)")]);
+    let mut p = literal_project(
+        r#"package app; import other.String; import api.C; class Calls { void run(C c) { c.m("x"); } }"#,
+    );
+    p.insert("Other.java", "package other; public class String {}");
+    p.insert("C.java", "package api; public class C { public void m(String x) {} }");
+    selected(&p, r#"m("x")"#, "C.java", "m(String x)");
+    p.insert("C.java", "package api; import other.String; public class C { public void m(String x) {} }");
+    refused(&p, r#"m("x")"#, &[("C.java", "m(String x)")]);
+}
+
+#[test]
+fn string_literals_retain_inherited_and_incomparable_candidates() {
+    let source = r#"class Base { public void m(Object x) {} } class C extends Base { public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    refused(&literal_project(source), r#"m("x")"#, &[("Calls.java", "m(String x)"), ("Calls.java", "m(Object x)")]);
+    let source = r#"interface A {} interface B {} class C { public void m(A x) {} public void m(B x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    let mut p = project(source);
+    p.add_class_bytes("String.class", &literal_string_binary(0x31, None, &["A", "B"])).unwrap();
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(A x)"), ("Calls.java", "m(B x)")]);
+}
+
+#[test]
+fn string_literals_reject_generic_platform_and_malformed_syntax() {
+    let source = r#"class C { public void m(Object x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    let mut p = project(source);
+    p.add_class_bytes(
+        "String.class",
+        &literal_string_binary(0x31, Some("<T:Ljava/lang/Object;>Ljava/lang/Object;"), &[]),
+    )
+    .unwrap();
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(Object x)")]);
+    for argument in ["\"unterminated", "\"dangling\\", "\"a\nb\"", "\"a\rb\""] {
+        let source = format!(
+            "class C {{ public void m(String x) {{}} }} class Calls {{ void run(C c) {{ c.m({argument}); }} }}"
+        );
+        assert_ne!(
+            query(&literal_project(&source), "Calls.java", &format!("m({argument}")).status,
+            ResolveStatus::Resolved
+        );
+    }
+}
+
+#[test]
+fn string_literal_identity_across_compilations_requires_matching_binary_closure() {
+    use java_engine::{
+        ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig, WorkspaceSnapshot,
+    };
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    struct Fixture(std::path::PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    let fixture = Fixture(std::env::temp_dir().join(format!(
+        "literal-scopes-{}-{}",
+        std::process::id(),
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+    )));
+    for directory in ["lib", "app", "platform/java/lang", "other/java/lang"] {
+        fs::create_dir_all(fixture.0.join(directory)).unwrap();
+    }
+    let callee = "package api; public class C { public void m(String a) {} }";
+    let caller = r#"package app; import api.C; public class Calls { void run(C c, String s) { c.m("😀"); c.m(s); } }"#;
+    fs::write(fixture.0.join("lib/C.java"), callee).unwrap();
+    fs::write(fixture.0.join("app/Calls.java"), caller).unwrap();
+    let string = literal_string_binary(0x31, Some("Ljava/lang/Object;"), &[]);
+    for platform in ["platform", "other"] {
+        fs::write(fixture.0.join(platform).join("java/lang/String.class"), &string).unwrap();
+        fs::write(fixture.0.join(platform).join("java/lang/Object.class"), binary("java/lang/Object", None, &[], true))
+            .unwrap();
+    }
+    let lib = CompilationId::new("lib", "main");
+    let app = CompilationId::new("app", "main");
+    let inputs = |source: &str, platform: &str| ProjectConfig {
+        source_roots: vec![fixture.0.join(source)],
+        classpath: vec![ClasspathEntry::Directory(fixture.0.join(platform))],
+        ..Default::default()
+    };
+    let path = fixture.0.join("app/Calls.java").canonicalize().unwrap().to_str().unwrap().to_owned();
+    for (platform, expected) in [("platform", ResolveStatus::Resolved), ("other", ResolveStatus::CallNotResolved)] {
+        let snapshot = WorkspaceSnapshot::load(&WorkspaceConfig {
+            compilations: vec![
+                CompilationConfig { id: lib.clone(), dependencies: vec![], inputs: inputs("lib", "platform") },
+                CompilationConfig { id: app.clone(), dependencies: vec![lib.clone()], inputs: inputs("app", platform) },
+            ],
+            ..Default::default()
+        })
+        .unwrap();
+        for (needle, expected) in [(r#"m("😀")"#, expected), ("m(s)", ResolveStatus::CallNotResolved)] {
+            let at = caller.find(needle).unwrap() as u32;
+            let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
+            assert_eq!(result.status, expected, "{platform}: {result:?}");
+            assert_eq!(result, snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at));
+            assert_eq!(result.targets.len(), 1);
+            assert!(result.targets[0].path.ends_with("lib/C.java"));
+        }
+    }
+    // The exact same String artifact is present in both scopes, but app's
+    // Object is selected from a different dependency. Root-name equality is
+    // insufficient even when that dependency has byte-identical contents.
+    fs::remove_file(fixture.0.join("other/java/lang/String.class")).unwrap();
+    let check = |app_inputs: ProjectConfig| {
+        let snapshot = WorkspaceSnapshot::load(&WorkspaceConfig {
+            compilations: vec![
+                CompilationConfig { id: lib.clone(), dependencies: vec![], inputs: inputs("lib", "platform") },
+                CompilationConfig { id: app.clone(), dependencies: vec![lib.clone()], inputs: app_inputs },
+            ],
+            ..Default::default()
+        })
+        .unwrap();
+        let at = caller.find(r#"m("😀")"#).unwrap() as u32;
+        let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
+        assert_ne!(result.status, ResolveStatus::Resolved, "{result:?}");
+        assert_eq!(result, snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at));
+    };
+    let mut different_ancestor = inputs("app", "other");
+    different_ancestor.classpath.push(ClasspathEntry::Directory(fixture.0.join("platform")));
+    check(different_ancestor);
+    // A source duplicate in either owning compilation cannot certify the
+    // platform identity, even though both scopes still have identical binaries.
+    for source in ["app", "lib"] {
+        let shadow = fixture.0.join(source).join("String.java");
+        fs::write(&shadow, "package java.lang; public final class String {}").unwrap();
+        check(inputs("app", "platform"));
+        fs::remove_file(shadow).unwrap();
+    }
+    // Oversized signature metadata must not be compared for free in the
+    // separately loaded directory fallback (shared archive Arcs avoid the scan).
+    fs::write(
+        fixture.0.join("platform/java/lang/String.class"),
+        literal_string_binary(0x31, Some(&format!("Ljava/lang/Object;{}", "x".repeat(5000))), &[]),
+    )
+    .unwrap();
+    check(inputs("app", "platform"));
+}

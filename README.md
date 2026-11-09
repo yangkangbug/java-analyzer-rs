@@ -44,8 +44,10 @@ The [local-type containment boundary](docs/LOCAL_TYPES.md) repairs surrounding
 variable navigation after unsupported method-local type declarations without
 publishing those types as ordinary class members.
 The [reference instance-call proof](docs/REFERENCE_CALLS.md) handles a bounded
-set of explicit local/parameter and proved zero-argument construction arguments with complete inheritance
-and access evidence. Missing evidence stays refused, even for a unique candidate.
+set of explicit local/parameter, proved zero-argument construction, and ordinary
+string-literal arguments with complete inheritance and access evidence. The
+[string-call gate](examples/second_project/STRING_CALLS.md) checks exact real-source
+navigation while retaining unsupported overloads. Missing evidence stays refused, even for a unique candidate.
 
 ### Experimental project CLI
 

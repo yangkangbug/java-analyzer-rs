@@ -23,6 +23,14 @@ of the following are proved:
   semantics, implicit super calls or whole-program instantiation validity.
   Implicit defaults, additional constructors and throws clauses are conservative
   exclusions for this slice, not claims that those Java constructs are invalid.
+- Arguments also support ordinary closed string literals with validated simple and
+  octal escapes, including `\s`. They use the exact supplied public final,
+  nongeneric, top-level binary `java.lang.String`, independently of lexical names
+  or imports. Its complete ancestry and native-readable Object root are required.
+  Literal byte inspection consumes the shared proof budget. Text blocks, any raw
+  backslash-u substring, malformed escapes and physical line breaks are refused;
+  Unicode preprocessing is not implemented by this slice. These are conservative
+  syntax limits, not claims that every refused Java string is invalid.
 - The call belongs to a supported direct, nongeneric source method. Unsupported
   scopes, local-type declarations and parser errors in that caller cannot provide
   the proof. This is not general expression typing or complete Java scope analysis.
@@ -46,6 +54,26 @@ only proved nongeneric edges. A raw generic ancestor inventory may establish
 that it contributes no same-name method, as with JsonArray's Iterable ancestor;
 it does not perform substitution or generic conversion. Binary receiver/method
 selection, overrides and default-method merging remain outside this proof.
+
+Actual JDK String has a generic Signature attribute. Existing binary edge
+handling conservatively marks all its edges as lacking plain conversion evidence.
+The string slice therefore proves exact String formal identity on that platform,
+including mixed argument lists, but does not establish String-to-Object widening
+or resolve String/Object and String/unrelated overload sets. Supplying literal
+type evidence does not weaken that existing conversion boundary. Final class-file
+metadata is a prerequisite, not JVM bytecode verification or proof that every
+class-file flag combination is legal.
+
+Binary identities otherwise remain compilation-specific. Only a validated string
+literal may cross to an exact String formal in another compilation after both
+complete ancestry inventories match one-to-one as binary inputs, with the same
+origins and all retained class-file signature metadata. Source replacements,
+different origins or different/missing ancestor evidence refuse. This does not
+merge ordinary parameter/local types across compilations or enable cross-scope
+widening. Shared immutable signature records avoid repeated equality scans;
+nonshared equality checks must fit the same bounded proof budget.
+
+
 
 The private proof has a shared 32-level/4,096-work-unit budget for lookup,
 hierarchy/member discovery, arguments and selection. Exceeding it refuses rather
@@ -120,13 +148,21 @@ two dirty files, CRLF/astral UTF-16 ranges, missing-parent refusal, old/equal
 versions and repair. A construction-argument regression additionally changes an unsaved
 constructor from public to private and its class from concrete to abstract,
 verifies refusal and repair, and preserves dirty-target UTF-16 ranges.
+An ordinary-string regression changes unsaved literals and formal types, checks
+refusal/repair and stale versions, and keeps exact dirty UTF-16 target ranges.
 They are protocol evidence, not OpenIDEA compatibility.
+
+The separate [string-literal oracle](../dev-tools/oracle/string-v1/README.md)
+uses independently expected declaration markers and actual checksum-verified JDK
+String signatures. The [pinned Gson string gate](../examples/second_project/STRING_CALLS.md)
+adds exact queries without changing upstream source, historical queries, or parser
+records. Neither gate claims whole-Gson compilation or general overload coverage.
 The separate real Neovim gate remains a client regression check.
 
 Beyond the explicit zero-argument construction boundary above, new-expression
 typing remains unsupported: no new receivers, enclosing-instance construction,
 arrays, anonymous classes, diamond or constructor type/argument inference.
-Null/literal typing, field arguments, generic inference, general
+Null and non-string literal typing, field arguments, generic inference, general
 call results, boxing/unboxing, expanded varargs, nested-class types and inherited
 or binary overload selection remain unsupported. Real generic fromJson and
 chained-call cases are not solved. The next integration milestone is safe

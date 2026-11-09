@@ -672,3 +672,54 @@ fn native_construction_arguments_follow_unsaved_constructor_access_and_abstractn
     assert!(session.wait_exit().success());
     fixture.assert_sources_unchanged();
 }
+
+#[test]
+fn native_string_arguments_follow_unsaved_literal_and_formal_edits() {
+    let fixture = ReferenceCallFixture::new();
+    // Signature-only final String data, assembled without Java. Real platform
+    // String and its generic ancestry are covered by the optional oracle.
+    let mut string = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 5, 1, 0, 16];
+    string.extend_from_slice(b"java/lang/String");
+    string.extend_from_slice(&[7, 0, 1, 1, 0, 16]);
+    string.extend_from_slice(b"java/lang/Object");
+    string.extend_from_slice(&[7, 0, 3, 0, 0x31, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0]);
+    std::fs::write(fixture.root.join("platform/java/lang/String.class"), string).unwrap();
+    let mut session = fixture.session();
+    let use_uri = fixture.uri("Use");
+    let receiver_uri = fixture.uri("Receiver");
+    let consumer =
+        "package p;\r\npublic class Use { void run(Receiver receiver) { /* 😀 */ receiver.m(\"你好😀\"); } }\r\n";
+    let receiver = "package p;\r\npublic class Receiver { /* 😀 */ public void m(java.lang.String value) {} }\r\n";
+    open_source(&mut session, &use_uri, consumer);
+    open_source(&mut session, &receiver_uri, receiver);
+    let location = method_location(&receiver_uri, receiver, "m(java.lang.String value)", "m");
+    let initial = source_definition(&mut session, 50, &use_uri, consumer, "m(");
+    assert_eq!(initial.get("result"), Some(&location), "{initial}");
+    for (version, expression) in [(2, "null"), (4, "\"\\q\""), (6, "'x'")] {
+        let changed = consumer.replace("\"你好😀\"", expression);
+        replace_source(&mut session, &use_uri, version, &changed);
+        let refused = source_definition(&mut session, 50 + version, &use_uri, &changed, "m(");
+        assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+        replace_source(&mut session, &use_uri, version + 1, consumer);
+        let repaired = source_definition(&mut session, 51 + version, &use_uri, consumer, "m(");
+        assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    }
+    let changed = receiver.replace("java.lang.String", "Base");
+    replace_source(&mut session, &receiver_uri, 2, &changed);
+    let refused = source_definition(&mut session, 60, &use_uri, consumer, "m(");
+    assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+    replace_source(&mut session, &receiver_uri, 3, receiver);
+    let repaired = source_definition(&mut session, 61, &use_uri, consumer, "m(");
+    assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    replace_source(&mut session, &use_uri, 7, consumer);
+    let stale = source_definition(&mut session, 62, &use_uri, consumer, "m(");
+    assert_eq!(stale["error"]["code"], -32602, "{stale}");
+    replace_source(&mut session, &use_uri, 8, consumer);
+    let repaired = source_definition(&mut session, 63, &use_uri, consumer, "m(");
+    assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    session.send(json!({"jsonrpc":"2.0","id":64,"method":"shutdown","params":null}));
+    assert_eq!(session.response(64)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    fixture.assert_sources_unchanged();
+}

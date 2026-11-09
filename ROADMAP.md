@@ -186,6 +186,12 @@ corrects original `a.add(new JsonObject())` to `add(JsonElement)`, preserving th
 other 15 original rows, historical golden files, source bytes and parser records.
 See [the exact boundary](docs/REFERENCE_CALLS.md) and
 [real-Gson construction acceptance](examples/second_project/CONSTRUCTOR_CALLS.md).
+Ordinary string-literal arguments now add exact supplied binary String identity
+without lexical-name inference. Real Gson get/remove/has and mixed add calls are
+covered by an [additive gate](examples/second_project/STRING_CALLS.md); unknown
+binary generic edges, text blocks, Unicode preprocessing and other literal types
+remain refused. This does not enable String/Object overload selection or general
+reference conversion through generic class-file signatures.
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one
