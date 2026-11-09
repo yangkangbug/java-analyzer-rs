@@ -43,7 +43,7 @@ boxing, references or expanded varargs. Unselected overloads retain
 A separate negative guard rejects demonstrable fixed-arity and known primitive
 contradictions for a uniquely collected source method, including `m(1)` against
 `m()`. This guard does not require Object data and does not infer the literal's
-type to count arguments. It does not cover qualified/binary calls or a singleton
+type to count arguments. This primitive guard does not cover qualified/binary calls or a singleton
 produced by hiding multiple inherited declarations. Outside these explicit
 checks, existing unique-name navigation is preserved; `Resolved` is not a
 universal applicability guarantee.
@@ -66,6 +66,10 @@ cannot borrow method/loop bindings outside their scope. Enhanced-for body locals
 are supported when otherwise eligible. Malformed syntax and ambiguous inventories cannot supply the new positive proof.
 Legacy singleton navigation may still resolve outside the guarded contexts;
 parser recovery is not proof of valid Java.
+
+The later [reference-instance-call slice](REFERENCE_CALLS.md) adds a separate
+qualified local/parameter proof and source contradiction guards. It does not
+generalize the primitive proof to all expression or receiver kinds.
 
 ## Evidence
 

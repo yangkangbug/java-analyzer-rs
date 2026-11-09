@@ -171,6 +171,28 @@ outside this slice.
 
 ## M2: semantic types and method applicability
 
+### Bounded reference instance calls implemented
+
+Direct calls on explicitly typed local/parameter source receivers now have a
+separate proof for scalar reference arguments, strict reference widening and a
+unique most-specific direct public source method. Declaration-context identity,
+complete bounded hierarchy/member inventories and access checks are prerequisites.
+Generic/inherited competitors and unknown evidence remain refused. Two fixed
+Gson add(a) sites improve while the original queries, source bytes and parser
+reports remain unchanged; see [the exact boundary](docs/REFERENCE_CALLS.md).
+
+This does not complete M2 or make every legacy Resolved result an applicability
+proof. The independent oracle preserves original evidence and records one
+no-platform singleton tightening. Missing Object is not silently treated as an
+empty ancestor. Generic inference, arbitrary expression typing, inherited/binary
+selection and the common semantic type model remain open foundations.
+
+The next preview integration priority is a guarded OpenIDEA definition workflow:
+explicit native-server configuration, whole-workspace stale-result rejection,
+cancellation and actual end-to-end verification. Existing custom-server settings
+alone do not prove compatibility. Keep client work separate from the core and
+from JDT-backed build/classpath/debug replacement.
+
 ### Cross-cutting experimental CLI entry
 
 The optional native executable exposes an explicit versioned compilation manifest,

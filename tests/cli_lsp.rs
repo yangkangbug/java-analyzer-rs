@@ -101,6 +101,213 @@ impl Drop for Session {
     }
 }
 
+// Keep these fixtures entirely native: the class bytes describe only Object's
+// signature, as in tests/cli.rs, and the broker/worker inherit an empty environment.
+struct ReferenceCallFixture {
+    root: std::path::PathBuf,
+}
+impl ReferenceCallFixture {
+    const BASE: &str = "package p;\npublic class Base {}\n";
+    const DERIVED: &str = "package p;\npublic class Derived extends Base {}\n";
+    const RECEIVER: &str = "package p;\npublic class Receiver {\n    public void m(Base value) {}\n    public void m(Derived value) {}\n    public void only(Derived value) {}\n}\n";
+    const USE: &str = "package p;\npublic class Use {\n    public void run(Receiver receiver, Derived value) {\n        receiver.m(value);\n    }\n}\n";
+
+    fn new() -> Self {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let root = std::env::temp_dir().join(format!(
+            "lsp-reference-calls-{}-{}",
+            std::process::id(),
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        std::fs::create_dir_all(root.join("src/p")).unwrap();
+        std::fs::create_dir_all(root.join("platform/java/lang")).unwrap();
+        let fixture = Self { root: root.canonicalize().unwrap() };
+        for (name, text) in
+            [("Base", Self::BASE), ("Derived", Self::DERIVED), ("Receiver", Self::RECEIVER), ("Use", Self::USE)]
+        {
+            std::fs::write(fixture.source_path(name), text).unwrap();
+        }
+        let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+        object.extend_from_slice(b"java/lang/Object");
+        object.extend_from_slice(&[7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        std::fs::write(fixture.root.join("platform/java/lang/Object.class"), object).unwrap();
+        std::fs::write(
+            fixture.root.join("project.json"),
+            serde_json::to_vec(&json!({"schema_version":1,"compilations":[{
+                "id":{"project":"p","source_set":"main"},"source_roots":["src"],
+                "classpath":[{"kind":"directory","path":"platform"}]
+            }]}))
+            .unwrap(),
+        )
+        .unwrap();
+        fixture
+    }
+    fn source_path(&self, name: &str) -> std::path::PathBuf {
+        self.root.join(format!("src/p/{name}.java"))
+    }
+    fn uri(&self, name: &str) -> String {
+        format!("file://{}", self.source_path(name).to_str().unwrap())
+    }
+    fn session(&self) -> Session {
+        let mut session = Session::start_manifest(&self.root.join("project.json"));
+        session.initialize();
+        session
+    }
+    fn assert_sources_unchanged(&self) {
+        for (name, text) in
+            [("Base", Self::BASE), ("Derived", Self::DERIVED), ("Receiver", Self::RECEIVER), ("Use", Self::USE)]
+        {
+            assert_eq!(std::fs::read_to_string(self.source_path(name)).unwrap(), text);
+        }
+    }
+}
+impl Drop for ReferenceCallFixture {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.root);
+    }
+}
+
+fn source_position(text: &str, marker: &str) -> Value {
+    let prefix = &text[..text.find(marker).expect("unique source marker")];
+    json!({"line":prefix.bytes().filter(|b| *b == b'\n').count(),
+        "character":prefix.rsplit('\n').next().unwrap().encode_utf16().count()})
+}
+
+fn method_location(uri: &str, text: &str, declaration: &str, name: &str) -> Value {
+    assert!(declaration.starts_with(name));
+    let start = source_position(text, declaration);
+    let mut end = start.clone();
+    end["character"] = json!(start["character"].as_u64().unwrap() + name.encode_utf16().count() as u64);
+    json!({"uri":uri,"range":{"start":start,"end":end}})
+}
+
+fn open_source(session: &mut Session, uri: &str, text: &str) {
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{
+        "textDocument":{"uri":uri,"languageId":"java","version":1,"text":text}}}));
+}
+
+fn replace_source(session: &mut Session, uri: &str, version: i32, text: &str) {
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{
+        "textDocument":{"uri":uri,"version":version},"contentChanges":[{"text":text}]}}));
+}
+
+fn source_definition(session: &mut Session, id: i32, uri: &str, text: &str, marker: &str) -> Value {
+    session.send(json!({"jsonrpc":"2.0","id":id,"method":"textDocument/definition",
+        "params":{"textDocument":{"uri":uri},"position":source_position(text, marker)}}));
+    session.response(id)
+}
+
+#[test]
+fn native_reference_calls_follow_unsaved_argument_and_dependency_replacements() {
+    let fixture = ReferenceCallFixture::new();
+    let receiver_uri = fixture.uri("Receiver");
+    let use_uri = fixture.uri("Use");
+    let base_uri = fixture.uri("Base");
+    let mut session = fixture.session();
+    open_source(&mut session, &receiver_uri, ReferenceCallFixture::RECEIVER);
+    open_source(&mut session, &use_uri, ReferenceCallFixture::USE);
+    open_source(&mut session, &base_uri, ReferenceCallFixture::BASE);
+
+    let initial = source_definition(&mut session, 10, &use_uri, ReferenceCallFixture::USE, "m(value)");
+    assert_eq!(
+        initial.get("result"),
+        Some(&method_location(&receiver_uri, ReferenceCallFixture::RECEIVER, "m(Derived value)", "m")),
+        "a public qualified reference overload must have one proved target: {initial}"
+    );
+
+    // Both files differ from disk. The consumer's explicit argument type changes
+    // the selected overload; the target's independent edit moves its name range.
+    // Astral comments precede the query and target on the same CRLF-delimited line.
+    let dirty_receiver = format!(
+        "// 😀 unsaved dependency\r\n{}",
+        ReferenceCallFixture::RECEIVER.replace('\n', "\r\n").replace("public void m(", "/* 😀 */ public void m(")
+    );
+    let dirty_use = format!(
+        "// 😀 unsaved consumer\r\n{}",
+        ReferenceCallFixture::USE
+            .replace('\n', "\r\n")
+            .replace("Derived value", "Base value")
+            .replace("receiver.m(value)", "/* 😀 */ receiver.m(value)")
+    );
+    replace_source(&mut session, &receiver_uri, 2, &dirty_receiver);
+    replace_source(&mut session, &use_uri, 2, &dirty_use);
+    let base_location = method_location(&receiver_uri, &dirty_receiver, "m(Base value)", "m");
+    let switched = source_definition(&mut session, 11, &use_uri, &dirty_use, "m(value)");
+    assert_eq!(switched.get("result"), Some(&base_location), "{switched}");
+    assert_ne!(switched["result"], initial["result"]);
+
+    // A separate hierarchy dependency loses a required ancestor. The old exact
+    // answer is no longer justified, even though the call text itself is unchanged.
+    let missing_ancestor = "package p;\r\npublic class Base extends Missing {}\r\n";
+    replace_source(&mut session, &base_uri, 2, missing_ancestor);
+    let refused = source_definition(&mut session, 12, &use_uri, &dirty_use, "m(value)");
+    assert_eq!(refused.get("result"), Some(&Value::Null), "missing ancestor must not navigate: {refused}");
+    replace_source(&mut session, &base_uri, 3, ReferenceCallFixture::BASE);
+    let repaired = source_definition(&mut session, 13, &use_uri, &dirty_use, "m(value)");
+    assert_eq!(repaired.get("result"), Some(&base_location), "{repaired}");
+
+    // Equal and old dependency versions poison the whole workspace rather than
+    // allowing either the disk target or the previously proved overlay target.
+    for (id, version) in [(14, 2), (15, 1)] {
+        replace_source(&mut session, &receiver_uri, version, ReferenceCallFixture::RECEIVER);
+        let refused = source_definition(&mut session, id, &use_uri, &dirty_use, "m(value)");
+        assert_eq!(refused["error"]["code"], -32602, "{refused}");
+        assert!(refused["error"]["message"].as_str().unwrap().contains("desynchronized"));
+        assert!(refused.get("result").is_none(), "a rejected version must never expose a stale Location");
+    }
+    let repaired_receiver = format!("// newer repair\r\n{dirty_receiver}");
+    let repaired_use = dirty_use.replace("Base value", "Derived value");
+    replace_source(&mut session, &receiver_uri, 3, &repaired_receiver);
+    replace_source(&mut session, &use_uri, 3, &repaired_use);
+    let derived_location = method_location(&receiver_uri, &repaired_receiver, "m(Derived value)", "m");
+    let repaired = source_definition(&mut session, 16, &use_uri, &repaired_use, "m(value)");
+    assert_eq!(repaired.get("result"), Some(&derived_location), "{repaired}");
+    assert_ne!(repaired["result"], initial["result"]);
+    assert_ne!(repaired["result"], switched["result"]);
+
+    // The consumer's stale versions are equally unsafe. A later full-text
+    // replacement recovers without reverting either unsaved dependency buffer.
+    for (id, version) in [(17, 3), (18, 2)] {
+        replace_source(&mut session, &use_uri, version, ReferenceCallFixture::USE);
+        let refused = source_definition(&mut session, id, &use_uri, &repaired_use, "m(value)");
+        assert_eq!(refused["error"]["code"], -32602, "{refused}");
+        assert!(refused["error"]["message"].as_str().unwrap().contains("desynchronized"));
+        assert!(refused.get("result").is_none());
+    }
+    replace_source(&mut session, &use_uri, 4, &repaired_use);
+    let recovered = source_definition(&mut session, 19, &use_uri, &repaired_use, "m(value)");
+    assert_eq!(recovered.get("result"), Some(&derived_location), "{recovered}");
+
+    session.send(json!({"jsonrpc":"2.0","id":20,"method":"shutdown","params":null}));
+    assert_eq!(session.response(20)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    fixture.assert_sources_unchanged();
+}
+
+#[test]
+fn native_reference_calls_refuse_unique_wrong_arity_and_type_qualified_instance() {
+    let fixture = ReferenceCallFixture::new();
+    let use_uri = fixture.uri("Use");
+    let text = "package p;\npublic class Use {\n    public void run(Receiver receiver, Derived value) {\n        receiver.only();\n        Receiver.only(value);\n    }\n}\n";
+    let mut session = fixture.session();
+    open_source(&mut session, &use_uri, text);
+    // These are deliberately compiler-invalid, despite the unique visible name.
+    // Read both independent responses before asserting, retaining both failures.
+    let wrong_arity = source_definition(&mut session, 10, &use_uri, text, "only()");
+    let instance_on_type = source_definition(&mut session, 11, &use_uri, text, "only(value)");
+    assert_eq!(
+        [wrong_arity.get("result"), instance_on_type.get("result")],
+        [Some(&Value::Null), Some(&Value::Null)],
+        "unsupported calls must not become source Locations: {wrong_arity}; {instance_on_type}"
+    );
+    session.send(json!({"jsonrpc":"2.0","id":12,"method":"shutdown","params":null}));
+    assert_eq!(session.response(12)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    fixture.assert_sources_unchanged();
+}
+
 #[test]
 fn initialize_and_shutdown_real_native_server() {
     let mut session = Session::start();

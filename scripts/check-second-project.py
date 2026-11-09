@@ -349,11 +349,19 @@ def invoke(native, fixture, command, manifest=None, requests=None):
     return code, stdout, stderr
 
 
-def successful(native, fixture, command, manifest=None, requests=None):
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, 'duplicate JSON object key: ' + key)
+        result[key] = value
+    return result
+
+
+def successful(native, fixture, command, manifest=None, requests=None, strict_json=False):
     code, stdout, stderr = invoke(native, fixture, command, manifest, requests)
     same(code, 0, f'{command} exit; stderr={stderr[:2000]!r}')
     same(stderr, b'', command + ' stderr')
-    response = json.loads(stdout)
+    response = json.loads(stdout, object_pairs_hook=unique_json_object if strict_json else dict)
     check_envelope(command, response, fixture, manifest)
     return response
 
@@ -560,20 +568,177 @@ def run_local_type_acceptance(native, fixture, capture_baseline=False):
             'javac_real_gson_equivalence': False, 'upstream_code_executed': False}
 
 
+def all_source_hashes(fixture):
+    """Hash the full extracted corpus, including every unselected Java source."""
+    sources = {}
+    for path in sorted(fixture.source_root.rglob('*.java')):
+        reject_symlinks(path)
+        require(path.is_file(), 'source must remain a regular file')
+        sources[path.relative_to(fixture.source_root).as_posix()] = digest(path)
+    same(len(sources), 226, 'complete extracted Java path inventory')
+    return sources
+
+
+def reference_call_probes(fixture):
+    """Frozen, additive source evidence; no source generation or repair."""
+    spec = json.loads((CORPUS / 'reference-call-probes.json').read_text())
+    same(spec['format_version'], 1, 'reference-call plan version')
+    same(spec['selected_before_implementation'], True, 'reference-call preselection')
+    same(spec['source_archive_sha256'], fixture.metadata['inputs']['sources']['sha256'],
+         'reference-call archive pin')
+    for name, checksum in spec['historical_artifact_sha256'].items():
+        same(digest(CORPUS / name), checksum, 'unchanged historical artifact: ' + name)
+    historical = json.loads((CORPUS / 'local-type-comparison.json').read_text())
+    same(all_source_hashes(fixture), historical['all_226_source_sha256'],
+         'all original upstream Java bytes, including exclusions')
+    for path, checksum in spec['source_sha256'].items():
+        data = fixture.sources[path]
+        same(hashlib.sha256(data).hexdigest(), checksum, 'reference-call source: ' + path)
+        same((fixture.source_root / path).read_bytes(), data, 'original extracted source bytes')
+    probes = spec['queries']
+    same(len(probes), 3, 'reference-call probe count')
+    same(len({q['id'] for q in probes}), 3, 'unique reference-call probe IDs')
+    for query in probes:
+        data = fixture.sources[query['file']]
+        same(data[query['byte']:query['byte'] + len(query['spelling'])],
+             query['spelling'].encode(), 'reference-call query token')
+        for stage in ['baseline', 'expected']:
+            for target in query[stage]['targets']:
+                data = fixture.sources[target['path']]
+                same(data[target['start']:target['end']], target['name'].encode(),
+                     'reference-call exact declaration token')
+    return probes, historical, spec['parser_result_canonical_sha256']
+
+
+def canonical_json(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False)
+
+
+def check_reference_call_response(response, probes, fixture, stage='expected'):
+    """Exact complete rows and candidate multisets; malformed output never passes."""
+    require(stage in ('baseline', 'expected'), 'unknown reference-call comparison stage')
+    try:
+        check_envelope('declaration', response, fixture)
+        require(type(response['schema_version']) is int, 'reference-call schema must be an integer')
+        for flag in ['build_tool_import', 'semantic_diagnostics']:
+            require(type(response['capabilities'][flag]) is bool, 'capability must be a boolean: ' + flag)
+        result = response['result']
+        same(set(result), {'index_builds', 'queries'}, 'reference-call result fields')
+        require(type(result['index_builds']) is int and result['index_builds'] == 1,
+                'reference-call single prepared index')
+        actual = result['queries']
+        require(isinstance(actual, list), 'reference-call rows must be a list')
+        same(len(actual), len(probes), 'reference-call output completeness')
+        for index, (row, query) in enumerate(zip(actual, probes)):
+            require(isinstance(row, dict), 'reference-call row must be an object')
+            targets = row['targets']
+            require(isinstance(targets, list) and all(isinstance(t, dict) for t in targets),
+                    'reference-call target records must be objects')
+            expected = query[stage]
+            wanted = {
+                'query_index': index, 'compilation': query['compilation'],
+                'source_compilation': compilation(fixture.owner[query['file']]),
+                'file': str(fixture.source_root / query['file']),
+                'position': {'encoding': 'utf8', 'offset': query['byte']},
+                'byte_offset': query['byte'], 'status': expected['status'],
+                'targets': [expected_target(t, fixture) for t in expected['targets']],
+            }
+            # Preserve duplicate multiplicity but do not depend on candidate order.
+            observed = dict(row, targets=sorted(targets, key=canonical_json))
+            wanted['targets'].sort(key=canonical_json)
+            same(canonical_json(observed), canonical_json(wanted),
+                 query['id'] + ' exact query/target multiset')
+    except (KeyError, TypeError, ValueError, AttributeError) as error:
+        raise AcceptanceError('invalid reference-call response: ' + str(error)) from error
+
+
+def parser_result_digest(parser, fixture):
+    portable = copy.deepcopy(parser)
+    for file in portable['files']:
+        file['path'] = Path(file['path']).relative_to(fixture.source_root).as_posix()
+    return hashlib.sha256(canonical_json(portable).encode('utf-8')).hexdigest()
+
+
+def check_reference_parser(parser, fixture, historical, expected_digest):
+    check_parser(parser, fixture)
+    inventory = {Path(f['path']).relative_to(fixture.source_root).as_posix(): len(f['reports'])
+                 for f in parser['files']}
+    same(inventory, historical['parser_after'], 'unchanged per-source parser inventory')
+    same(parser['report_count'], 331, 'unchanged parser report count')
+    same(parser['files_with_reports'], 58, 'unchanged parser affected-file count')
+    same(parser_result_digest(parser, fixture), expected_digest,
+         'unchanged complete parser records including messages and byte/UTF16 ranges')
+    return inventory
+
+
+def portable_queries(response, fixture):
+    """Keep exact public records while replacing machine-local input prefixes."""
+    text = json.dumps(response['result']['queries'])
+    text = text.replace(str(fixture.source_root) + '/', '')
+    for name, path in fixture.inputs.items():
+        text = text.replace(str(path), 'inputs/' + fixture.metadata['inputs'][name]['filename'])
+    return json.loads(text)
+
+
+def run_reference_call_acceptance(native, fixture, capture_baseline=False):
+    probes, historical, parser_digest = reference_call_probes(fixture)
+    before = all_source_hashes(fixture)
+    request = document(fixture, 'reference-call-requests.json', {'schema_version': 1, 'queries': [
+        {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
+         'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in probes]})
+    response = successful(native, fixture, 'declaration', requests=request, strict_json=True)
+    # Baseline capture is a strict, separate expected result, never a swallowed
+    # checker failure. Wrong/missing/extra baseline results also fail the command.
+    stage = 'baseline' if capture_baseline else 'expected'
+    check_reference_call_response(response, probes, fixture, stage)
+    original = successful(native, fixture, 'declaration')
+    check_response('declaration', original, fixture)
+    local_probes = local_type_probes(fixture)
+    local_request = document(fixture, 'reference-local-type-requests.json', {
+        'schema_version': 1, 'queries': [
+            {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
+             'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in local_probes]})
+    local = successful(native, fixture, 'declaration', requests=local_request)
+    same(local['result']['index_builds'], 1, 'local-type single prepared index')
+    check_local_type_response(local, local_probes, fixture)
+    parser = successful(native, fixture, 'parser-report')['result']
+    inventory = check_reference_parser(parser, fixture, historical, parser_digest)
+    after = all_source_hashes(fixture)
+    same(after, before, 'source hash inventory unchanged after every native request')
+    return {
+        'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
+        'comparison_stage': stage, 'queries': portable_queries(response, fixture),
+        'original_16_queries': portable_queries(original, fixture),
+        'local_type_5_queries': portable_queries(local, fixture),
+        'metadata': fixture.metadata, 'source_sha256_before': before, 'source_sha256_after': after,
+        'source_bytes_unchanged': True, 'parser_inventory': inventory,
+        'parser_result_canonical_sha256': parser_result_digest(parser, fixture),
+        'parser_report_count': parser['report_count'],
+        'parser_files_with_reports': parser['files_with_reports'],
+        'javac_real_gson_equivalence': False, 'upstream_code_executed': False,
+        'analysis_environment': {'PATH': '/nonexistent', 'java_executed': False},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('inputs_dir', type=Path)
     parser.add_argument('--native', type=Path, default=ROOT / 'target/release/java-analyzer')
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--local-types', action='store_true', help='run independent additive local-type probes')
-    parser.add_argument('--capture-baseline', action='store_true', help='retain failing local-type evidence without treating it as acceptance')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--local-types', action='store_true', help='run independent additive local-type probes')
+    mode.add_argument('--reference-calls', action='store_true', help='run frozen additive reference-call proof and preservation gates')
+    parser.add_argument('--capture-baseline', action='store_true', help='capture historical local-type failures or strictly verify the reference-call baseline, never candidate acceptance')
     args = parser.parse_args()
     native = args.native.resolve()
     require(native.is_file(), f'build the CLI first: {native}')
     with tempfile.TemporaryDirectory(prefix='second-project-') as tmp:
         fixture = prepare_fixture(args.inputs_dir, Path(tmp) / 'fixture')
-        require(not args.capture_baseline or args.local_types, 'baseline capture requires --local-types')
-        result = (run_local_type_acceptance(native, fixture, args.capture_baseline)
+        require(not args.capture_baseline or args.local_types or args.reference_calls,
+                'baseline capture requires --local-types or --reference-calls')
+        result = (run_reference_call_acceptance(native, fixture, args.capture_baseline)
+                  if args.reference_calls else
+                  run_local_type_acceptance(native, fixture, args.capture_baseline)
                   if args.local_types else run_acceptance(native, fixture))
         text = json.dumps(result, indent=2) + '\n'
         if args.output:

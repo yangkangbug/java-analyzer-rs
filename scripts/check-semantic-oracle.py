@@ -480,6 +480,244 @@ def return_suite(jdk, native_binary, env, work, helper, empty, platform):
           "exact candidates, target mutations, omitted Object and query-completeness controls verified")
 
 
+REFERENCE_FILES = (
+    "model/Root.java", "model/Mid.java", "model/Leaf.java", "model/Other.java",
+    "model/Marker.java", "model/Branch.java", "model/Target.java",
+    "model/GenericReceiver.java", "model/Parent.java", "model/InheritedReceiver.java",
+    "model/GenericMethods.java", "model/BinaryReceiver.java", "app/Use.java",
+)
+REFERENCE_DECLARATIONS = frozenset((
+    "pick_root", "pick_mid", "pick_other", "exact_leaf", "exact_other", "only_root",
+    "empty", "arity_one", "arity_two", "binary_object", "binary_other",
+    "marker_interface", "marker_other", "cross_root", "cross_mid", "iterable_root",
+    "iterable_mid", "parent_root", "inherited_mid", "generic_t", "generic_leaf", "binary_leaf",
+))
+REFERENCE_INVALID_CASES = frozenset((
+    "wrong_arity", "class_instance", "wrong_reference", "protected_crosspackage",
+    "inaccessible_receiver", "ambiguous", "missing_parent", "cycle",
+    "duplicate_parent", "missing_argument_type", "inaccessible_argument_type",
+))
+
+
+def reference_target(declarations, candidate, binaries):
+    """Explicit source-name identity or one inventoried binary declaration."""
+    if candidate.startswith("class:"):
+        path, member = candidate.removeprefix("class:").split("@")
+        assert path == "dep/BinaryParent.class", "unexpected reference binary candidate"
+        owner, name = member.split("#")
+        assert (owner, name) == ("dep.BinaryParent", "pick")
+        return f"{binaries / path}|Method|{owner}|{name}|0|0"
+    kind = "Class" if candidate.startswith("type:") else "Method"
+    marker, owner = candidate.removeprefix("type:").split("@")
+    path, start, end, name = declarations[marker]
+    return f"{path}|{kind}|{owner}|{name}|{start}|{end}"
+
+
+def check_reference_candidates(query, status, candidates, declarations, actual, binaries):
+    assert status in {"Resolved", "CallNotResolved", "OverloadNotResolved",
+                      "SignatureNotCompared", "Unresolved", "ReceiverNotBound", "Cycle", "Ambiguous"}
+    actual_status, count, *targets = actual
+    assert actual_status == status, f"{query}: native status {actual_status}, expected {status}"
+    assert int(count) == len(targets), f"{query}: incomplete reference native records"
+    wanted = [] if candidates == "-" else [
+        reference_target(declarations, item, binaries) for item in candidates.split(",")]
+    assert len(set(wanted)) == len(wanted), f"{query}: duplicate reference golden candidate"
+    assert len(set(targets)) == len(targets), f"{query}: duplicate reference native candidate"
+    assert sorted(targets) == sorted(wanted), f"{query}: exact reference candidates differ: {targets}"
+    if status in {"Resolved", "CallNotResolved"}:
+        assert len(wanted) == 1, f"{query}: singleton status needs one candidate"
+    elif status in {"Unresolved", "ReceiverNotBound", "Cycle"}:
+        assert not wanted, f"{query}: unsupported receiver/cycle published target"
+    else:
+        assert len(wanted) >= 2, f"{query}: refusal/ambiguity needs multiple candidates"
+
+
+def compare_reference(expected, queries, declarations, javac, native, binaries):
+    """Strict independent declaration identity for the reference-call suite."""
+    assert set(expected) == set(queries) == set(javac) == set(native), "missing/extra reference query evidence"
+    for query, (status, selected, candidates) in expected.items():
+        marker, owner = selected.split("@")
+        path, start, end, name = declarations[marker]
+        jpath, jkind, jowner, jname, jstart, jend = javac[query]
+        assert (jpath, jkind, jowner, jname) == (path, "METHOD", owner, name), \
+            f"{query}: reference compiler declaration differs"
+        assert int(jstart) <= start < end <= int(jend), f"{query}: reference compiler range differs"
+        contained = [key for key, (p, s, e, n) in declarations.items()
+                     if p == jpath and n == jname and int(jstart) <= s < e <= int(jend)]
+        assert contained == [marker], f"{query}: non-unique reference compiler declaration identity"
+        if status == "Resolved":
+            assert candidates == selected, f"{query}: selected source differs from compiler target"
+        check_reference_candidates(query, status, candidates, declarations, native[query], binaries)
+
+
+def compare_with_reference_updates(expected, queries, declarations, javac, native):
+    """Preserve old goldens; separately audit one reviewed missing-Object refusal."""
+    assert set(expected) == set(queries) == set(javac) == set(native), "missing/extra original query evidence"
+    updates = rows(ORACLE / "reference-v1/navigation-updates.tsv", 5)
+    assert updates == [["receiver_read_call", "Resolved", "CallNotResolved", "read_method", "lib.Value"]]
+    changed = set()
+    for query, before, after, marker, owner in updates:
+        assert expected[query] == (before, marker), "original navigation golden changed"
+        selected = f"{marker}@{owner}"
+        compare_reference({query: (after, selected, selected)}, {query: queries[query]},
+                          declarations, {query: javac[query]}, {query: native[query]}, Path("/unused"))
+        changed.add(query)
+    # The unchanged comparator still verifies every other original expectation.
+    compare({q: row for q, row in expected.items() if q not in changed},
+            {q: row for q, row in queries.items() if q not in changed}, declarations,
+            {q: row for q, row in javac.items() if q not in changed},
+            {q: row for q, row in native.items() if q not in changed})
+
+
+def reference_fixture():
+    root = ORACLE / "reference-v1"
+    assert (root / "files.tsv").read_text().splitlines() == list(REFERENCE_FILES)
+    declarations, queries, requests = fixture_markers(root / "source", REFERENCE_FILES)
+    assert set(declarations) == REFERENCE_DECLARATIONS, "missing/extra reference declaration marker"
+    expected = {}
+    for query, status, selected, candidates in rows(root / "expected.tsv", 4):
+        assert query not in expected and selected.split("@")[0] in declarations
+        expected[query] = (status, selected, candidates)
+    assert len(expected) == len(queries) == 24 and set(expected) == set(queries), \
+        "reference query inventory differs"
+    assert sum(row[0] == "Resolved" for row in expected.values()) == 15
+    return declarations, queries, requests, expected
+
+
+def reference_invalid_fixtures():
+    root = ORACLE / "reference-v1/invalid"
+    cases = rows(root.parent / "invalid.tsv", 5)
+    assert len(cases) == 11 and {row[0] for row in cases} == REFERENCE_INVALID_CASES
+    assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*.java")) == sorted(
+        f"{case}/{file}" for case, _, _, _, inventory in cases for file in inventory.split(",")), \
+        "invalid reference file inventory differs"
+    result = []
+    for case, query, status, candidates, inventory in cases:
+        ds, qs, requests = fixture_markers(root / case, inventory.split(","))
+        assert set(qs) == {query} and query == f"reference_invalid_{case}"
+        expected_markers = {"invalid_a", "invalid_b"} if case == "ambiguous" else {"invalid_only"}
+        if case == "duplicate_parent":
+            expected_markers |= {"invalid_parent_one", "invalid_parent_two"}
+        assert set(ds) == expected_markers, f"{case}: missing/extra invalid declaration marker"
+        assert status != "Resolved", f"{case}: compiler-invalid fixture cannot be a success"
+        result.append((case, query, status, candidates, ds, requests))
+    return result
+
+
+def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
+    """Optional javac comparison, never fixture execution or production dependency."""
+    root = ORACLE / "reference-v1"
+    declarations, queries, requests, expected = reference_fixture()
+    binaries = work / "reference-classes"
+    binaries.mkdir()
+    dependency = root / "dependency"
+    assert sorted(p.relative_to(dependency).as_posix() for p in dependency.rglob("*.java")) == ["dep/BinaryParent.java"]
+    run([jdk / "bin/javac", "--release", "21", "-proc:none", "-implicit:none",
+         "-encoding", "UTF-8", "-classpath", empty, "-sourcepath", empty,
+         "-d", binaries, dependency / "dep/BinaryParent.java"], env)
+    assert sorted(p.relative_to(binaries).as_posix() for p in binaries.rglob("*.*")) == ["dep/BinaryParent.class"]
+    object_path = binaries / "java/lang/Object.class"
+    object_path.parent.mkdir(parents=True)
+    object_path.write_bytes((platform / "java/lang/Object.class").read_bytes())
+    # pinned_object has already verified this JMOD's exact checksum. The two
+    # platform classes are input data, not executions of java/jmod/jar tools.
+    iterable_path = binaries / "java/lang/Iterable.class"
+    with zipfile.ZipFile(jdk / "jmods/java.base.jmod") as archive:
+        entry = archive.getinfo("classes/java/lang/Iterable.class")
+        assert 0 < entry.file_size < 1024 * 1024
+        iterable_path.write_bytes(archive.read(entry))
+    assert sorted(p.relative_to(binaries).as_posix() for p in binaries.rglob("*.*")) == [
+        "dep/BinaryParent.class", "java/lang/Iterable.class", "java/lang/Object.class"]
+    request = work / "reference-requests.tsv"
+    request.write_text(requests)
+    javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                         root / "source", request, binaries, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, binaries], {"PATH": "/nonexistent"}).stdout)
+    for query in expected:
+        print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
+    compare_reference(expected, queries, declarations, javac, native, binaries)
+
+    for case, query, status, candidates, ds, contents in reference_invalid_fixtures():
+        request.write_text(contents)
+        rejected = run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                        root / "invalid" / case, request, empty, empty], env, False)
+        assert rejected.returncode == 2 and "compiler.err." in rejected.stderr and not rejected.stdout, \
+            f"invalid reference fixture accepted: {case}"
+        actual = records(run([native_binary, root / "invalid" / case, request, binaries],
+                             {"PATH": "/nonexistent"}).stdout)
+        assert set(actual) == {query}, f"{case}: missing/extra invalid reference query"
+        check_reference_candidates(query, status, candidates, ds, actual[query], binaries)
+        print(query + "\tjavac=compiler-error\tnative=" + "|".join(actual[query]))
+        false_success = {query: ["Resolved", *actual[query][1:]]}
+        must_reject(lambda: check_reference_candidates(query, status, candidates, ds,
+                    false_success[query], binaries), f"{case}: false Resolved")
+
+    wrong = dict(expected)
+    wrong["reference_specificity"] = ("Resolved", "pick_root@model.Target", "pick_root@model.Target")
+    must_reject(lambda: compare_reference(wrong, queries, declarations, javac, native, binaries),
+                "wrong reference overload")
+    for label in ("path", "kind", "owner", "name", "range", "overlapping_range", "missing", "extra"):
+        changed = {key: list(value) for key, value in javac.items()}
+        row = changed["reference_specificity"]
+        if label == "missing":
+            del changed["reference_specificity"]
+        elif label == "extra":
+            changed["not_requested"] = row
+        elif label == "range":
+            row[-2:] = ["0", "1"]
+        elif label == "overlapping_range":
+            row[-2:] = ["0", "100000"]
+        else:
+            row[{"path": 0, "kind": 1, "owner": 2, "name": 3}[label]] = "wrong"
+        must_reject(lambda: compare_reference(expected, queries, declarations, changed, native, binaries),
+                    "reference compiler " + label)
+    for label in ("path", "kind", "owner", "name", "range", "duplicate", "count", "missing", "extra", "binary_candidate"):
+        changed = {key: list(value) for key, value in native.items()}
+        row = changed["reference_specificity"]
+        if label == "missing":
+            del changed["reference_specificity"]
+        elif label == "extra":
+            changed["not_requested"] = row
+        elif label == "duplicate":
+            row[1] = "2"
+            row.append(row[2])
+        elif label == "count":
+            row[1] = "2"
+        elif label == "binary_candidate":
+            changed["reference_binary_refusal"] = changed["reference_binary_refusal"][:3]
+            changed["reference_binary_refusal"][1] = "1"
+        else:
+            parts = row[2].split("|")
+            if label == "range":
+                parts[-2:] = ["0", "1"]
+            else:
+                parts[{"path": 0, "kind": 1, "owner": 2, "name": 3}[label]] = "wrong"
+            row[2] = "|".join(parts)
+        must_reject(lambda: compare_reference(expected, queries, declarations, javac, changed, binaries),
+                    "reference native " + label)
+    request.write_text(requests)
+    for removed, affected in ((object_path, [q for q, row in expected.items() if row[0] == "Resolved"]),
+                              (iterable_path, ["reference_generic_ancestor"])):
+        content = removed.read_bytes()
+        removed.unlink()
+        try:
+            omitted = records(run([native_binary, root / "source", request, binaries],
+                                  {"PATH": "/nonexistent"}).stdout)
+            assert set(omitted) == set(expected)
+            assert all(omitted[q][0] != "Resolved" for q in affected), \
+                f"omitted {removed.name}: incomplete ancestor inventory still selected a call"
+            for query in affected:
+                print(query + "\tomitted=" + removed.name + "\tnative=" + "|".join(omitted[query]))
+            must_reject(lambda: compare_reference(expected, queries, declarations, javac, omitted, binaries),
+                        "omitted reference " + removed.name)
+        finally:
+            removed.write_bytes(content)
+    print("PASS: 15 reference source bindings (13 new selections and two singleton controls); "
+          "9 compiler-valid refusals; 11 separate compiler-invalid refusals; "
+          "exact source/binary candidate inventories, compiler/native mutations, "
+          "and omitted Object/Iterable controls verified")
+
+
 def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform, sources_jar):
     """Optional eight source-selected queries over pinned unmodified upstream bytes."""
     pins = json.loads((ROOT / "scripts/acceptance-inputs.json").read_text())
@@ -598,7 +836,14 @@ def main():
         command = [jdk / "bin/java", "-cp", classes, "BindingOracle", fixture, request, empty]
         javac = records(run(command, env).stdout)
         native = records(run([args.native.resolve(), fixture, request], env).stdout)
-        compare(expected, queries, declarations, javac, native)
+        compare_with_reference_updates(expected, queries, declarations, javac, native)
+        platform = pinned_object(jdk, work)
+        closed_native = records(run([args.native.resolve(), fixture, request, platform],
+                                    {"PATH": "/nonexistent"}).stdout)
+        compare(expected, queries, declarations, javac, closed_native)
+        print("PASS: original 63-query goldens unchanged with explicit Object input "
+              "(59 supported bindings, four refusals); historical no-platform input "
+              "separately requires the reviewed exact singleton refusal")
         # Reject both a sibling inside overlapping javac ranges and a same-name
         # field in the caller package instead of the declaration's imported type.
         # Invocation controls also reject same-spelled value declarations.
@@ -612,7 +857,7 @@ def main():
             perturbed = dict(expected)
             perturbed[query] = ("Resolved", wrong_target)
             try:
-                compare(perturbed, queries, declarations, javac, native)
+                compare_with_reference_updates(perturbed, queries, declarations, javac, native)
             except AssertionError:
                 pass
             else:
@@ -621,7 +866,7 @@ def main():
         corrupted["parameter"][4] = "0"
         corrupted["parameter"][5] = "1"
         try:
-            compare(expected, queries, declarations, corrupted, native)
+            compare_with_reference_updates(expected, queries, declarations, corrupted, native)
         except AssertionError:
             pass
         else:
@@ -652,15 +897,16 @@ def main():
         no_callable = records(run([args.native.resolve(), ORACLE / "invalid", request], env).stdout)
         assert no_callable == {identity: ["Unresolved", "0"] for identity, _ in no_callable_queries}, \
             f"non-method names produced invocation targets: {no_callable}"
-        print(f"PASS: {sum(s == 'Resolved' for s, _ in expected.values())} supported declaration bindings; "
-              f"{sum(s != 'Resolved' for s, _ in expected.values())} explicit unsupported boundaries; "
+        print(f"PASS: {sum(s == 'Resolved' for s, _ in expected.values()) - 1} supported declaration bindings; "
+              f"{sum(s != 'Resolved' for s, _ in expected.values()) + 1} explicit unsupported boundaries; "
+              "including one reviewed missing-Object reference-call refusal; "
               "wrong-target detection, 3 invalid/incomplete compiler failures, "
               "and 5 no-callable refusals verified")
         for query in expected:
             print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
-        platform = pinned_object(jdk, work)
         primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         return_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        reference_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

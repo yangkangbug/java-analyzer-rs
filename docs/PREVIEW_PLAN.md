@@ -21,6 +21,10 @@ queries and refuses known unique-source contradictions. General call applicabili
 and the remaining end-to-end gates below are still open. Proven primitive
 call results now compose through nested calls; this improves definition evidence
 without closing any delivery gate by itself.
+The separate [reference instance-call proof](REFERENCE_CALLS.md) adds two exact
+Gson overload targets with complete hierarchy/access evidence and explicit
+refusal boundaries. This improves the semantic path without certifying general
+project support or OpenIDEA client integration.
 
 ## Offline CLI preview: required acceptance
 

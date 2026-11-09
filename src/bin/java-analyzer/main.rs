@@ -261,6 +261,8 @@ fn capabilities() -> Value {
             "source_primitive_strict_phase": true,
             "primitive_source_call_returns": true,
             "single_source_contradiction_guard": true,
+            "source_reference_instance_calls": true,
+            "qualified_source_contradiction_guard": true,
             "general_applicability": false
         },
         "semantic_diagnostics": false,

@@ -92,9 +92,15 @@ fn fields_types_receivers_and_arguments_keep_their_namespaces() {
         }
     }"#,
     );
-    for marker in ["call", "this_call", "qualified_call", "chain_call"] {
+    for marker in ["call", "this_call", "chain_call"] {
         target(&p, marker, TargetKind::Method, "m(int x)");
     }
+    // The local/parameter receiver call is now guarded: this fixture has no
+    // Object closure, and its package method/literal argument are outside the
+    // reference proof. Keep the exact name candidate, not a selected callee.
+    let qualified = query(&p, "qualified_call");
+    assert_eq!(qualified.status, ResolveStatus::CallNotResolved);
+    assert_eq!(qualified.targets, query(&p, "call").targets);
     for marker in ["field", "this_field"] {
         target(&p, marker, TargetKind::Field, "m; Use");
     }

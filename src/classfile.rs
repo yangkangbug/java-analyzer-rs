@@ -67,6 +67,8 @@ pub struct ClassSignature {
     /// True for ACC_INTERFACE. Its class-file Object superclass is not a
     /// Java class-inheritance edge for method overriding.
     pub is_interface: bool,
+    /// True for ACC_FINAL. Source classes cannot extend this binary class.
+    pub is_final: bool,
     pub access: Access,
     pub fields: Vec<MemberSignature>,
     pub methods: Vec<MemberSignature>,
@@ -188,6 +190,7 @@ fn signature_from(origin: &str, class: &cafebabe::ClassFile<'_>) -> ClassSignatu
         major: class.major_version,
         minor: class.minor_version,
         is_interface: class.access_flags.contains(cafebabe::ClassAccessFlags::INTERFACE),
+        is_final: class.access_flags.contains(cafebabe::ClassAccessFlags::FINAL),
         access: class_access(class.access_flags),
         fields: class
             .fields

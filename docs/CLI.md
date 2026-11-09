@@ -320,8 +320,10 @@ supported lookup/access/signature rules:
   candidate may be known contradictory or merely unsupported, such as boxing or
   expanded varargs in the closed source-call subset. It is not a Java error
   diagnostic and must not be treated as successful navigation. A uniquely collected
-  unqualified source `m()` queried by `m(1)` is conservatively refused; qualified,
-  binary and inherited-hidden-singleton guards remain outside this change.
+  unqualified source `m()` queried by `m(1)` is conservatively refused. The
+  [reference-call path](REFERENCE_CALLS.md) also guards modeled qualified
+  local/parameter source invocations and source type/instance contradictions.
+  Arbitrary field receivers, binary calls and call chains remain outside it.
 - `SignatureNotCompared`: unsupported/missing/ambiguous signature type identity.
 - `ReceiverNotBound`, `StaticImportNotApplied`, `ConstructorRefNotBound`:
   explicitly unsupported receiver/static-import/constructor-reference binding.
@@ -332,7 +334,10 @@ supported lookup/access/signature rules:
 `CallNotResolved` is an added public library enum variant; exhaustive client
 matches must handle it. CLI schema version stays 1, with the additive status and
 `capabilities.limited_call_selection` fields documented here, including
-`primitive_source_call_returns` for [proved scalar result propagation](CALL_RETURNS.md). The existing
+`primitive_source_call_returns` for [proved scalar result propagation](CALL_RETURNS.md).
+`source_reference_instance_calls` and `qualified_source_contradiction_guard`
+describe the [bounded reference proof](REFERENCE_CALLS.md), not every qualified
+invocation. The existing
 `method_argument_applicability:false` flag still means general applicability is
 not provided. Check status before using a candidate as a navigation target.
 

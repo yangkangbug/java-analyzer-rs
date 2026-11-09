@@ -245,6 +245,11 @@ struct ClassRec {
     is_interface: bool,
     type_variables: Vec<String>,
     primitive_owner: bool,
+    access: Access,
+    reference_inventory: bool,
+    reference_generic: bool,
+    reference_final: bool,
+    reference_edges: Option<Vec<(Vec<String>, bool)>>,
     binary_root: bool,
     fields: Vec<Member>,
     methods: Vec<Member>,
@@ -283,6 +288,7 @@ struct LocalRec {
     visible_from: u32,
     declared: Option<QualName>,
     primitive: Option<PrimitiveValue>,
+    reference: Option<Vec<String>>,
     path: String,
 }
 
@@ -323,6 +329,7 @@ struct Index {
     files: Vec<FileRec>,
     binaries: Vec<ClassRec>,
     visibility: Vec<BTreeSet<usize>>,
+    reference_names: BTreeMap<(usize, String), Vec<(usize, usize)>>,
 }
 
 impl Index {
@@ -331,7 +338,7 @@ impl Index {
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
         let binaries = binaries.values().map(|signature| class_from_signature(signature)).collect();
-        Self { files, binaries, visibility: vec![BTreeSet::from([0])] }
+        Self::with_reference_names(files, binaries, vec![BTreeSet::from([0])])
     }
 
     fn scoped(projects: &[&Project], visibility: &[BTreeSet<usize>]) -> Self {
@@ -354,7 +361,36 @@ impl Index {
                 binaries.push(class);
             }
         }
-        Self { files, binaries, visibility: visibility.to_vec() }
+        Self::with_reference_names(files, binaries, visibility.to_vec())
+    }
+
+    fn with_reference_names(files: Vec<FileRec>, binaries: Vec<ClassRec>, visibility: Vec<BTreeSet<usize>>) -> Self {
+        let mut reference_names: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        for (i, file) in files.iter().enumerate() {
+            for (j, class) in file.classes.iter().enumerate() {
+                reference_names.entry((class.scope, class.dotted())).or_default().push((i, j));
+            }
+        }
+        for (j, class) in binaries.iter().enumerate() {
+            reference_names.entry((class.scope, class.dotted())).or_default().push((usize::MAX, j));
+        }
+        Self { files, binaries, visibility, reference_names }
+    }
+
+    fn reference_named(&self, scope: usize, name: &str) -> Vec<&ClassRec> {
+        let mut out = Vec::new();
+        for visible in &self.visibility[scope] {
+            if let Some(locations) = self.reference_names.get(&(*visible, name.to_owned())) {
+                for &(file, class) in locations {
+                    if file != usize::MAX {
+                        out.push(&self.files[file].classes[class]);
+                    } else if *visible == scope {
+                        out.push(&self.binaries[class]);
+                    }
+                }
+            }
+        }
+        out
     }
 
     fn classes(&self, scope: usize) -> impl Iterator<Item = &ClassRec> {
@@ -651,7 +687,7 @@ impl Index {
         self.qualify(file, &prefix, false, byte)
     }
 
-    fn resolve_field(&self, file: &FileRec, _parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
+    fn resolve_field(&self, file: &FileRec, parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
         // Super lookup is not implemented. Do not let field_chain discard an
         // unsupported receiver and reinterpret its selector as a simple name.
         if has_super_receiver(hit.node) {
@@ -661,7 +697,193 @@ impl Index {
         let Some(index) = chain.iter().position(|segment| segment.start <= byte && byte < segment.end) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
+        if hit.call
+            && index + 1 == chain.len()
+            && let Some(result) = self.reference_call(file, parsed, &hit, byte)
+        {
+            return result;
+        }
         self.resolve_chain(file, &chain[..=index], hit.call, byte)
+    }
+
+    fn reference_call(&self, file: &FileRec, parsed: &ParsedFile, hit: &Hit<'_>, byte: u32) -> Option<ResolveResult> {
+        let (args, args_at) = hit.arguments?;
+        let mut nodes = Vec::new();
+        let mut selector = None;
+        let mut at = hit.start;
+        let mut state = 0;
+        for child in hit.node.children() {
+            if let Some(node) = child.as_node() {
+                if state != 0 {
+                    return None;
+                }
+                nodes.push((node.as_ref(), at));
+                state = 1;
+            } else if let Some(token) = child.as_token()
+                && !token.kind().is_trivia()
+            {
+                state = match (state, token.kind()) {
+                    (1, SyntaxKind::Dot) => 2,
+                    (2, SyntaxKind::Ident) => {
+                        selector = Some(token.text());
+                        3
+                    }
+                    _ => return None,
+                };
+            }
+            at += child.utf8_len();
+        }
+        let [(receiver, receiver_at)] = nodes.as_slice() else { return None };
+        if state != 3 {
+            return None;
+        }
+        let (mut plain_receiver, mut plain_at) = (*receiver, *receiver_at);
+        let mut parens = 0;
+        while plain_receiver.kind() == SyntaxKind::ParenExpr {
+            if parens >= REFERENCE_PROOF_DEPTH {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            }
+            let Some(inner) = delimited_nodes(plain_receiver, plain_at) else {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            };
+            let [(node, at)] = inner.as_slice() else {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            };
+            plain_receiver = node;
+            plain_at = *at;
+            parens += 1;
+        }
+        if plain_receiver.kind() != SyntaxKind::ReferenceExpr {
+            return None;
+        }
+        let name = selector?;
+        let receiver_name = token_name(plain_receiver);
+        let caller = direct_caller(parsed.root(), byte);
+        let (caller_start, caller_end) = caller.map_or((0, 0), |(_, a, b)| (a, b));
+        let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+        if proof.charge(file.locals.len().max(1)).is_none() {
+            return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+        }
+        let locals = self.locals_named(file, *receiver_at, &receiver_name);
+        let is_value = locals.is_some();
+        let owner = if let Some(local) = locals {
+            if local.targets.len() != 1 || local.status != ResolveStatus::Resolved {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            }
+            let target = &local.targets[0];
+            let declared = declared_of(file, target);
+            let Some(owner) =
+                declared.filter(|q| q.array_rank == 0).and_then(|q| proof.raw_type(file, &q.parts, target.start_byte))
+            else {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            };
+            owner
+        } else {
+            // Fields and other nonlocal values are outside this proof. Never
+            // reinterpret a bound value as a same-spelled class.
+            for enclosing in enclosing_classes(file, *receiver_at) {
+                match proof.has_field(enclosing, &receiver_name, 0, &mut BTreeSet::new()) {
+                    Some(true) if !proof.exhausted => return None,
+                    Some(true) => return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound)),
+                    Some(false) => {}
+                    None => return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound)),
+                }
+            }
+            if caller.is_some_and(|(node, at, _)| type_variables(node, at).contains(&receiver_name)) {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            }
+            let Some(owner) = proof.raw_type(file, std::slice::from_ref(&receiver_name), *receiver_at) else {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            };
+            owner
+        };
+        if owner.binary {
+            return if proof.exhausted { Some(ResolveResult::none(ResolveStatus::ReceiverNotBound)) } else { None };
+        }
+        let members = proof.hints(owner, name);
+        if let Some(failure) = proof.failure.take() {
+            return Some(failure);
+        }
+        if members.is_empty() {
+            return Some(ResolveResult::none(ResolveStatus::Unresolved));
+        }
+        let targets: Vec<_> = members.iter().map(|(owner, m)| member_target(owner, m)).collect();
+        let mut result = if proof.charge(members.len().saturating_mul(members.len())).is_some() {
+            let candidates = members
+                .iter()
+                .map(|(declaring, member)| Candidate {
+                    member,
+                    target: member_target(declaring, member),
+                    depth: 0,
+                    signature: proof.hint_signature(declaring, member),
+                    declaring: ClassIdentity::of(declaring),
+                    ancestors: BTreeSet::new(),
+                    unspecified: false,
+                })
+                .collect();
+            select_methods(candidates)
+        } else {
+            ResolveResult::many(
+                if members.len() == 1 { ResolveStatus::CallNotResolved } else { ResolveStatus::OverloadNotResolved },
+                targets.clone(),
+            )
+        };
+        result.targets = targets;
+        // An independent fixed-arity contradiction needs neither a complete
+        // hierarchy nor an argument type. It also guards type-qualified calls.
+        if result.status == ResolveStatus::Resolved && members.len() == 1 {
+            let member = members[0].1;
+            if member.source_call.as_ref().is_some_and(|call| !call.varargs)
+                && let Shape::Source { parameters, .. } = &member.shape
+                && delimited_nodes(args, args_at).is_some_and(|args| args.len() != parameters.len())
+            {
+                result.status = ResolveStatus::CallNotResolved;
+            }
+        }
+        if !is_value {
+            if (parens != 0 || members.iter().any(|(_, m)| m.source_call.as_ref().is_none_or(|call| !call.is_static)))
+                && result.status == ResolveStatus::Resolved
+            {
+                result.status = ResolveStatus::CallNotResolved;
+            }
+            // Static type-qualified names retain legacy navigation, but a
+            // known inherited member type must not be replaced by a different
+            // top-level class. Missing edges alone are not an applicability
+            // proof or a new reason to accept/reject legacy static navigation.
+            if result.status == ResolveStatus::Resolved {
+                for enclosing in enclosing_classes(file, *receiver_at) {
+                    if proof.known_type_shadow(enclosing, &receiver_name, 0, &mut BTreeSet::new()) != Some(false) {
+                        result.status = ResolveStatus::CallNotResolved;
+                        break;
+                    }
+                }
+            }
+            if proof.exhausted && result.status == ResolveStatus::Resolved {
+                result.status = ResolveStatus::CallNotResolved;
+            }
+            return Some(result);
+        }
+        if result.status == ResolveStatus::Resolved {
+            result.status = ResolveStatus::CallNotResolved;
+        }
+        let Some((caller_node, _, _)) = caller else { return Some(result) };
+        if !reference_method_header(caller_node, caller_start)
+            || child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_some()
+            || contains_kind(caller_node, SyntaxKind::LocalType)
+            || !crate::green::collect_errors(caller_node).is_empty()
+        {
+            return Some(result);
+        }
+        // Exact local declaration evidence is separate from hint lookup above.
+        if !proof.expression(receiver, *receiver_at, 0).is_some_and(|c| same_class(c, owner)) {
+            return Some(result);
+        }
+        if let Some(member) = proof.select(owner, name, args, args_at)
+            && !proof.exhausted
+        {
+            return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(owner, member)));
+        }
+        Some(result)
     }
 
     fn resolve_chain(&self, file: &FileRec, chain: &[Segment], call: bool, byte: u32) -> ResolveResult {
@@ -1118,7 +1340,7 @@ impl Index {
         if class.binary {
             return self.class_named(class.scope, &parts.join("."));
         }
-        let Some(file) = self.files.iter().find(|file| file.path == class.path) else {
+        let Some(file) = self.files.iter().find(|file| file.scope == class.scope && file.path == class.path) else {
             return Named::None;
         };
         match self.lookup_type_name(file, parts, class.name_start) {
@@ -1753,6 +1975,12 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             && child_kind(node, start, SyntaxKind::TypeParamList).is_none()
             && !tokens(node, start).iter().any(|t| matches!(t.0, SyntaxKind::Extends | SyntaxKind::Implements))
             && valid_modifiers(node, start, false),
+        access: read_access(node, start),
+        reference_inventory: reference_class_inventory(node, start),
+        reference_generic: child_kind(node, start, SyntaxKind::TypeParamList).is_some(),
+        reference_final: child_kind(node, start, SyntaxKind::ModifierList)
+            .is_some_and(|(n, _)| tokens(n, 0).iter().any(|t| t.0 == SyntaxKind::Final)),
+        reference_edges: reference_source_edges(node, start),
         binary_root: false,
         fields: Vec::new(),
         methods: Vec::new(),
@@ -1896,6 +2124,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
             visible_from: name_end,
             declared,
             primitive: primitive_declaration(node, start, name_start),
+            reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
     }
@@ -1914,6 +2143,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         visible_from: name_end,
         declared: read_type(node, start),
         primitive: None,
+        reference: None,
         path: ctx.file.path.clone(),
     });
 }
@@ -1934,6 +2164,7 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             visible_from: name_end,
             declared: read_type(node, start),
             primitive: primitive_declaration(node, start, name_start),
+            reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
     }
@@ -2100,7 +2331,8 @@ fn source_method_shape(node: &GreenNode, start: u32) -> Shape {
                 name,
                 primitive,
                 array_rank: prefix + suffix,
-                unsupported: contains_kind(ty, SyntaxKind::TypeArgList),
+                unsupported: contains_kind(ty, SyntaxKind::TypeArgList)
+                    || (primitive.is_none() && prefix == 0 && !plain_reference_type(ty)),
             });
         }
         offset += child.utf8_len();
@@ -2218,6 +2450,17 @@ fn class_from_signature(sig: &ClassSignature) -> ClassRec {
         is_interface: sig.is_interface,
         type_variables: Vec::new(),
         primitive_owner: false,
+        access: sig.access,
+        reference_inventory: sig.methods.iter().all(|m| descriptor_parameters(&m.descriptor).is_some()),
+        reference_generic: sig.signature.as_ref().is_some_and(|signature| signature.starts_with('<')),
+        reference_final: sig.is_final,
+        reference_edges: Some(
+            sig.super_class
+                .iter()
+                .chain(&sig.interfaces)
+                .map(|name| (name.split('.').map(str::to_string).collect(), sig.signature.is_none()))
+                .collect(),
+        ),
         binary_root: sig.dotted_name == "java.lang.Object"
             && !sig.is_interface
             && sig.signature.is_none()
@@ -2829,6 +3072,781 @@ impl<'a> PrimitiveProof<'a> {
             }
             _ => None,
         }
+    }
+}
+
+// This inventory checks class/member declarations, not the validity or inferred
+// types of unrelated method bodies. Generic headers remain inventory entries;
+// they are never silently discarded when the queried name matches.
+fn reference_class_inventory(node: &GreenNode, start: u32) -> bool {
+    if !matches!(node.kind(), SyntaxKind::Class | SyntaxKind::Interface)
+        || !valid_modifiers(node, start, false)
+        || reference_source_edges(node, start).is_none()
+        || child_kind(node, start, SyntaxKind::TypeParamList)
+            .is_some_and(|(n, _)| !crate::green::collect_errors(n).is_empty() || type_variables(node, start).is_empty())
+    {
+        return false;
+    }
+    let Some((body, at)) =
+        child_kind(node, start, SyntaxKind::ClassBody).or_else(|| child_kind(node, start, SyntaxKind::InterfaceBody))
+    else {
+        return false;
+    };
+    let interface = node.kind() == SyntaxKind::Interface;
+    let mods = child_kind(node, start, SyntaxKind::ModifierList).map(|(n, _)| tokens(n, 0)).unwrap_or_default();
+    let abstract_class = mods.iter().any(|t| t.0 == SyntaxKind::Abstract);
+    if mods.iter().any(|t| t.0 == SyntaxKind::Final) && (abstract_class || interface) {
+        return false;
+    }
+    let variables = type_variables(node, start);
+    if variables.iter().collect::<BTreeSet<_>>().len() != variables.len() {
+        return false;
+    }
+    let mut offset = at;
+    for child in body.children() {
+        if let Some(node) = child.as_node() {
+            match node.kind() {
+                SyntaxKind::Method | SyntaxKind::Constructor => {
+                    if !reference_method_header(node, offset) {
+                        return false;
+                    }
+                    let mods = child_kind(node, offset, SyntaxKind::ModifierList)
+                        .map(|(n, _)| tokens(n, 0))
+                        .unwrap_or_default();
+                    if !interface && !abstract_class && mods.iter().any(|t| t.0 == SyntaxKind::Abstract) {
+                        return false;
+                    }
+                    if !interface
+                        && node.kind() == SyntaxKind::Method
+                        && child_kind(node, offset, SyntaxKind::Block).is_none()
+                        && !mods.iter().any(|t| matches!(t.0, SyntaxKind::Abstract | SyntaxKind::Native))
+                    {
+                        return false;
+                    }
+                    if node.kind() == SyntaxKind::Method
+                        && child_kind(node, offset, SyntaxKind::Block).is_none()
+                        && !tokens(node, offset).iter().any(|t| t.0 == SyntaxKind::Semi)
+                    {
+                        return false;
+                    }
+                }
+                SyntaxKind::Error => return false,
+                SyntaxKind::Field if !crate::green::collect_errors(node).is_empty() => return false,
+                _ => {}
+            }
+        } else if child.as_token().is_some_and(|t| {
+            !t.kind().is_trivia() && !matches!(t.kind(), SyntaxKind::LBrace | SyntaxKind::RBrace | SyntaxKind::Semi)
+        }) {
+            return false;
+        }
+        offset += child.utf8_len();
+    }
+    true
+}
+
+fn reference_method_header(node: &GreenNode, start: u32) -> bool {
+    if source_call(node, start).is_none() {
+        return false;
+    }
+    if let Some((ty, _)) = child_kind(node, start, SyntaxKind::Type)
+        && contains_kind(ty, SyntaxKind::TypeArgList)
+        && !raw_reference_header_type(ty, 0)
+    {
+        return false;
+    }
+    let mut state = 0;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if token.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, token.kind()) {
+                (0, SyntaxKind::Ident) if node.kind() == SyntaxKind::Constructor => 2,
+                (1, SyntaxKind::Ident) => 2,
+                (3, SyntaxKind::Throws) => 4,
+                (5, SyntaxKind::Comma) => 4,
+                (3 | 5, SyntaxKind::Semi) => 6,
+                // Postfix result arrays are not supported in this slice.
+                _ => return false,
+            };
+        } else if let Some(child) = child.as_node() {
+            state = match (state, child.kind()) {
+                (0, SyntaxKind::ModifierList | SyntaxKind::TypeParamList) => 0,
+                (0, SyntaxKind::Type) => 1,
+                (2, SyntaxKind::ParamList) => 3,
+                (4, SyntaxKind::Type) if plain_reference_type(child) => 5,
+                (3 | 5, SyntaxKind::Block) => 6,
+                _ => return false,
+            };
+            if child.kind() != SyntaxKind::Block && !crate::green::collect_errors(child).is_empty() {
+                return false;
+            }
+        }
+    }
+    state == 6
+}
+
+fn reference_source_edges(node: &GreenNode, start: u32) -> Option<Vec<(Vec<String>, bool)>> {
+    if !matches!(node.kind(), SyntaxKind::Class | SyntaxKind::Interface) {
+        return None;
+    }
+    let mut state = 0;
+    let mut seen_extends = false;
+    let mut seen_implements = false;
+    let mut supers = Vec::new();
+    let mut at = start;
+    for child in node.children() {
+        if let Some(t) = child.as_token() {
+            if t.kind().is_trivia() {
+                at += child.utf8_len();
+                continue;
+            }
+            state = match (state, t.kind()) {
+                (0, SyntaxKind::ClassKw | SyntaxKind::InterfaceKw) => 1,
+                (1, SyntaxKind::Ident) => 2,
+                (2, SyntaxKind::Extends) if !seen_extends && !seen_implements => {
+                    seen_extends = true;
+                    3
+                }
+                (2 | 4, SyntaxKind::Implements) if node.kind() == SyntaxKind::Class && !seen_implements => {
+                    seen_implements = true;
+                    3
+                }
+                (4, SyntaxKind::Comma) if seen_implements || node.kind() == SyntaxKind::Interface => 3,
+                _ => return None,
+            };
+        } else if let Some(n) = child.as_node() {
+            state = match (state, n.kind()) {
+                (0, SyntaxKind::ModifierList) => 0,
+                (2, SyntaxKind::TypeParamList) => 2,
+                (3, SyntaxKind::Type) => {
+                    if !crate::green::collect_errors(n).is_empty() {
+                        return None;
+                    }
+                    let parts = type_parts(n, at)?;
+                    // Generic edges are raw inventory only, never substitutions.
+                    let plain = plain_reference_type(n);
+                    if !plain && !raw_reference_header_type(n, 0) {
+                        return None;
+                    }
+                    supers.push((parts, plain));
+                    4
+                }
+                (2 | 4, SyntaxKind::ClassBody | SyntaxKind::InterfaceBody) => 5,
+                _ => return None,
+            };
+        }
+        at += child.utf8_len();
+    }
+    if state != 5 {
+        return None;
+    }
+    if !seen_extends || node.kind() == SyntaxKind::Interface {
+        supers.insert(0, (vec!["java".into(), "lang".into(), "Object".into()], true));
+    }
+    Some(supers)
+}
+
+// Raw generic ancestry is inventory only. Accept a bounded, nonempty list of
+// plain reference arguments, enough for Iterable<Element>, not diamond,
+// wildcards, arrays, malformed bounds or inferred substitutions.
+fn raw_reference_header_type(node: &GreenNode, depth: usize) -> bool {
+    if depth > REFERENCE_PROOF_DEPTH {
+        return false;
+    }
+    if plain_reference_type(node) {
+        return true;
+    }
+    if node.kind() != SyntaxKind::Type || tokens(node, 0).iter().any(|t| !t.0.is_trivia()) {
+        return false;
+    }
+    let nodes: Vec<_> = node.child_nodes().collect();
+    let [name] = nodes.as_slice() else { return false };
+    if name.kind() != SyntaxKind::Name {
+        return false;
+    }
+    let mut state = 0;
+    for child in name.children() {
+        if let Some(t) = child.as_token() {
+            if t.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, t.kind()) {
+                (0, SyntaxKind::Ident) => 1,
+                (1, SyntaxKind::Dot) => 0,
+                _ => return false,
+            };
+        } else if let Some(args) = child.as_node() {
+            if state != 1 || args.kind() != SyntaxKind::TypeArgList {
+                return false;
+            }
+            let mut arg_state = 0;
+            for arg in args.children() {
+                if let Some(t) = arg.as_token() {
+                    if t.kind().is_trivia() {
+                        continue;
+                    }
+                    arg_state = match (arg_state, t.kind()) {
+                        (0, SyntaxKind::Lt) => 1,
+                        (2, SyntaxKind::Comma) => 1,
+                        (2, SyntaxKind::Gt) => 3,
+                        _ => return false,
+                    };
+                } else if let Some(ty) = arg.as_node() {
+                    if arg_state != 1 || !raw_reference_header_type(ty, depth + 1) {
+                        return false;
+                    }
+                    arg_state = 2;
+                }
+            }
+            if arg_state != 3 {
+                return false;
+            }
+            state = 2;
+        }
+    }
+    state == 2
+}
+
+fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<Vec<String>> {
+    let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
+    if !plain_reference_type(ty) {
+        return None;
+    }
+    if let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) {
+        let kinds: Vec<_> = tokens(mods, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
+        if !matches!(kinds.as_slice(), [] | [SyntaxKind::Final]) || mods.child_nodes().next().is_some() {
+            return None;
+        }
+    }
+    let direct: Vec<_> = tokens(node, start).into_iter().filter(|t| !t.0.is_trivia()).collect();
+    let name = direct.iter().position(|t| t.0 == SyntaxKind::Ident && t.1 == name_at)?;
+    if name > 0 && direct[name - 1].0 == SyntaxKind::DotDotDot {
+        return None;
+    }
+    if direct.get(name + 1).is_some_and(|t| !matches!(t.0, SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::Semi)) {
+        return None;
+    }
+    type_parts(ty, at)
+}
+
+const REFERENCE_PROOF_DEPTH: usize = 32;
+const REFERENCE_PROOF_WORK: usize = 4096;
+
+// Unlike name-navigation results, this private proof distinguishes actual
+// declared local types, complete raw inventories and justified conversions.
+// One budget covers discovery, arguments, closure and pairwise specificity.
+struct ReferenceCallProof<'a> {
+    index: &'a Index,
+    file: &'a FileRec,
+    caller_start: u32,
+    caller_end: u32,
+    work_left: usize,
+    exhausted: bool,
+    graphs: BTreeMap<ClassIdentity, Vec<&'a ClassRec>>,
+    failure: Option<ResolveResult>,
+}
+impl<'a> ReferenceCallProof<'a> {
+    fn new(index: &'a Index, file: &'a FileRec, caller_start: u32, caller_end: u32) -> Self {
+        Self {
+            index,
+            file,
+            caller_start,
+            caller_end,
+            work_left: REFERENCE_PROOF_WORK,
+            exhausted: false,
+            graphs: BTreeMap::new(),
+            failure: None,
+        }
+    }
+    fn charge(&mut self, work: usize) -> Option<()> {
+        if self.exhausted {
+            return None;
+        }
+        match self.work_left.checked_sub(work) {
+            Some(left) => {
+                self.work_left = left;
+                Some(())
+            }
+            None => {
+                self.work_left = 0;
+                self.exhausted = true;
+                None
+            }
+        }
+    }
+    fn accessible(&mut self, class: &ClassRec) -> Option<()> {
+        self.charge(1)?;
+        // Nested access requires enclosing/InnerClasses evidence not modeled
+        // here. Refuse rather than trust a public member in an inaccessible type.
+        if class.nesting.len() != 1
+            || !matches!(class.access, Access::Public | Access::Package)
+            || (class.access == Access::Package && class.package != self.file.package)
+        {
+            return None;
+        }
+        Some(())
+    }
+    fn has_field(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        depth: usize,
+        seen: &mut BTreeSet<ClassIdentity>,
+    ) -> Option<bool> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(owner.fields.len().max(1))?;
+        if !seen.insert(ClassIdentity::of(owner)) {
+            return Some(false);
+        }
+        let matching: Vec<_> = owner.fields.iter().filter(|f| f.name == name).collect();
+        if !matching.is_empty() {
+            let [field] = matching.as_slice() else { return None };
+            // Only an actually visible, unique value permits the existing field
+            // receiver path. Inaccessible or uncertain names must not fall back
+            // to a same-spelled type after legacy filtering discards them.
+            return match field.access {
+                Access::Public => Some(true),
+                Access::Private if depth == 0 => Some(true),
+                Access::Package | Access::Protected if owner.package == self.file.package => Some(true),
+                _ => None,
+            };
+        }
+        let mut found = false;
+        if let Some(edges) = &owner.reference_edges {
+            for (parts, _) in edges {
+                if let Some(parent) = self.edge(owner, parts)
+                    && self.has_field(parent, name, depth + 1, seen)?
+                {
+                    if found {
+                        return None;
+                    }
+                    found = true;
+                }
+            }
+        }
+        self.charge(0)?; // A missing edge is not an exhausted lookup.
+        Some(found)
+    }
+    fn known_type_shadow(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        depth: usize,
+        seen: &mut BTreeSet<ClassIdentity>,
+    ) -> Option<bool> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(1)?;
+        if !seen.insert(ClassIdentity::of(owner)) {
+            return Some(false);
+        }
+        if let Some(edges) = &owner.reference_edges {
+            for (parts, _) in edges {
+                if let Some(parent) = self.edge(owner, parts)
+                    && (!self.named(parent.scope, &format!("{}.{}", parent.dotted(), name))?.is_empty()
+                        || self.known_type_shadow(parent, name, depth + 1, seen)?)
+                {
+                    return Some(true);
+                }
+            }
+        }
+        self.charge(0)?;
+        Some(false)
+    }
+    fn hints(&mut self, owner: &'a ClassRec, name: &str) -> Vec<(&'a ClassRec, &'a Member)> {
+        let mut out = Vec::new();
+        let _ = self.hint_walk(owner, name, 0, &mut BTreeSet::new(), &mut BTreeSet::new(), &mut out);
+        out
+    }
+    fn hint_walk(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        depth: usize,
+        gray: &mut BTreeSet<ClassIdentity>,
+        black: &mut BTreeSet<ClassIdentity>,
+        out: &mut Vec<(&'a ClassRec, &'a Member)>,
+    ) -> Option<()> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(owner.methods.len().max(1))?;
+        let id = ClassIdentity::of(owner);
+        if gray.contains(&id) {
+            self.failure = Some(ResolveResult::none(ResolveStatus::Cycle));
+            return None;
+        }
+        if !black.insert(id.clone()) {
+            return Some(());
+        }
+        gray.insert(id.clone());
+        out.extend(owner.methods.iter().filter(|m| m.name == name).map(|m| (owner, m)));
+        if let Some(edges) = &owner.reference_edges {
+            for (parts, _) in edges {
+                if let Some(parent) = self.edge(owner, parts) {
+                    self.hint_walk(parent, name, depth + 1, gray, black, out)?;
+                }
+            }
+        }
+        gray.remove(&id);
+        Some(())
+    }
+    fn hint_signature(&mut self, owner: &'a ClassRec, member: &Member) -> Option<MethodIdentity> {
+        let (parameters, generic) = match &member.shape {
+            Shape::Unknown => return None,
+            Shape::Source { parameters, variables } => (parameters.clone(), !variables.is_empty()),
+            Shape::Binary { descriptor, generic } => (descriptor_parameters(descriptor)?, *generic),
+        };
+        self.charge(parameters.len().max(1))?;
+        let mut types = Vec::new();
+        for p in parameters {
+            let base = if generic || p.unsupported {
+                None
+            } else if let Some(primitive) = p.primitive {
+                Some(TypeBase::Primitive(primitive))
+            } else {
+                let class = if owner.binary {
+                    self.unique_named(owner.scope, &p.name.join("."))
+                } else {
+                    let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+                    self.raw_type(file, &p.name, member.start)
+                };
+                class.map(|c| TypeBase::Declared(ClassIdentity::of(c)))
+            };
+            types.push(base.map(|base| SemanticType { base, array_rank: p.array_rank }));
+        }
+        Some(MethodIdentity { parameters: types, generic })
+    }
+    fn named(&mut self, scope: usize, name: &str) -> Option<Vec<&'a ClassRec>> {
+        self.charge(self.index.visibility[scope].len().max(1))?;
+        let classes = self.index.reference_named(scope, name);
+        self.charge(classes.len().max(1))?;
+        Some(classes)
+    }
+    fn raw_type(&mut self, file: &'a FileRec, parts: &[String], at: u32) -> Option<&'a ClassRec> {
+        self.charge(file.singles.len() + file.stars.len() + file.classes.len() + file.local_types.len() + 1)?;
+        let first = parts.first()?;
+        if first == "var"
+            || local_type_shadows(file, first, at)
+            || enclosing_classes(file, at).iter().any(|c| c.type_variables.contains(first))
+        {
+            return None;
+        }
+        let mut lexical = None;
+        for enclosing in enclosing_classes(file, at) {
+            let found = self.named(file.scope, &format!("{}.{}", enclosing.dotted(), first))?;
+            if !found.is_empty() {
+                lexical = Some(found);
+                break;
+            }
+        }
+        let imports: BTreeSet<_> =
+            file.singles.iter().filter(|(name, _)| name == first).map(|(_, name)| name).collect();
+        if imports.len() > 1 {
+            return None;
+        }
+        let found = if let Some(lexical) = lexical {
+            lexical
+        } else if let Some(import) = imports.first() {
+            if file.classes.iter().any(|c| c.nesting.len() == 1 && c.simple() == first) {
+                return None;
+            }
+            self.named(file.scope, import)?
+        } else {
+            let package_name =
+                if file.package.is_empty() { first.clone() } else { format!("{}.{}", file.package, first) };
+            let same_package = self.named(file.scope, &package_name)?;
+            if same_package.is_empty() {
+                let mut found = Vec::new();
+                let stars: BTreeSet<_> = file.stars.iter().map(String::as_str).chain(["java.lang"]).collect();
+                for star in stars {
+                    found.extend(self.named(file.scope, &format!("{star}.{first}"))?);
+                }
+                if found.is_empty() && parts.len() > 1 {
+                    return self.unique_named(file.scope, &parts.join("."));
+                }
+                found
+            } else {
+                same_package
+            }
+        };
+        let [class] = found.as_slice() else {
+            if found.len() > 1 {
+                self.failure =
+                    Some(ResolveResult::many(ResolveStatus::Ambiguous, found.iter().map(|c| c.target()).collect()));
+            }
+            return None;
+        };
+        if parts.len() == 1 {
+            Some(*class)
+        } else {
+            self.unique_named(file.scope, &format!("{}.{}", class.dotted(), parts[1..].join(".")))
+        }
+    }
+    fn unique_named(&mut self, scope: usize, name: &str) -> Option<&'a ClassRec> {
+        let found = self.named(scope, name)?;
+        match found.as_slice() {
+            [one] => Some(*one),
+            _ => {
+                if found.len() > 1 {
+                    self.failure =
+                        Some(ResolveResult::many(ResolveStatus::Ambiguous, found.iter().map(|c| c.target()).collect()));
+                }
+                None
+            }
+        }
+    }
+    fn graph(&mut self, class: &'a ClassRec) -> Option<Vec<&'a ClassRec>> {
+        self.charge(1)?;
+        let key = ClassIdentity::of(class);
+        if let Some(graph) = self.graphs.get(&key) {
+            return Some(graph.clone());
+        }
+        let mut out = Vec::new();
+        self.walk(class, 0, &mut BTreeSet::new(), &mut BTreeSet::new(), &mut out)?;
+        self.graphs.insert(key, out.clone());
+        Some(out)
+    }
+    fn walk(
+        &mut self,
+        class: &'a ClassRec,
+        depth: usize,
+        gray: &mut BTreeSet<ClassIdentity>,
+        black: &mut BTreeSet<ClassIdentity>,
+        out: &mut Vec<&'a ClassRec>,
+    ) -> Option<()> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(1)?;
+        let id = ClassIdentity::of(class);
+        if gray.contains(&id) {
+            return None;
+        }
+        if black.contains(&id) {
+            return Some(());
+        }
+        if !class.reference_inventory
+            || !self.unique_named(class.scope, &class.dotted()).is_some_and(|c| same_class(c, class))
+        {
+            return None;
+        }
+        self.charge(class.methods.len().max(1))?;
+        gray.insert(id.clone());
+        out.push(class);
+        let edges = class.reference_edges.as_ref()?;
+        // Only supplied binary java.lang.Object can certify a closed root.
+        if edges.is_empty() && !class.binary_root {
+            return None;
+        }
+        let mut edge_ids = BTreeSet::new();
+        for (i, (parts, _)) in edges.iter().enumerate() {
+            let parent = self.edge(class, parts)?;
+            if parent.reference_final || (i == 0 && parent.is_interface) || (i > 0 && !parent.is_interface) {
+                return None;
+            }
+            if !class.binary
+                && (parent.nesting.len() != 1
+                    || !matches!(parent.access, Access::Public | Access::Package)
+                    || (parent.access == Access::Package && parent.package != class.package))
+            {
+                return None;
+            }
+            if !edge_ids.insert(ClassIdentity::of(parent)) {
+                return None;
+            }
+            // An interface's synthetic Object edge is valid, but a class
+            // cannot use an interface in its written extends slot. Syntax
+            // metadata preserves the source edge order for that check below.
+            self.walk(parent, depth + 1, gray, black, out)?;
+        }
+        gray.remove(&id);
+        black.insert(id);
+        Some(())
+    }
+    fn edge(&mut self, owner: &'a ClassRec, parts: &[String]) -> Option<&'a ClassRec> {
+        self.charge(1)?;
+        if owner.binary {
+            self.unique_named(owner.scope, &parts.join("."))
+        } else {
+            let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+            self.raw_type(file, parts, owner.name_start)
+        }
+    }
+    fn reference_type(&mut self, file: &'a FileRec, parts: &[String], at: u32) -> Option<&'a ClassRec> {
+        let class = self.raw_type(file, parts, at)?;
+        if class.reference_generic {
+            return None;
+        }
+        self.accessible(class)?;
+        if class.access == Access::Package && class.package != file.package {
+            return None;
+        }
+        self.graph(class)?;
+        // A member type inherited by a lexical owner could hide a package or
+        // imported type. Do not use a missing caller hierarchy as absence.
+        for enclosing in enclosing_classes(file, at) {
+            for ancestor in self.graph(enclosing)? {
+                self.charge(1)?;
+                if !self.named(ancestor.scope, &format!("{}.{}", ancestor.dotted(), parts[0]))?.is_empty() {
+                    return None;
+                }
+            }
+        }
+        Some(class)
+    }
+    fn expression(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<&'a ClassRec> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let expressions = delimited_nodes(node, at)?;
+            let [(node, at)] = expressions.as_slice() else { return None };
+            return self.expression(node, *at, depth + 1);
+        }
+        if node.kind() != SyntaxKind::ReferenceExpr {
+            return None;
+        }
+        let name = token_name(node);
+        self.charge(self.file.locals.len())?;
+        let locals: Vec<_> = self
+            .file
+            .locals
+            .iter()
+            .filter(|local| {
+                local.name == name
+                    && local.start >= self.caller_start
+                    && local.end <= self.caller_end
+                    && local.scope_start <= at
+                    && at < local.scope_end
+                    && local.visible_from <= at
+            })
+            .collect();
+        // Overlapping local declarations are invalid Java, not lexical proof.
+        let [local] = locals.as_slice() else { return None };
+        if !matches!(local.kind, TargetKind::Local | TargetKind::Parameter) {
+            return None;
+        }
+        self.reference_type(self.file, local.reference.as_ref()?, local.start)
+    }
+    fn converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
+        self.graph(actual)?;
+        self.graph(formal)?;
+        let mut todo = vec![(actual, 0)];
+        let mut visited = BTreeSet::new();
+        let mut unknown = false;
+        while let Some((class, depth)) = todo.pop() {
+            if depth > REFERENCE_PROOF_DEPTH {
+                self.work_left = 0;
+                self.exhausted = true;
+                return None;
+            }
+            self.charge(1)?;
+            if !visited.insert(ClassIdentity::of(class)) {
+                continue;
+            }
+            if same_class(class, formal) {
+                return Some(true);
+            }
+            for (parts, plain) in class.reference_edges.as_ref()? {
+                if !plain {
+                    unknown = true;
+                    continue;
+                }
+                let parent = self.edge(class, parts)?;
+                if parent.reference_generic {
+                    unknown = true;
+                    continue;
+                }
+                todo.push((parent, depth + 1));
+            }
+        }
+        if unknown { None } else { Some(false) }
+    }
+    fn select(&mut self, owner: &'a ClassRec, name: &str, args: &GreenNode, at: u32) -> Option<&'a Member> {
+        if owner.binary || owner.is_interface || owner.reference_generic {
+            return None;
+        }
+        self.accessible(owner)?;
+        let graph = self.graph(owner)?;
+        if graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name)) {
+            return None;
+        }
+        self.charge(args.children().len())?;
+        let args = delimited_nodes(args, at)?;
+        let actuals = args.iter().map(|(n, at)| self.expression(n, *at, 0)).collect::<Option<Vec<_>>>()?;
+        let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+        let members: Vec<_> = owner.methods.iter().filter(|m| m.name == name).collect();
+        let mut formals = Vec::new();
+        for member in &members {
+            self.charge(1)?;
+            let source = member.source_call.as_ref()?;
+            let Shape::Source { parameters, variables } = &member.shape else { return None };
+            if member.access != Access::Public || source.is_static || source.varargs || !variables.is_empty() {
+                return None;
+            }
+            let mut types = Vec::new();
+            for parameter in parameters {
+                self.charge(1)?;
+                if parameter.unsupported || parameter.primitive.is_some() || parameter.array_rank != 0 {
+                    return None;
+                }
+                types.push(self.reference_type(file, &parameter.name, member.start)?);
+            }
+            formals.push(types);
+        }
+        for (i, left) in formals.iter().enumerate() {
+            for right in &formals[i + 1..] {
+                self.charge(left.len().max(1))?;
+                if left.len() == right.len() && left.iter().zip(right).all(|(a, b)| same_class(a, b)) {
+                    return None;
+                }
+            }
+        }
+        let mut applicable = Vec::new();
+        for (i, parameters) in formals.iter().enumerate() {
+            if actuals.len() != parameters.len() {
+                continue;
+            }
+            let mut applies = true;
+            for (actual, formal) in actuals.iter().zip(parameters) {
+                applies &= self.converts(actual, formal)?;
+            }
+            if applies {
+                applicable.push(i);
+            }
+        }
+        let mut winner = None;
+        for &i in &applicable {
+            let mut specific = true;
+            for &j in &applicable {
+                for (left, right) in formals[i].iter().zip(&formals[j]) {
+                    specific &= self.converts(left, right)?;
+                }
+            }
+            if specific {
+                if winner.is_some() {
+                    return None;
+                }
+                winner = Some(members[i]);
+            }
+        }
+        winner
     }
 }
 

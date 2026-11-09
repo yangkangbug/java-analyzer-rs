@@ -1,0 +1,12 @@
+# case	query	native status	exact native candidates	fixed input files
+wrong_arity	reference_invalid_wrong_arity	CallNotResolved	invalid_only@oracle.C	C.java
+class_instance	reference_invalid_class_instance	CallNotResolved	invalid_only@oracle.C	C.java
+wrong_reference	reference_invalid_wrong_reference	CallNotResolved	invalid_only@oracle.C	C.java
+protected_crosspackage	reference_invalid_protected_crosspackage	CallNotResolved	invalid_only@base.Base	base/Base.java,app/Child.java
+inaccessible_receiver	reference_invalid_inaccessible_receiver	CallNotResolved	invalid_only@base.Hidden	base/Hidden.java,app/Use.java
+ambiguous	reference_invalid_ambiguous	OverloadNotResolved	invalid_a@oracle.C,invalid_b@oracle.C	C.java
+missing_parent	reference_invalid_missing_parent	CallNotResolved	invalid_only@oracle.C	C.java
+cycle	reference_invalid_cycle	Cycle	-	C.java
+duplicate_parent	reference_invalid_duplicate_parent	Ambiguous	type:invalid_parent_one@oracle.Parent,type:invalid_parent_two@oracle.Parent	C.java,one/Parent.java,two/Parent.java
+missing_argument_type	reference_invalid_missing_argument_type	CallNotResolved	invalid_only@oracle.C	C.java
+inaccessible_argument_type	reference_invalid_inaccessible_argument_type	CallNotResolved	invalid_only@app.C	base/Hidden.java,app/C.java

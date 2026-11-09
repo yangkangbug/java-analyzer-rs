@@ -344,3 +344,13 @@ fn two_interface_fields_stay_ambiguous_and_object_appears_only_when_added() {
     assert_eq!(found.targets[0].owner, "java.lang.Object");
     assert_eq!(found.targets[0].name, "toString");
 }
+
+#[test]
+fn final_class_flag_is_retained_independently_from_interface_and_access() {
+    for (flags, expected) in [(0x0021, false), (0x0031, true), (0x0030, true)] {
+        let bytes = class_bytes("p/Finality", Some("java/lang/Object"), flags, &[], &[], &[], None);
+        let signature = parse_class_bytes("Finality.class", &bytes).unwrap();
+        assert_eq!(signature.is_final, expected);
+        assert!(!signature.is_interface);
+    }
+}

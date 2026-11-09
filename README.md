@@ -43,6 +43,9 @@ or changing the requirement for explicit project configuration.
 The [local-type containment boundary](docs/LOCAL_TYPES.md) repairs surrounding
 variable navigation after unsupported method-local type declarations without
 publishing those types as ordinary class members.
+The [reference instance-call proof](docs/REFERENCE_CALLS.md) handles a bounded
+set of explicit local/parameter reference arguments with complete inheritance
+and access evidence. Missing evidence stays refused, even for a unique candidate.
 
 ### Experimental project CLI
 
@@ -63,9 +66,9 @@ batch shares one prepared snapshot.
 Source targets retain exact byte ranges; binary targets explicitly have no source
 range. Refused or ambiguous results remain candidates, not a guessed first match.
 Parser reports may indicate unsupported grammar rather than invalid Java.
-This is limited declaration navigation with a narrow checked primitive-call
-subset, not general applicability, semantic diagnostics, a build importer or an
-complete editor language server. Inputs are local and
+This is limited declaration navigation with narrow checked primitive-call and
+reference-instance-call subsets, not general applicability, semantic diagnostics,
+a build importer or a complete editor language server. Inputs are local and
 explicit; no Java executable is called or JDK discovered.
 
 For an explicitly supported installation/build path and Linux archive boundary,
@@ -102,9 +105,10 @@ generics and overload resolution, then reference search. Syntax, class-file
 signatures, and name binding across source files and those class files are
 implemented. Explicit source roots and an ordered directory/JAR classpath can now
 be loaded as an immutable snapshot, with explicit platform JMOD or legacy JAR inputs.
-A JDK is not included or discovered. A narrow same-class static primitive-call
-subset can select a source overload. General overload selection and generic
-instantiation are not implemented; see [the supported proof](docs/PRIMITIVE_CALLS.md).
+A JDK is not included or discovered. Narrow same-class static primitive-call and
+qualified reference-instance-call proofs can select source overloads. General
+overload selection and generic instantiation are not implemented; see the
+[primitive](docs/PRIMITIVE_CALLS.md) and [reference](docs/REFERENCE_CALLS.md) boundaries.
 
 ### Syntax
 
@@ -326,7 +330,9 @@ parameter names, varargs equivalence, inheritance, malformed parameters, and edi
 imports and compilation contexts, descriptors, hierarchy branches and conservative
 unsupported cases. Signature comparison alone does not select overloads or substitute generics.
 `tests/primitive_calls.rs` checks the separate narrow call proof and conservative
-single-candidate refusal. Type-use annotations on array dimensions
+single-candidate refusal. `tests/reference_calls.rs` checks explicit reference
+conversion, access and complete hierarchy evidence, compilation identities,
+candidate preservation and bounded refusal. Type-use annotations on array dimensions
 and typed-lambda postfix dimensions are outside this parser subset.
 `tests/receivers.rs` checks cross-file field chains, conflicting caller imports,
 same-name/offset collisions, inherited and nested field types, method calls,

@@ -19,6 +19,8 @@ on:
       - 'scripts/check-second-project.py'
       - 'scripts/test_second_project.py'
       - 'scripts/test_local_type_acceptance.py'
+      - 'scripts/test_reference_call_acceptance.py'
+      - 'scripts/test_reference_oracle.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
       - 'scripts/check-lsp-project.py'
@@ -102,6 +104,12 @@ jobs:
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
           --local-types
+      - name: Additive Gson reference-call proof and preservation (no Java)
+        run: >-
+          python3 scripts/check-second-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+          --reference-calls
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
         run: >-
           python3 scripts/check-editor-project.py

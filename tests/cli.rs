@@ -676,6 +676,8 @@ fn unique_source_contradictions_are_refused_without_platform_data() {
         assert_eq!(response["capabilities"]["method_argument_applicability"], false);
         assert_eq!(response["capabilities"]["limited_call_selection"]["source_primitive_strict_phase"], true);
         assert_eq!(response["capabilities"]["limited_call_selection"]["single_source_contradiction_guard"], true);
+        assert_eq!(response["capabilities"]["limited_call_selection"]["source_reference_instance_calls"], true);
+        assert_eq!(response["capabilities"]["limited_call_selection"]["qualified_source_contradiction_guard"], true);
         assert_eq!(response["capabilities"]["limited_call_selection"]["general_applicability"], false);
     }
 }
