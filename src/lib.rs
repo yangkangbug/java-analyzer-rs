@@ -2,7 +2,8 @@
 //!
 //! This crate parses a subset of Java source, reparses a brace-balanced block
 //! after an edit, reads class-file signatures, and binds names across the
-//! source files and class files handed to [`Project`]. It does not run on a
+//! source files and class files handed to [`Project`]. [`ProjectSnapshot`] loads
+//! explicit source roots and native JAR/class-directory dependencies. It does not run on a
 //! JVM. It is not wired to jdtls or the editor UI.
 //!
 //! # What the parser accepts
@@ -31,10 +32,19 @@
 mod bind;
 mod classfile;
 mod green;
+mod jar;
 mod kind;
 mod lex;
 mod parse;
+mod project;
 mod reparse;
+
+pub use jar::{JarError, JarErrorKind, JarOptions, read_jar};
+
+pub use project::{
+    ClasspathEntry, ProjectConfig, ProjectLimits, ProjectLoadError, ProjectLoadErrorKind, ProjectSnapshot,
+    ShadowedClass,
+};
 
 pub use bind::{Project, ResolveResult, ResolveStatus, Target, TargetKind};
 pub use classfile::{

@@ -16,10 +16,11 @@ is a design reference, not a claim that its PSI or type system has been ported.
 The source started as a Java syntax/name-binding subset, not a language server.
 It has source parsing and block reparsing, source/class-file registration,
 limited name lookup, and supertype member walks. Every resolve query rebuilds
-the index. The current suite has 68 tests, including receiver provenance and
-array/varargs signature regressions. It has no real-project performance budget.
+the index. The suite includes receiver provenance and array/varargs signature regressions,
+plus bounded native JAR and immutable project-loading acceptance tests. It has no real-project performance budget.
 
-Missing foundations include automatic classpath/JDK/JAR loading, type inference,
+Missing foundations include build-tool/JDK discovery, module graphs, stable symbol
+IDs, type inference,
 overload applicability/selection, generic substitution, references, rename,
 completion, semantic diagnostics, and an editor/LSP adapter. A local variable
 sharing a method's name can still capture an unqualified call. The parser also
@@ -44,6 +45,23 @@ Gate: checked-in multi-file and multi-module fixture projects resolve JDK and
 third-party symbols without manually adding each class. Change/remove a source,
 JAR, or module edge and verify the next snapshot has no stale targets. Unsupported
 build models fail explicitly rather than silently borrowing JDT LS results.
+
+### First M1 slice implemented
+
+Explicit UTF-8 source roots and ordered local class-directory/JAR inputs load into
+an owned read-only snapshot. Native ZIP/DEFLATE reads selected class signatures;
+multi-release JARs select by target release. Bounds cover directory traversal,
+input bytes, archive entries and expansion. First binary classpath entry wins,
+with shadowed origins reported; source collisions remain ambiguous. Reloads
+replace input sets without mutating older snapshots. A checked-in two-source/JAR
+fixture resolves through inheritance, and a real Commons Lang JAR was analyzed
+with no Java executable on PATH; see docs/VALIDATION.md.
+
+This does not close M1: canonical path identities are not persistent symbol IDs;
+no JDK discovery/JMOD/JPMS or build-tool model exists yet. The next coherent slice
+is explicit JDK platform input and compilation-scope/module relationships, followed
+by stable identities and invalidation. The current snapshot rebuilds from disk,
+and the binder rebuilds its index per query; neither is incremental caching.
 
 ## M2: semantic types and method applicability
 

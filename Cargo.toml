@@ -8,8 +8,11 @@ license = "Apache-2.0"
 authors = ["OpenIDEA contributors"]
 readme = "README.md"
 publish = false
+repository = "https://github.com/yangkangbug/java-analyzer-rs"
 
 [dependencies]
 # Class-file reader. 0BSD. Direct dependencies: bitflags (MIT OR Apache-2.0),
 # cesu8 (MIT OR Apache-2.0). No JVM. See NOTICE.
 cafebabe = "0.9.0"
+# Native ZIP/DEFLATE only; no encryption, network, extraction, or JVM.
+zip = { version = "=9.5.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }

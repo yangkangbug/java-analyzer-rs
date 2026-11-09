@@ -146,6 +146,10 @@ impl Project {
         Ok(origins)
     }
 
+    pub(crate) fn insert_class_signature(&mut self, signature: ClassSignature) {
+        self.binaries.insert(signature.origin.clone(), signature);
+    }
+
     pub fn remove_class(&mut self, origin: &str) -> bool {
         self.binaries.remove(origin).is_some()
     }

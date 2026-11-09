@@ -22,3 +22,5 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run --locked --example resolve
+      - run: cargo build --examples --locked
+      - run: sh scripts/check-native-runtime.sh

@@ -45,7 +45,8 @@ may also need a JVM; they belong outside the native analysis core.
 The goal is a native Java analysis engine: syntax, binding, class path,
 generics and overload resolution, then reference search. Syntax, class-file
 signatures, and name binding across source files and those class files are
-implemented. A JDK is not included. Overload selection and generic instantiation
+implemented. Explicit source roots and an ordered directory/JAR classpath can now
+be loaded as an immutable snapshot. A JDK is not included. Overload selection and generic instantiation
 are not.
 
 ### Syntax
@@ -89,8 +90,10 @@ performance claim.
 files under a directory and does not follow symlinks. A truncated file, a bad
 magic, a bad constant pool, or a major version outside 45..=71 (or a minor
 other than 0 or 65535 when the major is at least 56) is an error and is not
-inserted. JARs are not opened. Maven and Gradle are not read. The bytes have
-to be handed to the project.
+inserted. The lower-level `Project` API still accepts manually registered inputs.
+`ProjectSnapshot::load` loads explicit source roots, class directories, and JARs
+without invoking Java. Maven and Gradle are not read. See
+[project loading](docs/PROJECT_LOADING.md) for configuration and bounds.
 
 Class files are parsed by `cafebabe` 0.9.0 (see `NOTICE`). The reader keeps
 the binary name, the superclass, interfaces, field and method descriptors, and
@@ -177,7 +180,8 @@ Not implemented, and not claimed:
   statement in this parser).
 - The full protected-access rule, and any distinction between static and instance.
 - Multi-catch beyond the first type before `|`.
-- JARs, Maven, Gradle, reference search, rename, and refactoring.
+- JDK discovery/JMOD, JPMS module graphs, Maven, Gradle, reference search,
+  rename, and refactoring. JAR loading is a flat-classpath subset, described below.
 - Reuse inside the one reparsed brace node. That node is parsed again from its
   text. Green nodes outside it keep their allocations.
 
@@ -199,7 +203,7 @@ and not an IntelliJ-equivalent resolver.
 | Compiled class reading | Not ported. `StubBuildingVisitor` extends ASM `ClassVisitor` and builds stubs; `ClsClassImpl` then implements `PsiClass`. This crate parses with `cafebabe` and puts the signature in the same index as a source type |
 | Supertype member search | Independent walk of the indexed `extends` / `implements` links. Not `PsiClass.getSuperTypes` |
 | PSI, stubs, stub indexes, find-usages | Not started |
-| Compiler, inference, JAR indexes | Not started |
+| Compiler, inference, persistent JAR indexes | Not started; native JAR loading is implemented |
 
 ## Layout
 
@@ -208,9 +212,11 @@ takes UTF-8 byte offsets. `apply_utf16_edit` converts UTF-16 offsets first;
 a supplementary character is two UTF-16 units, and an offset inside one is
 rejected. `Project::insert`, `Project::edit`, `Project::add_class_bytes`,
 `Project::add_class_directory`, `Project::remove_class`, and
-`Project::resolve_at` are the binding API. Dependencies are `cafebabe` 0.9.0
-(0BSD) and, through it, `bitflags` 1.3.2 and `cesu8` 1.1.0 (both MIT OR
-Apache-2.0). No dependency runs a JVM.
+`Project::resolve_at` are the low-level binding API. `ProjectConfig` and
+`ProjectSnapshot` provide explicit source-root and classpath loading; `read_jar`
+is also available separately. Class decoding uses `cafebabe`; archive decoding
+uses `zip` with pure-Rust DEFLATE. See [dependency licenses](THIRD_PARTY_LICENSES.md)
+for the exact locked graph. No analysis dependency invokes or embeds a JVM.
 
 ## Tests
 
@@ -252,10 +258,32 @@ cargo test --locked
 ```
 
 These commands use this project's own `Cargo.toml` and `Cargo.lock`.
-The workflow at `.github/workflows/ci.yml` is now at the repository root;
-it will run after an authorized remote repository is created and populated.
+The root workflow runs formatting, lint, tests, docs, and examples. It also runs
+the project example with an empty environment and no executable search path.
+
+## Project loading and JVM-free analysis
+
+See [project loading](docs/PROJECT_LOADING.md) and the
+[validation record](docs/VALIDATION.md). This is the first M1 slice, not a complete
+build model or JDK import. Run the checked-in multi-file/JAR fixture:
+
+```sh
+cargo run --locked --example project
+cargo build --locked --examples
+sh scripts/check-native-runtime.sh
+```
+
+The example resolves `app.Use -> app.Bridge -> lib.Lib.run()` from a local JAR.
+No Java installation, Java executable, JDT LS, JNI bridge, or Java sidecar is
+required by analysis. JARs and class files are input data, decoded in Rust.
+`inspect_project` also accepts a source root, source-relative file, UTF-8 byte
+offset, and local JAR paths. Java application compilation/run/debug remains a
+separate concern and is not part of this library.
 
 ## Later stages
+
+Follow [ROADMAP.md](ROADMAP.md) for the project-level milestones. The semantic
+work below follows explicit classpath and JDK/model foundations.
 
 1. Overload selection, first by arity and then by types, including a comparison
    of a source parameter list with a class-file descriptor once erasure is
