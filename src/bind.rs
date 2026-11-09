@@ -414,7 +414,8 @@ impl Index {
                         if !file.call_inventory_valid || source_call(caller, start).is_none() {
                             return false;
                         }
-                        actuals.as_ref().is_some_and(|args| {
+                        let mut proof = PrimitiveProof::new(file, start, end, None);
+                        let mismatch = actuals.as_ref().is_some_and(|args| {
                             let Shape::Source { parameters, .. } = &candidate.member.shape else { return false };
                             // One independently known contradiction is enough;
                             // unrelated unknown formals cannot erase it.
@@ -422,12 +423,16 @@ impl Index {
                                 && args.len() == parameters.len()
                                 && args.iter().zip(parameters).any(|((arg, at), formal)| {
                                     formal.primitive.filter(|_| !formal.unsupported).is_some_and(|primitive| {
-                                        primitive_expression(file, arg, *at, start, end).is_some_and(|actual| {
+                                        proof.expression(arg, *at, 0).is_some_and(|actual| {
                                             !actual.converts_to(PrimitiveValue { primitive, rank: formal.array_rank })
                                         })
                                     })
                                 })
-                        })
+                        });
+                        // A bounded guard must not turn an exhausted known-
+                        // contradiction check into unique-name success when
+                        // the strict positive context (e.g. Object) is absent.
+                        mismatch || proof.exhausted
                     });
                     if fixed_arity_mismatch || primitive_mismatch {
                         result.status = ResolveStatus::CallNotResolved;
@@ -436,8 +441,8 @@ impl Index {
                 }
             }
             let Some((caller_node, caller_start, caller_end)) = caller else { return result };
-            if !self.closed_primitive_owner(file, class, name)
-                || !file.call_inventory_valid
+            let Some(object) = self.closed_primitive_owner(file, class, name) else { return result };
+            if !file.call_inventory_valid
                 || !caller_node.child_nodes().any(|node| node.kind() == SyntaxKind::Block)
                 || !source_call(caller_node, caller_start).is_some_and(|call| call.is_static)
                 || child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_some()
@@ -447,51 +452,8 @@ impl Index {
             if !matches!(result.status, ResolveStatus::Resolved | ResolveStatus::OverloadNotResolved) {
                 return result;
             }
-            // Every same-name declaration is considered before access filtering.
-            // No unsupported competitor may be dropped to manufacture a winner.
-            let members: Vec<_> = class.methods.iter().filter(|member| member.name == name).collect();
-            let selected = actuals.as_ref().and_then(|args| {
-                let actuals = args
-                    .iter()
-                    .map(|(arg, at)| primitive_expression(file, arg, *at, caller_start, caller_end))
-                    .collect::<Option<Vec<_>>>()?;
-                let formals = members
-                    .iter()
-                    .map(|member| {
-                        member.source_call.as_ref().filter(|call| call.is_static)?;
-                        primitive_formals(member)
-                    })
-                    .collect::<Option<Vec<_>>>()?;
-                // Duplicate declarations invalidate the inventory even if that
-                // signature would not be applicable to these particular actuals.
-                for (i, left) in formals.iter().enumerate() {
-                    if formals[i + 1..].contains(left) {
-                        return None;
-                    }
-                }
-                let applicable: Vec<_> = formals
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, parameters)| {
-                        actuals.len() == parameters.len()
-                            && actuals.iter().zip(parameters.iter()).all(|(actual, formal)| actual.converts_to(*formal))
-                    })
-                    .map(|(i, _)| i)
-                    .collect();
-                let most_specific: Vec<_> = applicable
-                    .iter()
-                    .copied()
-                    .filter(|&i| {
-                        applicable
-                            .iter()
-                            .all(|&j| formals[i].iter().zip(&formals[j]).all(|(left, right)| left.converts_to(*right)))
-                    })
-                    .collect();
-                match most_specific.as_slice() {
-                    [one] => Some(members[*one]),
-                    _ => None,
-                }
-            });
+            let mut proof = PrimitiveProof::new(file, caller_start, caller_end, Some((class, object)));
+            let selected = proof.call(name, args, args_at, 0);
             if let Some(member) = selected {
                 return ResolveResult::one(ResolveStatus::Resolved, member_target(class, member));
             }
@@ -507,22 +469,23 @@ impl Index {
         }
     }
 
-    fn closed_primitive_owner(&self, file: &FileRec, class: &ClassRec, name: &str) -> bool {
+    fn closed_primitive_owner<'a>(&'a self, file: &FileRec, class: &ClassRec, name: &str) -> Option<&'a ClassRec> {
         if !class.primitive_owner
             || !matches!(self.class_named(class.scope, &class.dotted()), Named::One(found) if same_class(found, class))
         {
-            return false;
+            return None;
         }
-        let Some(parent) = &class.super_parts else { return false };
+        let parent = class.super_parts.as_ref()?;
         match self.resolve_edge(class, parent) {
             Named::One(object) => {
                 // Source Object implicitly extends itself in this index. A
                 // supplied binary root is the bounded, verifiable closure.
-                object.binary_root
+                (object.binary_root
                     && object.scope == file.scope
-                    && object.methods.iter().all(|member| member.name != name)
+                    && object.methods.iter().all(|member| member.name != name))
+                .then_some(object)
             }
-            _ => false,
+            _ => None,
         }
     }
 
@@ -2237,6 +2200,9 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
 struct SourceCall {
     is_static: bool,
     varargs: bool,
+    // Only a strictly selected source member may expose this value. It is not
+    // part of Shape/MethodIdentity, receiver typing, or overload applicability.
+    scalar_return: Option<Primitive>,
 }
 
 // Kept separate from QualName: retaining primitive values must not teach the
@@ -2437,7 +2403,79 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
     {
         return None;
     }
-    Some(SourceCall { is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static), varargs })
+    Some(SourceCall {
+        is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static),
+        varargs,
+        scalar_return: primitive_method_return(node),
+    })
+}
+
+// Validate the complete method header, not just the first primitive token.
+// In particular, dimensions after the name/parameters cannot become a scalar,
+// and a Type after `throws` is not the result type. Return bodies are not typed.
+fn primitive_method_return(node: &GreenNode) -> Option<Primitive> {
+    if node.kind() != SyntaxKind::Method {
+        return None;
+    }
+    let mut state = 0;
+    let mut result = None;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if token.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, token.kind()) {
+                (1, SyntaxKind::Ident) => 2,
+                (3, SyntaxKind::Throws) => 4,
+                (5, SyntaxKind::Comma) => 4,
+                (3 | 5, SyntaxKind::Semi) => 6,
+                _ => return None,
+            };
+        } else if let Some(child) = child.as_node() {
+            state = match (state, child.kind()) {
+                (0, SyntaxKind::ModifierList) if child.child_nodes().next().is_none() => 0,
+                (0, SyntaxKind::Type) => {
+                    if child.child_nodes().next().is_some() {
+                        return None;
+                    }
+                    let mut parts =
+                        child.children().iter().filter_map(|part| part.as_token()).filter(|t| !t.kind().is_trivia());
+                    result = Primitive::source(parts.next()?.text());
+                    if result.is_none() || parts.next().is_some() {
+                        return None;
+                    }
+                    1
+                }
+                (2, SyntaxKind::ParamList) => 3,
+                (4, SyntaxKind::Type) if plain_reference_type(child) => 5,
+                (3 | 5, SyntaxKind::Block) => 6,
+                _ => return None,
+            };
+        }
+    }
+    (state == 6).then_some(result).flatten()
+}
+
+// This checks syntax, not Throwable inheritance. Unmodeled annotation/generic
+// and array forms cannot make a malformed throws header supply a return value.
+fn plain_reference_type(node: &GreenNode) -> bool {
+    let mut children = node.child_nodes();
+    let Some(name) = children.next() else { return false };
+    if children.next().is_some()
+        || name.kind() != SyntaxKind::Name
+        || name.child_nodes().next().is_some()
+        || tokens(node, 0).iter().any(|t| !t.0.is_trivia())
+    {
+        return false;
+    }
+    let mut identifier = true;
+    for (kind, _, _) in tokens(name, 0).into_iter().filter(|t| !t.0.is_trivia()) {
+        if kind != if identifier { SyntaxKind::Ident } else { SyntaxKind::Dot } {
+            return false;
+        }
+        identifier = !identifier;
+    }
+    !identifier
 }
 
 fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
@@ -2547,74 +2585,197 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<(&GreenNode, u32, u32)> 
     Some((method, start, start + method.utf8_len()))
 }
 
-fn primitive_expression(
-    file: &FileRec,
-    node: &GreenNode,
-    start: u32,
+// One budget is shared by the complete nested proof. These are analysis bounds,
+// not Java language limits. Exhaustion is unknown, never unique-name success.
+const PRIMITIVE_PROOF_DEPTH: usize = 32;
+const PRIMITIVE_PROOF_WORK: usize = 4096;
+
+struct PrimitiveProof<'a> {
+    file: &'a FileRec,
     caller_start: u32,
     caller_end: u32,
-) -> Option<PrimitiveValue> {
-    match node.kind() {
-        SyntaxKind::ReferenceExpr => {
-            let name = token_name(node);
-            let mut locals = file.locals.iter().filter(|local| {
-                local.name == name
-                    && local.start >= caller_start
-                    && local.end <= caller_end
-                    && local.scope_start <= start
-                    && start < local.scope_end
-                    && local.visible_from <= start
-            });
-            let one = locals.next()?;
-            if locals.next().is_some() {
-                return None;
-            }
-            if !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
-                return None;
-            }
-            one.primitive
+    // None is used only by the preexisting negative guard: local types can
+    // prove a contradiction without Object, but call results cannot.
+    owner: Option<(&'a ClassRec, &'a ClassRec)>,
+    work_left: usize,
+    exhausted: bool,
+}
+
+impl<'a> PrimitiveProof<'a> {
+    fn new(file: &'a FileRec, caller_start: u32, caller_end: u32, owner: Option<(&'a ClassRec, &'a ClassRec)>) -> Self {
+        Self { file, caller_start, caller_end, owner, work_left: PRIMITIVE_PROOF_WORK, exhausted: false }
+    }
+
+    fn charge(&mut self, work: usize) -> Option<()> {
+        let remaining = self.work_left.checked_sub(work);
+        self.work_left = remaining.unwrap_or(0);
+        self.exhausted |= remaining.is_none();
+        remaining.map(|_| ())
+    }
+
+    fn enter(&mut self, depth: usize) -> Option<()> {
+        if depth > PRIMITIVE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
         }
-        SyntaxKind::ParenExpr => {
-            let expressions = delimited_nodes(node, start)?;
-            let [(expression, at)] = expressions.as_slice() else { return None };
-            primitive_expression(file, expression, *at, caller_start, caller_end)
+        self.charge(1)
+    }
+
+    // The caller/context checks in simple_call must pass before owner is set.
+    // Return the actual member only after full applicability and specificity
+    // proof, separately from public navigation's compatible Resolved fallback.
+    fn call(&mut self, name: &str, args: &GreenNode, start: u32, depth: usize) -> Option<&'a Member> {
+        self.enter(depth)?;
+        let (class, object) = self.owner?;
+        self.charge(class.methods.len())?;
+        // Every nested name has its own Object/competitor closure, even though
+        // its enclosing call already proved closure for a different name.
+        // The immutable owner identity/root Object edge was checked once when
+        // this context was created. Only the name-dependent check is repeated.
+        self.charge(object.methods.len())?;
+        if object.methods.iter().any(|member| member.name == name) {
+            return None;
         }
-        SyntaxKind::IndexExpr => {
-            let mut nodes = Vec::new();
-            let mut kinds = Vec::new();
-            let mut at = start;
-            for child in node.children() {
-                if let Some(token) = child.as_token() {
-                    if !token.kind().is_trivia() {
-                        kinds.push(token.kind());
+        self.charge(args.children().len())?;
+        let args = delimited_nodes(args, start)?;
+        let actuals = args.iter().map(|(arg, at)| self.expression(arg, *at, depth + 1)).collect::<Option<Vec<_>>>()?;
+        // Every same-name declaration is considered before access filtering.
+        // No unsupported competitor may be dropped to manufacture a winner.
+        let members: Vec<_> = class.methods.iter().filter(|member| member.name == name).collect();
+        let mut formals = Vec::new();
+        for member in &members {
+            member.source_call.as_ref().filter(|call| call.is_static)?;
+            let Shape::Source { parameters, .. } = &member.shape else { return None };
+            self.charge(parameters.len().max(1))?;
+            formals.push(primitive_formals(member)?);
+        }
+        // Duplicate signatures invalidate even inapplicable declarations;
+        // different return types never distinguish otherwise equal signatures.
+        for (i, left) in formals.iter().enumerate() {
+            for right in &formals[i + 1..] {
+                self.charge(left.len().max(1))?;
+                if left == right {
+                    return None;
+                }
+            }
+        }
+        let mut applicable = Vec::new();
+        for (i, parameters) in formals.iter().enumerate() {
+            self.charge(parameters.len().max(1))?;
+            if actuals.len() == parameters.len()
+                && actuals.iter().zip(parameters).all(|(actual, formal)| actual.converts_to(*formal))
+            {
+                applicable.push(i);
+            }
+        }
+        let mut selected = None;
+        for &i in &applicable {
+            let mut most_specific = true;
+            for &j in &applicable {
+                self.charge(formals[i].len().max(1))?;
+                if !formals[i].iter().zip(&formals[j]).all(|(left, right)| left.converts_to(*right)) {
+                    most_specific = false;
+                    break;
+                }
+            }
+            if most_specific {
+                if selected.is_some() {
+                    return None;
+                }
+                selected = Some(members[i]);
+            }
+        }
+        selected
+    }
+
+    fn expression(&mut self, node: &GreenNode, start: u32, depth: usize) -> Option<PrimitiveValue> {
+        self.enter(depth)?;
+        self.charge(node.children().len())?;
+        match node.kind() {
+            SyntaxKind::ReferenceExpr => {
+                self.charge(self.file.locals.len())?;
+                let name = token_name(node);
+                let mut locals = self.file.locals.iter().filter(|local| {
+                    local.name == name
+                        && local.start >= self.caller_start
+                        && local.end <= self.caller_end
+                        && local.scope_start <= start
+                        && start < local.scope_end
+                        && local.visible_from <= start
+                });
+                let one = locals.next()?;
+                if locals.next().is_some() {
+                    return None;
+                }
+                if !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
+                    return None;
+                }
+                one.primitive
+            }
+            SyntaxKind::ParenExpr => {
+                let expressions = delimited_nodes(node, start)?;
+                let [(expression, at)] = expressions.as_slice() else { return None };
+                self.expression(expression, *at, depth + 1)
+            }
+            SyntaxKind::IndexExpr => {
+                let mut nodes = Vec::new();
+                let mut kinds = Vec::new();
+                let mut at = start;
+                for child in node.children() {
+                    if let Some(token) = child.as_token() {
+                        if !token.kind().is_trivia() {
+                            kinds.push(token.kind());
+                        }
+                    } else if let Some(child) = child.as_node() {
+                        // Node positions distinguish base[index] from missing or
+                        // reordered operands even when the parser has no errors.
+                        if (nodes.is_empty() && !kinds.is_empty())
+                            || (nodes.len() == 1 && kinds != [SyntaxKind::LBracket])
+                        {
+                            return None;
+                        }
+                        nodes.push((child.as_ref(), at));
                     }
-                } else if let Some(child) = child.as_node() {
-                    // Node positions distinguish base[index] from missing or
-                    // reordered operands even when the parser has no errors.
-                    if (nodes.is_empty() && !kinds.is_empty()) || (nodes.len() == 1 && kinds != [SyntaxKind::LBracket])
-                    {
+                    at += child.utf8_len();
+                }
+                let [(base, base_at), (index, index_at)] = nodes.as_slice() else { return None };
+                if kinds != [SyntaxKind::LBracket, SyntaxKind::RBracket] {
+                    return None;
+                }
+                let mut base = self.expression(base, *base_at, depth + 1)?;
+                let index = self.expression(index, *index_at, depth + 1)?;
+                if base.rank == 0
+                    || index.rank != 0
+                    || !matches!(index.primitive, Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int)
+                {
+                    return None;
+                }
+                base.rank -= 1;
+                Some(base)
+            }
+            SyntaxKind::CallExpr => {
+                let mut nodes = Vec::new();
+                let mut at = start;
+                for child in node.children() {
+                    if child.as_token().is_some_and(|token| !token.kind().is_trivia()) {
                         return None;
                     }
-                    nodes.push((child.as_ref(), at));
+                    if let Some(child) = child.as_node() {
+                        nodes.push((child.as_ref(), at));
+                    }
+                    at += child.utf8_len();
                 }
-                at += child.utf8_len();
+                let [(callee, _), (args, args_at)] = nodes.as_slice() else { return None };
+                if callee.kind() != SyntaxKind::ReferenceExpr || args.kind() != SyntaxKind::ArgList {
+                    return None;
+                }
+                let name = token_name(callee);
+                let member = self.call(&name, args, *args_at, depth)?;
+                Some(PrimitiveValue { primitive: member.source_call.as_ref()?.scalar_return?, rank: 0 })
             }
-            let [(base, base_at), (index, index_at)] = nodes.as_slice() else { return None };
-            if kinds != [SyntaxKind::LBracket, SyntaxKind::RBracket] {
-                return None;
-            }
-            let mut base = primitive_expression(file, base, *base_at, caller_start, caller_end)?;
-            let index = primitive_expression(file, index, *index_at, caller_start, caller_end)?;
-            if base.rank == 0
-                || index.rank != 0
-                || !matches!(index.primitive, Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int)
-            {
-                return None;
-            }
-            base.rank -= 1;
-            Some(base)
+            _ => None,
         }
-        _ => None,
     }
 }
 

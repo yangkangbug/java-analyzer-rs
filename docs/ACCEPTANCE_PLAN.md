@@ -73,7 +73,7 @@ flow rather than an arbitrary ambient JDK.
 The CLI acceptance wrapper supplies the same pinned Commons Lang source and JMOD
 inputs through a versioned manifest, from a different working directory. It runs
 the actual `java-analyzer` executable with no Java environment, checks project
-inventory and labeled parser reports, and compares all 41 fixed declaration
+inventory and labeled parser reports, and compares all 45 fixed declaration
 queries with their source/binary provenance. Missing-platform and wrong-output
 controls test the wrapper itself. These are explicit project configuration and
 interface checks, not new whole-project Java semantic-equivalence evidence.
@@ -131,21 +131,32 @@ compiler rejection. The real-source harness also audits all direct unqualified
 invocation names for accidental variable/type targets; zero wrong-namespace
 results is a negative invariant, not proof that every call resolves correctly.
 
-A separate `primitive-v1` suite requires twelve strict primitive source-call
-bindings and twenty explicit refusals, with exact candidate identities and
+A separate `primitive-v1` suite originally required twelve strict primitive
+source-call bindings and twenty explicit refusals. A reviewed three-row overlay
+now requires proved scalar call results at three previously refused positions,
+giving fifteen bindings and seventeen refusals without changing original fixture
+bytes. These checks retain exact candidate identities and
 unchanged Trees-based source declaration evidence. Sixteen isolated invalid
 fixtures require compiler errors and native refusal, including unique method
 names with incompatible arity or primitive arguments. `CallNotResolved` preserves
 a singleton candidate without claiming Java invalidity; valid boxing/varargs
 controls also require that neutral refusal. A checksum-verified Object class,
 extracted as data from the supplied JMOD, closes the source classes' inventory;
-omitting it must block the ten newly supported overload selections.
+omitting it must block the newly supported overload selections.
 
-The optional `--sources-jar` branch checks four independently compiler-selected
+The separate `return-v1` suite checks 29 compiler-valid queries: fourteen exact
+source matches (including two existing direct-call controls) and fifteen refusals.
+Twelve isolated compiler-invalid fixtures require exact native refusal candidates,
+including malformed throws headers which the parser can otherwise accept. Inner
+parameter selection is checked independently of its declared return type; arrays,
+unknown calls and a compiler-valid deep nesting example remain refused.
+
+The optional `--sources-jar` branch checks eight independently compiler-selected
 source overloads over all 249 unchanged Commons Lang sources. It verifies the
 existing archive hash/inventory and analyzes without generating or executing
 upstream classes. Exact source declaration headers and ranges distinguish the
-float/double `IEEE754rUtils.max/min` overloads. Same-name target mutation and
+float/double `IEEE754rUtils.max/min` overloads, covering four original loop calls
+and four additional outer nested calls. Same-name target mutation and
 missing-Object controls remain required. This does not establish binary-selected
 method identity: public binary targets still lack overload-distinguishing
 source ranges/descriptors. See the complete [oracle contract](../dev-tools/oracle/README.md).
@@ -153,7 +164,7 @@ source ranges/descriptors. See the complete [oracle contract](../dev-tools/oracl
 ## Remaining coverage limits
 
 The full real-source workload still has known parser/semantic gaps. Its default
-forty-one fixed queries and error-node inventory are not whole-project semantic
+forty-five fixed queries and error-node inventory are not whole-project semantic
 coverage. Prepared/rebuild agreement proves consistency, not Java correctness.
 The independent oracle covers only a closed, same-owner static primitive
 source-call selection subset. It does not cover generic inference, general

@@ -669,3 +669,66 @@ CLI SHA-256: `c62a978e43b23816efe3a69006893944f335771604a1b1e16784abf70ef0ff5d`.
 No dependencies or production Java execution were added. General expression
 and overload semantics, incremental reload, editor integration, semantic
 diagnostics, references and refactoring remain on the project roadmap.
+
+## Proven primitive call-result follow-up
+
+Baseline: `35936339d4449ee2ef105e895c5343539538f28c`. A shared internal proof now
+returns the selected source member before its explicit primitive scalar result
+can type an outer invocation. It never borrows a return type from legacy
+name-only Resolved. Return types remain outside overload identity/specificity.
+Scope and work limits are documented in [CALL_RETURNS.md](CALL_RETURNS.md).
+
+Pre-implementation RED was recorded independently at three levels: two native
+exact-target regressions, twelve new handwritten compiler-selected targets, and
+four real outer IEEE754rUtils calls. The preserved published release CLI also
+failed the expanded real-project gate at q42 with OverloadNotResolved instead of
+the compiler-proved selection. Its existing 41 query checks had passed first.
+
+Final contributor checks pass: 233 default Rust tests, 265 all-feature tests
+(233 core, 23 CLI integration and nine supervision), one doctest, strict fmt,
+Clippy and rustdoc, examples, native source/JAR/JMOD and CLI runtime checks.
+Two preexisting optional Cargo tests remain ignored; separate real-artifact
+acceptance is run explicitly. Seventeen new native tests cover result selection,
+refusals, source edits, old/new snapshots, owning compilation data and bounded
+proof work. The actual CLI test changes an inner declaration's return type,
+reloads from disk, checks the new exact outer target, and refuses without Object.
+This is fresh one-shot loading, not a new persistent server or overlay API.
+
+Independent review passed 59 exact scratch queries (fourteen compiler-matched
+targets and forty-five full-identity refusals), plus two no-Object budget
+regressions and independent snapshot/source-set checks. It found and reproduced
+two issues before approval: malformed throws headers could provide result proof,
+and exhausted negative guards could fall through to legacy success. Both now
+conservatively refuse. Throws syntax checks do not prove Throwable inheritance,
+checked exceptions or method-body correctness.
+
+The final optional compiler gate passes the original 59 matches/four refusals,
+mixed five/four, primitive fifteen/seventeen and return fourteen/fifteen valid-
+source outcomes. The return suite includes twelve newly supported selections and
+two existing controls. Sixteen original primitive-invalid and twelve new return-
+invalid fixtures retain exact refusal candidates, with independent malformed-
+throws RED preserved. Original primitive fixture bytes/goldens stay unchanged;
+a reviewed overlay changes exactly three outcomes. Mutation/completeness and
+missing-Object controls pass. Eight real source selections are checked against
+javac analysis of all 249 unchanged sources; no upstream application is run.
+
+The release corpus and shipped CLI preserve all original 41 queries and their
+66 candidate records. Four additional outer calls resolve, giving 45 queries,
+35 Resolved, seven OverloadNotResolved, two SignatureNotCompared and one
+ReceiverNotBound, with seventy records (sixty source, ten binary). Thus none of
+the original ten refusal gaps is claimed solved. All 249 files remain lossless,
+the parser inventory remains 85 errors in 24 files, and the full 3,030-call
+negative namespace audit passes.
+
+Production and default native tests remain JVM-free; only the explicitly
+optional compiler gate executes Java. No dependency version changes, external
+project source copies or JDK binaries are included. Editor integration, reload/
+overlays, distribution and broader semantic services remain separate gates.
+
+One final Linux cloud release run recorded load/parse 493.92 ms, preparation
+62.17 ms, rebuild p50/p95 69.58/81.21 ms and prepared p50/p95
+11.12/18.31 ms over 225 samples per mode. The actual CLI recorded
+551 ms inspection, 578 ms parser reporting and 976 ms for the 45-query batch,
+including fresh loads. This expanded workload is not directly comparable to the
+previous 41-query percentiles. No speedup, memory bound or preview latency budget
+is claimed. CLI SHA-256: `784cd39cbf3629a7a462ad0dd505f7ff2f9535c70510ba9042bf69630ca19dcf`.

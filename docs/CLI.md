@@ -320,7 +320,8 @@ supported lookup/access/signature rules:
 
 `CallNotResolved` is an added public library enum variant; exhaustive client
 matches must handle it. CLI schema version stays 1, with the additive status and
-`capabilities.limited_call_selection` fields documented here. The existing
+`capabilities.limited_call_selection` fields documented here, including
+`primitive_source_call_returns` for [proved scalar result propagation](CALL_RETURNS.md). The existing
 `method_argument_applicability:false` flag still means general applicability is
 not provided. Check status before using a candidate as a navigation target.
 

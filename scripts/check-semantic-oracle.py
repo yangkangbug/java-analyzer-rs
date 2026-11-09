@@ -253,6 +253,15 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
         expected[query] = (status, target, candidates)
     assert len(expected) == len(queries) == 32
     assert sum(value[0] == "Resolved" for value in expected.values()) == 12
+    # Keep the original inputs and golden history intact. These three previously
+    # refused calls now consume independently proven primitive scalar results.
+    updates = rows(ORACLE / "return-v1/primitive-updates.tsv", 5)
+    assert len(updates) == 3 and {row[0] for row in updates} == {
+        "nested_outer_refusal", "call_expression_refusal", "single_result_refusal"}
+    for query, before, after, selected, candidates in updates:
+        assert expected[query][0] == before and expected[query][1] == selected
+        assert after == "Resolved" and selected == candidates
+        expected[query] = (after, selected, candidates)
     request = work / "primitive-requests.tsv"
     request.write_text(requests)
     javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
@@ -323,15 +332,101 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     omitted = records(run([native_binary, root / "source", request], {"PATH": "/nonexistent"}).stdout)
     newly_supported = [query for query, row in expected.items()
                        if row[0] == "Resolved" and not query.startswith("single_")]
-    assert len(newly_supported) == 10 and set(omitted) == set(expected)
+    assert len(newly_supported) == 12 and set(omitted) == set(expected)
     assert all(omitted[q][0] != "Resolved" for q in newly_supported), "missing Object did not block new selections"
     must_reject(lambda: compare_primitive(expected, queries, declarations, javac, omitted), "omitted Object input")
-    print("PASS: 12 strict primitive source bindings; 20 conservative refusals; "
+    print("PASS: 15 strict primitive source bindings; 17 conservative refusals; "
+          "three reviewed scalar-return updates to the unchanged 32-query source corpus; "
+          "exact candidates, target mutations, omitted Object and query-completeness controls verified")
+
+
+def return_suite(jdk, native_binary, env, work, helper, empty, platform):
+    """Declared scalar results of recursively proven calls, never legacy navigation."""
+    root = ORACLE / "return-v1"
+    files = ("ReturnCalls.java", "ReturnBoundaries.java", "ReturnBudget.java")
+    declarations, queries, requests = fixture_markers(root / "source", files)
+    expected = {}
+    for query, status, target, candidates in rows(root / "expected.tsv", 4):
+        assert query not in expected and target.split("@")[0] in declarations
+        expected[query] = (status, target, candidates)
+    assert len(expected) == len(queries) == 29
+    assert sum(row[0] == "Resolved" for row in expected.values()) == 14
+    request = work / "return-requests.tsv"
+    request.write_text(requests)
+    javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                         root / "source", request, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, platform], {"PATH": "/nonexistent"}).stdout)
+    compare_primitive(expected, queries, declarations, javac, native)
+
+    invalid = rows(root / "invalid.tsv", 4)
+    assert len(invalid) == 12 and len({row[0] for row in invalid}) == len(invalid)
+    assert sorted(p.name for p in (root / "invalid").glob("*.java")) == sorted(row[0] for row in invalid)
+    for file, query, status, candidates in invalid:
+        source = (root / "invalid" / file).read_bytes()
+        matches = list(MARKER.finditer(source))
+        assert source.count(b"/*D:") + source.count(b"/*Q:") == len(matches)
+        ds, qs = {}, {}
+        for match in matches:
+            kind, identity, name = (part.decode() for part in match.groups())
+            destination = ds if kind == "D" else qs
+            assert identity not in destination
+            destination[identity] = (file, match.start(3), match.end(3), name)
+        assert set(qs) == {query}
+        request.write_text(f"F\t{file}\nQ\t{query}\t{file}\t{qs[query][1]}\n")
+        rejected = run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                        root / "invalid", request, empty], env, False)
+        assert rejected.returncode == 2 and "compiler.err." in rejected.stderr and not rejected.stdout, \
+            f"invalid return fixture accepted: {file}"
+        actual = records(run([native_binary, root / "invalid", request, platform],
+                             {"PATH": "/nonexistent"}).stdout)
+        assert set(actual) == {query}
+        check_candidates(query, status, candidates, ds, actual[query])
+
+    # Swapping inner parameter/return types must not make a return type select
+    # the inner overload. The enclosing call really needs the double overload.
+    wrong = dict(expected)
+    wrong["return_swapped_type"] = ("Resolved", "return_pick_float@oracle.ReturnCalls",
+                                    "return_pick_float@oracle.ReturnCalls")
+    must_reject(lambda: compare_primitive(wrong, queries, declarations, javac, native), "return-driven inner overload")
+    corrupted = {key: list(value) for key, value in javac.items()}
+    corrupted["return_swapped_type"][-2:] = ["0", "1"]
+    must_reject(lambda: compare_primitive(expected, queries, declarations, corrupted, native), "corrupted return compiler range")
+    for label in ("owner", "range", "duplicate", "missing", "extra", "refusal_candidate"):
+        changed = {key: list(value) for key, value in native.items()}
+        if label == "owner":
+            changed["return_swapped_type"][2] = changed["return_swapped_type"][2].replace("oracle.ReturnCalls", "oracle.Wrong")
+        elif label == "range":
+            parts = changed["return_swapped_type"][2].split("|")
+            parts[-2:] = ["0", "1"]
+            changed["return_swapped_type"][2] = "|".join(parts)
+        elif label == "duplicate":
+            changed["return_swapped_type"][1] = "2"
+            changed["return_swapped_type"].append(changed["return_swapped_type"][2])
+        elif label == "missing":
+            del changed["return_swapped_type"]
+        elif label == "extra":
+            changed["not_requested"] = changed["return_swapped_type"]
+        else:
+            changed["return_generic_refusal"][1] = "1"
+            changed["return_generic_refusal"].pop()
+        must_reject(lambda: compare_primitive(expected, queries, declarations, javac, changed), f"return {label}")
+    request.write_text(requests)
+    omitted = records(run([native_binary, root / "source", request], {"PATH": "/nonexistent"}).stdout)
+    assert set(omitted) == set(expected)
+    # The singleton may retain legacy name navigation without Object. It must
+    # never become evidence for an enclosing call's result type.
+    selections = [query for query, row in expected.items()
+                  if row[0] == "Resolved" and query != "return_singleton"]
+    assert len(selections) == 13
+    assert all(omitted[query][0] != "Resolved" for query in selections), "missing Object did not block return selections"
+    must_reject(lambda: compare_primitive(expected, queries, declarations, javac, omitted), "omitted return Object input")
+    print("PASS: 14 scalar-result source bindings (12 newly selectable, two controls); "
+          "15 valid-source refusals; 12 compiler-invalid refusals; "
           "exact candidates, target mutations, omitted Object and query-completeness controls verified")
 
 
 def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform, sources_jar):
-    """Optional four source-selected queries over pinned unmodified upstream bytes."""
+    """Optional eight source-selected queries over pinned unmodified upstream bytes."""
     pins = json.loads((ROOT / "scripts/acceptance-inputs.json").read_text())
     with sources_jar.open("rb") as source:
         assert hashlib.file_digest(source, "sha256").hexdigest() == pins["sources"]["sha256"], \
@@ -353,6 +448,10 @@ def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform,
             files.append(entry.filename)
     expected = rows(ORACLE / "primitive-v1/real-expected.tsv", 7)
     assert len(expected) == 4 and {row[0] for row in expected} == {"q28", "q29", "q30", "q31"}
+    returns = rows(ORACLE / "return-v1/real-expected.tsv", 7)
+    assert len(returns) == 4 and {row[0] for row in returns} == {
+        "return_real_max_double", "return_real_max_float", "return_real_min_double", "return_real_min_float"}
+    expected += returns
     request = work / "real-primitive-requests.tsv"
     requests = [f"F\t{path}" for path in sorted(files)]
     requests.extend(f"Q\t{query}\t{path}\t{use}" for query, path, use, *_ in expected)
@@ -370,6 +469,11 @@ def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform,
             assert (jpath, jkind, jowner, jname) == (path, "METHOD", owner, name)
             assert int(jstart) <= start < end <= int(jend), f"{query}: compiler range differs"
             assert source[int(use):int(use) + len(name)] == source[start:end] == name.encode()
+            if query.startswith("return_real_"):
+                assert source[int(use) - 7:int(use)] == b"return "
+                expression = f"{name}({name}(a, b), c);".encode()
+                assert source[int(use):int(use) + len(expression)] == expression, \
+                    f"{query}: real outer-call source differs"
             prefix = f"public static {primitive} {name}(final {primitive} a, final {primitive} b)".encode()
             assert source[int(jstart):int(jend)].startswith(prefix), f"{query}: compiler-selected signature differs"
             assert start == int(jstart) + len(f"public static {primitive} ".encode())
@@ -379,10 +483,13 @@ def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform,
     wrong = {key: list(value) for key, value in native.items()}
     wrong["q28"] = list(native["q29"])
     must_reject(lambda: compare_real(wrong), "wrong same-name real overload")
+    wrong = {key: list(value) for key, value in native.items()}
+    wrong["return_real_max_double"] = list(native["return_real_max_float"])
+    must_reject(lambda: compare_real(wrong), "wrong same-name real return overload")
     omitted = records(run([native_binary, source_root, request], {"PATH": "/nonexistent"}).stdout)
     assert all(omitted[query][0] != "Resolved" for query, *_ in expected), "missing Object did not block real selections"
     must_reject(lambda: compare_real(omitted), "omitted real Object input")
-    print("PASS: 4 independently compiler-selected real primitive source methods; "
+    print("PASS: 8 independently compiler-selected real primitive source calls (four array-element and four scalar-result calls); "
           "249 unchanged source files analyzed; no upstream class generation/execution")
 
 
@@ -392,7 +499,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jdk", required=True, type=Path, help="checksum-verified Temurin 21.0.13+9 root")
     parser.add_argument("--native", type=Path, default=ROOT / "target/debug/examples/oracle_bindings")
-    parser.add_argument("--sources-jar", type=Path, help="optional checksum-pinned Commons Lang sources for four real overload queries")
+    parser.add_argument("--sources-jar", type=Path, help="optional checksum-pinned Commons Lang sources for eight real overload queries")
     args = parser.parse_args()
     jdk = args.jdk.resolve()
     # Use only caller-selected pinned tools, with no inherited Java injection settings.
@@ -497,6 +604,7 @@ def main():
             print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
         platform = pinned_object(jdk, work)
         primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        return_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

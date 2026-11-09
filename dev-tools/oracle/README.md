@@ -189,6 +189,10 @@ additional successful semantic matches.
 
 ## Strict primitive source-call suite
 
+This section records the original `primitive-v1` evidence. The scalar-return
+extension below preserves its source bytes and original goldens, with three
+explicitly reviewed expectation updates rather than silently replacing history.
+
 `primitive-v1` is a separate fixed three-file handwritten suite. The existing
 source-only 59 matches/four refusals and mixed five matches/four refusals remain
 independently required, with their original comparison rules unchanged.
@@ -256,7 +260,7 @@ after the unchanged original and mixed gates had passed. Independent baseline
 probes also verified valid singleton boxing and varargs calls, preventing a fix
 that labels all unsupported conversions as invalid Java.
 
-### Optional four real source selections
+### Original four real source selections
 
 Add the existing checksum-pinned Commons Lang source archive to the same optional
 development comparator:
@@ -287,3 +291,96 @@ reference/generic/boxing/varargs support, or binary overload identity evidence.
 Binary methods with identical owner/name currently share a public zero range;
 this suite does not claim to distinguish those overloads. Production and ordinary
 Cargo tests remain JVM/JNI/JDT-LS-free. Only this opt-in comparator executes Java.
+
+## Proven scalar source-call results
+
+`return-v1` adds a separate fixed three-file suite. Its handwritten expectations
+require fourteen exact source bindings: twelve newly selectable outer calls,
+an already selectable inner call, and a direct-call control. An inner call must
+itself satisfy the closed same-owner, static, nongeneric primitive proof before
+its explicitly declared scalar return type can support another selection. A
+legacy `Resolved` name-navigation result is not such proof. Method bodies are
+not evaluated or used to infer returns, and fixture programs are never executed.
+
+The positive probes cover float/double identity, byte/char widening, boolean
+results, zero-argument producers, nested and parenthesized calls, independent
+sibling calls, repeated same-name calls, and singleton consumers. Two `change`
+overloads deliberately swap their parameter and return types: `change(float)`
+returns double, while `change(double)` returns float. Javac selects the former
+from its argument, requiring the outer double overload. The expected outer type
+must not be used to choose an inner overload. Exact path, owner, kind, name and
+UTF-8 name range are compared using the unchanged `BindingOracle.java` helper.
+An astral prefix preserves the UTF-16/UTF-8 conversion check.
+
+Fifteen compiler-valid probes must retain exact refusal candidates. They cover
+literal and field arguments, reference parameters, qualified same-owner and
+foreign calls, binary calls, boxing, generic methods, expanded varargs, casts,
+conditional expressions, prefix/postfix primitive-array returns and indexing an
+array return. Primitive-array return types are deliberately outside this scalar
+slice. Forty nested identity calls exercise the bounded proof's depth limit:
+exhausting a proof budget is an unknown result, not an inferred type or a crash.
+This does not establish a whole-process resource limit.
+
+Twelve separate fixtures must produce javac errors and no successful compiler
+binding output, while native queries retain the exact outer refusal candidates.
+They cover void/array results used as scalars, wrong inner arity/type, ambiguous
+and duplicate inner overloads, missing names, malformed nested arguments, and
+the swapped-return example where the actual selected result cannot satisfy the
+outer parameter. Three additional malformed `throws` clauses contain a primitive,
+reference array or parameterized type. Parser acceptance must not turn these
+unsupported declaration shapes into scalar-return proof. This is a structural
+guard, not general Throwable-subtyping or checked-exception validation. These
+cases are not counted as successful compiler binding matches.
+
+The comparator rejects wrong same-name overloads, corrupted compiler ranges,
+incorrect native owners/ranges, duplicate candidates, missing/extra queries and
+deleted refusal candidates. Omitting the explicit checksum-pinned Object input
+must block the overloaded selections and fail the comparison. A singleton may
+retain legacy name navigation without Object; it must never supply return-type
+proof to an enclosing call.
+
+### Preserved primitive history and independent RED
+
+The original thirty-two primitive query positions and source bytes are
+unchanged. `return-v1/primitive-updates.tsv` explicitly changes only
+`nested_outer_refusal`, `call_expression_refusal` and `single_result_refusal` to
+their existing javac-selected declarations. Their original statuses and targets
+are checked before applying the overlay. The current primitive corpus therefore
+has fifteen source matches and seventeen refusals, rather than the original
+twelve and twenty. The original source-only and mixed suites remain independent.
+
+Before core changes, a fresh native endpoint from
+`35936339d4449ee2ef105e895c5343539538f28c` was preserved separately. All twenty-nine
+return-source probes compiled and selected the handwritten declarations in javac.
+Exactly twelve new outer selections failed natively: eleven retained
+`OverloadNotResolved` and the singleton retained `CallNotResolved`. The two direct
+controls and all fifteen valid-source refusals already matched. All nine invalid
+fixtures were separately rejected by javac and retained their native candidates.
+These expectations were not generated from the implementation under test.
+
+Independent review then exposed parser-zero-error malformed `throws` clauses
+which the initial return implementation incorrectly used for a positive result.
+A preserved intermediate endpoint independently reproduced `Resolved` at the
+outer calls for all three added throws fixtures, while javac rejected each.
+The completed gate requires exact conservative refusal after the structural
+guard, separately from the original twelve pre-feature RED selections.
+
+### Four additional unchanged real-source sites
+
+With `--sources-jar`, the same comparator now checks eight source calls across
+all 249 checksum-pinned, unmodified Commons Lang sources. The original four
+array-element probes remain unchanged. `return-v1/real-expected.tsv` adds the
+outer `max(max(a, b), c)` / `min(min(a, b), c)` calls in `IEEE754rUtils.java`:
+use bytes 2730, 4334, 5956 and 7562 (lines 84, 139, 194 and 249). Javac selects
+the double/float two-parameter declarations at 2155..2158, 3768..3771,
+5380..5383 and 6995..6998 respectively. The comparator verifies that these
+positions are the outer calls, not the already-supported inner calls.
+
+All four outer sites were independently verified as six-candidate
+`OverloadNotResolved` results on the preserved pre-fix endpoint. Adjacent inner
+sites already selected the correct declarations. The extension improves those
+real source positions without enabling literals, fields, reference conversion,
+binary/qualified call-result typing, or primitive-array results. It is not a
+general expression typer, a full-project semantic equivalence claim, or a claim
+that the editor-preview gates are complete. Production and ordinary Cargo tests
+still require no Java executable.

@@ -201,6 +201,12 @@ Unknown expressions and unsupported competitors remain explicit. See the
 [precise contract and API change](docs/PRIMITIVE_CALLS.md). General literal,
 reference, boxing, generic, inherited and binary call selection remain open.
 
+Nested already-proved direct source calls now propagate explicit primitive scalar
+returns. Four additional real outer max/min calls are compiler-checked; the ten
+previously refused fixed queries remain refused. Parameter specificity still
+selects the callee before its return type is used. See
+[compositional proof and bounded work](docs/CALL_RETURNS.md).
+
 The next M2 gate broadens expression/type evidence without weakening these
 refusals. Couple that with stable declaration/query identity and a small real-project definition/
 hover acceptance surface before claiming IDE usability. Generic inference,

@@ -176,9 +176,9 @@ def rows(path, width):
 def load_goldens(sources):
     queries = rows(CORPUS / "queries.tsv", 6)
     targets = rows(CORPUS / "targets.tsv", 7)
-    same(len(queries), 41, "fixed query count")
-    same(len(targets), 66, "fixed candidate count")
-    same(len({q[0] for q in queries}), 41, "unique query IDs")
+    same(len(queries), 45, "fixed query count")
+    same(len(targets), 70, "fixed candidate count")
+    same(len({q[0] for q in queries}), 45, "unique query IDs")
     require({t[0] for t in targets} <= {q[0] for q in queries}, "orphan target fixture")
     for query in queries:
         identifier, path, offset, name, _, count = query
@@ -415,7 +415,7 @@ def main():
                 check_declarations(value, queries, targets, source_root, platform, sources)
             check(declarations)
             comparator_controls(declarations, check)
-            print("declarations=41 candidates=66 source_candidates=56 binary_candidates=10")
+            print("declarations=45 candidates=70 source_candidates=60 binary_candidates=10")
             print("statuses=" + json.dumps(dict(sorted(Counter(q[4] for q in queries).items()))))
             # Prove the JMOD changes real binding, not that absent Java means absent platform data.
             config["compilations"][0]["platform"] = []

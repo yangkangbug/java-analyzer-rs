@@ -20,6 +20,8 @@ A direct unqualified call can select a source method when all of these hold:
 - Arguments are explicitly typed method parameters or ordinary locals,
   parentheses around supported expressions, or primitive-array elements indexed
   by supported byte/short/char/int expressions. Array rank is preserved.
+  [Proved direct source calls](CALL_RETURNS.md) can additionally supply their
+  explicit primitive scalar return types. Legacy name-only resolution cannot.
 - Strict identity or primitive widening makes an applicable fixed-arity candidate,
   and exactly one formal vector is most specific. Selection is not based on a
   numeric conversion score, declaration order, or argument count alone.
@@ -55,7 +57,7 @@ when selection is refused. Candidates must not be opened as selected definitions
 
 ## Deliberately unsupported
 
-No literal typing, field-value typing, nested call-result typing, lambda inference,
+No literal typing, field-value typing, general call-result typing, lambda inference,
 reference conversion, boxing/unboxing, generic inference, expanded varargs,
 qualified/inherited/binary overload choice, constructor choice or full access/
 control-flow analysis is added. Resource bindings remain unknown rather than
@@ -67,14 +69,17 @@ parser recovery is not proof of valid Java.
 
 ## Evidence
 
-Seventeen native regression tests cover selection, ambiguity, unsupported cases,
+The initial primitive slice added seventeen native regression tests for selection,
+ambiguity, unsupported cases,
 known singleton contradictions, source-set visibility, snapshot isolation and
 review-discovered scope/receiver failures. Independent review checked 74 exact
 query results, including complete refusal candidate multisets and rebuilt/prepared
 parity. This is a bounded sample, not a language conformance claim.
 
-The separate compiler gate adds 12 exact source matches and 20 explicit refusals,
+The initial separate compiler gate added 12 exact source matches and 20 explicit refusals,
 plus 16 compiler-invalid cases and mutation/completeness/Object-omission controls.
+The later call-result slice explicitly reviews three now-supported outcomes while
+retaining the original fixture bytes and records. See [call-result evidence](CALL_RETURNS.md).
 It also independently analyzes all 249 unchanged pinned Commons Lang sources to
 check four IEEE754rUtils calls: double/float `max(array[j], max)` and
 `min(array[j], min)` now select their exact two-parameter declarations. The other

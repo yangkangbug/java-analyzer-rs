@@ -207,6 +207,7 @@ fn capabilities() -> Value {
         "method_argument_applicability": false,
         "limited_call_selection": {
             "source_primitive_strict_phase": true,
+            "primitive_source_call_returns": true,
             "single_source_contradiction_guard": true,
             "general_applicability": false
         },

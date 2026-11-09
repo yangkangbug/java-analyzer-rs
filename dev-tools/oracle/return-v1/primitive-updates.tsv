@@ -1,0 +1,5 @@
+# Existing query ID, original status, new status, compiler-selected target, exact new candidates.
+# Original primitive-v1 source files and expected.tsv remain unchanged.
+nested_outer_refusal	OverloadNotResolved	Resolved	pick_float@oracle.PrimitiveCalls	pick_float@oracle.PrimitiveCalls
+call_expression_refusal	OverloadNotResolved	Resolved	unknown_float@oracle.Boundaries	unknown_float@oracle.Boundaries
+single_result_refusal	CallNotResolved	Resolved	single_plain@oracle.SingletonCalls	single_plain@oracle.SingletonCalls

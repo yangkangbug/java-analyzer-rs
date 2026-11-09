@@ -17,7 +17,9 @@ query documents with JSON results. The fixed real-source and optional compiler
 gates provide bounded evidence, not a language-conformance suite. A first
 [primitive source-call proof](PRIMITIVE_CALLS.md) now improves four real project
 queries and refuses known unique-source contradictions. General call applicability
-and the remaining end-to-end gates below are still open.
+and the remaining end-to-end gates below are still open. Proven primitive
+call results now compose through nested calls; this improves definition evidence
+without closing any delivery gate by itself.
 
 ## Offline CLI preview: required acceptance
 

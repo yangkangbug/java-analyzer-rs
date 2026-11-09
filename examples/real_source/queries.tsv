@@ -40,3 +40,7 @@ q38	org/apache/commons/lang3/text/StrBuilder.java	22451	length	Resolved	1
 q39	org/apache/commons/lang3/text/StrBuilder.java	24161	length	Resolved	1
 q40	org/apache/commons/lang3/time/DurationFormatUtils.java	15062	format	Resolved	1
 q41	org/apache/commons/lang3/time/DurationFormatUtils.java	25992	format	Resolved	1
+q42	org/apache/commons/lang3/math/IEEE754rUtils.java	2730	max	Resolved	1
+q43	org/apache/commons/lang3/math/IEEE754rUtils.java	4334	max	Resolved	1
+q44	org/apache/commons/lang3/math/IEEE754rUtils.java	5956	min	Resolved	1
+q45	org/apache/commons/lang3/math/IEEE754rUtils.java	7562	min	Resolved	1

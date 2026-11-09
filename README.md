@@ -232,15 +232,16 @@ applicability proof. The scope processor is not a translation of `ClassResolverP
 
 The added public `ResolveStatus::CallNotResolved` variant requires clients with
 exhaustive matches to add a case. Public target fields are unchanged. See
-[primitive calls and compatibility](docs/PRIMITIVE_CALLS.md).
+[primitive calls and compatibility](docs/PRIMITIVE_CALLS.md) and
+[proven call-result propagation](docs/CALL_RETURNS.md).
 
 Not implemented, and not claimed:
 
 - A JDK or any classpath the caller did not add. `java.lang.String` stays
   unresolved until that source or class file is inserted.
 - General overload selection and arbitrary expression typing. The supported
-  same-class static subset uses explicit primitive locals/parameters and array
-  elements; literal arguments, boxing, reference conversions and varargs
+  same-class static subset uses explicit primitive locals/parameters, array
+  elements and scalar results of already-proved direct source calls; literal arguments, boxing, reference conversions and varargs
   expansion remain outside it.
 - Complete generic, bridge and class/interface/default-method override semantics.
   Supported mixed source/binary signatures can now match; uncertain cases refuse.

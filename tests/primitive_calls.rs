@@ -195,10 +195,10 @@ fn array_rank_element_invariance_and_index_conversion_are_required() {
 }
 
 #[test]
-fn nested_call_argument_does_not_borrow_name_navigation_return_type() {
+fn nested_call_argument_uses_a_strictly_proved_return_type() {
     let source = "class Calls { static float m(float a, float b) { return a; } static double m(double a, double b) { return a; } static void test(float a, float b, float c) { m(m(a, b), c); } }";
     selected(source, "m(a, b)", "m(float a");
-    refused(source, "m(m(a, b), c)", ResolveStatus::OverloadNotResolved, 2);
+    selected(source, "m(m(a, b), c)", "m(float a");
 }
 
 #[test]
@@ -216,7 +216,6 @@ fn singleton_unknown_applicability_is_not_a_java_error_or_a_selected_target() {
         ("Long x", "long a", "a"),
         ("float... x", "float a", "a, a"),
         ("float... x", "float a", ""),
-        ("float x", "float a", "give()"),
         ("float x", "float a", "1"),
         ("Object x", "float a", "null"),
     ] {
@@ -230,6 +229,11 @@ fn singleton_unknown_applicability_is_not_a_java_error_or_a_selected_target() {
         "m(a)",
         ResolveStatus::CallNotResolved,
         1,
+    );
+    selected(
+        "class Calls { static void m(float a) {} static float give() { return 0; } static void test() { m(give()); } }",
+        "m(give())",
+        "m(float a)",
     );
     selected("class Calls { static void m(float a) {} static void test(float a) { m(a); } }", "m(a)", "m(float a)");
     selected("class Calls { static void m() {} static void test() { m(); } }", "m();", "m()");

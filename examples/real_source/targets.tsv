@@ -65,3 +65,7 @@ q38	org/apache/commons/lang3/text/StrBuilder.java	Method	org.apache.commons.lang
 q39	org/apache/commons/lang3/text/StrBuilder.java	Method	org.apache.commons.lang3.text.StrBuilder	length	80682	80688
 q40	org/apache/commons/lang3/time/DurationFormatUtils.java	Method	org.apache.commons.lang3.time.DurationFormatUtils	format	8446	8452
 q41	org/apache/commons/lang3/time/DurationFormatUtils.java	Method	org.apache.commons.lang3.time.DurationFormatUtils	format	8446	8452
+q42	org/apache/commons/lang3/math/IEEE754rUtils.java	Method	org.apache.commons.lang3.math.IEEE754rUtils	max	2155	2158
+q43	org/apache/commons/lang3/math/IEEE754rUtils.java	Method	org.apache.commons.lang3.math.IEEE754rUtils	max	3768	3771
+q44	org/apache/commons/lang3/math/IEEE754rUtils.java	Method	org.apache.commons.lang3.math.IEEE754rUtils	min	5380	5383
+q45	org/apache/commons/lang3/math/IEEE754rUtils.java	Method	org.apache.commons.lang3.math.IEEE754rUtils	min	6995	6998

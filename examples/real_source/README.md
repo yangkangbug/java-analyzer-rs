@@ -51,12 +51,12 @@ are covered by its official Temurin distribution; it remains an external input.
 
 ## Fixed query corpus and evidence boundary
 
-`queries.tsv` pins 41 real source positions, the queried spelling, status, and
+`queries.tsv` pins 45 real source positions, the queried spelling, status, and
 target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are thirty-one resolved queries, seven explicit overload refusals, two
+There are thirty-five resolved queries, seven explicit overload refusals, two
 unsupported signature comparisons, and one unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
@@ -151,14 +151,24 @@ compiler-verified `@Override` consumer declarations, not two source-only copies.
 array-loop calls to max/min now select the exact two-parameter source method.
 An independent javac analysis over all 249 original sources confirms those
 declarations. All other 37 fixed results and candidate sets are unchanged. The
-41-query set now has 66 candidate records (56 source, ten binary). This is a
+41-query set at that stage had 66 candidate records (56 source, ten binary). This is a
 strict primitive/static/same-owner subset, not general overload selection;
 see [the eligibility and refusal contract](../../docs/PRIMITIVE_CALLS.md).
+
+## Nested call-result evidence
+
+`call-return-comparison.tsv` adds four outer max/min calls in IEEE754rUtils.
+The baseline refused all four while their inner calls already resolved. The
+compiler independently confirms the now-selected declarations. The original
+41 queries and candidate records are unchanged, including their ten refusals.
+The expanded 45-query set has 70 records (60 source, ten binary). This tests
+compositional primitive result typing, not general expressions or broader
+project coverage; see [the exact boundary](../../docs/CALL_RETURNS.md).
 
 ## Measurements
 
 Load/parse/platform decoding and one index preparation are separately timed.
-The 41-query corpus is first checked, then repeated five times by default (205
+The 45-query corpus is first checked, then repeated five times by default (225
 samples per mode). Prepared/rebuild order alternates between rounds. Latencies
 include result construction but exclude equality checks and output. p50/p95 use
 nearest rank over individual query samples, with total/min/max also reported.

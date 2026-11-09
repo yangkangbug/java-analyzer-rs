@@ -679,3 +679,42 @@ fn unique_source_contradictions_are_refused_without_platform_data() {
         assert_eq!(response["capabilities"]["limited_call_selection"]["general_applicability"], false);
     }
 }
+
+#[test]
+fn proven_nested_call_result_survives_cli_and_fresh_source_load() {
+    let f = Fixture::new();
+    // A minimal Object signature, assembled as JVMS bytes without Java tools.
+    let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+    object.extend_from_slice(b"java/lang/Object");
+    object.extend_from_slice(&[7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    f.write("platform/java/lang/Object.class", object);
+    let text = "class A { static float inner(float x) { return x; } static double inner(double x) { return x; } static void outer(float x) {} static void outer(double x) {} static void use(float x) { outer(inner(x)); } }";
+    f.write("src/A.java", text);
+    let mut manifest: Value = serde_json::from_slice(&fs::read(f.manifest()).unwrap()).unwrap();
+    manifest["compilations"][0]["classpath"] = json!([{"kind":"directory","path":"platform"}]);
+    f.write("project.json", manifest.to_string());
+    let initial = f.declaration("src/A.java", text.rfind("outer(").unwrap());
+    let query = &initial["result"]["queries"][0];
+    assert_eq!(query["status"], "Resolved");
+    assert_eq!(query["targets"].as_array().unwrap().len(), 1);
+    assert_eq!(query["targets"][0]["range"]["start_byte"], text.find("outer(float").unwrap());
+    assert_eq!(initial["capabilities"]["limited_call_selection"]["primitive_source_call_returns"], true);
+    assert_eq!(initial["capabilities"]["method_argument_applicability"], false);
+
+    // Same inner parameter signature, changed declared return: outer must change.
+    let changed = text.replace("float inner(float", "double inner(float");
+    f.write("src/A.java", &changed);
+    let after = f.declaration("src/A.java", changed.rfind("outer(").unwrap());
+    assert_eq!(after["result"]["queries"][0]["status"], "Resolved");
+    assert_eq!(
+        after["result"]["queries"][0]["targets"][0]["range"]["start_byte"],
+        changed.find("outer(double").unwrap()
+    );
+    assert_eq!(query["targets"][0]["range"]["start_byte"], text.find("outer(float").unwrap());
+
+    manifest["compilations"][0]["classpath"] = json!([]);
+    f.write("project.json", manifest.to_string());
+    let omitted = f.declaration("src/A.java", changed.rfind("outer(").unwrap());
+    assert_eq!(omitted["result"]["queries"][0]["status"], "OverloadNotResolved");
+    assert_eq!(omitted["result"]["queries"][0]["targets"].as_array().unwrap().len(), 2);
+}
