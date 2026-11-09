@@ -98,7 +98,11 @@ fn key(path: &Path) -> String {
 }
 fn query(s: &WorkspaceSnapshot, scope: &CompilationId, path: &Path, needle: &str) -> java_engine::ResolveResult {
     let text = fs::read_to_string(path).unwrap();
-    s.scope(scope).unwrap().resolve_at(&key(path), text.rfind(needle).unwrap() as u32)
+    let byte = text.rfind(needle).unwrap() as u32;
+    let fresh = s.scope(scope).unwrap().resolve_at(&key(path), byte);
+    let prepared = s.prepare();
+    assert_eq!(prepared.scope(scope).unwrap().resolve_at(&key(path), byte), fresh);
+    fresh
 }
 fn fixture() -> (WorkspaceConfig, PathBuf) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/scopes");
@@ -159,6 +163,11 @@ fn consumer_symbols_do_not_fix_dependency_superclasses_or_field_receivers() {
     assert_eq!(query(&s, &id("app", "test"), &qualified_app, "leaked").status, ResolveStatus::Unresolved);
     let text = fs::read_to_string(&app).unwrap();
     let scope = s.scope(&id("app", "test")).unwrap();
+    let prepared = s.prepare();
+    let warm = prepared.scope(&id("app", "test")).unwrap();
+    for byte in 0..=text.len() as u32 {
+        assert_eq!(warm.resolve_at(&key(&app), byte), scope.resolve_at(&key(&app), byte));
+    }
     assert_eq!(scope.resolve_at(&key(&app), text.find("leaked;").unwrap() as u32).status, ResolveStatus::Unresolved);
     for receiver in ["field", "qualified", "imported"] {
         let offset = text.find(&format!("{receiver}.leaked")).unwrap() + receiver.len() + 1;
@@ -170,6 +179,9 @@ fn edge_changes_reload_fresh_views_without_mutating_old_snapshots() {
     let (mut config, root) = fixture();
     let app = root.join("app/main/app/App.java");
     let old = WorkspaceSnapshot::load(&config).unwrap();
+    let old_prepared = old.prepare();
+    let old_byte = fs::read_to_string(&app).unwrap().rfind("value").unwrap() as u32;
+    let old_result = old_prepared.scope(&id("app", "main")).unwrap().resolve_at(&key(&app), old_byte);
     config.compilations[1].dependencies.clear();
     let removed = WorkspaceSnapshot::load(&config).unwrap();
     assert_eq!(query(&removed, &id("app", "main"), &app, "value").status, ResolveStatus::Unresolved);
@@ -182,6 +194,8 @@ fn edge_changes_reload_fresh_views_without_mutating_old_snapshots() {
     assert_eq!(query(&changed, &id("app", "main"), &app, "value").status, ResolveStatus::Resolved);
     config.compilations[1].dependencies = vec![id("absent", "main")];
     assert!(WorkspaceSnapshot::load(&config).is_err());
+    assert_eq!(old_prepared.scope(&id("app", "main")).unwrap().resolve_at(&key(&app), old_byte), old_result);
+    assert_eq!(old_result.status, ResolveStatus::Resolved);
     assert_eq!(query(&old, &id("app", "main"), &app, "value").status, ResolveStatus::Resolved);
     assert_eq!(query(&removed, &id("app", "main"), &app, "value").status, ResolveStatus::Unresolved);
 }
@@ -382,4 +396,70 @@ fn visible_source_collisions_remain_ambiguous() {
     };
     let s = WorkspaceSnapshot::load(&config).unwrap();
     assert_eq!(query(&s, &id("app", "main"), &app, "Name").status, ResolveStatus::Ambiguous);
+}
+
+#[test]
+fn prepared_workspace_matches_every_byte_in_every_scope() {
+    let (config, _) = fixture();
+    let snapshot = WorkspaceSnapshot::load(&config).unwrap();
+    let prepared = snapshot.prepare();
+    assert!(prepared.scope(&id("absent", "main")).is_none());
+    let paths: Vec<_> = snapshot
+        .compilation_ids()
+        .iter()
+        .flat_map(|id| snapshot.scope(id).unwrap().inputs().source_paths().to_vec())
+        .collect();
+    std::thread::scope(|threads| {
+        for id in snapshot.compilation_ids() {
+            let fresh = snapshot.scope(id).unwrap();
+            let warm = prepared.scope(id).unwrap();
+            assert_eq!(warm.id(), fresh.id());
+            assert_eq!(warm.source_paths(), fresh.source_paths());
+            assert_eq!(warm.inputs().source_paths(), fresh.inputs().source_paths());
+            let paths = &paths;
+            threads.spawn(move || {
+                for path in paths {
+                    let len = fs::read_to_string(path).unwrap().len();
+                    for byte in 0..=len + 1 {
+                        assert_eq!(
+                            warm.resolve_at(path, byte as u32),
+                            fresh.resolve_at(path, byte as u32),
+                            "{id:?} {path}:{byte}"
+                        );
+                    }
+                }
+                assert_eq!(warm.resolve_at("missing.java", u32::MAX), fresh.resolve_at("missing.java", u32::MAX));
+            });
+        }
+    });
+}
+
+#[test]
+#[ignore = "manual fixed-fixture measurement, not a project-scale performance budget"]
+fn repeated_workspace_queries_measurement() {
+    use std::{hint::black_box, time::Instant};
+    let (config, root) = fixture();
+    let snapshot = WorkspaceSnapshot::load(&config).unwrap();
+    let scope_id = id("app", "test");
+    let path = key(&root.join("app/test/app/AppTest.java"));
+    let byte = fs::read_to_string(&path).unwrap().rfind("value").unwrap() as u32;
+    let fresh = snapshot.scope(&scope_id).unwrap();
+    let expected = fresh.resolve_at(&path, byte);
+    assert_eq!(expected.status, ResolveStatus::Resolved);
+    let start = Instant::now();
+    for _ in 0..500 {
+        assert_eq!(black_box(fresh.resolve_at(&path, byte)), expected);
+    }
+    let rebuild = start.elapsed().as_micros();
+    let start = Instant::now();
+    let prepared = snapshot.prepare();
+    let prepare = start.elapsed().as_micros();
+    let start = Instant::now();
+    for _ in 0..500 {
+        assert_eq!(black_box(prepared.scope(&scope_id).unwrap().resolve_at(&path, byte)), expected);
+    }
+    println!(
+        "fixture=scopes scopes=5 queries=500 rebuild_us={rebuild} prepare_us={prepare} warm_us={}",
+        start.elapsed().as_micros()
+    );
 }

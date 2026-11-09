@@ -137,3 +137,76 @@ while `String` used each compilation's explicit platform input. Main could not
 query test-owned source. This process also ran under `env -i PATH=/nonexistent`.
 It validates the explicit graph contract, not Maven/Gradle or javac classpath
 conformance, JPMS rules, or a project-scale performance budget.
+
+## Prepared index and real-source follow-up
+
+Baseline: `60b7660e9c89639af988af3bbb30cda6c6e7c71b`. New prepared-project and
+prepared-workspace APIs borrow immutable inputs and retain one binder index.
+The initial contract tests failed to compile because those APIs did not exist;
+this is an API red test, not evidence of a preexisting semantic bug. Existing
+fresh-query APIs remain independent for differential checks.
+
+Direct test-only construction counters verify one index per prepared owner and
+no additional construction for repeated successful, missing, or invisible queries
+through multiple prepared scope views. Every-byte checks compare ordered results
+with fresh rebuilds, including all five fixture scopes, ambiguous results,
+owner-context dependencies, and contextual binary versions. Independent review
+rerouted 46 existing binding/class-file regressions through preparation and added
+two adversarial tests for Unicode/malformed input, extreme offsets, edits, and
+concurrent access. A separate compiler check rejected dropping a prepared
+workspace while its view was still used. The compile-fail mutation doctest is
+included in CI.
+
+Before the implementation, one release-mode run of a synthetic 200-file,
+500-query workload took 107,686 microseconds through the rebuild path. A later
+single run of the same workload measured 118,580 microseconds for rebuild queries,
+250 microseconds for preparation, and 6,969 microseconds for warm queries. The
+five-scope checked-in fixture measured 3,184 / 3 / 753 microseconds respectively
+for 500 queries. Different timing phases exclude differential-comparison work.
+These are local microbenchmark observations, not statistical estimates, memory
+measurements, project-scale latency budgets, or a promised speedup. Retained
+index records consume memory for the prepared handle's lifetime, and lookups
+still scan collections. Manual ignored tests reproduce these synthetic workloads:
+
+```sh
+cargo test --release --test prepared --locked --offline -- --ignored --nocapture
+cargo test --release --test workspace --locked --offline -- --ignored --nocapture
+```
+
+Final checks passed: **130 tests**, two intentionally ignored manual measurements,
+one compile-fail doctest, formatting, strict Clippy/rustdoc, all examples, the
+empty-environment native runtime checks, and verified Cargo packaging. No
+runtime/development dependencies were added in this slice.
+
+### Full published Commons Lang sources
+
+The optional [real-source harness](../examples/real_source/README.md) takes the
+complete Commons Lang 3.17.0 sources JAR plus the pinned platform data, verifies
+both SHA-256 hashes, extracts Java text only, and runs the prebuilt Rust analyzer
+with `PATH=/nonexistent` and no other environment variables. It does not use the
+Commons Lang binary JAR to compensate for source-analysis gaps. The harness is
+offline and does not invoke a Java tool; Python is only its optional data-preparation
+wrapper, not an analysis-core dependency.
+
+- Sources SHA-256: `5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18`.
+- All 249 published Java source files, 3,676,819 bytes, retain lossless token coverage.
+- 63 files contain 8,187 parser error nodes. These include recovery cascades, not
+  8,187 independent defects; zero errors in the other files is not a conformance proof.
+- Thirteen fixed query positions check every public target field: nine resolved,
+  two overload refusals, one unresolved method, and one unbound receiver. Every
+  prepared result exactly matches the rebuild result, including refusal cases.
+- The published archive excludes upstream tests/build inputs. This is a real
+  source-library workload, not a complete repository/build-tool acceptance test.
+
+An independent repeat of the five-round release run (65 queries per mode) measured
+load/parse 470.52 ms, one index preparation 47.51 ms, rebuild-query p50/p95
+53.54/62.36 ms and prepared-query p50/p95 5.68/12.75 ms. These differ from the first
+run recorded with the example and reinforce the measurement limits above. No
+peak-memory or edit-latency measurement is claimed.
+
+A diagnostic experiment on temporary in-memory source copies showed that removing
+only catch-parameter `final` reduced ArrayUtils parser errors from 3,041 to 54,
+ClassUtils from 444 to zero, and ObjectUtils from 429 to zero. The acceptance run
+always uses unmodified source bytes. Catch-parameter parsing/recovery is a concrete
+next priority; `switch` and multi-expression `for` headers are additional observed
+gaps. No parser behavior was silently changed as part of the index work.

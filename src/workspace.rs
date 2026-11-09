@@ -182,6 +182,14 @@ impl WorkspaceSnapshot {
         }
         Ok(Self { ids, inputs, visibility })
     }
+    /// Build one reusable index shared by all prepared compilation views.
+    /// This borrows this exact immutable snapshot; reloads require preparing the
+    /// new snapshot separately and do not change existing prepared views.
+    pub fn prepare(&self) -> PreparedWorkspace<'_> {
+        let projects = self.inputs.iter().map(ProjectSnapshot::project).collect();
+        PreparedWorkspace { workspace: self, index: crate::bind::PreparedScopedIndex::new(projects, &self.visibility) }
+    }
+
     /// IDs are returned in lexicographic project/source-set order.
     pub fn compilation_ids(&self) -> &[CompilationId] {
         &self.ids
@@ -222,5 +230,51 @@ impl<'a> CompilationScope<'a> {
     pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
         let projects: Vec<_> = self.workspace.inputs.iter().map(ProjectSnapshot::project).collect();
         crate::bind::resolve_scoped(&projects, &self.workspace.visibility, self.index, path, byte)
+    }
+}
+
+/// A workspace-wide owned binding index borrowing immutable snapshot inputs.
+///
+/// Preparing indexes all compilations once, including their separate binary
+/// linking contexts. Creating scope views and querying them reuses that index.
+/// This is not incremental invalidation, result caching, or persistent identity.
+pub struct PreparedWorkspace<'a> {
+    workspace: &'a WorkspaceSnapshot,
+    index: crate::bind::PreparedScopedIndex<'a>,
+}
+impl PreparedWorkspace<'_> {
+    /// Borrow a view of the retained index; unknown compilation IDs return None.
+    pub fn scope(&self, id: &CompilationId) -> Option<PreparedCompilationScope<'_>> {
+        self.workspace.ids.binary_search(id).ok().map(|index| PreparedCompilationScope {
+            scope: CompilationScope { workspace: self.workspace, index },
+            index: &self.index,
+        })
+    }
+}
+
+/// Lightweight compilation view borrowing a prepared workspace's shared index.
+#[derive(Clone, Copy)]
+pub struct PreparedCompilationScope<'a> {
+    scope: CompilationScope<'a>,
+    index: &'a crate::bind::PreparedScopedIndex<'a>,
+}
+impl<'a> PreparedCompilationScope<'a> {
+    pub fn id(&self) -> &'a CompilationId {
+        self.scope.id()
+    }
+    /// This compilation's own inputs, without dependency sources.
+    /// `inputs().resolve_at` is the flat, rebuilding resolver, not this prepared
+    /// graph view. Use this view's `resolve_at` for retained contextual analysis.
+    pub fn inputs(&self) -> &'a ProjectSnapshot {
+        self.scope.inputs()
+    }
+    /// Visible source paths in canonical lexicographic order.
+    pub fn source_paths(&self) -> Vec<&'a str> {
+        self.scope.source_paths()
+    }
+    /// Resolve visible source in its declaration owner's context without rebuilding.
+    /// Invisible/missing paths return Unresolved, just as in [`CompilationScope`].
+    pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
+        self.index.resolve_at(self.scope.index, path, byte)
     }
 }

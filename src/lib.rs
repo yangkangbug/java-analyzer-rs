@@ -40,8 +40,8 @@ mod project;
 mod reparse;
 mod workspace;
 pub use workspace::{
-    CompilationConfig, CompilationId, CompilationScope, WorkspaceConfig, WorkspaceLoadError, WorkspaceLoadErrorKind,
-    WorkspaceSnapshot,
+    CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope, PreparedWorkspace, WorkspaceConfig,
+    WorkspaceLoadError, WorkspaceLoadErrorKind, WorkspaceSnapshot,
 };
 
 pub use jar::{JarError, JarErrorKind, JarOptions, JmodOptions, read_jar, read_jmod};
@@ -51,7 +51,7 @@ pub use project::{
     ProjectSnapshot, ShadowedClass,
 };
 
-pub use bind::{Project, ResolveResult, ResolveStatus, Target, TargetKind};
+pub use bind::{PreparedProject, Project, ResolveResult, ResolveStatus, Target, TargetKind};
 pub use classfile::{
     Access, ClassError, ClassErrorKind, ClassSignature, MemberKind, MemberSignature, parse_class_bytes,
 };

@@ -5,6 +5,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # Empty environment: no JAVA_HOME/JDK_HOME and no executable search path.
 env -i PATH=/nonexistent "$root/target/debug/examples/project"
+# The scopes example checks prepared/rebuild equality and negative visibility.
 env -i PATH=/nonexistent "$root/target/debug/examples/scopes"
 if [ "$#" -eq 0 ]; then
     exit 0

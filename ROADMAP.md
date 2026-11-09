@@ -15,8 +15,8 @@ is a design reference, not a claim that its PSI or type system has been ported.
 
 The source started as a Java syntax/name-binding subset, not a language server.
 It has source parsing and block reparsing, source/class-file registration,
-limited name lookup, and supertype member walks. Every resolve query rebuilds
-the index. The suite includes receiver provenance and array/varargs signature regressions,
+limited name lookup, and supertype member walks. Legacy resolve queries rebuild
+the index; explicitly prepared handles reuse one immutable index. The suite includes receiver provenance and array/varargs signature regressions,
 plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It has no real-project performance budget.
 
 Missing foundations include build-tool/JDK discovery, JPMS rules, stable symbol
@@ -61,7 +61,8 @@ This does not close M1: canonical path identities are not persistent symbol IDs;
 no JDK discovery/JPMS or build-tool model exists yet. Explicit compilation-scope
 relationships are now supported below. Stable identities and scoped query
 invalidation remain the next foundation. The current snapshot rebuilds from disk,
-and the binder rebuilds its index per query; neither is incremental caching.
+and the legacy binder rebuilds its index per query. Prepared handles now retain
+one derived index; neither path implements incremental invalidation.
 
 ### Explicit platform input slice implemented
 
@@ -90,6 +91,21 @@ workspace budgets, and edge-change/old-snapshot tests now cover a checked-in
 main/test + library fixture. This is an explicit native project model, not a
 build-system importer or JPMS graph. Public targets still use path/range provenance;
 persistent symbol identity and incremental scoped queries remain unimplemented.
+
+### Prepared analysis lifetime implemented
+
+Flat projects and compilation workspaces can explicitly prepare a reusable index.
+Prepared scope views share the workspace index and preserve declaration contexts.
+Legacy rebuild queries remain an independent differential path. Shared borrowing
+prevents input mutation while a prepared handle is live; fresh snapshots require
+fresh preparation. This removes repeated index construction, not collection scans,
+archive reloads, or semantic limitations. Real-source acceptance records parser
+gaps and repeated-query observations separately from correctness tests.
+
+[Identity boundaries](docs/PREPARED_ANALYSIS.md) remain explicit: public targets are
+provenance, not persistent symbol IDs, even when their path/range values are equal.
+Stable input/declaration identities, scoped invalidation, cancellation, and measured
+project-scale memory/latency budgets remain open work.
 
 ## M2: semantic types and method applicability
 

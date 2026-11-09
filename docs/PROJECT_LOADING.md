@@ -226,7 +226,10 @@ by path alone.
 Create a fresh snapshot after changing inputs or edges, then swap it on success.
 Removing an edge affects only the fresh snapshot, not an old view. The loader is
 not an atomic filesystem view and there is no incremental dependency invalidation
-or query cache. Every query currently rebuilds the scoped index.
+or query cache. Legacy queries rebuild the scoped index. For repeated queries,
+`workspace.prepare()` retains one index shared by its prepared scope views;
+see [prepared analysis](PREPARED_ANALYSIS.md). Each new snapshot needs its own
+preparation.
 
 `CompilationScope::resolve_at` is the dependency-aware entry point.
 `CompilationScope::inputs()` exposes the local `ProjectSnapshot` for source text,

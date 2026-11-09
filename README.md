@@ -83,9 +83,13 @@ are not.
 
 `Project` holds parsed files and class files by caller-chosen path.
 `resolve_at` rebuilds the index from those inputs on every call. Nothing is
-cached between queries, so `edit`, `add_class_bytes`, `add_class_directory`,
+cached between those legacy queries, so `edit`, `add_class_bytes`, `add_class_directory`,
 and `remove_class` are visible to the next query. This rebuild is not a
-performance claim.
+performance claim. For repeated queries on unchanged inputs, `Project::prepare()`
+builds a reusable borrowed index. `WorkspaceSnapshot::prepare()` shares one index
+across prepared compilation views. See [prepared analysis](docs/PREPARED_ANALYSIS.md)
+for lifetime, memory, and identity boundaries. These handles do not perform
+incremental invalidation or add persistent symbol IDs.
 
 `add_class_bytes` parses one class file. `add_class_directory` reads `*.class`
 files under a directory and does not follow symlinks. A truncated file, a bad
@@ -321,6 +325,15 @@ test helpers and unrelated types remain unresolved. See
 [the explicit graph contract](docs/PROJECT_LOADING.md#explicit-compilation-graphs)
 for exact rules and limitations. This is not a Maven/Gradle importer, JPMS access
 model, or incremental query cache.
+
+## Real-source acceptance
+
+An optional [offline acceptance harness](examples/real_source/README.md) loads all
+249 published Commons Lang 3.17.0 Java sources plus explicitly supplied platform
+data. It checks 13 fixed query positions, reports parser gaps, and measures
+preparation separately from repeated queries. It currently exposes substantial
+parser/semantic limitations; it is not a claim of complete project support.
+No upstream source archive or JDK data is bundled, and no Java process runs.
 
 ## Later stages
 

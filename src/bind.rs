@@ -17,8 +17,8 @@
 //! A cycle is [`ResolveStatus::Cycle`]. Two members that share a name stay
 //! ambiguous or [`ResolveStatus::OverloadNotResolved`]; the first is not
 //! chosen. A source shape is not compared with a class-file descriptor
-//! ([`ResolveStatus::SignatureNotCompared`]). The index is rebuilt on every
-//! query. There is no JDK and no classpath beyond what the caller added.
+//! ([`ResolveStatus::SignatureNotCompared`]). Legacy queries rebuild the index;
+//! [`Project::prepare`] retains it for repeated queries. There is no JDK and no classpath beyond what the caller added.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -158,16 +158,50 @@ impl Project {
         self.binaries.get(origin)
     }
 
-    /// Bind the name whose range contains `byte` (half-open).
-    ///
-    /// The index is built from the current sources and class files on every
-    /// call. Nothing is cached between queries.
+    /// Prepare one immutable index for repeated half-open byte-offset queries.
+    /// The borrow prevents edits until the prepared handle is no longer used.
+    /// Targets retain path/range provenance, not stable cross-edit identities.
+    pub fn prepare(&self) -> PreparedProject<'_> {
+        PreparedProject { project: self, index: Index::build(&self.files, &self.binaries) }
+    }
+
+    /// Bind against the current inputs, rebuilding the index on each call.
     pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
         let Some(parsed) = self.files.get(path) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
         let index = Index::build(&self.files, &self.binaries);
         index.resolve(path, parsed, byte)
+    }
+}
+
+/// A reusable index borrowing the exact project inputs it describes.
+///
+/// Preparing allocates owned index records once. Queries do not rebuild the index
+/// or cache results. Drop the handle before mutating the project and prepare again.
+/// No target or internal index position is a persistent symbol identity.
+///
+/// ```compile_fail
+/// use java_engine::Project;
+/// let mut project = Project::new();
+/// project.insert("A.java", "class A {}");
+/// let prepared = project.prepare();
+/// project.insert("A.java", "class B {}");
+/// prepared.resolve_at("A.java", 6);
+/// ```
+pub struct PreparedProject<'a> {
+    project: &'a Project,
+    index: Index,
+}
+
+impl PreparedProject<'_> {
+    /// Bind the name containing `byte` using the retained index.
+    /// Missing paths and bytes outside a name return Unresolved.
+    pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
+        let Some(parsed) = self.project.file(path) else {
+            return ResolveResult::none(ResolveStatus::Unresolved);
+        };
+        self.index.resolve(path, parsed, byte)
     }
 }
 
@@ -251,6 +285,11 @@ struct FileRec {
     locals: Vec<LocalRec>,
 }
 
+#[cfg(test)]
+thread_local! {
+    static INDEX_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 struct Index {
     files: Vec<FileRec>,
     binaries: Vec<ClassRec>,
@@ -259,12 +298,16 @@ struct Index {
 
 impl Index {
     fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, ClassSignature>) -> Self {
+        #[cfg(test)]
+        INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
         let binaries = binaries.values().map(class_from_signature).collect();
         Self { files, binaries, visibility: vec![BTreeSet::from([0])] }
     }
 
     fn scoped(projects: &[&Project], visibility: &[BTreeSet<usize>]) -> Self {
+        #[cfg(test)]
+        INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let mut files = Vec::new();
         let mut binaries = Vec::new();
         for (scope, project) in projects.iter().enumerate() {
@@ -1676,4 +1719,81 @@ pub(crate) fn resolve_scoped(
         return ResolveResult::none(ResolveStatus::Unresolved);
     };
     Index::scoped(projects, visibility).resolve(path, parsed, byte)
+}
+
+/// Validated workspace inputs, indexed once with declaration-owner contexts.
+pub(crate) struct PreparedScopedIndex<'a> {
+    projects: Vec<&'a Project>,
+    index: Index,
+}
+impl<'a> PreparedScopedIndex<'a> {
+    pub(crate) fn new(projects: Vec<&'a Project>, visibility: &[BTreeSet<usize>]) -> Self {
+        let index = Index::scoped(&projects, visibility);
+        Self { projects, index }
+    }
+    pub(crate) fn resolve_at(&self, scope: usize, path: &str, byte: u32) -> ResolveResult {
+        let parsed = self.index.visibility[scope].iter().find_map(|index| self.projects[*index].file(path));
+        let Some(parsed) = parsed else {
+            return ResolveResult::none(ResolveStatus::Unresolved);
+        };
+        self.index.resolve(path, parsed, byte)
+    }
+}
+
+#[cfg(test)]
+mod prepared_tests {
+    use super::*;
+    use crate::{CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig, WorkspaceSnapshot};
+
+    #[test]
+    fn prepared_handles_build_once_and_views_never_rebuild() {
+        INDEX_BUILDS.with(|count| count.set(0));
+        let mut project = Project::new();
+        project.insert("A.java", "class A { int value; int read() { return value; } }");
+        let prepared = project.prepare();
+        assert_eq!(INDEX_BUILDS.with(|count| count.get()), 1);
+        for _ in 0..10 {
+            prepared.resolve_at("A.java", 41);
+            prepared.resolve_at("absent.java", 0);
+        }
+        assert_eq!(INDEX_BUILDS.with(|count| count.get()), 1);
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/scopes");
+        let id = CompilationId::new("app", "main");
+        let lib = CompilationId::new("lib", "main");
+        let workspace = WorkspaceSnapshot::load(&WorkspaceConfig {
+            compilations: vec![
+                CompilationConfig {
+                    id: id.clone(),
+                    inputs: ProjectConfig { source_roots: vec![root.join("app/main")], ..Default::default() },
+                    dependencies: vec![lib.clone()],
+                },
+                CompilationConfig {
+                    id: lib.clone(),
+                    inputs: ProjectConfig { source_roots: vec![root.join("lib/main")], ..Default::default() },
+                    dependencies: vec![],
+                },
+            ],
+            ..Default::default()
+        })
+        .unwrap();
+        let app_path = root.join("app/main/app/App.java").canonicalize().unwrap();
+        let lib_path = root.join("lib/main/lib/Lib.java").canonicalize().unwrap();
+        let app_path = app_path.to_str().unwrap();
+        let lib_path = lib_path.to_str().unwrap();
+        let byte =
+            workspace.scope(&id).unwrap().inputs().project().file(app_path).unwrap().text().rfind("value").unwrap()
+                as u32;
+        let prepared = workspace.prepare();
+        assert_eq!(INDEX_BUILDS.with(|count| count.get()), 2);
+        for _ in 0..10 {
+            let view = prepared.scope(&id).unwrap();
+            view.resolve_at("absent.java", 0);
+            assert_eq!(view.resolve_at(app_path, byte).status, ResolveStatus::Resolved);
+            let other = prepared.scope(&lib).unwrap();
+            assert_eq!(other.resolve_at(lib_path, 26).status, ResolveStatus::Resolved);
+            assert_eq!(other.resolve_at(app_path, byte).status, ResolveStatus::Unresolved);
+            assert!(prepared.scope(&CompilationId::new("missing", "main")).is_none());
+        }
+        assert_eq!(INDEX_BUILDS.with(|count| count.get()), 2);
+    }
 }

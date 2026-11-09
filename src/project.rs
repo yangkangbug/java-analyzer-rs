@@ -121,8 +121,8 @@ pub struct ShadowedClass {
 /// Source identities are canonical absolute UTF-8 paths, stable across reloads
 /// at the same location, not across renames. Binary identities retain their
 /// directory path or `archive!/entry` origin. This is not yet a persistent symbol
-/// ID or incremental query database. Resolution uses the existing binder and
-/// still rebuilds its index per query.
+/// ID or incremental query database. Legacy resolution rebuilds the binder index
+/// per query; `snapshot.project().prepare()` retains one index for repeated queries.
 #[derive(Clone, Debug)]
 pub struct ProjectSnapshot {
     project: Project,
