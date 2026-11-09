@@ -89,3 +89,27 @@ the project LICENSE), not its alternative LGPL license.
 | zeroize_derive | 1.5.0 | `Apache-2.0 OR MIT` | https://github.com/RustCrypto/utils |
 | zip | 9.5.0 | `MIT` | https://github.com/zip-rs/zip2 |
 | zlib-rs | 0.6.8 | `Zlib` | https://github.com/trifectatechfoundation/zlib-rs |
+
+## Optional CLI serialization dependency graph
+
+The `cli` feature enables the `java-analyzer` executable and exact-pinned
+`serde` 1.0.229 plus `serde_json` 1.0.154. Their DTOs live only in the executable;
+the core analysis model has no serialization derives or CLI dependency.
+Default library builds do not enable this feature. Registry versions, checksums
+and transitive dependencies are retained in Cargo.lock. Published license texts
+are copied unchanged under `licenses/<crate>-<version>/`.
+
+| Package | Locked version | Declared SPDX license | Upstream source |
+| --- | --- | --- | --- |
+| serde | 1.0.229 | `MIT OR Apache-2.0` | https://github.com/serde-rs/serde |
+| serde_core | 1.0.229 | `MIT OR Apache-2.0` | https://github.com/serde-rs/serde |
+| serde_derive | 1.0.229 | `MIT OR Apache-2.0` | https://github.com/serde-rs/serde |
+| serde_json | 1.0.154 | `MIT OR Apache-2.0` | https://github.com/serde-rs/json |
+| itoa | 1.0.19 | `MIT OR Apache-2.0` | https://github.com/dtolnay/itoa |
+| zmij | 1.0.23 | `MIT` | https://github.com/dtolnay/zmij |
+
+`serde_derive` also uses existing locked `proc-macro2` 1.0.107, `quote` 1.0.47,
+`syn` 3.0.9 and `unicode-ident` 1.0.27. `serde_json` also uses existing locked
+`memchr` 2.8.3. Their licenses/source records are in the table above. JSON defaults
+are retained, including the recursion limit. No unbounded-depth, arbitrary-
+precision, preserve-order, network or JVM feature is enabled by this adapter.

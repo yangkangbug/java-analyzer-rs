@@ -88,3 +88,12 @@ only for explicit acceptance checks and are not distributed with this project.
 The input manifest and docs/ACCEPTANCE_PLAN.md record their hashes, licenses and
 retained notices. Only the optional compiler comparator executes Java; these
 inputs are not production or Cargo dependencies.
+
+Optional native CLI JSON boundary:
+The opt-in `cli` feature uses serde 1.0.229 and serde_json 1.0.154, licensed
+MIT OR Apache-2.0. Their additional locked dependencies are serde_core 1.0.229,
+serde_derive 1.0.229 and itoa 1.0.19 (MIT OR Apache-2.0), plus zmij 1.0.23 (MIT).
+Published license texts are preserved in licenses/<crate>-<version>/, with
+source links and reused transitive-dependency notices in THIRD_PARTY_LICENSES.md.
+The executable's versioned JSON DTOs do not add a serialization requirement to
+the core analysis API. This feature starts no JVM or external analysis process.

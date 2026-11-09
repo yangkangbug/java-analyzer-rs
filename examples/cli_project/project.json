@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "compilations": [
+    {
+      "id": { "project": "app", "source_set": "main" },
+      "source_roots": ["app/main"],
+      "dependencies": [{ "project": "lib", "source_set": "main" }]
+    },
+    {
+      "id": { "project": "app", "source_set": "test" },
+      "source_roots": ["app/test"],
+      "dependencies": [{ "project": "app", "source_set": "main" }]
+    },
+    {
+      "id": { "project": "lib", "source_set": "main" },
+      "source_roots": ["lib/main"]
+    }
+  ]
+}

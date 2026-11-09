@@ -151,6 +151,20 @@ See [declaration boundaries](docs/DECLARATORS.md).
 
 ## M2: semantic types and method applicability
 
+### Cross-cutting experimental CLI entry
+
+The optional native executable exposes an explicit versioned compilation manifest,
+project inventory, prepared declaration-query batches and labeled parser reports.
+It does not infer Maven/Gradle models or fetch dependencies. Source targets retain
+their owning compilation and ranges; binary targets do not invent source locations.
+This provides a narrow end-to-end entry point for real-project validation, not a
+completed IDE preview. See [CLI contract](docs/CLI.md) and
+[preview acceptance gates](docs/PREVIEW_PLAN.md). Process containment, automatic
+reload, unsaved buffers, protocol positions, performance budgets and distribution
+remain needed, alongside the semantic work below.
+
+### Type-system direction
+
 Introduce types separate from spelling: primitives, arrays, declared types,
 type variables, wildcards, substitutions, null, and incomplete/error types.
 Implement namespace/access rules, expression types, conversions, constructors,

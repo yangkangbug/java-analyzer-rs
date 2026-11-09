@@ -18,15 +18,44 @@ first build; no OpenIDEA checkout, Node, Tauri, JDK, or JDT LS is required.
 ```sh
 cargo test --locked
 cargo fmt --all --check
-cargo clippy --all-targets --locked -- -D warnings
+cargo clippy --all-targets --all-features --locked -- -D warnings
 cargo run --locked --example resolve
 ```
 
-Direct dependencies are `cafebabe` 0.9.0 for class files and exact-pinned
-`zip` 9.5.0 with pure-Rust DEFLATE for archives. See [third-party notices](THIRD_PARTY_LICENSES.md).
+Default direct dependencies are `cafebabe` 0.9.0 for class files and exact-pinned
+`zip` 9.5.0 with pure-Rust DEFLATE for archives. The optional `cli` feature adds
+JSON serialization at the executable boundary. See [third-party notices](THIRD_PARTY_LICENSES.md).
 `publish = false` is intentional; this package has not been published to crates.io.
 The independent source repository is
 [yangkangbug/java-analyzer-rs](https://github.com/yangkangbug/java-analyzer-rs).
+
+### Experimental project CLI
+
+Configure explicit compilations, source roots, local dependencies and platform
+data without writing Rust. The checked-in sample includes a library and an
+application's separate main/test roots:
+
+```sh
+cargo build --locked --release --features cli --bin java-analyzer
+target/release/java-analyzer inspect --manifest examples/cli_project/project.json
+target/release/java-analyzer declaration --manifest examples/cli_project/project.json --requests examples/cli_project/requests.json
+target/release/java-analyzer parser-report --manifest examples/cli_project/project.json
+```
+
+The CLI emits versioned JSON. `inspect` summarizes binary counts; add `--details`
+for the complete origin inventory under explicit output limits. A declaration
+batch shares one prepared snapshot.
+Source targets retain exact byte ranges; binary targets explicitly have no source
+range. Refused or ambiguous results remain candidates, not a guessed first match.
+Parser reports may indicate unsupported grammar rather than invalid Java.
+This is limited declaration navigation, not argument applicability, semantic
+diagnostics, a build importer or an editor language server. Inputs are local and
+explicit; no Java executable is called or JDK discovered.
+
+See the [command/configuration contract](docs/CLI.md) and
+[remaining preview gates](docs/PREVIEW_PLAN.md). Use trusted local projects:
+parser CPU/stack containment, cancellation, unsaved buffers, automatic reload,
+cross-platform release certification and performance budgets remain unfinished.
 
 ## Project boundaries
 

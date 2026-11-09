@@ -16,12 +16,15 @@ jobs:
         with:
           components: rustfmt, clippy
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo clippy --all-targets --all-features --locked -- -D warnings
       - run: cargo test --all-targets --locked
+      - run: cargo test --all-targets --all-features --locked
       - run: cargo test --doc --locked
-      - run: cargo doc --no-deps --locked
+      - run: cargo doc --no-deps --all-features --locked
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run --locked --example resolve
       - run: cargo build --examples --locked
       - run: sh scripts/check-native-runtime.sh
+      - run: cargo build --features cli --bin java-analyzer --locked
+      - run: sh scripts/check-cli-runtime.sh

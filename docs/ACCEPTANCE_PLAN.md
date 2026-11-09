@@ -4,7 +4,8 @@
 
 The default `ci` workflow runs repository tests, compile-fail documentation,
 formatting, lint, docs, examples, and the checked-in native-runtime smoke script.
-Those tests require neither a JDK nor external Java artifacts. After the pinned
+Both default-library and optional-CLI builds are tested. The executable's local
+subprocess/runtime checks also require neither a JDK nor external Java artifacts. After the pinned
 Rust toolchain and locked Cargo dependencies are available, they can run offline.
 Initial CI toolchain/dependency installation still uses the network.
 
@@ -53,10 +54,11 @@ validation/setup scripts. Linux x64 is the pinned compiler distribution's target
 Output directories must not already exist; cache entries are reverified.
 
 ```sh
-cargo build --locked --example real_source --example oracle_bindings
+cargo build --locked --features cli --bin java-analyzer --example real_source --example oracle_bindings
 python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
 python3 scripts/fetch-acceptance-inputs.py --cache /tmp/java-acceptance-cache --output /tmp/java-acceptance --include-oracle-jdk
 python3 scripts/check-real-source.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --profile debug --rounds 1
+python3 scripts/check-cli-acceptance.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --native target/debug/java-analyzer
 python3 scripts/check-semantic-oracle.py --jdk /tmp/java-acceptance/jdk --native target/debug/examples/oracle_bindings
 ```
 
@@ -65,6 +67,18 @@ directory. Omit `--include-oracle-jdk` when only corpus analysis is needed. The
 comparator downloads nothing and executes only the supplied compiler/runtime.
 Its version check is not a cryptographic verifier: use the verified extraction
 flow rather than an arbitrary ambient JDK.
+
+## Shipped executable evidence
+
+The CLI acceptance wrapper supplies the same pinned Commons Lang source and JMOD
+inputs through a versioned manifest, from a different working directory. It runs
+the actual `java-analyzer` executable with no Java environment, checks project
+inventory and labeled parser reports, and compares all 41 fixed declaration
+queries with their source/binary provenance. Missing-platform and wrong-output
+controls test the wrapper itself. These are explicit project configuration and
+interface checks, not new whole-project Java semantic-equivalence evidence.
+The harness bounds subprocess time and captured output; this does not provide
+production CLI cancellation, parser depth limits, or an editor process supervisor.
 
 ## Independent compiler evidence
 

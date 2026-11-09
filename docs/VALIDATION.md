@@ -517,3 +517,55 @@ acceptance run took 72.9 seconds, including 3,030 audit sites and 205 samples pe
 query mode. This is observed additional work, not a controlled benchmark or SLA;
 no speedup is claimed. Repeated measurements, lookup reuse/caching, cancellation
 and project-scale memory/latency gates remain needed before an interactive release.
+
+## Experimental manifest/CLI vertical entry
+
+Baseline: `68a293294135ec6ab5fbe79a0556c47e5daf2d10`. The optional `cli` feature
+adds a native executable and strict versioned JSON adapter without changing core
+analysis APIs or semantics. The first test build failed because the requested
+executable entry point was absent; this was missing-interface compile evidence,
+not a behavioral assertion against the old engine. Implementation then added
+configuration, prepared declaration batches and parser reports. Manifest/request
+paths, compilation ownership and explicit source/binary result boundaries are
+part of the public experimental contract, not a promise of full go-to-definition.
+
+Final local checks pass: 199 default Rust tests, 216 with the CLI feature (the
+same core tests plus 17 subprocess tests), one compile-fail doctest, formatting,
+strict all-feature Clippy/rustdoc, contributor examples, native source/class/JMOD
+runtime checks, 12 fetch-security tests and feature-enabled Cargo package
+verification. The optional comparator remains at 59 source matches/four refusals
+and five mixed source/binary matches/four refusals. Core APIs and analysis source
+are unchanged. Six new locked CLI-only dependencies have eleven unchanged
+upstream license files; the default feature set does not enable serialization.
+
+The shipped CLI is checked against the unchanged fixed Commons Lang inputs:
+249 source files, 3,676,819 bytes and 7,615 platform classes. All 41 fixed query
+statuses and 86 ordered candidates match, including 76 source and 10 binary
+candidate records. Binary results have no fabricated source range. Parser reports
+retain the 85 known gaps in 24 files, with exact UTF-8/UTF-16 ranges and an explicit
+non-semantic classification. Without platform data, a source target remains
+unchanged while Character becomes Unresolved with no candidates. Wrong/omitted
+output controls verify the comparator does not accept incomplete results.
+
+The CLI corpus harness uses a separate working directory, manifest-relative
+inputs, and only PATH=/nonexistent in the child environment. It downloads nothing
+and invokes no Java. Its subprocess timeout/output limits are harness safeguards,
+not production parser CPU/stack containment. A one-run debug validation observed
+approximately 3.2 seconds for inspection, 3.5 seconds for parser reporting and
+4.5 seconds for the 41-query declaration process, each including a fresh load.
+These observations are neither interactive latency budgets nor release benchmarks.
+
+An independent review passed 88 probes covering malformed configuration, numeric/document/query
+limits, visibility and declaration ownership, package-only targets, UTF-8/UTF-16
+boundaries, symlink query aliases, non-UTF-8 OS arguments and broken output pipes.
+Dynamic linkage showed libc/libgcc/loader and no JVM dependency. Syscall tracing
+was not permitted in this environment, so no syscall-level isolation is claimed.
+A capped nested-block probe completed but does not establish parser depth safety.
+Two real platform inputs across main/test contexts report 15,230 total classes
+in default inspection. Detailed inventory requires explicit `--details` and
+returns an atomic limit error above the output budget rather than truncating.
+
+This is a usable experimental command surface for trusted local inputs, not the
+completed preview gate. Process supervision/cancellation, automatic reload,
+unsaved overlays, LSP positions, full semantic diagnostics, persistent IDs,
+overload selection and cross-platform binary distribution remain unfinished.

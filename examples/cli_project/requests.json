@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "queries": [
+    {
+      "compilation": {
+        "project": "app",
+        "source_set": "main"
+      },
+      "file": "app/main/app/App.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 85
+      }
+    },
+    {
+      "compilation": {
+        "project": "app",
+        "source_set": "test"
+      },
+      "file": "app/test/app/AppTest.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 69
+      }
+    },
+    {
+      "compilation": {
+        "project": "app",
+        "source_set": "main"
+      },
+      "file": "app/main/app/App.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 102
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 # Minimal usable preview gate
 
-This is a proposed delivery gate, not an available product or completion date.
+This is a proposed delivery gate, not a completion date or a claim that every
+item below is delivered. An [experimental CLI](CLI.md) now exercises the
+configuration/declaration/report path; the hardening and editor gates remain open.
 The first vertical path is: configure an ordinary project without writing Rust,
 query a source position, receive an exact source declaration or explicit limit,
 and inspect clearly labeled parser gaps. It does not replace all JDT LS features.
@@ -10,8 +12,9 @@ and inspect clearly labeled parser gaps. It does not replace all JDT LS features
 Explicit source roots, ordered binary dependencies, platform JMOD/JAR data and
 compilation/source-set relationships already load into native immutable snapshots.
 Prepared indexes, declaration provenance, UTF-8/absolute-UTF-16 helpers and parser
-error ranges exist. The fixed real-source and optional compiler gates provide
-bounded evidence; they are not a product entry point or language-conformance suite.
+error ranges exist. The optional native CLI adds strict versioned project and
+query documents with JSON results. The fixed real-source and optional compiler
+gates provide bounded evidence, not a language-conformance suite.
 
 ## Offline CLI preview: required acceptance
 
