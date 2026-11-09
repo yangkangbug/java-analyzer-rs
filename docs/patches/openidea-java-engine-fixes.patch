@@ -1,0 +1,512 @@
+diff --git a/crates/java-engine/README.md b/crates/java-engine/README.md
+index 8124691..e040dc6 100644
+--- a/crates/java-engine/README.md
++++ b/crates/java-engine/README.md
+@@ -126,8 +126,12 @@ Access of a field or method:
+ `static` and instance are not distinguished.
+ 
+ A qualified name (`b.Foo`, `box.value`) walks the longest indexed class prefix
+-and then one member. A package prefix of an indexed class is `Package`, not a
+-type. `Type::new` is `ConstructorRefNotBound`.
++and then its members. A source field used as a receiver (`box.result.value`)
++keeps its declaration's file, imports, package, and enclosing type, including
++when the field is inherited. Access to the next member is still checked at
++the caller. Object-valued class-file field receivers are not bound yet.
++A package prefix of an indexed class is `Package`, not a type.
++`Type::new` is `ConstructorRefNotBound`.
+ 
+ Statuses that refuse to guess:
+ 
+@@ -136,7 +140,7 @@ Statuses that refuse to guess:
+ | `Resolved` | Exactly one candidate |
+ | `Unresolved` | No candidate, including a missing import target |
+ | `Ambiguous` | Two or more types or fields. The first one is not chosen |
+-| `OverloadNotResolved` | Two or more methods remain after a same-descriptor method nearer in the hierarchy hides a farther one. Descriptors are the JVM descriptor for a class file, or the source parameter list as written. The call's argument types are not compared, and the first method is not chosen |
++| `OverloadNotResolved` | Two or more methods remain after a same-descriptor method nearer in the hierarchy hides a farther one. Descriptors are the JVM descriptor for a class file, or the source parameter base names plus array dimensions (varargs add one dimension). The call's argument types are not compared, and the first method is not chosen |
+ | `SignatureNotCompared` | The name exists as both a source declaration and a class-file member, or a parameter list could not be read. Override and overload are both possible |
+ | `Cycle` | A supertype path visits a type that is already on that path |
+ | `NotDetermined` | Every candidate has contradictory access flags |
+@@ -208,7 +212,16 @@ classes, explicit and star imports, qualified names, nested members, local
+ shadowing, a `for` variable's scope, resources, overload refusal, a source
+ method hiding a superclass method with the same parameter list, a call that
+ does not bind to a class, a missing import, static imports, contradictory
+-access, and an edit that changes the next query. `tests/classfile.rs` checks
++access, and an edit that changes the next query.
++`tests/signatures.rs` checks scalar/array distinction, dimensions before and after
++parameter names, varargs equivalence, inheritance, malformed parameters, and edits.
++The shape comparison still does not perform overload selection, generic substitution,
++or source-to-binary signature comparison. Type-use annotations on array dimensions
++and typed-lambda postfix dimensions are outside this parser subset.
++`tests/receivers.rs` checks cross-file field chains, conflicting caller imports,
++same-name/offset collisions, inherited and nested field types, method calls,
++caller access checks, missing and ambiguous receiver types, and declaration
++edits. `tests/classfile.rs` checks
+ `tests/fixtures/classes/Lib.class` (JVMS §4, major 61, minor 0, assembled
+ rather than compiled by javac; `assemble_lib` must reproduce those bytes),
+ truncated input, a bad magic, a bad constant-pool tag, an unsupported version,
+diff --git a/crates/java-engine/src/bind.rs b/crates/java-engine/src/bind.rs
+index 831a31c..e5f408c 100644
+--- a/crates/java-engine/src/bind.rs
++++ b/crates/java-engine/src/bind.rs
+@@ -504,11 +504,14 @@ impl Index {
+                         self.lookup_member(class, name, call, file, byte)
+                     }
+                     TargetKind::Local | TargetKind::Parameter | TargetKind::Resource | TargetKind::Field => {
+-                        let declared = declared_of(file, target);
+-                        let Some(qual) = declared else {
++                        let Some(declaration_file) = self.files.iter().find(|source| source.path == target.path) else {
+                             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
+                         };
+-                        match self.lookup_type_name(file, &qual.parts, target.start_byte) {
++                        let Some(qual) = declared_of(declaration_file, target) else {
++                            return ResolveResult::none(ResolveStatus::ReceiverNotBound);
++                        };
++                        // Resolve the receiver type where it was declared, but check member access at the use site.
++                        match self.lookup_type_name(declaration_file, &qual.parts, target.start_byte) {
+                             TypeLookup::One(class) => self.lookup_member(class, name, call, file, byte),
+                             TypeLookup::Many(_) => ResolveResult::none(ResolveStatus::Ambiguous),
+                             TypeLookup::MissingImport | TypeLookup::None => {
+@@ -885,18 +888,33 @@ fn member_target(class: &ClassRec, member: &Member) -> Target {
+     }
+ }
+ 
+-fn declared_of(file: &FileRec, target: &Target) -> Option<QualName> {
+-    if let Some(local) = file.locals.iter().find(|local| local.start == target.start_byte && local.name == target.name)
+-    {
+-        return local.declared.clone();
++fn declared_of<'a>(file: &'a FileRec, target: &Target) -> Option<&'a QualName> {
++    if file.path != target.path {
++        return None;
+     }
+-    file.classes.iter().find_map(|class| {
+-        class
+-            .fields
++    match target.kind {
++        TargetKind::Local | TargetKind::Parameter | TargetKind::Resource => file
++            .locals
+             .iter()
+-            .find(|field| field.start == target.start_byte && field.name == target.name)
+-            .and_then(|field| field.declared.clone())
+-    })
++            .find(|local| {
++                local.kind == target.kind
++                    && local.start == target.start_byte
++                    && local.end == target.end_byte
++                    && local.name == target.name
++            })
++            .and_then(|local| local.declared.as_ref()),
++        TargetKind::Field => file
++            .classes
++            .iter()
++            .find(|class| class.dotted() == target.owner)
++            .and_then(|class| {
++                class.fields.iter().find(|field| {
++                    field.start == target.start_byte && field.end == target.end_byte && field.name == target.name
++                })
++            })
++            .and_then(|field| field.declared.as_ref()),
++        TargetKind::Class | TargetKind::Method => None,
++    }
+ }
+ 
+ fn enclosing_classes(file: &FileRec, byte: u32) -> Vec<&ClassRec> {
+@@ -1461,15 +1479,28 @@ fn source_method_shape(node: &GreenNode, start: u32) -> Shape {
+     let Some((params, params_at)) = child_kind(node, start, SyntaxKind::ParamList) else {
+         return Shape::Unknown;
+     };
++    if !crate::green::collect_errors(params).is_empty() {
++        return Shape::Unknown;
++    }
+     let mut parts = Vec::new();
+     let mut offset = params_at;
+     for child in params.children() {
+         if let Some(child) = child.as_node()
+             && child.kind() == SyntaxKind::Parameter
+         {
+-            let Some(ty) = type_dotted(child, offset).or_else(|| primitive_type(child, offset)) else {
++            let Some(mut ty) = type_dotted(child, offset).or_else(|| primitive_type(child, offset)) else {
+                 return Shape::Unknown;
+             };
++            let Some((type_node, type_at)) = child_kind(child, offset, SyntaxKind::Type) else {
++                return Shape::Unknown;
++            };
++            // Only outer dimensions count; arrays inside type arguments or annotations do not.
++            let prefix = tokens(type_node, type_at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count();
++            let suffix = tokens(child, offset)
++                .iter()
++                .filter(|token| matches!(token.0, SyntaxKind::LBracket | SyntaxKind::DotDotDot))
++                .count();
++            ty.push_str(&"[]".repeat(prefix + suffix));
+             parts.push(ty);
+         }
+         offset += child.utf8_len();
+diff --git a/crates/java-engine/src/parse.rs b/crates/java-engine/src/parse.rs
+index b62ef03..5be3258 100644
+--- a/crates/java-engine/src/parse.rs
++++ b/crates/java-engine/src/parse.rs
+@@ -602,8 +602,11 @@ impl<'a> Parser<'a> {
+         self.open(SyntaxKind::Parameter);
+         self.parse_modifier_list();
+         self.parse_type();
+-        self.eat(SyntaxKind::DotDotDot);
++        let varargs = self.eat(SyntaxKind::DotDotDot);
+         self.expect(SyntaxKind::Ident, "expected parameter name");
++        if !varargs {
++            self.parse_array_dimensions();
++        }
+         self.finish();
+     }
+ 
+@@ -619,10 +622,14 @@ impl<'a> Parser<'a> {
+         } else {
+             self.parse_type_rest(true);
+         }
++        self.parse_array_dimensions();
++        self.finish();
++    }
++
++    fn parse_array_dimensions(&mut self) {
+         while self.eat(SyntaxKind::LBracket) {
+             self.expect(SyntaxKind::RBracket, "expected ']'");
+         }
+-        self.finish();
+     }
+ 
+     fn parse_type_rest(&mut self, allow_primitive: bool) {
+diff --git a/crates/java-engine/tests/receivers.rs b/crates/java-engine/tests/receivers.rs
+new file mode 100644
+index 0000000..50d6da4
+--- /dev/null
++++ b/crates/java-engine/tests/receivers.rs
+@@ -0,0 +1,171 @@
++use java_engine::{Project, ResolveStatus, TargetKind, TextEdit};
++
++fn project(files: &[(&str, &str)]) -> Project {
++    let mut project = Project::new();
++    for (path, text) in files {
++        project.insert(*path, text);
++        assert!(project.file(path).unwrap().errors().is_empty(), "{path}");
++    }
++    project
++}
++
++fn at(text: &str, needle: &str) -> u32 {
++    text.find(needle).unwrap() as u32
++}
++
++fn assert_target(project: &Project, path: &str, needle: &str, owner: &str, kind: TargetKind) {
++    let text = project.file(path).unwrap().text();
++    let result = project.resolve_at(path, at(text, needle));
++    assert_eq!(result.status, ResolveStatus::Resolved, "{needle}: {result:?}");
++    assert_eq!(result.targets.len(), 1);
++    assert_eq!(result.targets[0].owner, owner);
++    assert_eq!(result.targets[0].kind, kind);
++}
++
++#[test]
++fn a_field_receiver_uses_the_declaration_imports_not_the_callers() {
++    let sources = project(&[
++        ("lib/Box.java", "package lib; import model.Result; public class Box { public Result result; }"),
++        ("model/Result.java", "package model; public class Result { public int value; }"),
++        ("other/Result.java", "package other; public class Result { public int value; }"),
++        (
++            "app/Use.java",
++            "package app; import other.Result; public class Use { void m(lib.Box box) { int n = box.result.value; } }",
++        ),
++    ]);
++    assert_target(&sources, "app/Use.java", "value;", "model.Result", TargetKind::Field);
++}
++
++#[test]
++fn a_same_name_and_offset_in_the_caller_cannot_supply_a_fields_type() {
++    let declaration = "package lib; public class Box { public Value value; }";
++    let caller =
++        "package app; public class Use { public Wrong value; void m(lib.Box box) { int n = box.value.leaf; } }";
++    assert_eq!(at(declaration, "value;"), at(caller, "value;"));
++    let sources = project(&[
++        ("lib/Box.java", declaration),
++        ("lib/Value.java", "package lib; public class Value { public int leaf; }"),
++        ("app/Wrong.java", "package app; public class Wrong { public int leaf; }"),
++        ("app/Use.java", caller),
++    ]);
++    assert_target(&sources, "app/Use.java", "leaf;", "lib.Value", TargetKind::Field);
++}
++
++#[test]
++fn inherited_field_receivers_keep_their_declaration_context() {
++    let sources = project(&[
++        ("lib/Base.java", "package lib; import model.Result; public class Base { public Result result; }"),
++        ("model/Result.java", "package model; public class Result { public int value; }"),
++        (
++            "app/Child.java",
++            "package app; public class Child extends lib.Base { void m() { int a = result.value; int b = this.result.value; } }",
++        ),
++    ]);
++    let text = sources.file("app/Child.java").unwrap().text();
++    for (offset, _) in text.match_indices("value;") {
++        let result = sources.resolve_at("app/Child.java", offset as u32);
++        assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
++        assert_eq!(result.targets[0].owner, "model.Result");
++    }
++}
++
++#[test]
++fn a_chain_can_cross_multiple_source_files_and_end_in_a_method() {
++    let sources = project(&[
++        ("lib/First.java", "package lib; public class First { public Second second; }"),
++        ("lib/Second.java", "package lib; public class Second { public Last last; }"),
++        ("lib/Last.java", "package lib; public class Last { public void run() {} }"),
++        ("Use.java", "public class Use { void m(lib.First first) { first.second.last.run(); } }"),
++    ]);
++    assert_target(&sources, "Use.java", "run();", "lib.Last", TargetKind::Method);
++}
++
++#[test]
++fn a_field_type_can_be_nested_in_its_declaring_class() {
++    let sources = project(&[
++        (
++            "lib/Box.java",
++            "package lib; public class Box { public Result result; public class Result { public int value; } }",
++        ),
++        ("Use.java", "public class Use { void m(lib.Box box) { int n = box.result.value; } }"),
++    ]);
++    assert_target(&sources, "Use.java", "value;", "lib.Box.Result", TargetKind::Field);
++}
++
++#[test]
++fn receiver_type_lookup_does_not_move_the_access_check_to_the_declaration() {
++    for access in ["public", "private", ""] {
++        let result_source =
++            format!("package lib; public class Result {{ {access} int value; {access} void run() {{}} }}");
++        let sources = project(&[
++            ("lib/Box.java", "package lib; public class Box { public Result result; }"),
++            ("lib/Result.java", &result_source),
++            ("Use.java", "public class Use { void m(lib.Box box) { int n = box.result.value; box.result.run(); } }"),
++        ]);
++        for needle in ["value;", "run();"] {
++            let text = sources.file("Use.java").unwrap().text();
++            let result = sources.resolve_at("Use.java", at(text, needle));
++            let expected = if access == "public" { ResolveStatus::Resolved } else { ResolveStatus::Unresolved };
++            assert_eq!(result.status, expected, "{access} {needle}: {result:?}");
++        }
++    }
++}
++
++#[test]
++fn a_missing_declaration_type_does_not_use_the_callers_same_named_type() {
++    let sources = project(&[
++        ("lib/Box.java", "package lib; import missing.Result; public class Box { public Result result; }"),
++        ("app/Result.java", "package app; public class Result { public int value; }"),
++        ("app/Use.java", "package app; public class Use { void m(lib.Box box) { int n = box.result.value; } }"),
++    ]);
++    let text = sources.file("app/Use.java").unwrap().text();
++    let result = sources.resolve_at("app/Use.java", at(text, "value;"));
++    assert_eq!(result.status, ResolveStatus::ReceiverNotBound);
++    assert!(result.targets.is_empty());
++}
++
++#[test]
++fn an_ambiguous_declaration_type_does_not_pick_a_receiver() {
++    let sources = project(&[
++        ("lib/Box.java", "package lib; import a.*; import b.*; public class Box { public Result result; }"),
++        ("a/Result.java", "package a; public class Result { public int value; }"),
++        ("b/Result.java", "package b; public class Result { public int value; }"),
++        ("Use.java", "public class Use { void m(lib.Box box) { int n = box.result.value; } }"),
++    ]);
++    let text = sources.file("Use.java").unwrap().text();
++    let result = sources.resolve_at("Use.java", at(text, "value;"));
++    assert_eq!(result.status, ResolveStatus::Ambiguous);
++    assert!(result.targets.is_empty());
++}
++
++#[test]
++fn editing_a_declaration_import_changes_the_next_chained_query() {
++    let declaration = "package lib; import left.Result; public class Box { public Result result; }";
++    let mut sources = project(&[
++        ("lib/Box.java", declaration),
++        ("left/Result.java", "package left; public class Result { public int value; }"),
++        ("right/Result.java", "package right; public class Result { public int value; }"),
++        ("Use.java", "public class Use { void m(lib.Box box) { int n = box.result.value; } }"),
++    ]);
++    assert_target(&sources, "Use.java", "value;", "left.Result", TargetKind::Field);
++    let start = at(declaration, "left.Result");
++    sources.edit("lib/Box.java", TextEdit { start_byte: start, end_byte: start + 4, insert: "right".into() }).unwrap();
++    assert_target(&sources, "Use.java", "value;", "right.Result", TargetKind::Field);
++}
++
++#[test]
++fn local_and_parameter_receivers_still_resolve_in_their_own_file() {
++    let sources = project(&[
++        ("lib/Result.java", "package lib; public class Result { public int value; }"),
++        (
++            "Use.java",
++            "import lib.Result; public class Use { void m(Result parameter) { Result local = null; int a = parameter.value; int b = local.value; } }",
++        ),
++    ]);
++    let text = sources.file("Use.java").unwrap().text();
++    for (offset, _) in text.match_indices("value;") {
++        let result = sources.resolve_at("Use.java", offset as u32);
++        assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
++        assert_eq!(result.targets[0].owner, "lib.Result");
++    }
++}
+diff --git a/crates/java-engine/tests/signatures.rs b/crates/java-engine/tests/signatures.rs
+new file mode 100644
+index 0000000..18888da
+--- /dev/null
++++ b/crates/java-engine/tests/signatures.rs
+@@ -0,0 +1,154 @@
++use java_engine::{ParsedFile, Project, ResolveStatus, TargetKind, TextEdit};
++
++fn call(source: &str) -> java_engine::ResolveResult {
++    let mut project = Project::new();
++    project.insert("Test.java", source);
++    let parsed = project.file("Test.java").unwrap();
++    assert!(parsed.errors().is_empty(), "{}\n{:?}", parsed.dump(), parsed.errors());
++    project.resolve_at("Test.java", source.rfind("m(null)").unwrap() as u32)
++}
++
++fn assert_overloads(result: java_engine::ResolveResult, count: usize) {
++    assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{result:?}");
++    assert_eq!(result.targets.len(), count);
++    assert!(result.targets.iter().all(|target| target.kind == TargetKind::Method));
++}
++
++#[test]
++fn scalar_and_array_parameters_remain_different_overloads() {
++    for (first, second) in [
++        ("int", "int[]"),
++        ("String", "String[]"),
++        ("pkg.Item", "pkg.Item[]"),
++        ("int[]", "int[][]"),
++        ("String[][]", "String[][][]"),
++    ] {
++        let source = format!("class C {{ void m({first} a) {{}} void m({second} b) {{}} void test() {{ m(null); }} }}");
++        assert_overloads(call(&source), 2);
++    }
++}
++
++#[test]
++fn an_array_method_does_not_hide_a_different_rank_in_a_superclass() {
++    for (base, child) in [("int", "int[]"), ("String[]", "String"), ("pkg.Item[]", "pkg.Item[][]")] {
++        let source = format!(
++            "class A {{ void m({base} a) {{}} }} class B extends A {{ void m({child} b) {{}} void test() {{ m(null); }} }}"
++        );
++        let result = call(&source);
++        assert_overloads(result.clone(), 2);
++        assert!(result.targets.iter().any(|target| target.owner == "A"));
++        assert!(result.targets.iter().any(|target| target.owner == "B"));
++    }
++}
++
++#[test]
++fn varargs_add_one_array_dimension_instead_of_disappearing() {
++    for (first, second) in [("int", "int..."), ("String", "String..."), ("int[]", "int[]...")] {
++        let source = format!("class C {{ void m({first} a) {{}} void m({second} b) {{}} void test() {{ m(null); }} }}");
++        assert_overloads(call(&source), 2);
++    }
++}
++
++#[test]
++fn equivalent_array_and_varargs_signatures_hide_the_farther_method() {
++    for (base, child) in [
++        ("int[]", "int..."),
++        ("int...", "int[]"),
++        ("String[][]", "String[]..."),
++        ("pkg.Item[]...", "pkg.Item[][]"),
++        ("int[][]", "int[][]"),
++    ] {
++        let source = format!(
++            "class A {{ void m({base} a) {{}} }} class B extends A {{ void m({child} b) {{}} void test() {{ m(null); }} }}"
++        );
++        let result = call(&source);
++        assert_eq!(result.status, ResolveStatus::Resolved, "{base} / {child}: {result:?}");
++        assert_eq!(result.targets.len(), 1);
++        assert_eq!(result.targets[0].owner, "B");
++    }
++}
++
++#[test]
++fn only_the_matching_array_rank_is_hidden_across_three_levels() {
++    let source = "class A { void m(int[] a) {} } class B extends A { void m(int[][] b) {} } class C extends B { void m(int... c) {} void test() { m(null); } }";
++    let result = call(source);
++    assert_overloads(result.clone(), 2);
++    assert!(result.targets.iter().any(|target| target.owner == "B"));
++    assert!(result.targets.iter().any(|target| target.owner == "C"));
++}
++
++#[test]
++fn array_rank_is_not_taken_from_generic_arguments_or_annotations() {
++    for (base, child) in [
++        ("List<String[]>", "List<String[]>[]"),
++        ("List<String[]>", "List<String>[]"),
++        ("@Tag({1, 2}) int[]", "int[][]"),
++        ("final String /* [] */ []", "String[][]"),
++    ] {
++        let source = format!(
++            "class A {{ void m({base} a) {{}} }} class B extends A {{ void m({child} b) {{}} void test() {{ m(null); }} }}"
++        );
++        assert_overloads(call(&source), 2);
++    }
++}
++
++#[test]
++fn postfix_parameter_dimensions_are_part_of_the_signature() {
++    for (base, child) in
++        [("int[] a", "int b[]"), ("String[][] a", "String[] b[]"), ("int[][] a", "int b[][]"), ("int... a", "int b[]")]
++    {
++        let source = format!(
++            "class A {{ void m({base}) {{}} }} class B extends A {{ void m({child}) {{}} void test() {{ m(null); }} }}"
++        );
++        let result = call(&source);
++        assert_eq!(result.status, ResolveStatus::Resolved, "{base} / {child}: {result:?}");
++        assert_eq!(result.targets[0].owner, "B");
++        assert_eq!(result.targets.len(), 1);
++    }
++    assert_overloads(call("class C { void m(int a) {} void m(int b[]) {} void test() { m(null); } }"), 2);
++}
++
++#[test]
++fn array_dimension_edits_change_the_next_signature_lookup() {
++    let source = "class A { void m(int[] a) {} } class B extends A { void m(int[] b) {} void test() { m(null); } }";
++    let mut project = Project::new();
++    project.insert("Test.java", source);
++    let before = project.resolve_at("Test.java", source.rfind("m(null)").unwrap() as u32);
++    assert_eq!(before.status, ResolveStatus::Resolved);
++    assert_eq!(before.targets[0].owner, "B");
++    let insert_at = (source.find("int[] b").unwrap() + "int[]".len()) as u32;
++    let edited = project
++        .edit("Test.java", TextEdit { start_byte: insert_at, end_byte: insert_at, insert: "[]".into() })
++        .unwrap();
++    assert_eq!(edited.file.root().as_ref(), ParsedFile::parse(edited.file.text()).root().as_ref());
++    let at = edited.file.text().rfind("m(null)").unwrap() as u32;
++    assert_overloads(project.resolve_at("Test.java", at), 2);
++}
++
++#[test]
++fn multiple_parameters_keep_their_order_and_individual_dimensions() {
++    let source = "class A { void m(int[] a, String b) {} } class B extends A { void m(int a, String[] b) {} void test() { m(null); } }";
++    assert_overloads(call(source), 2);
++}
++
++#[test]
++fn malformed_parameter_lists_do_not_supply_a_confident_signature() {
++    for parameter in ["int[]", "int[ value", "int... value[]"] {
++        let source = format!(
++            "class A {{ void m(int[] a) {{}} }} class B extends A {{ void m({parameter}) {{}} void test() {{ m(null); }} }}"
++        );
++        let mut project = Project::new();
++        project.insert("Test.java", &source);
++        assert!(!project.file("Test.java").unwrap().errors().is_empty());
++        let result = project.resolve_at("Test.java", source.rfind("m(null)").unwrap() as u32);
++        assert_eq!(result.status, ResolveStatus::SignatureNotCompared, "{parameter}: {result:?}");
++    }
++}
++
++#[test]
++fn same_depth_identical_array_signatures_stay_ambiguous() {
++    let source = "interface A { void m(int[] a); } interface B { void m(int... b); } abstract class C implements A, B { void test() { m(null); } }";
++    let result = call(source);
++    assert_eq!(result.status, ResolveStatus::Ambiguous, "{result:?}");
++    assert_eq!(result.targets.len(), 2);
++}
