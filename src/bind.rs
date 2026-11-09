@@ -189,6 +189,7 @@ struct Member {
 
 #[derive(Clone, Debug)]
 struct ClassRec {
+    scope: usize,
     path: String,
     package: String,
     nesting: Vec<String>,
@@ -240,6 +241,7 @@ struct LocalRec {
 
 #[derive(Clone, Debug)]
 struct FileRec {
+    scope: usize,
     path: String,
     package: String,
     singles: Vec<(String, String)>,
@@ -252,17 +254,43 @@ struct FileRec {
 struct Index {
     files: Vec<FileRec>,
     binaries: Vec<ClassRec>,
+    visibility: Vec<BTreeSet<usize>>,
 }
 
 impl Index {
     fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, ClassSignature>) -> Self {
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
         let binaries = binaries.values().map(class_from_signature).collect();
-        Self { files, binaries }
+        Self { files, binaries, visibility: vec![BTreeSet::from([0])] }
     }
 
-    fn classes(&self) -> impl Iterator<Item = &ClassRec> {
-        self.files.iter().flat_map(|file| file.classes.iter()).chain(self.binaries.iter())
+    fn scoped(projects: &[&Project], visibility: &[BTreeSet<usize>]) -> Self {
+        let mut files = Vec::new();
+        let mut binaries = Vec::new();
+        for (scope, project) in projects.iter().enumerate() {
+            for (path, parsed) in &project.files {
+                let mut file = index_file(path, parsed);
+                file.scope = scope;
+                for class in &mut file.classes {
+                    class.scope = scope;
+                }
+                files.push(file);
+            }
+            for signature in project.binaries.values() {
+                let mut class = class_from_signature(signature);
+                class.scope = scope;
+                binaries.push(class);
+            }
+        }
+        Self { files, binaries, visibility: visibility.to_vec() }
+    }
+
+    fn classes(&self, scope: usize) -> impl Iterator<Item = &ClassRec> {
+        self.files
+            .iter()
+            .filter(move |file| self.visibility[scope].contains(&file.scope))
+            .flat_map(|file| file.classes.iter())
+            .chain(self.binaries.iter().filter(move |class| class.scope == scope))
     }
 
     fn resolve(&self, path: &str, parsed: &ParsedFile, byte: u32) -> ResolveResult {
@@ -369,7 +397,7 @@ impl Index {
             return TypeLookup::One(member);
         }
         if let Some((_, full)) = file.singles.iter().find(|(simple, _)| simple == name) {
-            let imported = self.classes().filter(|class| class.dotted() == *full).collect::<Vec<_>>();
+            let imported = self.classes(file.scope).filter(|class| class.dotted() == *full).collect::<Vec<_>>();
             let same_unit = file
                 .classes
                 .iter()
@@ -386,7 +414,7 @@ impl Index {
             return if all.len() == 1 { TypeLookup::One(all[0]) } else { TypeLookup::Many(all) };
         }
         let same_package: Vec<_> = self
-            .classes()
+            .classes(file.scope)
             .filter(|class| class.package == file.package && class.nesting.len() == 1 && class.simple() == name)
             .collect();
         if same_package.len() == 1 {
@@ -400,7 +428,7 @@ impl Index {
             stars.push("java.lang".to_string());
         }
         let demanded: Vec<_> = self
-            .classes()
+            .classes(file.scope)
             .filter(|class| stars.contains(&class.package) && class.nesting.len() == 1 && class.simple() == name)
             .collect();
         match demanded.len() {
@@ -500,8 +528,9 @@ impl Index {
                 let target = &base.targets[0];
                 match target.kind {
                     TargetKind::Class => {
-                        let Some(class) =
-                            self.classes().find(|class| class.dotted() == target.owner && class.path == target.path)
+                        let Some(class) = self
+                            .classes(file.scope)
+                            .find(|class| class.dotted() == target.owner && class.path == target.path)
                         else {
                             return ResolveResult::none(ResolveStatus::Unresolved);
                         };
@@ -554,7 +583,7 @@ impl Index {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
         for length in (1..=parts.len()).rev() {
-            let found = class_by_parts(self.classes(), &parts[..length]);
+            let found = class_by_parts(self.classes(file.scope), &parts[..length]);
             if found.is_empty() {
                 continue;
             }
@@ -581,7 +610,7 @@ impl Index {
             }
             return rest;
         }
-        if is_package_prefix(self.classes(), parts) {
+        if is_package_prefix(self.classes(file.scope), parts) {
             let dotted = parts.join(".");
             return ResolveResult::one(
                 ResolveStatus::Package,
@@ -602,7 +631,7 @@ impl Index {
         if parts.len() == 1 {
             return self.simple_type(file, &parts[0], byte);
         }
-        let found = class_by_parts(self.classes(), parts);
+        let found = class_by_parts(self.classes(file.scope), parts);
         match found.len() {
             0 => TypeLookup::None,
             1 => TypeLookup::One(found[0]),
@@ -673,11 +702,11 @@ impl Index {
         &'a self,
         class: &'a ClassRec,
         depth: u32,
-        gray: &mut Vec<String>,
-        black: &mut BTreeSet<String>,
+        gray: &mut Vec<(usize, String, String)>,
+        black: &mut BTreeSet<(usize, String, String)>,
         out: &mut Vec<Step<'a>>,
     ) -> Result<(), WalkError> {
-        let name = class.dotted();
+        let name = (class.scope, class.path.clone(), class.dotted());
         if gray.iter().any(|seen| seen == &name) {
             return Err(WalkError::Cycle);
         }
@@ -737,7 +766,7 @@ impl Index {
 
     fn resolve_edge<'a>(&'a self, class: &ClassRec, parts: &[String]) -> Named<'a> {
         if class.binary {
-            return self.class_named(&parts.join("."));
+            return self.class_named(class.scope, &parts.join("."));
         }
         let Some(file) = self.files.iter().find(|file| file.path == class.path) else {
             return Named::None;
@@ -749,8 +778,8 @@ impl Index {
         }
     }
 
-    fn class_named<'a>(&'a self, dotted: &str) -> Named<'a> {
-        let found: Vec<_> = self.classes().filter(|class| class.dotted() == dotted).collect();
+    fn class_named<'a>(&'a self, scope: usize, dotted: &str) -> Named<'a> {
+        let found: Vec<_> = self.classes(scope).filter(|class| class.dotted() == dotted).collect();
         match found.len() {
             0 => Named::None,
             1 => Named::One(found[0]),
@@ -861,7 +890,7 @@ enum Shape {
 }
 
 fn same_class(left: &ClassRec, right: &ClassRec) -> bool {
-    left.path == right.path && left.dotted() == right.dotted()
+    left.scope == right.scope && left.path == right.path && left.dotted() == right.dotted()
 }
 
 struct Candidate {
@@ -1105,6 +1134,7 @@ impl LocalRec {
 
 fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
     let mut file = FileRec {
+        scope: 0,
         path: path.to_string(),
         package: String::new(),
         singles: Vec::new(),
@@ -1216,6 +1246,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         ctx.class_stack.iter().map(|index| ctx.file.classes[*index].simple().to_string()).collect::<Vec<_>>();
     nesting.push(name);
     let mut class = ClassRec {
+        scope: 0,
         path: ctx.file.path.clone(),
         package: ctx.file.package.clone(),
         nesting,
@@ -1530,6 +1561,7 @@ fn primitive_type(node: &GreenNode, start: u32) -> Option<String> {
 
 fn class_from_signature(sig: &ClassSignature) -> ClassRec {
     ClassRec {
+        scope: 0,
         path: sig.origin.clone(),
         package: sig.package.clone(),
         nesting: sig.nesting.clone(),
@@ -1629,4 +1661,19 @@ fn tokens(node: &GreenNode, start: u32) -> Vec<(SyntaxKind, u32, u32)> {
         offset += child.utf8_len();
     }
     out
+}
+
+/// Workspace-only entry point: source ownership and visibility were validated by the loader.
+pub(crate) fn resolve_scoped(
+    projects: &[&Project],
+    visibility: &[BTreeSet<usize>],
+    scope: usize,
+    path: &str,
+    byte: u32,
+) -> ResolveResult {
+    let parsed = visibility[scope].iter().find_map(|index| projects[*index].file(path));
+    let Some(parsed) = parsed else {
+        return ResolveResult::none(ResolveStatus::Unresolved);
+    };
+    Index::scoped(projects, visibility).resolve(path, parsed, byte)
 }

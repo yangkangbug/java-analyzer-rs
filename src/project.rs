@@ -129,6 +129,7 @@ pub struct ProjectSnapshot {
     source_paths: Vec<String>,
     class_origins: Vec<String>,
     shadowed_classes: Vec<ShadowedClass>,
+    pub(crate) usage: (usize, u64, u64),
 }
 
 impl ProjectSnapshot {
@@ -272,7 +273,13 @@ impl ProjectSnapshot {
                 register_class(&mut project, signature, &mut classes, &mut class_origins, &mut shadowed_classes);
             }
         }
-        Ok(Self { project, source_paths: source_paths.into_iter().collect(), class_origins, shadowed_classes })
+        Ok(Self {
+            project,
+            source_paths: source_paths.into_iter().collect(),
+            class_origins,
+            shadowed_classes,
+            usage: (budget.entries, budget.bytes, expanded_bytes),
+        })
     }
 
     pub fn source_paths(&self) -> &[String] {

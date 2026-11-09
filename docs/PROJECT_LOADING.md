@@ -131,3 +131,105 @@ application execution, and debugging are separate responsibilities.
 After `cargo build --locked --examples`, run
 `sh scripts/check-platform-runtime.sh /path/to/java.base.jmod` for the optional
 platform acceptance check with an empty environment and no executable search path.
+
+## Explicit compilation graphs
+
+`WorkspaceSnapshot` adds named source-set contexts without changing the flat
+`ProjectSnapshot` API. See `examples/scopes.rs` and `tests/fixtures/scopes/` for
+an executable, checked-in multi-project main/test fixture.
+
+```rust
+use java_engine::{CompilationConfig, CompilationId, ProjectConfig,
+                  WorkspaceConfig, WorkspaceSnapshot};
+let lib = CompilationId::new("lib", "main");
+let app = CompilationId::new("app", "main");
+let config = WorkspaceConfig {
+    compilations: vec![
+        CompilationConfig {
+            id: lib.clone(),
+            inputs: ProjectConfig::default(),
+            dependencies: vec![],
+        },
+        CompilationConfig {
+            id: app.clone(),
+            inputs: ProjectConfig::default(),
+            dependencies: vec![lib],
+        },
+    ],
+    ..Default::default()
+};
+let snapshot = WorkspaceSnapshot::load(&config)?;
+let app_scope = snapshot.scope(&app).expect("configured scope");
+assert!(app_scope.source_paths().is_empty());
+# Ok::<(), java_engine::WorkspaceLoadError>(())
+```
+
+Each compilation has a caller-assigned `(project, source_set)` identity and its
+own `ProjectConfig`. Labels are opaque: `main`, `test`, and `generated` do not
+create relationships. Each component must be nonempty and contain no whitespace.
+Explicit edges point **from consumer to dependency**. All reachable source sets
+are visible transitively, with no reverse edge. Thus `app/test -> app/main ->
+lib/main` exposes `lib/main` to tests but not `lib/test` or unrelated siblings.
+This policy is intentionally simple, not Maven/Gradle API/implementation/test
+configuration export semantics. There is no automatic importer, language-level
+selection, JDK discovery, JPMS readability/export enforcement, or output compiler.
+
+**Dependency declarations retain their own compilation context.** A reference in
+`lib/main` cannot bind to a type that exists only in `app/test`, even when the
+query is made through the app test view. Source superclass/interface names and
+source field receiver types retain the declaration's owner context, package,
+imports, and enclosing type. Access checks still use the actual caller. Missing
+inputs remain unresolved rather than borrowing consumer declarations.
+
+**Binary inputs are never exported by source edges.** Configure each compilation's
+platform/classpath explicitly, including a dependency's libraries if the consumer
+must name those libraries directly. Source inheritance can traverse a dependency's
+own binaries without making those binaries globally visible to the consumer.
+Each binary instance links in its own compilation context. Different compilations
+can select different versions of the same binary name, or use the same physical
+JAR with different superclass inputs, without changing one another's selections.
+Existing limitations, such as unbound object-valued binary field receivers and
+missing generic substitution, remain unchanged.
+
+Within a context, existing platform-first/first-binary-wins precedence and source
+collision ambiguity apply. Across visible source sets, duplicate type names also
+remain ambiguous, not edge-order overrides. One canonical source path may have
+only one owner in the entire workspace, even in disconnected compilations.
+Binary objects have internal scope-qualified identities for hierarchy walks;
+public targets still carry path/range provenance rather than persistent symbol
+IDs. If different contexts reach the same physical binary, conservative ambiguity
+may contain targets with the same public path. It is not safe to deduplicate those
+by path alone.
+
+### Ordering, errors, and bounds
+
+- IDs, loading, and visible source paths use lexicographic ordering. Compilation
+  declaration order and dependency edge order do not choose a winning source type.
+  Local binary input order still matters, as documented above.
+- Graph validation precedes filesystem reads. Duplicate/invalid IDs, unknown
+  dependencies, duplicate edges, self-edges, and longer cycles fail the load.
+  Empty workspaces and empty compilations are valid. `scope` returns `None` for an
+  unknown ID. Resolving an invisible source path returns `Unresolved`.
+- Graph caps default to 128 compilations and 1,024 explicit edges. Transitive
+  closure is iterative, with worst-case cubic graph work and quadratic storage;
+  callers raising these limits must budget accordingly.
+- Workspace aggregate caps default to 200,000 filesystem/archive entries,
+  512 MiB raw input, and 1 GiB declared archive expansion. Each local load is
+  clamped to the remaining aggregate budget as well as its `ProjectLimits`.
+  Repeated physical archives are loaded and charged separately per compilation.
+  Archive limits still include resources. There is no cross-compilation cache.
+- Graph cap failures use `WorkspaceLoadErrorKind::LimitExceeded`. Filesystem,
+  parser-input, and residual loading-budget failures use `Input` and preserve the
+  underlying `ProjectLoadError`; duplicate cross-compilation source ownership
+  uses `DuplicateSource`. All failures leave previously returned snapshots intact.
+
+Create a fresh snapshot after changing inputs or edges, then swap it on success.
+Removing an edge affects only the fresh snapshot, not an old view. The loader is
+not an atomic filesystem view and there is no incremental dependency invalidation
+or query cache. Every query currently rebuilds the scoped index.
+
+`CompilationScope::resolve_at` is the dependency-aware entry point.
+`CompilationScope::inputs()` exposes the local `ProjectSnapshot` for source text,
+class origins, and shadow reports; calling that flat snapshot's resolver does not
+include graph dependencies. Use `scope.source_paths()` for the visible set and
+`scope.inputs().source_paths()` for only locally owned sources.

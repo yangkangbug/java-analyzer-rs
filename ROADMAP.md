@@ -19,7 +19,7 @@ limited name lookup, and supertype member walks. Every resolve query rebuilds
 the index. The suite includes receiver provenance and array/varargs signature regressions,
 plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It has no real-project performance budget.
 
-Missing foundations include build-tool/JDK discovery, module graphs, stable symbol
+Missing foundations include build-tool/JDK discovery, JPMS rules, stable symbol
 IDs, type inference,
 overload applicability/selection, generic substitution, references, rename,
 completion, semantic diagnostics, and an editor/LSP adapter. A local variable
@@ -58,9 +58,9 @@ fixture resolves through inheritance, and a real Commons Lang JAR was analyzed
 with no Java executable on PATH; see docs/VALIDATION.md.
 
 This does not close M1: canonical path identities are not persistent symbol IDs;
-no JDK discovery/JPMS or build-tool model exists yet. The next coherent slice
-is compilation-scope/module relationships, followed by stable identities and
-invalidation. The current snapshot rebuilds from disk,
+no JDK discovery/JPMS or build-tool model exists yet. Explicit compilation-scope
+relationships are now supported below. Stable identities and scoped query
+invalidation remain the next foundation. The current snapshot rebuilds from disk,
 and the binder rebuilds its index per query; neither is incremental caching.
 
 ### Explicit platform input slice implemented
@@ -74,6 +74,22 @@ remain explicit. Tests resolve implicit `java.lang` types and Object members wit
 platform data and leave them unresolved when absent. No JDK binary is bundled,
 discovered, started, linked, or embedded. This is a flat class-library input,
 not JPMS resolution, jimage/ct.sym reading, or a `--release` API model.
+
+### Explicit compilation/source-set graph implemented
+
+`WorkspaceConfig` identifies each compilation by project and source-set labels,
+with explicit directed source dependencies. Reachable sources are visible
+transitively; test or unrelated roots never leak through an implicit reverse edge.
+Each compilation owns its platform/classpath inputs, with no automatic binary
+export. Source declarations and binary hierarchy instances retain their original
+compilation context, including when one physical JAR links against different
+superclass versions in different scopes.
+
+Graph validation, canonical source ownership, deterministic views, aggregate
+workspace budgets, and edge-change/old-snapshot tests now cover a checked-in
+main/test + library fixture. This is an explicit native project model, not a
+build-system importer or JPMS graph. Public targets still use path/range provenance;
+persistent symbol identity and incremental scoped queries remain unimplemented.
 
 ## M2: semantic types and method applicability
 

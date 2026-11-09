@@ -38,6 +38,11 @@ mod lex;
 mod parse;
 mod project;
 mod reparse;
+mod workspace;
+pub use workspace::{
+    CompilationConfig, CompilationId, CompilationScope, WorkspaceConfig, WorkspaceLoadError, WorkspaceLoadErrorKind,
+    WorkspaceSnapshot,
+};
 
 pub use jar::{JarError, JarErrorKind, JarOptions, JmodOptions, read_jar, read_jmod};
 

@@ -100,3 +100,40 @@ The same evidence boundary applies: this shows native analysis without a Java
 launch or runtime dependency, not a physically JVM-free host. JPMS export and
 readability rules, platform release/API compatibility, and automatic JDK discovery
 are explicitly outside this flat platform-input slice.
+
+## Compilation/source-set context follow-up
+
+Baseline: `16e42e1e824ef62d2f1bc7007c07aa44f29d843e`. The full repository suite
+now has **124 passing tests**, including ten workspace regressions. Formatting,
+strict Clippy, rustdoc, offline examples/build, package verification, and the
+empty-environment runtime script pass. The runtime script now includes the
+checked-in compilation graph example.
+
+The initial behavioral regression demonstrated that a flattened consumer project
+could resolve a dependency's missing superclass against a consumer-only class.
+The scoped implementation prevents that result. Tests additionally cover:
+
+- Main/test and sibling isolation, transitive and diamond source dependencies.
+- Declaration-context preservation for simple/imported/qualified source types,
+  inherited members, source field receivers, and contextual binary hierarchies.
+- Different class/platform versions and one physical JAR loaded into different
+  compilation contexts without cross-contamination.
+- Edge removal, old-snapshot isolation, graph validation before filesystem reads,
+  canonical source ownership, deterministic ordering, and aggregate workspace budgets.
+
+Independent Rust-only checks also exercised qualified reverse visibility, shared
+binary-superclass context, and cycle-before-I/O behavior outside the repository's
+regression harness. No blocking review finding remained.
+
+The `scopes` example reports an inherited field as resolved, library test helpers
+and unrelated source types as unresolved, and exactly three visible source files
+for `app/test -> app/main -> lib/main`. Its negative references are intentional
+editor-input tests, not a claim that the complete fixture compiles without errors.
+
+A separate local smoke test combined the same verified Commons Lang and Temurin
+artifacts above with three compilation contexts. Both app/main and app/test
+resolved inherited `StringUtils.capitalize` through the library source context,
+while `String` used each compilation's explicit platform input. Main could not
+query test-owned source. This process also ran under `env -i PATH=/nonexistent`.
+It validates the explicit graph contract, not Maven/Gradle or javac classpath
+conformance, JPMS rules, or a project-scale performance budget.

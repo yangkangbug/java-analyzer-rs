@@ -13,6 +13,7 @@ cargo test --all-targets --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --locked
 cargo run --locked --example resolve
 cargo run --locked --example project
+cargo run --locked --example scopes
 cargo build --locked --examples
 sh scripts/check-native-runtime.sh
 ```

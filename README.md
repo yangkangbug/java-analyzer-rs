@@ -214,7 +214,8 @@ a supplementary character is two UTF-16 units, and an offset inside one is
 rejected. `Project::insert`, `Project::edit`, `Project::add_class_bytes`,
 `Project::add_class_directory`, `Project::remove_class`, and
 `Project::resolve_at` are the low-level binding API. `ProjectConfig` and
-`ProjectSnapshot` provide explicit source-root and classpath loading; `read_jar`
+`ProjectSnapshot` provide explicit source-root and classpath loading.
+`WorkspaceSnapshot` adds compilation-scoped dependency views; `read_jar`
 is also available separately. Class decoding uses `cafebabe`; archive decoding
 uses `zip` with pure-Rust DEFLATE. See [dependency licenses](THIRD_PARTY_LICENSES.md)
 for the exact locked graph. No analysis dependency invokes or embeds a JVM.
@@ -292,6 +293,34 @@ The example resolves implicit `java.lang.String` and inherited `Object.toString(
 loads them before the application classpath. No JPMS exports/readability,
 JDK discovery, or `--release` compatibility is implied. The mandatory suite uses
 hand-assembled class signatures and requires no JDK artifact.
+
+## Compilation visibility
+
+`WorkspaceConfig` and `WorkspaceSnapshot` add explicit `(project, source_set)`
+contexts for main/test and multi-project analysis. For example,
+`app/test -> app/main -> lib/main` makes library production sources visible to
+application tests without exposing `lib/test` or unrelated projects.
+
+- Source dependency edges are directed and transitive. No relationship is inferred
+  from names such as `main` or `test`.
+- Each compilation supplies its own platform and binary classpath. Source edges
+  do not export JARs. Declarations and binary hierarchies keep their own compilation
+  context, so consumer/test types cannot silently fix dependency declarations.
+- Graph errors, shared source ownership, and aggregate input/expansion budgets
+  fail explicitly. Reloading changed edges creates a new snapshot; older snapshots
+  retain their original results.
+
+```sh
+cargo run --locked --example scopes
+cargo build --locked --examples
+sh scripts/check-native-runtime.sh
+```
+
+The checked-in fixture demonstrates an inherited field resolving while library
+test helpers and unrelated types remain unresolved. See
+[the explicit graph contract](docs/PROJECT_LOADING.md#explicit-compilation-graphs)
+for exact rules and limitations. This is not a Maven/Gradle importer, JPMS access
+model, or incremental query cache.
 
 ## Later stages
 
