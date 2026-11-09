@@ -54,12 +54,93 @@ def compare(expected, queries, declarations, javac, native):
             assert (npath, nkind, nname, int(nstart), int(nend)) == (path, kinds[jkind], name, start, end), f"{query}: native target differs: {targets}"
             expected_owner = "" if jkind in ("PARAMETER", "LOCAL_VARIABLE") else jowner
             assert nowner == expected_owner, f"{query}: native owner differs"
-        elif status == "OverloadNotResolved":
+        elif status in ("OverloadNotResolved", "SignatureNotCompared"):
             assert int(count) >= 2, f"{query}: overload candidates missing"
         elif status in ("ReceiverNotBound", "Unresolved"):
             assert int(count) == 0, f"{query}: unsupported receiver fabricated target"
         else:
             raise AssertionError(f"unrecognized expectation status: {status}")
+
+
+def mixed_suite(jdk, native_binary, env, work, helper, empty):
+    """Compile dependencies only; compare consumer source declarations over binaries."""
+    root = ORACLE / "mixed-v1"
+    dependency_files = ("dep/Base.java", "dep/Generic.java", "dep/Payload.java", "other/Payload.java")
+    source_files = ("app/Use.java", "app/GenericUse.java")
+    for directory, files in (("dependency", dependency_files), ("source", source_files)):
+        assert sorted(p.relative_to(root / directory).as_posix()
+                      for p in (root / directory).rglob("*.java")) == sorted(files)
+    binaries = work / "dependency-classes"
+    binaries.mkdir()
+    run([jdk / "bin/javac", "--release", "21", "-proc:none", "-implicit:none",
+         "-encoding", "UTF-8", "-classpath", empty, "-sourcepath", empty,
+         "-d", binaries, *[root / "dependency" / p for p in dependency_files]], env)
+    assert sorted(p.relative_to(binaries).as_posix() for p in binaries.rglob("*.*")) == \
+        sorted(p.replace(".java", ".class") for p in dependency_files), "binary inventory differs"
+    declarations, queries = {}, {}
+    requests = [f"F\t{path}" for path in source_files]
+    for path in source_files:
+        source = (root / "source" / path).read_bytes()
+        source.decode("utf-8")
+        matches = list(MARKER.finditer(source))
+        assert source.count(b"/*D:") + source.count(b"/*Q:") == len(matches)
+        for match in matches:
+            kind, identity, name = [part.decode() for part in match.groups()]
+            destination = declarations if kind == "D" else queries
+            assert identity not in destination
+            destination[identity] = (path, match.start(3), match.end(3), name)
+            if kind == "Q":
+                requests.append(f"Q\t{identity}\t{path}\t{match.start(3)}")
+    expected = {}
+    for line in (root / "expected.tsv").read_text().splitlines():
+        identity, status, target = line.split("\t")
+        assert identity not in expected and target in declarations
+        expected[identity] = (status, target)
+    request = work / "mixed-requests.tsv"
+    request.write_text("\n".join(requests) + "\n")
+    javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                         root / "source", request, binaries, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, binaries], env).stdout)
+    for query in expected:
+        print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
+    compare(expected, queries, declarations, javac, native)
+    # Refusal candidates must be precisely this source declaration and inherited
+    # binary declaration, not merely any two same-name targets.
+    for query, (status, target) in expected.items():
+        if status == "Resolved":
+            continue
+        path, start, end, name = declarations[target]
+        generic = query == "binary_generic_refusal"
+        owner = "dep.Generic" if generic else "dep.Base"
+        source_owner = "app.GenericUse" if generic else "app.Use"
+        binary_path = binaries / ("dep/Generic.class" if generic else "dep/Base.class")
+        targets = {f"{path}|Method|{source_owner}|{name}|{start}|{end}",
+                   f"{binary_path}|Method|{owner}|{name}|0|0"}
+        assert native[query][1] == "2" and set(native[query][2:]) == targets, \
+            f"{query}: wrong mixed refusal candidates: {native[query]}"
+    missing_binary = run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                          root / "source", request, empty, empty], env, False)
+    assert missing_binary.returncode == 2 and "compiler.err." in missing_binary.stderr, \
+        "compiler unexpectedly found dependency sources/binaries outside explicit classpath"
+    omitted = records(run([native_binary, root / "source", request], env).stdout)
+    assert omitted["binary_distinct_package"][0:2] == ["Resolved", "1"], \
+        "omitted-binary negative control did not change candidate evidence"
+    try:
+        compare(expected, queries, declarations, javac, omitted)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("mixed comparison accepted omitted binary inputs")
+    perturbed = dict(expected)
+    perturbed["binary_scalar_override"] = ("Resolved", "mixed_array")
+    try:
+        compare(perturbed, queries, declarations, javac, native)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("mixed comparison accepted wrong source declaration")
+    print("PASS: 5 mixed-source/binary override bindings; 4 conservative refusals; "
+          "exact refusal candidates, omitted-binary and wrong-target controls verified")
 
 
 def main():
@@ -139,6 +220,7 @@ def main():
             pass
         else:
             raise AssertionError("oracle accepted corrupted compiler declaration range")
+        mixed_suite(jdk, args.native.resolve(), env, work, classes, empty)
         # Compiler failures must never become a green empty comparison.
         for invalid in ("Broken.java", "Missing.java", "NoCallable.java"):
             request.write_text(f"F\t{invalid}\n")

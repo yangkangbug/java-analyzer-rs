@@ -86,8 +86,16 @@ passes. Missing-name/incomplete compiler failures, native missing-name behavior,
 wrong-golden and corrupted-compiler evidence, and optimized-Python rejection are
 negative controls. Both compiler stages disable annotation processing and
 implicit compilation, use UTF-8 and release 21, and use empty controlled
-classpath/sourcepath. Fixture programs are analyzed, never generated or executed.
+classpath/sourcepath. The original source-only suite and mixed-suite consumers are analyzed only.
+The mixed suite separately compiles handwritten dependencies into temporary
+class files for explicit binary input; no fixture program is ever executed.
 Only the development comparator step executes Java. The Rust endpoint does not.
+
+A separate mixed source/binary suite uses four generated dependency classes and
+two consumer sources. It checks compiler-selected consumer source overrides,
+exact native refusal candidates and binary provenance. Omitting binary inputs
+must break both compiler setup and a native candidate comparison. This is not
+compiler-selected binary-target identity or descriptor equivalence evidence.
 
 The oracle exposed a real defect: a shadowed `super` field incorrectly resolved
 to the subclass field. A conservative syntax-receiver guard now returns no target

@@ -1,0 +1,11 @@
+# query	before status	before candidates	after status	after candidates	meaning
+q11	OverloadNotResolved	3	SignatureNotCompared	3	generic signature comparison remains unsupported
+q22	SignatureNotCompared	2	OverloadNotResolved	2	distinct arity; no overload selection
+q24	OverloadNotResolved	2	SignatureNotCompared	2	generic signature comparison remains unsupported
+q33	SignatureNotCompared	2	Resolved	1	unique source override
+q34	SignatureNotCompared	2	Resolved	1	unique source override
+q35	SignatureNotCompared	2	Resolved	1	unique source override
+q36	SignatureNotCompared	2	Resolved	1	unique source override
+q37	SignatureNotCompared	2	Resolved	1	unique source override
+q38	SignatureNotCompared	2	Resolved	1	unique source override
+q39	SignatureNotCompared	2	Resolved	1	unique source override

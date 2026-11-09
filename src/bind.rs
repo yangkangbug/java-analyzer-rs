@@ -16,8 +16,9 @@
 //! files registered on [`Project`]. A missing supertype contributes nothing.
 //! A cycle is [`ResolveStatus::Cycle`]. Two members that share a name stay
 //! ambiguous or [`ResolveStatus::OverloadNotResolved`]; the first is not
-//! chosen. A source shape is not compared with a class-file descriptor
-//! ([`ResolveStatus::SignatureNotCompared`]). Legacy queries rebuild the index;
+//! chosen. Method parameters are compared by resolved type identity in their
+//! declaration context; unsupported comparisons stay
+//! [`ResolveStatus::SignatureNotCompared`]. Legacy queries rebuild the index;
 //! [`Project::prepare`] retains it for repeated queries. There is no JDK and no classpath beyond what the caller added.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -47,9 +48,8 @@ pub enum ResolveStatus {
     ConstructorRefNotBound,
     /// `extends` / `implements` visits a type that is already on the path.
     Cycle,
-    /// The name is declared in more than one place and a source parameter
-    /// list cannot be compared with a class-file descriptor, so override and
-    /// overload are both possible.
+    /// A malformed signature or an unsupported/unresolved parameter comparison
+    /// prevents distinguishing same-signature inheritance from overloads.
     SignatureNotCompared,
     /// The only candidates have contradictory access flags.
     NotDetermined,
@@ -235,6 +235,8 @@ struct ClassRec {
     super_parts: Option<Vec<String>>,
     interface_parts: Vec<Vec<String>>,
     binary: bool,
+    is_interface: bool,
+    type_variables: Vec<String>,
     fields: Vec<Member>,
     methods: Vec<Member>,
 }
@@ -694,6 +696,120 @@ impl Index {
         }
     }
 
+    fn method_signature(&self, owner: &ClassRec, member: &Member) -> Option<MethodIdentity> {
+        match &member.shape {
+            Shape::Unknown => None,
+            Shape::Binary { descriptor, generic } => {
+                let parameters = descriptor_parameters(descriptor)?;
+                Some(MethodIdentity {
+                    generic: *generic,
+                    parameters: parameters
+                        .into_iter()
+                        .map(|parameter| {
+                            if *generic {
+                                return None;
+                            }
+                            let base = parameter.primitive.map(TypeBase::Primitive);
+                            let base =
+                                base.or_else(|| match self.class_named(owner.scope, &parameter.name.join(".")) {
+                                    Named::One(class) => Some(TypeBase::Declared(ClassIdentity::of(class))),
+                                    _ => None,
+                                })?;
+                            Some(SemanticType { base, array_rank: parameter.array_rank })
+                        })
+                        .collect(),
+                })
+            }
+            Shape::Source { parameters, variables } => {
+                let file = self.files.iter().find(|file| file.scope == owner.scope && file.path == owner.path)?;
+                Some(MethodIdentity {
+                    generic: !variables.is_empty(),
+                    parameters: parameters
+                        .iter()
+                        .map(|parameter| {
+                            if parameter.unsupported
+                                || variables.contains(&parameter.name[0])
+                                || enclosing_classes(file, member.start)
+                                    .iter()
+                                    .any(|class| class.type_variables.contains(&parameter.name[0]))
+                            {
+                                return None;
+                            }
+                            let base = parameter.primitive.map(TypeBase::Primitive);
+                            let base = base.or_else(|| {
+                                self.signature_type(file, &parameter.name, member.start)
+                                    .map(|class| TypeBase::Declared(ClassIdentity::of(class)))
+                            })?;
+                            Some(SemanticType { base, array_rank: parameter.array_rank })
+                        })
+                        .collect(),
+                })
+            }
+        }
+    }
+
+    // Resolve the leading type in its declaration scope, then member nesting.
+    // Do not reinterpret a missing explicit import as a fully qualified name.
+    fn signature_type<'a>(&'a self, file: &'a FileRec, parts: &[String], byte: u32) -> Option<&'a ClassRec> {
+        let first = parts.first()?;
+        for outer in enclosing_classes(file, byte) {
+            let nested: Vec<_> = file
+                .classes
+                .iter()
+                .filter(|inner| {
+                    inner.nesting.len() == outer.nesting.len() + 1
+                        && inner.nesting[..outer.nesting.len()] == outer.nesting[..]
+                        && inner.simple() == first
+                })
+                .collect();
+            if !nested.is_empty() {
+                return if nested.len() == 1 {
+                    self.signature_nested(file.scope, nested[0], &parts[1..])
+                } else {
+                    None
+                };
+            }
+            if outer.simple() == first {
+                return self.signature_nested(file.scope, outer, &parts[1..]);
+            }
+            // Inherited member-type lookup is not implemented. Its presence
+            // blocks fallback to a same-spelled package/import type.
+            let inherited = self.hierarchy(outer).ok()?;
+            if inherited.iter().skip(1).any(|step| {
+                self.classes(step.class.scope).any(|inner| {
+                    inner.package == step.class.package
+                        && inner.nesting.len() == step.class.nesting.len() + 1
+                        && inner.nesting[..step.class.nesting.len()] == step.class.nesting[..]
+                        && inner.simple() == first
+                })
+            }) {
+                return None;
+            }
+        }
+        let imports: BTreeSet<_> =
+            file.singles.iter().filter(|(simple, _)| simple == first).map(|(_, full)| full).collect();
+        if imports.len() > 1 {
+            return None;
+        }
+        match self.simple_type(file, first, byte) {
+            TypeLookup::One(class) => self.signature_nested(file.scope, class, &parts[1..]),
+            TypeLookup::None if parts.len() > 1 => match self.class_named(file.scope, &parts.join(".")) {
+                Named::One(class) => Some(class),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    fn signature_nested<'a>(&'a self, scope: usize, class: &'a ClassRec, rest: &[String]) -> Option<&'a ClassRec> {
+        if rest.is_empty() {
+            return Some(class);
+        }
+        match self.class_named(scope, &format!("{}.{}", class.dotted(), rest.join("."))) {
+            Named::One(class) => Some(class),
+            _ => None,
+        }
+    }
+
     fn lookup_member(&self, class: &ClassRec, name: &str, call: bool, site: &FileRec, byte: u32) -> ResolveResult {
         if call { self.lookup_methods(class, name, site, byte) } else { self.lookup_fields(class, name, site, byte) }
     }
@@ -737,7 +853,17 @@ impl Index {
                 found.push(Candidate {
                     target: member_target(step.class, member),
                     depth: step.depth,
-                    shape: member.shape.clone(),
+                    signature: if call { self.method_signature(step.class, member) } else { None },
+                    declaring: ClassIdentity::of(step.class),
+                    ancestors: if call {
+                        self.method_hierarchy(step.class)?
+                            .into_iter()
+                            .skip(1)
+                            .map(|s| ClassIdentity::of(s.class))
+                            .collect()
+                    } else {
+                        BTreeSet::new()
+                    },
                     unspecified: member.access == Access::Unspecified,
                 });
             }
@@ -749,7 +875,13 @@ impl Index {
         let mut out = Vec::new();
         let mut gray = Vec::new();
         let mut black = BTreeSet::new();
-        self.walk(start, 0, &mut gray, &mut black, &mut out)?;
+        self.walk(start, 0, false, &mut gray, &mut black, &mut out)?;
+        Ok(out)
+    }
+
+    fn method_hierarchy<'a>(&'a self, start: &'a ClassRec) -> Result<Vec<Step<'a>>, WalkError> {
+        let mut out = Vec::new();
+        self.walk(start, 0, true, &mut Vec::new(), &mut BTreeSet::new(), &mut out)?;
         Ok(out)
     }
 
@@ -757,6 +889,7 @@ impl Index {
         &'a self,
         class: &'a ClassRec,
         depth: u32,
+        method_inheritance: bool,
         gray: &mut Vec<(usize, String, String)>,
         black: &mut BTreeSet<(usize, String, String)>,
         out: &mut Vec<Step<'a>>,
@@ -771,7 +904,9 @@ impl Index {
         gray.push(name);
         out.push(Step { class, depth });
         let mut edges = Vec::new();
-        if let Some(super_parts) = &class.super_parts {
+        if let Some(super_parts) = &class.super_parts
+            && !(method_inheritance && class.is_interface)
+        {
             edges.push(super_parts.clone());
         }
         edges.extend(class.interface_parts.iter().cloned());
@@ -781,7 +916,7 @@ impl Index {
                 Named::Many(classes) => {
                     return Err(WalkError::Ambiguous(classes.into_iter().map(ClassRec::target).collect()));
                 }
-                Named::One(next) => self.walk(next, depth + 1, gray, black, out)?,
+                Named::One(next) => self.walk(next, depth + 1, method_inheritance, gray, black, out)?,
             }
         }
         gray.pop();
@@ -888,46 +1023,49 @@ fn select_methods(found: Vec<Candidate>) -> ResolveResult {
         );
     }
     let found: Vec<_> = found.into_iter().filter(|candidate| !candidate.unspecified).collect();
-    if found.iter().any(|candidate| candidate.shape == Shape::Unknown) {
+    if found.iter().any(|candidate| candidate.signature.is_none()) {
         return ResolveResult::many(
             ResolveStatus::SignatureNotCompared,
             found.into_iter().map(|candidate| candidate.target).collect(),
         );
     }
-    let mixes_representations = found.iter().any(|candidate| matches!(candidate.shape, Shape::Source(_)))
-        && found.iter().any(|candidate| matches!(candidate.shape, Shape::Binary(_)));
-    if mixes_representations {
-        return ResolveResult::many(
-            ResolveStatus::SignatureNotCompared,
-            found.into_iter().map(|candidate| candidate.target).collect(),
-        );
+    // A unique name is navigation, not proof of applicability or a complete type.
+    // Across declarations, only proven equality permits hiding; unknown types
+    // can still prove distinctness via arity or a different concrete parameter.
+    let mut hidden = vec![false; found.len()];
+    let mut different = false;
+    for (i, left) in found.iter().enumerate() {
+        for (j, right) in found.iter().enumerate().skip(i + 1) {
+            match compare_signatures(left.signature.as_ref().unwrap(), right.signature.as_ref().unwrap()) {
+                Comparison::Unknown => {
+                    return ResolveResult::many(
+                        ResolveStatus::SignatureNotCompared,
+                        found.into_iter().map(|candidate| candidate.target).collect(),
+                    );
+                }
+                Comparison::Different => different = true,
+                Comparison::Equal => {
+                    // Traversal distance is not an override relation: unrelated
+                    // interfaces can be reached at different depths.
+                    if left.ancestors.contains(&right.declaring) {
+                        hidden[j] = true;
+                    }
+                    if right.ancestors.contains(&left.declaring) {
+                        hidden[i] = true;
+                    }
+                }
+            }
+        }
     }
-    let mut groups: BTreeMap<String, Vec<Candidate>> = BTreeMap::new();
-    for candidate in found {
-        let key = match &candidate.shape {
-            Shape::Source(text) | Shape::Binary(text) => text.clone(),
-            Shape::Unknown => String::new(),
-        };
-        groups.entry(key).or_default().push(candidate);
-    }
-    let mut kept = Vec::new();
-    for group in groups.into_values() {
-        let min = group.iter().map(|candidate| candidate.depth).min().unwrap();
-        kept.extend(group.into_iter().filter(|candidate| candidate.depth == min));
-    }
+    let kept: Vec<_> = found.into_iter().zip(hidden).filter_map(|(c, hidden)| (!hidden).then_some(c.target)).collect();
     let status = if kept.len() == 1 {
         ResolveStatus::Resolved
-    } else if groups_one_shape(&kept) {
-        ResolveStatus::Ambiguous
-    } else {
+    } else if different {
         ResolveStatus::OverloadNotResolved
+    } else {
+        ResolveStatus::Ambiguous
     };
-    ResolveResult::many(status, kept.into_iter().map(|candidate| candidate.target).collect())
-}
-
-fn groups_one_shape(kept: &[Candidate]) -> bool {
-    let Some(first) = kept.first() else { return true };
-    kept.iter().all(|candidate| candidate.shape == first.shape)
+    ResolveResult::many(status, kept)
 }
 
 enum TypeLookup<'a> {
@@ -937,21 +1075,112 @@ enum TypeLookup<'a> {
     MissingImport,
 }
 
+// Snapshot-local declaration identity, never a persistent/public symbol ID.
+// Scope distinguishes identical binary inputs linked against different classpaths.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct ClassIdentity {
+    scope: usize,
+    path: String,
+    name: String,
+    start: u32,
+    end: u32,
+}
+impl ClassIdentity {
+    fn of(class: &ClassRec) -> Self {
+        Self {
+            scope: class.scope,
+            path: class.path.clone(),
+            name: class.dotted(),
+            start: class.name_start,
+            end: class.name_end,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Primitive {
+    Boolean,
+    Byte,
+    Char,
+    Short,
+    Int,
+    Long,
+    Float,
+    Double,
+}
+impl Primitive {
+    fn source(name: &str) -> Option<Self> {
+        Some(match name {
+            "boolean" => Self::Boolean,
+            "byte" => Self::Byte,
+            "char" => Self::Char,
+            "short" => Self::Short,
+            "int" => Self::Int,
+            "long" => Self::Long,
+            "float" => Self::Float,
+            "double" => Self::Double,
+            _ => return None,
+        })
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
+enum TypeBase {
+    Primitive(Primitive),
+    Declared(ClassIdentity),
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct SemanticType {
+    base: TypeBase,
+    array_rank: usize,
+}
+#[derive(Clone, Debug)]
+struct ParameterType {
+    name: Vec<String>,
+    primitive: Option<Primitive>,
+    array_rank: usize,
+    unsupported: bool,
+}
+#[derive(Clone, Debug)]
 enum Shape {
     Unknown,
-    Source(String),
-    Binary(String),
+    Source { parameters: Vec<ParameterType>, variables: Vec<String> },
+    Binary { descriptor: String, generic: bool },
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Comparison {
+    Equal,
+    Different,
+    Unknown,
+}
+struct MethodIdentity {
+    parameters: Vec<Option<SemanticType>>,
+    generic: bool,
+}
+fn compare_signatures(left: &MethodIdentity, right: &MethodIdentity) -> Comparison {
+    if left.parameters.len() != right.parameters.len() {
+        return Comparison::Different;
+    }
+    let mut unknown = left.generic || right.generic;
+    for (left, right) in left.parameters.iter().zip(&right.parameters) {
+        match (left, right) {
+            (Some(left), Some(right)) if left != right => return Comparison::Different,
+            (Some(_), Some(_)) => {}
+            _ => unknown = true,
+        }
+    }
+    if unknown { Comparison::Unknown } else { Comparison::Equal }
 }
 
 fn same_class(left: &ClassRec, right: &ClassRec) -> bool {
-    left.scope == right.scope && left.path == right.path && left.dotted() == right.dotted()
+    ClassIdentity::of(left) == ClassIdentity::of(right)
 }
 
 struct Candidate {
     target: Target,
     depth: u32,
-    shape: Shape,
+    signature: Option<MethodIdentity>,
+    declaring: ClassIdentity,
+    ancestors: BTreeSet<ClassIdentity>,
     unspecified: bool,
 }
 
@@ -1334,6 +1563,8 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         super_parts: None,
         interface_parts: Vec::new(),
         binary: false,
+        is_interface: node.kind() == SyntaxKind::Interface,
+        type_variables: type_variables(node, start),
         fields: Vec::new(),
         methods: Vec::new(),
     };
@@ -1596,10 +1827,6 @@ fn type_parts(node: &GreenNode, start: u32) -> Option<Vec<String>> {
     if parts.is_empty() { None } else { Some(parts) }
 }
 
-fn type_dotted(node: &GreenNode, start: u32) -> Option<String> {
-    type_parts(node, start).map(|parts| parts.join("."))
-}
-
 fn read_access(node: &GreenNode, start: u32) -> Access {
     let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) else {
         return Access::Package;
@@ -1620,13 +1847,32 @@ fn read_access(node: &GreenNode, start: u32) -> Access {
     }
 }
 
-fn source_type_shape(node: &GreenNode, start: u32) -> Shape {
-    match read_type(node, start) {
-        Some(name) => Shape::Source(name.parts.join(".")),
-        None => Shape::Unknown,
-    }
+fn source_type_shape(_node: &GreenNode, _start: u32) -> Shape {
+    // Field selection does not use method signatures.
+    Shape::Unknown
 }
 
+fn type_variables(node: &GreenNode, start: u32) -> Vec<String> {
+    let Some((params, at)) = child_kind(node, start, SyntaxKind::TypeParamList) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut offset = at;
+    for child in params.children() {
+        if let Some(node) = child.as_node()
+            && node.kind() == SyntaxKind::TypeParam
+            && let Some((name, _, _)) = direct_ident(node, offset)
+        {
+            out.push(name);
+        }
+        offset += child.utf8_len();
+    }
+    out
+}
+fn contains_kind(node: &GreenNode, kind: SyntaxKind) -> bool {
+    node.kind() == kind
+        || node.children().iter().filter_map(|child| child.as_node()).any(|node| contains_kind(node, kind))
+}
 fn source_method_shape(node: &GreenNode, start: u32) -> Shape {
     let Some((params, params_at)) = child_kind(node, start, SyntaxKind::ParamList) else {
         return Shape::Unknown;
@@ -1634,30 +1880,38 @@ fn source_method_shape(node: &GreenNode, start: u32) -> Shape {
     if !crate::green::collect_errors(params).is_empty() {
         return Shape::Unknown;
     }
-    let mut parts = Vec::new();
+    let mut parameters = Vec::new();
     let mut offset = params_at;
     for child in params.children() {
         if let Some(child) = child.as_node()
             && child.kind() == SyntaxKind::Parameter
         {
-            let Some(mut ty) = type_dotted(child, offset).or_else(|| primitive_type(child, offset)) else {
+            let Some(name) = type_parts(child, offset).or_else(|| primitive_type(child, offset).map(|name| vec![name]))
+            else {
                 return Shape::Unknown;
             };
-            let Some((type_node, type_at)) = child_kind(child, offset, SyntaxKind::Type) else {
+            let Some((ty, at)) = child_kind(child, offset, SyntaxKind::Type) else {
                 return Shape::Unknown;
             };
-            // Only outer dimensions count; arrays inside type arguments or annotations do not.
-            let prefix = tokens(type_node, type_at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count();
+            let prefix = tokens(ty, at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count();
             let suffix = tokens(child, offset)
                 .iter()
                 .filter(|token| matches!(token.0, SyntaxKind::LBracket | SyntaxKind::DotDotDot))
                 .count();
-            ty.push_str(&"[]".repeat(prefix + suffix));
-            parts.push(ty);
+            if name == ["void"] || prefix + suffix > 255 {
+                return Shape::Unknown;
+            }
+            let primitive = primitive_type(child, offset).as_deref().and_then(Primitive::source);
+            parameters.push(ParameterType {
+                name,
+                primitive,
+                array_rank: prefix + suffix,
+                unsupported: contains_kind(ty, SyntaxKind::TypeArgList),
+            });
         }
         offset += child.utf8_len();
     }
-    Shape::Source(format!("({})", parts.join(",")))
+    Shape::Source { parameters, variables: type_variables(node, start) }
 }
 
 fn primitive_type(node: &GreenNode, start: u32) -> Option<String> {
@@ -1676,6 +1930,84 @@ fn primitive_type(node: &GreenNode, start: u32) -> Option<String> {
     })
 }
 
+// Parse the entire JVMS method descriptor, including the discarded return.
+// This is independent of cafebabe's permissiveness and never compares raw text.
+fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
+    fn field(bytes: &[u8], at: &mut usize) -> Option<ParameterType> {
+        let mut rank = 0;
+        while bytes.get(*at) == Some(&b'[') {
+            rank += 1;
+            *at += 1;
+        }
+        if rank > 255 {
+            return None;
+        }
+        let tag = *bytes.get(*at)?;
+        *at += 1;
+        let primitive = match tag {
+            b'Z' => Some("boolean"),
+            b'B' => Some("byte"),
+            b'C' => Some("char"),
+            b'S' => Some("short"),
+            b'I' => Some("int"),
+            b'J' => Some("long"),
+            b'F' => Some("float"),
+            b'D' => Some("double"),
+            _ => None,
+        };
+        let name = if let Some(primitive) = primitive {
+            vec![primitive.to_string()]
+        } else if tag == b'L' {
+            let start = *at;
+            while *bytes.get(*at)? != b';' {
+                *at += 1;
+            }
+            let name = std::str::from_utf8(&bytes[start..*at]).ok()?;
+            // JVMS unqualified-name grammar, not Java identifier grammar.
+            if name.split('/').any(|part| part.is_empty() || part.contains(['.', ';', '['])) {
+                return None;
+            }
+            *at += 1;
+            name.replace(['/', '$'], ".").split('.').map(str::to_string).collect()
+        } else {
+            return None;
+        };
+        Some(ParameterType {
+            name,
+            primitive: primitive.and_then(Primitive::source),
+            array_rank: rank,
+            unsupported: false,
+        })
+    }
+    let bytes = descriptor.as_bytes();
+    if bytes.first() != Some(&b'(') {
+        return None;
+    }
+    let mut at = 1;
+    let mut parameters = Vec::new();
+    let mut slots = 0;
+    while bytes.get(at) != Some(&b')') {
+        let parameter = field(bytes, &mut at)?;
+        slots +=
+            if parameter.array_rank == 0 && matches!(parameter.primitive, Some(Primitive::Long | Primitive::Double)) {
+                2
+            } else {
+                1
+            };
+        if slots > 255 {
+            return None;
+        }
+        parameters.push(parameter);
+    }
+    at += 1;
+    if bytes.get(at) == Some(&b'V') {
+        at += 1;
+    } else {
+        field(bytes, &mut at)?;
+    }
+    (at == bytes.len()).then_some(parameters)
+}
+
 fn class_from_signature(sig: &ClassSignature) -> ClassRec {
     ClassRec {
         scope: 0,
@@ -1689,6 +2021,8 @@ fn class_from_signature(sig: &ClassSignature) -> ClassRec {
         super_parts: sig.super_class.as_ref().map(|name| name.split('.').map(str::to_string).collect()),
         interface_parts: sig.interfaces.iter().map(|name| name.split('.').map(str::to_string).collect()).collect(),
         binary: true,
+        is_interface: sig.is_interface,
+        type_variables: Vec::new(),
         fields: sig.fields.iter().map(|member| member_from_signature(member, TargetKind::Field)).collect(),
         methods: sig
             .methods
@@ -1707,7 +2041,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
         end: 0,
         declared: None,
         access: member.access,
-        shape: Shape::Binary(member.descriptor.clone()),
+        shape: Shape::Binary { descriptor: member.descriptor.clone(), generic: member.signature.is_some() },
     }
 }
 
@@ -1906,5 +2240,29 @@ mod declarator_tests {
                 .collect::<Vec<_>>(),
             vec![("first", 1), ("second", 0), ("third", 2)]
         );
+    }
+}
+
+#[cfg(test)]
+mod method_descriptor_tests {
+    use super::*;
+
+    #[test]
+    fn validates_complete_descriptors_and_preserves_primitive_tags() {
+        for invalid in ["", "I", "(V)V", "([V)V", "(I)", "()Vjunk", "(L;)V", "(Lx//Y;)V", "(Lx.Y;)V", "()Q", "()[V"] {
+            assert!(descriptor_parameters(invalid).is_none(), "{invalid}");
+        }
+        assert!(descriptor_parameters(&format!("({}I)V", "[".repeat(256))).is_none());
+        assert!(descriptor_parameters(&format!("({})V", "I".repeat(256))).is_none());
+        assert!(descriptor_parameters(&format!("({})V", "J".repeat(128))).is_none());
+        assert!(descriptor_parameters(&format!("({}I)V", "[".repeat(255))).is_some());
+        assert!(descriptor_parameters(&format!("({})V", "I".repeat(255))).is_some());
+        let parsed = descriptor_parameters("(ZBCSIJFD[ILint;)Ljava/lang/Absent;").unwrap();
+        assert_eq!(parsed.len(), 10);
+        assert_eq!(parsed[4].primitive, Some(Primitive::Int));
+        assert_eq!(parsed[8].array_rank, 1);
+        assert_eq!(parsed[9].primitive, None);
+        assert_eq!(parsed[9].name, ["int"]);
+        assert!(descriptor_parameters("()V").unwrap().is_empty());
     }
 }

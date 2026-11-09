@@ -90,7 +90,7 @@ fn locals_shadow_fields_and_this_still_sees_the_field() {
 #[test]
 fn overloads_stay_unpicked_and_a_source_superclass_method_is_visible() {
     let src = "class A { void m(int x) {} void m(String s) {} void inherited() {} void f() { m(1); } }\nclass B extends A { void g() { inherited(); } }\n";
-    let sources = project(&[("A.java", src)]);
+    let sources = project(&[("A.java", src), ("String.java", "class String {}")]);
     let call = sources.resolve_at("A.java", at(src, "m(1)"));
     assert_eq!(call.status, ResolveStatus::OverloadNotResolved);
     assert_eq!(call.targets.len(), 2);

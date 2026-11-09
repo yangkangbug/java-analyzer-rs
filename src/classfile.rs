@@ -64,6 +64,9 @@ pub struct ClassSignature {
     pub signature: Option<String>,
     pub major: u16,
     pub minor: u16,
+    /// True for ACC_INTERFACE. Its class-file Object superclass is not a
+    /// Java class-inheritance edge for method overriding.
+    pub is_interface: bool,
     pub access: Access,
     pub fields: Vec<MemberSignature>,
     pub methods: Vec<MemberSignature>,
@@ -184,6 +187,7 @@ fn signature_from(origin: &str, class: &cafebabe::ClassFile<'_>) -> ClassSignatu
         signature: signature_attr(&class.attributes),
         major: class.major_version,
         minor: class.minor_version,
+        is_interface: class.access_flags.contains(cafebabe::ClassAccessFlags::INTERFACE),
         access: class_access(class.access_flags),
         fields: class
             .fields

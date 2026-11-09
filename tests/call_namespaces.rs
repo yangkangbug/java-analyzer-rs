@@ -148,7 +148,7 @@ fn inherited_methods_and_overload_refusals_survive_value_collisions() {
 }
 
 #[test]
-fn classfile_methods_and_mixed_signature_refusals_survive_collisions() {
+fn classfile_methods_and_mixed_signature_overrides_survive_collisions() {
     let mut p = project("class Use extends lib.Lib { void test(int run) { /*call*/run(); int x = /*value*/run; } }");
     p.add_class_bytes("Lib.class", include_bytes!("fixtures/classes/Lib.class")).unwrap();
     let r = query(&p, "call");
@@ -159,8 +159,9 @@ fn classfile_methods_and_mixed_signature_refusals_survive_collisions() {
     target(&p, "value", TargetKind::Parameter, "run) {");
     p.insert("Use.java", "class Use extends lib.Lib { void run() {} void test(int run) { /*call*/run(); } }");
     let r = query(&p, "call");
-    assert_eq!(r.status, ResolveStatus::SignatureNotCompared);
-    assert_eq!(r.targets.len(), 2);
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets.len(), 1);
+    assert_eq!(r.targets[0].owner, "Use");
     assert!(r.targets.iter().all(|t| t.kind == TargetKind::Method));
 }
 

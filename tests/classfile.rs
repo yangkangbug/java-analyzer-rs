@@ -290,8 +290,9 @@ fn inherited_methods_do_not_pick_the_first_and_cycles_are_reported() {
     assert_eq!(field.status, ResolveStatus::Resolved, "{field:?}");
     assert_eq!(field.targets[0].owner, "app.Use");
     let run = sources.resolve_at("Use.java", at(hiding, "run();"));
-    assert_eq!(run.status, ResolveStatus::SignatureNotCompared, "{run:?}");
-    assert_eq!(run.targets.len(), 2);
+    assert_eq!(run.status, ResolveStatus::Resolved, "{run:?}");
+    assert_eq!(run.targets.len(), 1);
+    assert_eq!(run.targets[0].owner, "app.Use");
 
     let left = class_bytes("cyc/A", Some("cyc/B"), 0x0021, &[], &[], &[member(0x0001, "fromA", "()V")], None);
     let right = class_bytes("cyc/B", Some("cyc/A"), 0x0021, &[], &[], &[member(0x0001, "fromB", "()V")], None);

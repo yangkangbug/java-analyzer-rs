@@ -31,6 +31,7 @@ The independent source repository is
 ## Project boundaries
 
 - [Roadmap and acceptance gates](ROADMAP.md)
+- [Minimal runnable preview plan](docs/PREVIEW_PLAN.md)
 - [Extraction provenance](PROVENANCE.md)
 - [Migration verification](docs/MIGRATION.md)
 - [Contributor checks](CONTRIBUTING.md)
@@ -111,7 +112,11 @@ Class files are parsed by `cafebabe` 0.9.0 (see `NOTICE`). The reader keeps
 the binary name, the superclass, interfaces, field and method descriptors, and
 the raw `Signature` attribute. `$` in a binary name is treated as javac's
 nesting separator. Constructors (`<init>`) are parsed and are not selected.
-`<clinit>` is dropped. Generic signatures are stored and not instantiated.
+`<clinit>` is dropped. Generic signatures are stored and not instantiated; they
+keep unsupported comparisons explicit. `ClassSignature.is_interface` retains
+ACC_INTERFACE so its synthetic Object entry is not mistaken for an override edge.
+Code constructing this public struct literally must now supply that field.
+See [method signature identity](docs/METHOD_SIGNATURES.md).
 
 An ordinary value/name reference is searched in this order, which is the JLS
 6.5 order restricted to what this index stores:
@@ -171,9 +176,9 @@ Statuses that refuse to guess:
 | --- | --- |
 | `Resolved` | Exactly one candidate |
 | `Unresolved` | No candidate, including a missing import target |
-| `Ambiguous` | Two or more types or fields. The first one is not chosen |
-| `OverloadNotResolved` | Two or more methods remain after a same-descriptor method nearer in the hierarchy hides a farther one. Descriptors are the JVM descriptor for a class file, or the source parameter base names plus array dimensions (varargs add one dimension). The call's argument types are not compared, and the first method is not chosen |
-| `SignatureNotCompared` | The name exists as both a source declaration and a class-file member, or a parameter list could not be read. Override and overload are both possible |
+| `Ambiguous` | Conflicting types, fields or same-signature methods, including unresolved bridge duplicates. The first one is not chosen |
+| `OverloadNotResolved` | Distinct parameter signatures remain after supported type-identity comparison and justified inherited hiding. Primitive/array/declared types use the declaration context; return types do not distinguish signatures. The call's argument types are not compared |
+| `SignatureNotCompared` | A malformed signature or unsupported/unresolved type comparison prevents distinguishing inherited equal signatures from overloads. Mixed source/binary representation alone no longer causes refusal |
 | `Cycle` | A supertype path visits a type that is already on that path |
 | `NotDetermined` | Every candidate has contradictory access flags |
 | `ReceiverNotBound` | The qualifier is a value whose declared type is not an indexed class, or it is `super` |
@@ -191,8 +196,8 @@ Not implemented, and not claimed:
   unresolved until that source or class file is inserted.
 - Choosing one overload from several. A call `m(1)` with both `m()` and `m(int)`
   indexed is `OverloadNotResolved`.
-- Treating a source method and a class-file method of the same name as an
-  override. That is `SignatureNotCompared`.
+- Complete generic, bridge and class/interface/default-method override semantics.
+  Supported mixed source/binary signatures can now match; uncertain cases refuse.
 - Instantiating a `Signature` attribute or a source type argument.
 - Static imports, modules, and local classes (a class inside a method is not a
   statement in this parser).
@@ -251,8 +256,9 @@ does not bind to a class, a missing import, static imports, contradictory
 access, and an edit that changes the next query.
 `tests/signatures.rs` checks scalar/array distinction, dimensions before and after
 parameter names, varargs equivalence, inheritance, malformed parameters, and edits.
-The shape comparison still does not perform overload selection, generic substitution,
-or source-to-binary signature comparison. Type-use annotations on array dimensions
+`tests/method_identity.rs` additionally checks source/binary parameter identity,
+imports and compilation contexts, descriptors, hierarchy branches and conservative
+unsupported cases. Comparison still does not select overloads or substitute generics. Type-use annotations on array dimensions
 and typed-lambda postfix dimensions are outside this parser subset.
 `tests/receivers.rs` checks cross-file field chains, conflicting caller imports,
 same-name/offset collisions, inherited and nested field types, method calls,
@@ -358,10 +364,10 @@ analysis and default native tests do not acquire a Java dependency.
 Follow [ROADMAP.md](ROADMAP.md) for the project-level milestones. The semantic
 work below follows explicit classpath and JDK/model foundations.
 
-1. Overload selection, first by arity and then by types, including a comparison
-   of a source parameter list with a class-file descriptor once erasure is
-   known. Until then a mixed pair stays `SignatureNotCompared`.
-2. Instantiating `Signature` attributes. They are stored and unused.
+1. Argument applicability and overload selection, building on supported parameter
+   identities. Comparing declaration signatures does not choose a call target.
+2. Generic substitution and inference for source and stored `Signature` attributes;
+   unsupported generic comparisons currently remain explicit.
 3. Reference search, then one refactoring at a time.
 
 Passing the tests in this crate does not mean those stages are done.

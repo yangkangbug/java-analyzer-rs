@@ -1,4 +1,4 @@
-# Optional independent declaration-binding oracle (fixture v1)
+# Optional independent declaration-binding oracle
 
 This development tool uses a **checksum-verified Temurin 21.0.13+9 JDK**, not
 an ambient JDK. It is outside the Rust library, normal Cargo tests and production
@@ -72,14 +72,19 @@ the narrow syntax-receiver guard restores that boundary. Merely testing an unsha
 have accidentally concealed this defect. This case must not be removed or
 reclassified as a successful match to accommodate native output.
 
-The tool has a fixed nine-file inventory, validates marker/golden/output
-completeness, and rejects compiler errors. It calls only explicitly supplied
-compiler/runtime paths with argument arrays and a minimal environment. Both
-compiler stages use `-proc:none`, `-implicit:none`, UTF-8, `--release 21`, and an
-empty controlled classpath/sourcepath. The helper is compiled separately; fixture
-programs are only parsed/analyzed, never generated or run. The JDK platform API
-is available to javac, but every queried declaration is in the fixture sources;
-no platform data is implicitly loaded into the native analyzer.
+The original `fixtures-v1` suite has a fixed nine-file inventory, validates
+marker/golden/output completeness, and rejects compiler errors. All compiler
+and runtime calls use explicitly supplied paths, argument arrays, and a minimal
+environment. Compiler stages use `-proc:none`, `-implicit:none`, UTF-8, and
+`--release 21`, with controlled classpaths and sourcepaths. The helper is compiled
+separately. Original fixture sources and mixed-suite consumer sources are only
+parsed/analyzed, never generated or executed. The mixed suite described below
+additionally compiles dependency fixture sources into temporary class files as
+test inputs; those classes are never executed. The original suite uses an empty
+classpath and sourcepath; mixed consumers use only the generated dependency
+classpath and an empty sourcepath. The JDK platform API is available to javac,
+but every queried declaration is in the fixture sources; no platform data is
+implicitly loaded into the native analyzer.
 
 Scope is narrow: no overload selection proof, generic inference, JPMS, platform
 binding, full access-control, malformed-buffer semantic equivalence, or Java
@@ -121,5 +126,62 @@ The compiler element mapping and range checks are unchanged.
 After the native fix the comparator passes 59 supported declaration bindings
 and four explicit unsupported boundaries (63 valid-source probes in total),
 plus all three rejected compiler fixtures and the five no-callable refusals.
-This does not establish overload selection, binary method resolution, or general
-Java invocation legality. Binary method namespace regressions remain native tests.
+This original source-only suite does not establish overload selection, binary
+method resolution, or general Java invocation legality. Binary method namespace
+regressions remain native tests; the separate mixed suite below adds narrow
+source-over-binary override evidence.
+
+## Mixed source/class-file signature suite
+
+`mixed-v1` is a separate, fixed-inventory fixture: four handwritten dependency
+sources compile into four temporary class files; only the two consumer sources
+are registered as source inputs in either analyzer. The optional comparator uses
+the same pinned javac with `--release 21`, `-proc:none`, `-implicit:none`, UTF-8,
+and empty controlled classpath/sourcepath to generate these dependency bytes.
+It never executes fixture programs. Consumer analysis uses only that generated
+class directory as its classpath and an empty sourcepath. The native endpoint
+reads the class directory as data via `Project::add_class_directory`; it never
+starts Java. No generated class files are committed or required by Cargo tests.
+
+`@Override` annotations independently require javac to verify the matching
+consumer methods really override inherited declarations. Five probes compare
+compiler-selected source overrides against inherited binary
+signatures: explicitly imported versus binary-qualified reference types,
+primitive parameters, reference arrays, varargs versus arrays, and postfix
+multidimensional primitive arrays. Exact compiler-selected source declaration
+paths, owners, kinds, names, and UTF-8 ranges are still checked through Trees.
+Three distinct signatures (same simple type name in different packages,
+`int` versus `long`, and different array dimensions) remain native
+`OverloadNotResolved`. Javac chooses the consumer declaration for each, but this
+is recorded as a refusal, never native overload-selection success. A type-variable
+signature retains `SignatureNotCompared`; no generic substitution is claimed.
+All four refusals require exactly the intended source declaration and inherited
+binary declaration candidates, including class-file path, owner, name, and the
+native zero-range convention. A native run deliberately omitting binary inputs
+must change the distinct-package probe to one source candidate and must fail the
+comparison. Javac must also fail when its dependency classpath is omitted,
+preventing accidental discovery of dependency sources. Wrong-source-target
+controls also remain mandatory.
+
+Before signature normalization, the nine consumer queries all compiled and
+selected the intended source methods in javac, but the native baseline returned
+`SignatureNotCompared` with both source and binary candidates for every query.
+The first failing expectation was `binary_scalar_override`, which requires the
+unique consumer source override. The baseline endpoint was built before core
+changes at commit `10a03e7` and preserved separately during validation.
+
+This adds genuine binary-input evidence, not compiler-selected binary-target
+identity evidence: every javac-selected declaration is still a consumer source
+method. Binary candidate checks are native provenance checks, not fabricated
+Trees source positions for binary declarations. Binary-selected target identity,
+method descriptors, inherited bridge methods, generic substitution, unresolved
+source types, and broader overload applicability remain covered only by separate
+native regressions or remain unsupported. The original nine-file suite and its
+59 matched declarations, four refusals, compiler-error and wrong-target controls
+remain independently required.
+
+After normalization, the mixed gate passes five matched source-over-binary
+bindings and four explicit refusals, separately from the unchanged original
+59 matches and four refusals. Both omission controls and the exact refusal
+candidate checks pass. These are nine additional valid-source probes, not nine
+additional successful semantic matches.

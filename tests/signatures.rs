@@ -2,6 +2,8 @@ use java_engine::{ParsedFile, Project, ResolveStatus, TargetKind, TextEdit};
 
 fn call(source: &str) -> java_engine::ResolveResult {
     let mut project = Project::new();
+    project.insert("java/lang/String.java", "package java.lang; public class String {}");
+    project.insert("pkg/Item.java", "package pkg; public class Item {}");
     project.insert("Test.java", source);
     let parsed = project.file("Test.java").unwrap();
     assert!(parsed.errors().is_empty(), "{}\n{:?}", parsed.dump(), parsed.errors());
@@ -88,7 +90,11 @@ fn array_rank_is_not_taken_from_generic_arguments_or_annotations() {
         let source = format!(
             "class A {{ void m({base} a) {{}} }} class B extends A {{ void m({child} b) {{}} void test() {{ m(null); }} }}"
         );
-        assert_overloads(call(&source), 2);
+        if base.starts_with("List") {
+            assert_eq!(call(&source).status, ResolveStatus::SignatureNotCompared);
+        } else {
+            assert_overloads(call(&source), 2);
+        }
     }
 }
 

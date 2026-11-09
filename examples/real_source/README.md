@@ -56,12 +56,13 @@ target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are twenty resolved queries, twelve explicit overload refusals, eight
-source/binary signature refusals, and one unbound receiver:
+There are twenty-seven resolved queries, eleven explicit overload refusals, two
+unsupported signature comparisons, and one unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
 - Explicit `Objects` import, implicit `java.lang` classes, binary `String.length`.
-- `Character.isWhitespace` and `Objects.requireNonNull` remain overload refusals.
+- `Character.isWhitespace` remains an overload refusal; generic
+  `Objects.requireNonNull` now remains `SignatureNotCompared`.
 - `ArrayUtils.isEmpty` now finds all nine source overload declarations after catch
   parsing no longer loses that part of the file. It remains `OverloadNotResolved`:
   argument-based overload selection is not implemented. The earlier baseline
@@ -111,11 +112,11 @@ comparison and all source-grounded diagnostic groups are retained in
 ## Invocation namespace evidence
 
 `call-namespace-comparison.tsv` records twenty real calls that previously resolved
-to same-spelled locals/parameters. With the pinned platform data, three now resolve
-to unique source methods, nine explicitly retain overload candidates, and eight
-refuse source/binary signature comparison. For example, `StrBuilder.length()` is
-no longer a parameter target, but still has both the source method and binary
-`CharSequence.length` until signature normalization can justify the override.
+to same-spelled locals/parameters. At that invocation-fix stage with the pinned platform data, three resolved
+to unique source methods, nine retained overload candidates, and eight
+refused source/binary signature comparison. For example, `StrBuilder.length()` stopped being a parameter target but still
+had both the source method and binary `CharSequence.length`. The subsequent
+signature slice now justifies the source override at all seven pinned sites.
 These refusal outcomes are not successful semantic resolution.
 
 The harness additionally scans every direct unqualified `CallExpr` name, excluding
@@ -126,6 +127,23 @@ call coverage. The fixed call count is also asserted so a broken walker cannot
 pass vacuously; parser coverage changes require reviewing that inventory. The twenty added exact target/candidate queries were checked
 against original source method signatures (including excluding a same-named
 nested-class method) and supplied platform declarations.
+
+## Source/binary signature evidence
+
+`signature-comparison.tsv` records every changed status/count from the 41-query
+baseline. Seven StrBuilder.length calls now select the exact source method at
+80682..80688 rather than refusing its equivalent binary CharSequence signature.
+ObjectUtils.clone(T) and Object.clone() have different arity and remain two
+unselected candidates. Generic Objects.requireNonNull and Streams.stream now use
+`SignatureNotCompared` with their existing candidates; unsupported generic shapes
+are no longer treated as confident equality/difference merely by spelling.
+
+All unchanged candidate multisets were checked, and every changed set only removes
+the justified binary CharSequence ancestor. Candidate order remains deterministic
+but follows the current declaration traversal rather than the earlier spelling
+sort. These changes do not prove argument applicability or generic inference.
+The separate optional mixed oracle uses actual compiled dependency bytes and
+compiler-verified `@Override` consumer declarations, not two source-only copies.
 
 ## Measurements
 

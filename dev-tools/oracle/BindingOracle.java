@@ -22,7 +22,7 @@ public final class BindingOracle {
         try (StandardJavaFileManager fm = compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
             JavacTask task = (JavacTask) compiler.getTask(null, fm, diagnostics,
                 List.of("--release", "21", "-proc:none", "-implicit:none", "-encoding", "UTF-8",
-                        "-classpath", args[2], "-sourcepath", args[2]), null,
+                        "-classpath", args[2], "-sourcepath", args.length > 3 ? args[3] : args[2]), null,
                 fm.getJavaFileObjectsFromPaths(files));
             List<CompilationUnitTree> units = new ArrayList<>();
             task.parse().forEach(units::add);

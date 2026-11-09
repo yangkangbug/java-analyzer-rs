@@ -130,8 +130,9 @@ independent compiler oracle. Neither prepared/rebuild agreement nor error counts
 A separate trusted-main/manual workflow verifies pinned upstream artifacts and
 runs the native real-source workload, then a development-only javac declaration
 oracle. Fifty-nine supported bindings and four explicit refusal boundaries are checked
-independently; the oracle exposed a shadowed-super field error now conservatively
-refused. This does not implement full super semantics or close project/type gates.
+independently; a further mixed-input suite checks five source overrides against
+compiled dependencies and four refusal boundaries. The oracle exposed a shadowed-
+super field error now conservatively refused. This does not implement full super semantics or close project/type gates.
 The default native test path and production library remain JVM-free. Broader
 projects, diagnostics, overload/generic semantics and required-gate policy remain
 open work; see the validation boundary document.
@@ -161,22 +162,28 @@ Optional javac/JDT LS differential checks can validate development fixtures,
 but neither becomes a runtime dependency. Fix known small soundness defects
 as part of these capabilities, not as a substitute for the project model.
 
-### Next semantic milestone: source/binary method identity
+### First semantic identity slice implemented
 
-The real-source invocation audit eliminates twenty wrong variable targets, but
-only three become unique method targets with the supplied platform. Nine remain
-unselected overloads and eight remain source/binary signature refusals. This
-locates a concrete project-navigation barrier, rather than suggesting that fewer
-parser diagnostics imply usable IDE analysis.
+Supported source and class-file method parameters now normalize to primitive,
+array and resolved declared-type identity in their owning compilation context.
+Returns do not create overloads; equal signatures require a justified declaring-
+type relationship to hide ancestors. Missing/ambiguous types, generic contexts,
+inherited member-type gaps and bridge/default-method conflicts remain explicit.
+Private identities are snapshot-local, not persistent public symbol IDs.
+See [signature model and API compatibility](docs/METHOD_SIGNATURES.md).
 
-Next normalize source and class-file method signatures against resolved primitive,
-array and declared-type identities in their owning compilation context. Prove
-same-signature override behavior for real `StrBuilder.length` / `CharSequence.length`
-and preserve distinct signatures such as `ObjectUtils.clone(T)` / `Object.clone()`.
-Ambiguous/unresolved types must stay explicit. This establishes a reusable semantic
-foundation before applicability/generic inference, stable query identities and
-end-to-end definition/hover integration. Do not turn this into unrelated syntax
-cleanup or claim completion/refactoring readiness from navigation tests alone.
+Seven real StrBuilder.length query sites now resolve to the source override of
+CharSequence.length. ObjectUtils.clone(T) and Object.clone() remain distinct
+candidates, without argument-based selection. Two generic comparisons become
+more conservative rather than retaining unsupported spelling assumptions. This
+is a project-navigation capability, not a reduction in parser error counts.
+
+The next M2 gate is call applicability over these identities, starting with
+explicitly supported arity/conversions and independently checked refusals. Couple
+that with stable declaration/query identity and a small real-project definition/
+hover acceptance surface before claiming IDE usability. Generic inference,
+incremental invalidation, completion, diagnostics, references and safe refactoring
+remain required work; do not replace that route with unrelated syntax cleanup.
 
 ## M3: incremental query engine and cancellation
 
