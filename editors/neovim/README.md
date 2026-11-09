@@ -150,6 +150,27 @@ The checker requires default `SIGCHLD` handling. Ownership loss fails the run an
 never signals a possibly reused numeric group; unfinished output drainers cannot
 keep the checker alive. This is trusted test-process cleanup, not an OS sandbox.
 
+Darwin can return `EPERM` for a group containing only zombies, because XNU's
+[`killpg1`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c)
+excludes zombies from its signal-target count. The checker accepts that outcome
+only after confirming the leader's exit without reaping and proving that it is
+the **sole group member**. It calls the OS's `/usr/lib/libproc.dylib`
+[`proc_listpids`](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.h)
+with `PROC_PGRP_ONLY` and a fixed two-C-int buffer. XNU
+[`proc_info.c`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/proc_info.c)
+enumerates live and zombie members under its process-list lock. Zero, extra or
+wrong PIDs, a full/malformed result, and any error fail closed. This uses only
+the declared scalar ABI, not guessed process-structure layouts. Apple labels
+libproc interfaces private and subject to change; this is a Darwin-specific
+development-checker dependency, not a portable standard-library guarantee.
+
+Any other group-signal failure remains a failed check. The checker makes a
+best-effort signal/reap of its still-owned direct child and records both group
+and reap failures; it never signals a numeric PID/group after reaping. EOF alone
+does not prove cleanup: a regression keeps a live descendant with closed stdio
+and requires the group check to reject it. Cleanup outcomes are explicit in
+`result.json`, including the narrowly verified Darwin zombie-only case.
+
 Offline regressions exercise ordering, registration failure, pre-release death,
 exact target status, descriptor closure, bounded output and timeout cleanup.
 On Linux, simulated kqueue events test only the gate plumbing, not Darwin kernel

@@ -908,3 +908,13 @@ bring the local Python total to 143; all 23 Neovim setup/harness tests and the
 13 real Linux editor checks pass. The Rust source and executable are unchanged.
 Linux simulations prove gate/cleanup ordering, not Darwin kernel behavior; the
 subsequent exact-commit hosted editor jobs remain the required Mac evidence.
+
+A second hosted run isolated Darwin's zombie-only process-group `EPERM` behavior.
+The development checker now accepts that case only after confirmed non-reaping
+exit and a complete, bounded libproc query showing exactly its retained leader.
+An empty, extra-member, malformed, denied or unavailable query fails closed.
+Signal/proof failures still attempt direct-child cleanup and reap without losing
+the original failure. This Darwin-specific private OS interface is documented in
+the editor README; it is not part of the Rust analyzer. Local totals are now 149
+Python tests (29 Neovim setup/harness tests), and all 13 real Linux editor checks
+pass. These local simulations do not replace successful hosted Mac execution.

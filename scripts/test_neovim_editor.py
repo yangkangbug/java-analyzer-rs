@@ -135,6 +135,36 @@ class KqueueSelectionTests(unittest.TestCase):
             spawn.assert_not_called()
 
 
+class DarwinMembershipTests(unittest.TestCase):
+    def test_scalar_abi_and_exact_single_pid_result(self):
+        calls = []
+        def query(kind, group, buffer, size):
+            calls.append((kind, group, size))
+            buffer[0] = group
+            return MOD.ctypes.sizeof(MOD.ctypes.c_int)
+        with patch.object(MOD.ctypes, 'CDLL', return_value=SimpleNamespace(proc_listpids=query)) as load:
+            self.assertEqual(MOD.darwin_group_members(123), [123])
+            load.assert_called_once_with('/usr/lib/libproc.dylib', use_errno=True)
+        self.assertEqual(calls, [(2, 123, 2 * MOD.ctypes.sizeof(MOD.ctypes.c_int))])
+        self.assertEqual(query.argtypes, [MOD.ctypes.c_uint32, MOD.ctypes.c_uint32,
+                                         MOD.ctypes.c_void_p, MOD.ctypes.c_int])
+        self.assertIs(query.restype, MOD.ctypes.c_int)
+
+    def test_empty_full_malformed_oversized_and_errno_fail_closed(self):
+        width = MOD.ctypes.sizeof(MOD.ctypes.c_int)
+        for count, first, error in ((0, 0, 0), (2 * width, 123, 0),
+                (3 * width, 123, 0), (width - 1, 123, 0), (-1, 123, 0),
+                (width, 0, 0), (width, 123, errno.EPERM), (0, 0, errno.EACCES)):
+            with self.subTest(count=count, first=first, error=error):
+                def query(kind, group, buffer, size):
+                    buffer[0] = first
+                    MOD.ctypes.set_errno(error)
+                    return count
+                with patch.object(MOD.ctypes, 'CDLL', return_value=SimpleNamespace(proc_listpids=query)):
+                    with self.assertRaises((ValueError, OSError)):
+                        MOD.darwin_group_members(123)
+
+
 @unittest.skipUnless(os.name == 'posix', 'headless acceptance targets POSIX only')
 class CaptureTests(unittest.TestCase):
     def run_child(self, code, **kwargs):
@@ -160,6 +190,168 @@ class CaptureTests(unittest.TestCase):
         result = self.run_child('import time; time.sleep(20)', timeout=0.05)
         self.assertIn('timeout', result['failure'])
         self.assertTrue(result['reaped'])
+
+    def test_darwin_zombie_only_eperm_is_verified_then_reaped(self):
+        real_popen, real_killpg = MOD.subprocess.Popen, os.killpg
+        children, events = [], []
+        def spawn(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            children.append(process)
+            wait = process.wait
+            def checked_wait(*args, **kwargs):
+                events.append('wait')
+                self.assertEqual(events[:2], ['killpg', 'members'])
+                return wait(*args, **kwargs)
+            process.wait = checked_wait
+            return process
+        def killpg(pid, sig):
+            self.assertNotIn('wait', events)
+            events.append('killpg')
+            raise PermissionError(errno.EPERM, 'Darwin zombie-only group')
+        def members(pid):
+            events.append('members')
+            self.assertEqual(pid, children[0].pid)
+            return [pid]
+        try:
+            with patch.object(MOD.sys, 'platform', 'darwin'), \
+                    patch.object(MOD.subprocess, 'Popen', spawn), patch.object(MOD.os, 'killpg', killpg), \
+                    patch.object(MOD, 'darwin_group_members', members, create=True):
+                result = self.run_child('print("already exited")')
+            self.assertEqual(result['returncode'], 0)
+            self.assertIsNone(result['failure'])
+            self.assertTrue(result['reaped'])
+            self.assertEqual(result['group_cleanup'], 'darwin-confirmed-exited-only')
+        finally:
+            for process in children:
+                if process.returncode is None:
+                    try:
+                        real_killpg(process.pid, signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
+                        pass
+                    # Bypass the ordering assertion only for the red baseline cleanup.
+                    MOD.subprocess.Popen.wait(process, timeout=5)
+
+    def test_eperm_without_exact_proof_fails_but_reaps(self):
+        for mode in ('linux', 'other-pid', 'empty', 'lookup-error', 'wrong-errno', 'live-leader'):
+            with self.subTest(mode=mode):
+                events = []
+                host_observer = MOD.exit_observer()
+                def denied(pid, sig):
+                    events.append('killpg')
+                    raise PermissionError(errno.EACCES if mode == 'wrong-errno' else errno.EPERM,
+                                          'injected group denial')
+                def members(pid):
+                    events.append('members')
+                    if mode == 'lookup-error':
+                        raise OSError(errno.EIO, 'injected lookup failure')
+                    return [] if mode == 'empty' else [pid + 1]
+                with patch.object(MOD.sys, 'platform', 'linux' if mode == 'linux' else 'darwin'), \
+                        patch.object(MOD, 'exit_observer', return_value=host_observer), \
+                        patch.object(MOD.os, 'killpg', denied), \
+                        patch.object(MOD, 'darwin_group_members', members):
+                    code = 'import time; time.sleep(20)' if mode == 'live-leader' else 'pass'
+                    result = self.run_child(code, timeout=0.02 if mode == 'live-leader' else 3)
+                self.assertIn('group cleanup failed', result['failure'])
+                self.assertEqual(result['group_cleanup'], 'failed')
+                self.assertTrue(result['reaped'])
+                self.assertTrue(result['drainers_finished'])
+                self.assertEqual(events.count('killpg'), 1)
+                if mode in ('linux', 'wrong-errno', 'live-leader'):
+                    self.assertNotIn('members', events)
+
+    def test_signal_and_reap_failures_are_both_reported(self):
+        real_popen = MOD.subprocess.Popen
+        children = []
+        host_observer = MOD.exit_observer()
+        def spawn(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            wait = process.wait
+            children.append((process, wait))
+            def failed_wait(*args, **kwargs):
+                raise MOD.subprocess.TimeoutExpired('injected wait failure', 5)
+            process.wait = failed_wait
+            return process
+        try:
+            with patch.object(MOD.sys, 'platform', 'linux'), \
+                    patch.object(MOD, 'exit_observer', return_value=host_observer), \
+                    patch.object(MOD.subprocess, 'Popen', spawn), \
+                    patch.object(MOD.os, 'killpg', side_effect=PermissionError(errno.EPERM, 'injected denial')):
+                result = self.run_child('pass')
+            self.assertIn('group cleanup failed', result['failure'])
+            self.assertIn('direct child reap failed', result['failure'])
+            self.assertFalse(result['reaped'])
+            self.assertEqual(result['group_cleanup'], 'failed')
+        finally:
+            for process, wait in children:
+                wait(timeout=5)  # No signal is issued after this reap.
+
+    def test_live_grandchild_with_closed_stdio_cannot_excuse_eperm(self):
+        real_popen, real_members = MOD.subprocess.Popen, MOD.darwin_group_members
+        real_platform = sys.platform
+        children, events = [], []
+        control_read, control_write = os.pipe()
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                marker = Path(td) / 'grandchild-pid'
+                code = ('import os\n'
+                        'read_ready, write_ready = os.pipe()\n'
+                        'child = os.fork()\n'
+                        'if child == 0:\n'
+                        '  os.close(read_ready); os.close(1); os.close(2)\n'
+                        '  os.write(write_ready, b"R"); os.close(write_ready)\n'
+                        f'  os.read({control_read}, 1); os._exit(0)\n'
+                        'os.close(write_ready)\n'
+                        'assert os.read(read_ready, 1) == b"R"\n'
+                        'os.close(read_ready)\n'
+                        f'open({str(marker)!r}, "w").write(str(child))\n'
+                        f'os.close({control_read}); os._exit(0)\n')
+
+                def spawn(*args, **kwargs):
+                    kwargs['pass_fds'] = (*kwargs.get('pass_fds', ()), control_read)
+                    process = real_popen(*args, **kwargs)
+                    wait = process.wait
+                    def checked_wait(*args, **kwargs):
+                        self.assertIn('members', events)
+                        events.append('wait')
+                        return wait(*args, **kwargs)
+                    process.wait = checked_wait
+                    children.append(process)
+                    return process
+
+                def denied(pid, sig):
+                    self.assertNotIn('wait', events)
+                    events.append('killpg')
+                    raise PermissionError(errno.EPERM, 'injected denial with live descendant')
+
+                def members(pid):
+                    self.assertNotIn('wait', events)
+                    events.append('members')
+                    os.kill(int(marker.read_text()), 0)
+                    if real_platform == 'darwin':
+                        return real_members(pid)  # Actual kernel list in hosted Mac CI.
+                    return [pid, int(marker.read_text())]  # Linux proof-path plumbing only.
+
+                with patch.object(MOD.sys, 'platform', 'darwin'), \
+                        patch.object(MOD.subprocess, 'Popen', spawn), patch.object(MOD.os, 'killpg', denied), \
+                        patch.object(MOD, 'darwin_group_members', members):
+                    result = self.run_child(code)
+                self.assertEqual(result['stdout'], b'')
+                self.assertEqual(result['stderr'], b'')
+                self.assertIn('group cleanup failed', result['failure'])
+                self.assertEqual(result['group_cleanup'], 'failed')
+                self.assertTrue(result['reaped'])
+                self.assertTrue(result['drainers_finished'])
+                self.assertEqual(events, ['killpg', 'members', 'wait'])
+        finally:
+            # The controlled descendant exits via its private lease, not a PID
+            # or process-group signal after the leader has been reaped.
+            os.write(control_write, b'X')
+            os.close(control_write)
+            os.close(control_read)
+            for process in children:
+                if process.returncode is None:
+                    os.kill(process.pid, signal.SIGKILL)
+                    MOD.subprocess.Popen.wait(process, timeout=5)
 
     def test_group_cleanup_precedes_reaping_on_host_backend(self):
         real_popen, real_killpg, real_factory = MOD.subprocess.Popen, os.killpg, MOD.exit_observer
@@ -187,7 +379,12 @@ class CaptureTests(unittest.TestCase):
             observe = observer.exited
             def exited():
                 events.append(('observe', observer.name))
-                return observe()
+                exited = observe()
+                if exited and sys.platform == 'darwin':
+                    # Actual OS API assertion on hosted Mac, not a ctypes mock.
+                    self.assertEqual(MOD.darwin_group_members(children[0][0].pid),
+                                     [children[0][0].pid])
+                return exited
             observer.exited = exited
             return observer
 

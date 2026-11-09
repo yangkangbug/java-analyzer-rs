@@ -5,6 +5,7 @@ Requires the separately pinned dev-only Neovim input. No download, build,
 Java, plugin, system install, or user-machine access occurs here.
 """
 import argparse
+import ctypes
 import errno
 import hashlib
 import json
@@ -109,6 +110,30 @@ EXEC_GATE = ('import os, sys\n'
              'os.execvpe(sys.argv[2], sys.argv[2:], os.environ)\n')
 
 
+def darwin_group_members(pgid):
+    """Read a tiny complete PID list, or fail closed; never guess proc structs.
+
+    Apple's libproc.h declares this Darwin-specific interface (subject to
+    change). PROC_PGRP_ONLY is 2; libproc.c returns bytes, or zero with errno on
+    syscall failure. XNU proc_info.c enumerates live and zombie members under
+    proc_list_lock. A two-int buffer is sufficient to reject every multi-member
+    or potentially truncated group. Only the retained leader may be accepted.
+    """
+    library = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True)
+    query = library.proc_listpids
+    query.argtypes = [ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_int]
+    query.restype = ctypes.c_int
+    pids = (ctypes.c_int * 2)()
+    ctypes.set_errno(0)
+    count = query(2, pgid, pids, ctypes.sizeof(pids))
+    error = ctypes.get_errno()
+    if error:
+        raise OSError(error, 'Darwin group membership lookup failed')
+    if count != ctypes.sizeof(ctypes.c_int) or pids[0] <= 0:
+        raise ValueError('Darwin group membership is not exactly one known PID')
+    return [pids[0]]
+
+
 def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
     """Bound output and wall time; reap the direct child and stop its owned group.
 
@@ -123,6 +148,8 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
     gate_read = gate_write = None
     owned = True
     reaped = False
+    registered = False
+    group_cleanup = 'not-started'
     chunks = [bytearray(), bytearray()]
     lock = threading.Lock()
     problem = threading.Event()
@@ -149,8 +176,24 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
     def kill_group():
         try:
             os.killpg(process.pid, signal.SIGKILL)
+            return 'signalled'
         except ProcessLookupError:
-            pass
+            return 'absent'
+        except PermissionError as error:
+            # Darwin killpg1 excludes zombies before counting signal targets,
+            # so a zombie-only group can return EPERM. Leader exit alone is not
+            # sufficient: an alive descendant may have closed both stdio pipes.
+            if error.errno != errno.EPERM or sys.platform != 'darwin' \
+                    or not registered or not observer.exited():
+                raise
+            try:
+                members = darwin_group_members(process.pid)
+            except (OSError, ValueError, AttributeError) as lookup_error:
+                raise PermissionError(errno.EPERM,
+                    'group cleanup denied; membership unverified: ' + str(lookup_error)) from lookup_error
+            if members != [process.pid]:
+                raise PermissionError(errno.EPERM, 'group cleanup denied; other members remain')
+            return 'darwin-confirmed-exited-only'
 
     started = []
     try:
@@ -168,6 +211,7 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
             gate_read = None
             os.close(fd)
         observer.register(process.pid)
+        registered = True
         if gate_write is not None:
             if os.write(gate_write, b'G') != 1:
                 raise ValueError('could not release registered child gate')
@@ -189,6 +233,7 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
                 problem.set()
     except ChildOwnershipLost as error:
         owned = False
+        group_cleanup = 'ownership-lost'
         errors.append(str(error))
     finally:
         # A failed resource close must not prevent the owned group cleanup or
@@ -204,9 +249,31 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
                 # Registration errors (including ESRCH) are failures, not exit
                 # evidence. No one reaped this owned child, so cleanup is safe.
                 # Keep the zombie/session leader reserved through the signal.
-                kill_group()
-                process.wait(timeout=5)
-                reaped = True
+                try:
+                    group_cleanup = kill_group()
+                except ChildOwnershipLost as error:
+                    owned = False
+                    group_cleanup = 'ownership-lost'
+                    errors.append(str(error))
+                except (OSError, ValueError) as error:
+                    group_cleanup = 'failed'
+                    errors.append('group cleanup failed: ' + str(error))
+                    # Best effort for our own reserved child, not a claim that
+                    # the denied group cleanup succeeded. Do not use Popen.kill,
+                    # which can poll/reap before signaling on POSIX.
+                    try:
+                        os.kill(process.pid, signal.SIGKILL)
+                    except OSError as child_error:
+                        errors.append('direct child signal failed: ' + str(child_error))
+                finally:
+                    # Even a signal/verification failure must not skip reaping.
+                    # No numeric group/PID signal is made after this point.
+                    if owned:
+                        try:
+                            process.wait(timeout=5)
+                            reaped = True
+                        except (OSError, subprocess.TimeoutExpired) as wait_error:
+                            errors.append('direct child reap failed: ' + str(wait_error))
         finally:
             try:
                 observer.close()
@@ -221,6 +288,7 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
                 process.stderr.close()
     return {'returncode': process.returncode, 'stdout': bytes(chunks[0]), 'stderr': bytes(chunks[1]),
             'failure': '; '.join(errors) if errors else None, 'reaped': reaped,
+            'group_cleanup': group_cleanup,
             'exit_observer': observer.name,
             'drainers_finished': not any(t.is_alive() for t in started)}
 
