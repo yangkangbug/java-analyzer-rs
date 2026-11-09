@@ -93,3 +93,9 @@ client runs without user configuration or plugins; it must never use a user's
 computer. Input setup, offline analysis, real client navigation and optional javac
 comparison remain separately identified gates. A successful handwritten protocol
 test is not evidence that a real editor navigates correctly.
+
+The supplemental Linux [LSP reload measurement](docs/ARCHIVE_REUSE.md) compares
+two already-built release binaries using pinned local inputs. Its offline tests
+are included in Python discovery. Run actual timings serially without builds or
+other benchmarks, retain failed evidence and exact target checks, and never turn
+these observations into an invented CI performance threshold.

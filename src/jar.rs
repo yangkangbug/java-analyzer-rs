@@ -6,10 +6,11 @@
 //! this is not a whole-archive integrity or JAR-signature verifier. Module
 //! descriptors are skipped, and nonempty JAR manifest Class-Path is an error.
 use crate::classfile::{ClassSignature, parse_class_bytes};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::File;
 use std::io::{Cursor, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use zip::unstable::read::ZipIterable;
 use zip::{CompressionMethod, ZipArchive};
 
@@ -68,14 +69,16 @@ pub fn read_jmod(path: &Path, options: &JmodOptions) -> Result<Vec<ClassSignatur
     Ok(read_jmod_with_usage(path, options)?.classes)
 }
 pub(crate) fn read_jmod_with_usage(path: &Path, options: &JmodOptions) -> Result<JarRead, JarError> {
-    let limits = JarOptions {
+    read_archive_with_usage(path, &jmod_limits(options), ArchiveFormat::Jmod)
+}
+fn jmod_limits(options: &JmodOptions) -> JarOptions {
+    JarOptions {
         target_release: 0,
         max_archive_bytes: options.max_archive_bytes,
         max_entries: options.max_entries,
         max_entry_bytes: options.max_entry_bytes,
         max_total_uncompressed_bytes: options.max_total_uncompressed_bytes,
-    };
-    read_archive_with_usage(path, &limits, ArchiveFormat::Jmod)
+    }
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ArchiveFormat {
@@ -124,11 +127,127 @@ pub(crate) struct JarRead {
     pub entries: usize,
     pub archive_bytes: u64,
     pub uncompressed_bytes: u64,
+    pub max_entry_bytes: u64,
 }
+// Parsed facts are immutable; project ownership and binder contexts are separate.
+#[derive(Clone, Debug)]
+pub(crate) struct SharedArchiveRead {
+    pub classes: Vec<Arc<ClassSignature>>,
+    pub entries: usize,
+    pub archive_bytes: u64,
+    pub uncompressed_bytes: u64,
+    max_entry_bytes: u64,
+}
+impl From<JarRead> for SharedArchiveRead {
+    fn from(read: JarRead) -> Self {
+        Self {
+            classes: read.classes.into_iter().map(Arc::new).collect(),
+            entries: read.entries,
+            archive_bytes: read.archive_bytes,
+            uncompressed_bytes: read.uncompressed_bytes,
+            max_entry_bytes: read.max_entry_bytes,
+        }
+    }
+}
+impl SharedArchiveRead {
+    fn fits(&self, options: &JarOptions) -> bool {
+        self.archive_bytes <= options.max_archive_bytes
+            && self.entries <= options.max_entries
+            && self.max_entry_bytes <= options.max_entry_bytes
+            && self.uncompressed_bytes <= options.max_total_uncompressed_bytes
+    }
+}
+
+struct CachedArchive {
+    path: PathBuf,
+    format: ArchiveFormat,
+    target_release: u16,
+    bytes: Box<[u8]>,
+    read: SharedArchiveRead,
+}
+
+/// Private to one workspace load. Caps cover retained raw bytes/records, not
+/// parsed signatures, fresh captures, ZIP metadata, or independently built indexes.
+/// FIFO eviction and oversized-input bypass affect work only, never acceptance.
+pub(crate) struct ArchiveReads {
+    entries: VecDeque<CachedArchive>,
+    retained_bytes: usize,
+    max_retained_bytes: usize,
+    max_entries: usize,
+}
+impl Default for ArchiveReads {
+    fn default() -> Self {
+        Self { entries: VecDeque::new(), retained_bytes: 0, max_retained_bytes: 64 * 1024 * 1024, max_entries: 16 }
+    }
+}
+impl ArchiveReads {
+    #[cfg(test)]
+    pub(crate) fn with_limits(max_retained_bytes: usize, max_entries: usize) -> Self {
+        Self { max_retained_bytes, max_entries, ..Self::default() }
+    }
+
+    pub(crate) fn read_jar(&mut self, path: &Path, options: &JarOptions) -> Result<SharedArchiveRead, JarError> {
+        self.read(path, options, ArchiveFormat::Jar)
+    }
+    pub(crate) fn read_jmod(&mut self, path: &Path, options: &JmodOptions) -> Result<SharedArchiveRead, JarError> {
+        self.read(path, &jmod_limits(options), ArchiveFormat::Jmod)
+    }
+    // The project loader checks and canonicalizes the path before every call.
+    fn read(
+        &mut self,
+        path: &Path,
+        options: &JarOptions,
+        format: ArchiveFormat,
+    ) -> Result<SharedArchiveRead, JarError> {
+        let bytes = capture_archive(path, options.max_archive_bytes)?;
+        if let Some(index) = self.entries.iter().position(|entry| {
+            entry.path == path && entry.format == format && entry.target_release == options.target_release
+        }) {
+            let cached = &self.entries[index];
+            if cached.bytes.as_ref() == bytes {
+                if cached.read.fits(options) {
+                    return Ok(cached.read.clone());
+                }
+                // Let the ordinary parser reject tighter bounds in its original
+                // order, including limits on ignored resources and versions.
+            } else {
+                self.retained_bytes -= self.entries.remove(index).expect("existing entry").bytes.len();
+            }
+        }
+        let read: SharedArchiveRead = parse_archive(path, &bytes, options, format)?.into();
+        if bytes.len() <= self.max_retained_bytes && self.max_entries > 0 {
+            while self.entries.len() >= self.max_entries || self.retained_bytes > self.max_retained_bytes - bytes.len()
+            {
+                self.retained_bytes -= self.entries.pop_front().expect("retained entry").bytes.len();
+            }
+            // Box drops spare Vec capacity so the cap bounds retained raw storage.
+            let bytes = bytes.into_boxed_slice();
+            self.retained_bytes += bytes.len();
+            self.entries.push_back(CachedArchive {
+                path: path.to_owned(),
+                format,
+                target_release: options.target_release,
+                bytes,
+                read: read.clone(),
+            });
+        }
+        Ok(read)
+    }
+}
+
 pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<JarRead, JarError> {
     read_archive_with_usage(path, options, ArchiveFormat::Jar)
 }
 fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFormat) -> Result<JarRead, JarError> {
+    let bytes = capture_archive(path, options.max_archive_bytes)?;
+    parse_archive(path, &bytes, options, format)
+}
+
+// Every occurrence captures fresh bytes with the original open/metadata/read
+// checks, including cache hits. A miss parses these exact bytes, not a reread.
+fn capture_archive(path: &Path, max_archive_bytes: u64) -> Result<Vec<u8>, JarError> {
+    #[cfg(test)]
+    test_support::record_capture(path);
     let origin = path.display().to_string();
     let fail = |kind, detail: &str| error(&origin, kind, detail);
     let file = File::open(path).map_err(|e| error(&origin, JarErrorKind::Io, e))?;
@@ -136,17 +255,25 @@ fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFor
     if !metadata.is_file() {
         return Err(fail(JarErrorKind::Unsupported, "archive must be a regular file"));
     }
-    if metadata.len() > options.max_archive_bytes {
+    if metadata.len() > max_archive_bytes {
         return Err(fail(JarErrorKind::LimitExceeded, "archive byte limit exceeded"));
     }
     // Snapshot with a bounded reader also protects against growth after metadata().
     let mut bytes = Vec::new();
-    file.take(options.max_archive_bytes.saturating_add(1))
+    file.take(max_archive_bytes.saturating_add(1))
         .read_to_end(&mut bytes)
         .map_err(|e| error(&origin, JarErrorKind::Io, e))?;
-    if bytes.len() as u64 > options.max_archive_bytes {
+    if bytes.len() as u64 > max_archive_bytes {
         return Err(fail(JarErrorKind::LimitExceeded, "archive byte limit exceeded"));
     }
+    Ok(bytes)
+}
+
+fn parse_archive(path: &Path, bytes: &[u8], options: &JarOptions, format: ArchiveFormat) -> Result<JarRead, JarError> {
+    #[cfg(test)]
+    test_support::record_read(path);
+    let origin = path.display().to_string();
+    let fail = |kind, detail: &str| error(&origin, kind, detail);
     let archive_bytes = bytes.len() as u64;
     let payload = if format == ArchiveFormat::Jmod {
         if bytes.len() < 4 || !bytes.starts_with(b"JM") {
@@ -157,7 +284,7 @@ fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFor
         }
         &bytes[4..]
     } else {
-        bytes.as_slice()
+        bytes
     };
     // Exact-pinned zip's iterable API reads EOCD without allocating an entry index.
     let mut preflight = ZipIterable::try_new(Cursor::new(payload), zip::read::Config::default())
@@ -167,6 +294,7 @@ fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFor
     }
     let mut names = BTreeSet::new();
     let mut total = 0u64;
+    let mut max_entry_bytes = 0;
     for entry in preflight.files().map_err(|e| error(&origin, JarErrorKind::Archive, e))? {
         let entry = entry.map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
         let name = std::str::from_utf8(entry.name_raw()).map_err(|e| error(&origin, JarErrorKind::UnsafePath, e))?;
@@ -177,6 +305,7 @@ fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFor
         if names.len() > options.max_entries {
             return Err(fail(JarErrorKind::LimitExceeded, "entry count limit exceeded"));
         }
+        max_entry_bytes = max_entry_bytes.max(entry.size());
         if entry.size() > options.max_entry_bytes {
             return Err(fail(JarErrorKind::LimitExceeded, "entry byte limit exceeded"));
         }
@@ -261,7 +390,9 @@ fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFor
         }
         result.push(signature);
     }
-    Ok(JarRead { classes: result, entries: names.len(), archive_bytes, uncompressed_bytes: total })
+    #[cfg(test)]
+    test_support::after_read();
+    Ok(JarRead { classes: result, entries: names.len(), archive_bytes, uncompressed_bytes: total, max_entry_bytes })
 }
 fn validate_path(name: &str) -> Result<(), &'static str> {
     if name.is_empty() || name.contains(['\\', ':', '\0']) || name.chars().any(char::is_control) {
@@ -367,4 +498,65 @@ fn parse_manifest(bytes: &[u8]) -> Result<bool, (JarErrorKind, String)> {
         }
     }
     Ok(multi_release)
+}
+
+// Thread-local, scoped test observation. Absent from production builds.
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::cell::RefCell;
+    use std::path::{Path, PathBuf};
+
+    #[derive(Default)]
+    struct Observation {
+        paths: Vec<PathBuf>,
+        captures: Vec<PathBuf>,
+        after_read: Option<Box<dyn FnOnce()>>,
+    }
+    thread_local! {
+        static OBSERVATION: RefCell<Option<Observation>> = const { RefCell::new(None) };
+    }
+    pub(crate) struct ArchiveProbe;
+    impl ArchiveProbe {
+        pub(crate) fn new() -> Self {
+            OBSERVATION.with(|state| {
+                assert!(state.borrow().is_none(), "nested archive probe");
+                *state.borrow_mut() = Some(Observation::default());
+            });
+            Self
+        }
+        pub(crate) fn paths(&self) -> Vec<PathBuf> {
+            OBSERVATION.with(|state| state.borrow().as_ref().unwrap().paths.clone())
+        }
+        pub(crate) fn captures(&self) -> Vec<PathBuf> {
+            OBSERVATION.with(|state| state.borrow().as_ref().unwrap().captures.clone())
+        }
+        pub(crate) fn after_read(&self, callback: impl FnOnce() + 'static) {
+            OBSERVATION.with(|state| state.borrow_mut().as_mut().unwrap().after_read = Some(Box::new(callback)));
+        }
+    }
+    impl Drop for ArchiveProbe {
+        fn drop(&mut self) {
+            OBSERVATION.with(|state| *state.borrow_mut() = None);
+        }
+    }
+    pub(super) fn record_capture(path: &Path) {
+        OBSERVATION.with(|state| {
+            if let Some(state) = state.borrow_mut().as_mut() {
+                state.captures.push(path.to_owned());
+            }
+        });
+    }
+    pub(super) fn record_read(path: &Path) {
+        OBSERVATION.with(|state| {
+            if let Some(state) = state.borrow_mut().as_mut() {
+                state.paths.push(path.to_owned());
+            }
+        });
+    }
+    pub(super) fn after_read() {
+        let callback = OBSERVATION.with(|state| state.borrow_mut().as_mut().and_then(|state| state.after_read.take()));
+        if let Some(callback) = callback {
+            callback();
+        }
+    }
 }

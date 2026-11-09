@@ -1,0 +1,4800 @@
+{
+  "finished_utc": "2026-11-09T13:53:02.022105+00:00",
+  "initialization": [
+    {
+      "project": "gson",
+      "variant": "baseline",
+      "wall_ms": 2265.4554510008893
+    },
+    {
+      "project": "gson",
+      "variant": "candidate",
+      "wall_ms": 725.6444650010963
+    },
+    {
+      "project": "commons",
+      "variant": "baseline",
+      "wall_ms": 645.949355999619
+    },
+    {
+      "project": "commons",
+      "variant": "candidate",
+      "wall_ms": 630.7092250026471
+    }
+  ],
+  "phase": "identity_verification",
+  "post_run_identity_checks_passed": true,
+  "protocol": {
+    "baseline_source": {
+      "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+      "rust_build_input_files": {
+        "Cargo.lock": "8bed30c7deca2c8ea96c4445cb41dbbecb0c686eacdd5e86f50919734599beee",
+        "Cargo.toml": "befac4fa42773f20f260ba846ce18439c9c80460709b63fbd3fe3737c0b8b728",
+        "rust-toolchain.toml": "e59c5da37d1f9f4e0f815bc188cb6056fc7410c9cdaa9673c2d44da557c75d12",
+        "src/bin/java-analyzer/config.rs": "371fc126b904588c78929f2296203add00fe6e0e985651d24248fca93fe364c1",
+        "src/bin/java-analyzer/editor.rs": "ba6ac81ae97a4b5d4e46985201ab2e065d0ea57ed0adcb93491bb57d87ec36a1",
+        "src/bin/java-analyzer/execution.rs": "355c859e9b7e8e18d05452c136609e191f59f9ebaeea41770c447cac7627a1fe",
+        "src/bin/java-analyzer/lsp/backend.rs": "f04b6817fe6a732565fae9c96df38874bc6248600db16a3e956166eb25fb604b",
+        "src/bin/java-analyzer/lsp/mod.rs": "394db7813e67831a10fb53acab2a249dfa1e8b191ec810df738d94035b479364",
+        "src/bin/java-analyzer/lsp/protocol.rs": "8aa9bf4007f973608135db866ec196cad68a8b4118bc8a915de610034ec669e6",
+        "src/bin/java-analyzer/lsp/state.rs": "008d34f2b95d98f0569fecbe32681a4a2785214cfe4ef78d811b643a9ae236dc",
+        "src/bin/java-analyzer/main.rs": "3b3e07a68dceab93f38ce0ff07db6082baee71f94ddce971fd0e262744b7174c",
+        "src/bin/java-analyzer/overlays.rs": "ee176ccabbbf699814c569d7b2dab798770e432530cc792ca28df0189feed729",
+        "src/bind.rs": "425b44c3fd01d955211deaddb2395dff0334d10b6ae1e3a64d1dbedccc4ea7d6",
+        "src/classfile.rs": "b711397566f2ac62505ec7a8f9340c23aba075fcc6625781890938db9617f5c4",
+        "src/green.rs": "5e467e519a510508bb7cd41badc3cde3d9c846feb66f6a035527f8dfd02ee9fb",
+        "src/jar.rs": "1e1bd5e3b83714798429aeaedad205cc4d09054602eca7bfdfb41c779bb53078",
+        "src/kind.rs": "83a35ba76bc2be3764ded67de6a0f9de6f55e4d6da758cb76f74031ea98fc2a6",
+        "src/lex.rs": "d0169fdd33a4b5286912343dd8d66945128e4f522ce2557ae7fba752605c9d93",
+        "src/lib.rs": "0929a5b1665f76c0cd6d54dbf30ea1681b49dc581608aee020b0af956f2d3fa0",
+        "src/parse.rs": "5c1138c3da094eebbbe799e358e9d0cbde5062db03b0fd88ed40830c1974f771",
+        "src/position.rs": "db5f62ed39612d2c806fa9e7fe2fce645508de2c4cd8c1d48574d8722029c814",
+        "src/project.rs": "3a3a99f1fcef54aa0294f275b61251be0557b6ba377ead510f168ae4b4baf45d",
+        "src/reparse.rs": "a4ec946b731fc3950886657f8abfb3f167ce74166f8576476ae2526100121494",
+        "src/workspace.rs": "453c13e9a24f2b67897c54933a2947554833653e0d53e1c6be2d7226dfca941a"
+      },
+      "rust_build_inputs_sha256": "430678f5e20ae3bf0a45c2b41cba707fa4844a733d13eddbb5949f99d452e632"
+    },
+    "build_provenance_trust": "Operator declarations cross-checked against binary and matching source bytes; not independent build attestation. git_revision labels matching source, not necessarily actual historical build commit.",
+    "builds": {
+      "baseline": {
+        "binary_sha256": "08e270a3f832a1cc865b7834b40ac40a778170695679742a657fcf0e9ad5deef",
+        "build_profile": "release",
+        "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+        "receipt_sha256": "cc443a2858e056fcae53d770e85a91c6c960cbadd21915f4aeb62f0b2a5c79b1",
+        "rust_build_inputs_sha256": "430678f5e20ae3bf0a45c2b41cba707fa4844a733d13eddbb5949f99d452e632",
+        "source_dirty": false,
+        "source_revision_kind": "source_equivalent",
+        "target": "x86_64-unknown-linux-gnu"
+      },
+      "candidate": {
+        "binary_sha256": "dbb587ea45ce7d3473f3bf852c448159577df0d0c94030bb1678adf52e0f03b4",
+        "build_profile": "release",
+        "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+        "receipt_sha256": "94b3f7affb3d7e4d8517d3e6b232d7a5d7893ad5ff851993e75bfc6b05a5b3a2",
+        "rust_build_inputs_sha256": "fbd58b71cfe27af101311c99b7b690d0149677ccfdaa5268f7fe342415e1bb6a",
+        "source_dirty": true,
+        "source_revision_kind": "build_checkout",
+        "target": "x86_64-unknown-linux-gnu"
+      }
+    },
+    "candidate_source": {
+      "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+      "rust_build_input_files": {
+        "Cargo.lock": "8bed30c7deca2c8ea96c4445cb41dbbecb0c686eacdd5e86f50919734599beee",
+        "Cargo.toml": "befac4fa42773f20f260ba846ce18439c9c80460709b63fbd3fe3737c0b8b728",
+        "rust-toolchain.toml": "e59c5da37d1f9f4e0f815bc188cb6056fc7410c9cdaa9673c2d44da557c75d12",
+        "src/bin/java-analyzer/config.rs": "371fc126b904588c78929f2296203add00fe6e0e985651d24248fca93fe364c1",
+        "src/bin/java-analyzer/editor.rs": "ba6ac81ae97a4b5d4e46985201ab2e065d0ea57ed0adcb93491bb57d87ec36a1",
+        "src/bin/java-analyzer/execution.rs": "355c859e9b7e8e18d05452c136609e191f59f9ebaeea41770c447cac7627a1fe",
+        "src/bin/java-analyzer/lsp/backend.rs": "f04b6817fe6a732565fae9c96df38874bc6248600db16a3e956166eb25fb604b",
+        "src/bin/java-analyzer/lsp/mod.rs": "394db7813e67831a10fb53acab2a249dfa1e8b191ec810df738d94035b479364",
+        "src/bin/java-analyzer/lsp/protocol.rs": "8aa9bf4007f973608135db866ec196cad68a8b4118bc8a915de610034ec669e6",
+        "src/bin/java-analyzer/lsp/state.rs": "008d34f2b95d98f0569fecbe32681a4a2785214cfe4ef78d811b643a9ae236dc",
+        "src/bin/java-analyzer/main.rs": "3b3e07a68dceab93f38ce0ff07db6082baee71f94ddce971fd0e262744b7174c",
+        "src/bin/java-analyzer/overlays.rs": "ee176ccabbbf699814c569d7b2dab798770e432530cc792ca28df0189feed729",
+        "src/bind.rs": "d64859da9ad74d46e6ff2f5d87253d8e95297c42dc44bb05d7b43fef1c926192",
+        "src/classfile.rs": "b711397566f2ac62505ec7a8f9340c23aba075fcc6625781890938db9617f5c4",
+        "src/green.rs": "5e467e519a510508bb7cd41badc3cde3d9c846feb66f6a035527f8dfd02ee9fb",
+        "src/jar.rs": "7bb488f9b5c5eed95e917b1a96b3f263bced756b66a4216e1faf280cd5e8a7b9",
+        "src/kind.rs": "83a35ba76bc2be3764ded67de6a0f9de6f55e4d6da758cb76f74031ea98fc2a6",
+        "src/lex.rs": "d0169fdd33a4b5286912343dd8d66945128e4f522ce2557ae7fba752605c9d93",
+        "src/lib.rs": "0929a5b1665f76c0cd6d54dbf30ea1681b49dc581608aee020b0af956f2d3fa0",
+        "src/parse.rs": "5c1138c3da094eebbbe799e358e9d0cbde5062db03b0fd88ed40830c1974f771",
+        "src/position.rs": "db5f62ed39612d2c806fa9e7fe2fce645508de2c4cd8c1d48574d8722029c814",
+        "src/project.rs": "0f7027b29e572afd46fb2b4e79a727b82c74e781d85bd31576b84fa088dd72b9",
+        "src/reparse.rs": "a4ec946b731fc3950886657f8abfb3f167ce74166f8576476ae2526100121494",
+        "src/workspace.rs": "b03c3c3090ab52ab53ba12fbf2c457cb771eb0ffffb9d1b99c823d34183347ef",
+        "src/workspace/archive_reuse_tests.rs": "047e5a717570f0c8af7cfd2c5c252872215d7309dc94314401fdf76fa0811677"
+      },
+      "rust_build_inputs_sha256": "fbd58b71cfe27af101311c99b7b690d0149677ccfdaa5268f7fe342415e1bb6a"
+    },
+    "child_environment": {
+      "PATH": ""
+    },
+    "clock": "local request/notification preparation through complete matching response; includes position/prefix/JSON work, IO and concurrent sampler overhead; oracle and cleanup excluded",
+    "disk": "fresh native job per query, likely warm filesystem cache; not incremental query timing",
+    "harness_and_fixture_sha256": {
+      "examples/real_source/queries.tsv": "cbce6c814a06f3acc0dc4598745713f642a2a3e5abf89957ed20a0f85b35eb37",
+      "examples/real_source/targets.tsv": "e0e4f055a476d27921dd089555aa253b938d5a5a7f45535a643e9d2639c0453f",
+      "examples/second_project/expected.json": "2eb227e75dc02dda469b5fbec55e3ac6012f3a8a3b0eeb6f14d3daca58bfd306",
+      "examples/second_project/query-plan.json": "2d23e0d0ae4ad4da7407c42a915b39e52663c3ead2bd41784b59c626cc14d953",
+      "scripts/acceptance-inputs.json": "3b37257db5a23a602bc57eca565d63abbb5713a57cd1c550223af011cb9cd962",
+      "scripts/check-cli-acceptance.py": "cd6e610b5a4611c66509b6d62702a108d568da2e94d1597ffadd0a7e1e4a009d",
+      "scripts/check-lsp-project.py": "ef4376e290cb719bdaa993347ee89fdd41728f20925f901c39af3902b893e9f0",
+      "scripts/check-second-project.py": "7e85fceb2cd0e899f008130ead6b3b9dc1f5cd73d88bf875d7de73d5e4671c9a",
+      "scripts/fetch-acceptance-inputs.py": "f290d474c3959ddd5112a0578830680d7c63cbecb5fc21b2075bbf16917a9348",
+      "scripts/fetch-second-project-inputs.py": "3b2455e65eb6923a6c0e79824101360300e84e3bc8417c595cc85e6256d2cd3b",
+      "scripts/measure-cli-preview.py": "b1b7c47be4706b74ee1c2381f51f387ea162aed770ec5ca8ae13926e7f6e6644",
+      "scripts/measure-lsp-reload.py": "30e6fcf81e2fc4a97963e3150700a4149d674c1f6d694fa72198b815c673e408",
+      "scripts/second-project-inputs.json": "fd75cd3639e579f68d80f9bc64df7fbeb734ab1d37df156963080f38167b8197"
+    },
+    "host": {
+      "architecture": "x86_64",
+      "cgroup_v2_limits": {
+        "cpu.max": null,
+        "memory.high": null,
+        "memory.max": null
+      },
+      "cpu_affinity_count": 9,
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "kernel_release": "6.18.57",
+      "logical_cpus": 9,
+      "meminfo_kib": {
+        "MemAvailable": 8377160,
+        "MemTotal": 10206472,
+        "SwapTotal": 0
+      },
+      "os_release": {
+        "ID": "debian",
+        "PRETTY_NAME": "Debian GNU/Linux 13 (trixie)",
+        "VERSION_ID": "13"
+      },
+      "page_bytes": 4096,
+      "python": "3.12.14",
+      "system": "Linux"
+    },
+    "initialization": "one initialize-request observation per project/variant after Popen; not full process startup or seven-sample startup timing",
+    "inputs": {
+      "commons": {
+        "definition": {
+          "initial_document_version": 1,
+          "query_buffer": "original disk bytes captured by didOpen",
+          "query_byte": 309172,
+          "query_source": "org/apache/commons/lang3/StringUtils.java",
+          "target_buffer": "original disk bytes plus the latest measured prefix",
+          "target_byte_range": [
+            2159,
+            2169
+          ],
+          "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+          "target_source": "org/apache/commons/lang3/ArrayUtils.java"
+        },
+        "input_provenance": {
+          "jdk": {
+            "jmod_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+            "license": "GPL-2.0 with Classpath Exception and assembly exception; additional component notices under legal/",
+            "max_entries": 2000,
+            "max_expanded": 536870912,
+            "max_file": 167772160,
+            "provenance": "Eclipse Temurin 21.0.13+9 Linux x64 HotSpot; https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9",
+            "root": "jdk-21.0.13+9",
+            "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c",
+            "size": 207858352,
+            "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz"
+          },
+          "sources": {
+            "license": "Apache-2.0; archive META-INF/LICENSE.txt and META-INF/NOTICE.txt",
+            "max_entries": 1000,
+            "max_expanded": 16777216,
+            "max_file": 4194304,
+            "provenance": "Apache Commons Lang 3.17.0 published source artifact; https://commons.apache.org/proper/commons-lang/",
+            "sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+            "size": 728980,
+            "url": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0-sources.jar"
+          }
+        },
+        "measured_query_count": 1,
+        "name": "Apache Commons Lang 3.17.0",
+        "normalized_manifest": {
+          "compilations": [
+            {
+              "classpath": [],
+              "dependencies": [],
+              "id": {
+                "project": "commons-lang",
+                "source_set": "main"
+              },
+              "platform": [
+                {
+                  "kind": "jmod",
+                  "path": "<pinned-java.base.jmod>"
+                }
+              ],
+              "source_roots": [
+                "../sources"
+              ],
+              "target_release": 21
+            }
+          ],
+          "schema_version": 1
+        },
+        "normalized_manifest_sha256": "6652e72b93be2053d5181cfe87b00f2a3aee6d5424642ead58679b41d193ca63",
+        "platform_bytes": 24683914,
+        "platform_classes": 7615,
+        "platform_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+        "source_artifact_bytes": 728980,
+        "source_artifact_sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+        "source_bytes": 3676819,
+        "source_count": 249,
+        "source_inventory_sha256": "26ef116692f40cefd2d9ee82addd08f623d2e6c69a8582daf3fb8985bc4eb6e0"
+      },
+      "gson": {
+        "automatic_build_import": false,
+        "commit": "2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b",
+        "definition": {
+          "initial_document_version": 1,
+          "query_buffer": "original disk bytes captured by didOpen",
+          "query_byte": 1082,
+          "query_source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "target_buffer": "original disk bytes plus the latest measured prefix",
+          "target_byte_range": [
+            6402,
+            6420
+          ],
+          "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+          "target_source": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+        },
+        "inputs": {
+          "hamcrest": {
+            "filename": "hamcrest.jar",
+            "sha256": "66fdef91e9739348df7a096aa384a5685f4e875584cce89386a7a47251c4d8e9",
+            "size": 45024
+          },
+          "java_base": {
+            "filename": "java.base.jmod",
+            "sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+            "size": 24683914
+          },
+          "java_sql": {
+            "filename": "java.sql.jmod",
+            "sha256": "3dcb75061ccbab687679908001f96f0c8544930c2f3e94f738574bf944121004",
+            "size": 83900
+          },
+          "jsr250": {
+            "filename": "jsr250.jar",
+            "sha256": "a1a922d0d9b6d183ed3800dfac01d1e1eb159f0e8c6f94736931c1def54a941f",
+            "size": 5848
+          },
+          "junit": {
+            "filename": "junit.jar",
+            "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3",
+            "size": 384581
+          },
+          "sources": {
+            "filename": "gson.zip",
+            "sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+            "size": 628229
+          }
+        },
+        "jpms_supported": false,
+        "measured_query_count": 1,
+        "missing_generated_source": "com.google.gson.internal.GsonBuildConfig",
+        "project": "Gson core/extras 2.10.1 manual source-set model",
+        "source_bytes": 1484012,
+        "source_count": 211,
+        "upstream_build_or_tests_executed": false
+      },
+      "source_inventory_count": {
+        "commons": 249,
+        "gson": 226
+      },
+      "source_inventory_sha256": {
+        "commons": "26ef116692f40cefd2d9ee82addd08f623d2e6c69a8582daf3fb8985bc4eb6e0",
+        "gson": "c84510b1665bd2f7ee0e7aadbe6cc767ac2844309dfbdbed05494d99ddce0a34"
+      }
+    },
+    "memory": "sampled process-group RSS sum including broker/supervisor/worker when observed; /proc reads are non-atomic, shared pages double-counted, brief peaks/processes may be missed; availability alone does not prove all three were observed; not unique physical memory or a quota",
+    "order": "serial project/workload pairs; baseline/candidate order reverses each round",
+    "repetitions": 7,
+    "request_timeout_seconds": 60,
+    "sample_interval_ms": 5,
+    "schedule": [
+      [
+        0,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        0,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        0,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        0,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        0,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        0,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        0,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        0,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        1,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        1,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        1,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        1,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        1,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        1,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        1,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        1,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        2,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        2,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        2,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        2,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        2,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        2,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        2,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        2,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        3,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        3,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        3,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        3,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        3,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        3,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        3,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        3,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        4,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        4,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        4,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        4,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        4,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        4,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        4,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        4,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        5,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        5,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        5,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        5,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        5,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        5,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        5,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        5,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        6,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        6,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        6,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        6,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        6,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        6,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        6,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        6,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        7,
+        "gson",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        7,
+        "gson",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        7,
+        "gson",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        7,
+        "gson",
+        "target_edit_definition",
+        "baseline"
+      ],
+      [
+        7,
+        "commons",
+        "same_generation_definition",
+        "candidate"
+      ],
+      [
+        7,
+        "commons",
+        "same_generation_definition",
+        "baseline"
+      ],
+      [
+        7,
+        "commons",
+        "target_edit_definition",
+        "candidate"
+      ],
+      [
+        7,
+        "commons",
+        "target_edit_definition",
+        "baseline"
+      ]
+    ],
+    "schema_version": 1,
+    "scope": "Two successful fixed source definitions and one-line target-buffer edits; not full semantic acceptance.",
+    "session_timeout_seconds": 600,
+    "warmups_per_variant_workload": 1
+  },
+  "samples": [
+    {
+      "actual": {
+        "response_sha256": "2f549206c9a7f2537c23998fa5b4e25284347093ad92f6a574ebdf68215130b6",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 163
+            },
+            "start": {
+              "character": 17,
+              "line": 163
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 163
+          },
+          "start": {
+            "character": 17,
+            "line": 163
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.123635001742514,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413648.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 498,
+        "samples_with_live_group_processes": 498,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "0:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2826.5839769992454,
+      "warmup": true,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "89f7d7caa16b522fd91b5699a39f0c2d765128ccbbaf4b9c21c80f02ec6af10c",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 163
+            },
+            "start": {
+              "character": 17,
+              "line": 163
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 163
+          },
+          "start": {
+            "character": 17,
+            "line": 163
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.180256998253753,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233976.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 194,
+        "samples_with_live_group_processes": 194,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "0:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1088.134181998612,
+      "warmup": true,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "2273eca6a5bb77eed57dd0214149b0ffd34d72d13d4d6004e4ad649064a123d8",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.969628001068486,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413964.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 470,
+        "samples_with_live_group_processes": 470,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "0:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2625.4284259994165,
+      "warmup": true,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "11f07293bdf14ad8505d8316ac7f60ef95ac22f5f88e4a4d980b0e5f393f5e8e",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.866118001402356,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233900.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 197,
+        "samples_with_live_group_processes": 197,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "0:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1135.1546190016961,
+      "warmup": true,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "9d902a29e01c138110248752e942ef07e7e194165d2824f664c7eceb4a60a3b8",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 57
+            },
+            "start": {
+              "character": 13,
+              "line": 57
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 57
+          },
+          "start": {
+            "character": 13,
+            "line": 57
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 10.070807998999953,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188396.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 139,
+        "samples_with_live_group_processes": 139,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "0:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 773.69866999652,
+      "warmup": true,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "f2faac90aa84aa42f359b235107cfc97867b2b50dfa113be6a9b26be6de17b9c",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 57
+            },
+            "start": {
+              "character": 13,
+              "line": 57
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 57
+          },
+          "start": {
+            "character": 13,
+            "line": 57
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.518364000337897,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164084.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 133,
+        "samples_with_live_group_processes": 133,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "0:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 739.2728859995259,
+      "warmup": true,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "164d2eee9ca58aa8baf5c857a7915f750fca46eac93a33ca856545d8a70e7c7c",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 11.974429999099812,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188680.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 142,
+        "samples_with_live_group_processes": 142,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "0:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 791.1751680003363,
+      "warmup": true,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "827a5844ba926e2682b9efd4166d27b52194c010c4e76d5d68f4d01a1803cb7d",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 0,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.735732997796731,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164472.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 150,
+        "samples_with_live_group_processes": 150,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "0:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 853.6848749972705,
+      "warmup": true,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "0241b4128a46143652fb7c6f96974ed80ef1b489a49acbb4ce0232e87f61ae47",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.146301999455318,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233632.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 213,
+        "samples_with_live_group_processes": 213,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "1:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1218.2906340021873,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "5648d2c73252448fa0767c78978ebfd4f0467233d1f359b69dc69c2ac98b3ed5",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.932960000995081,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413496.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 488,
+        "samples_with_live_group_processes": 488,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "1:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2743.6259700007213,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "c6f8950d9bcfbd8ceb800b17a52e8635c4016271400e12d6925c6e31582000a2",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.398114001262002,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233688.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 186,
+        "samples_with_live_group_processes": 186,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "1:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1046.4255680017231,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "6161b5670bbfae56bb84d300569c87c5e3f1ba9de66f4c285ce57974eed2e98a",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.430651999835391,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413708.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 458,
+        "samples_with_live_group_processes": 458,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "1:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2530.87775899985,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "3b24def64e4b72e7347fb80565611849c2e5458e54a13f4a342868546ff73992",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.765702001255704,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164776.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 135,
+        "samples_with_live_group_processes": 135,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "1:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 750.9856289980235,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "6c3b843892a5ef030ae50c58afe5f6da5612d69bc8b40d8090cfa66737a5b7f4",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.048419000260765,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188772.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 2,
+        "samples": 150,
+        "samples_with_live_group_processes": 150,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "1:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 845.6870280024305,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "de58400e75b0b1d412bda96c57df604202ec5c08cec158d94bb40cd261a38d2c",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.183903002849547,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164776.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 135,
+        "samples_with_live_group_processes": 135,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "1:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 755.6788520014379,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "417c71380cc49a3dfd559bd1f63e13b2dbbffeaf343cba466cc2b361f8e5202e",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 1,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 13.03823800117243,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 189156.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 138,
+        "samples_with_live_group_processes": 138,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "1:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 768.8967819995014,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "234758e3a219ee9f79e873fade4f246ba16122980e6db2047608aafb1bff8ff7",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.535569002153352,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413752.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 448,
+        "samples_with_live_group_processes": 448,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "2:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2467.3389050003607,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "35a1d60b1bc4e33b725dda8aade35ced1c97f1b5f9f8fd81d91ff714f0a7ee83",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.190603999129962,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233640.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 176,
+        "samples_with_live_group_processes": 176,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "2:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 965.505904998281,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "0baf5254a9ec316d5f12de2fe91c07f793141da29295a818fa69f1cc2984f944",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.379536000575172,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413692.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 483,
+        "samples_with_live_group_processes": 483,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "2:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2706.787159000669,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "9a47f3bbfa4d329b31e9d64d7d466de4862dd8ca2d555759f3dfcdebff6607e9",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.432766000623815,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233968.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 173,
+        "samples_with_live_group_processes": 173,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "2:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 954.6870879967173,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "601ab32172178e24a246de86043881fc5a0758da3da9639773c3a97e162593f1",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.794203000230482,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188988.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 141,
+        "samples_with_live_group_processes": 141,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "2:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 786.8438459991012,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "707ce53a0b67e04327530092b05e56d4059a69d037bd5dc351aa61ebe8bafdc5",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.60557799731032,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 165036.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 133,
+        "samples_with_live_group_processes": 133,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "2:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 734.8981009999989,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "8994434dd356cd3dc5ca6ee670bef4025ecfd210f6dc92134809ba180aa869c5",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.105721001105849,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188252.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 139,
+        "samples_with_live_group_processes": 139,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "2:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 767.2703210009786,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "d8db9bd502b830b6e9724a894a5208226a606885f36564e57617f35cfac252ee",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 2,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.825523000268731,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164088.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 135,
+        "samples_with_live_group_processes": 135,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "2:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 754.1085720004048,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "b9e928c7f7fbbc88554a6b64016f07fa93be21a79194e3386ac18181aa6c5c0e",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.965718999912497,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233780.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 185,
+        "samples_with_live_group_processes": 185,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "3:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1031.6409429979103,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "3d4e12ea5e52429fd3d372f532d62812560b0e419d8c20ac21e2c26620f33003",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.181842000136385,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413688.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 442,
+        "samples_with_live_group_processes": 442,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "3:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2432.406883999647,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "4691e46a7809c334258aeab9b465158354baf628dcd88c03f66548515eb7389b",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.492362001154106,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233772.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 175,
+        "samples_with_live_group_processes": 175,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "3:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 965.8209240005817,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "c04c1bdcdba452dd35fbb68207a6b4760e186977507072ef9af3025a79a8ff25",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.386510002106661,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413680.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 438,
+        "samples_with_live_group_processes": 438,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "3:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2401.2621809997654,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "f0712b00e173c8509488c64e9cc0982d00504390941266b72a58d2b33db8378a",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.242230000178097,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164304.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 134,
+        "samples_with_live_group_processes": 134,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "3:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 740.2305180003168,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "1548511ef62379b9198b5ebed7471ecbba93c927912a4db455e46b4cb021be00",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.756155999435578,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188580.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 143,
+        "samples_with_live_group_processes": 143,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "3:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 791.4201439998578,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "442f9b3a17b6b3f685306b46630ee9976efc10f1d31a673279d3af13af2ebbac",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 11.843765001685824,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164316.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 131,
+        "samples_with_live_group_processes": 131,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "3:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 729.4689509981254,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "3ecea8b0b7718c596197d1dd01dc2af6886a35e9fd5027e003c8c17af06aad19",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 3,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.220362000633031,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188896.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 138,
+        "samples_with_live_group_processes": 138,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "3:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 763.297721001436,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "6f7a44e47425fc6b231f88d49d31ece754716ed67015a67d34c47f7eab429c1b",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.433597998693585,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413836.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 448,
+        "samples_with_live_group_processes": 448,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "4:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2464.979074000439,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "bf4026d38856d900de4f3ac0b1fee67895f34ceb80226324c1248862e167d835",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.548918001702987,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233820.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 174,
+        "samples_with_live_group_processes": 174,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "4:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 954.9359109987563,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "730345e4874cfba5d4968737581d5f41ed9ff1ecf50fa1746743baa20b38fe4b",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.5387479992059525,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413788.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 431,
+        "samples_with_live_group_processes": 431,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "4:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2355.593514999782,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "a155ba8e0dd613d98bfae715f97ff6704bd7ceaff0a1c2aae3932757ac019016",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.3146180002368055,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233652.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 167,
+        "samples_with_live_group_processes": 167,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "4:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 912.4458289988979,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "8dd02ad09e5b5e8b3a590aca2b9e4916e27e89c7ff45246a19c51e35be3b80ea",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.721681002294645,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188628.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 137,
+        "samples_with_live_group_processes": 137,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "4:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 738.957310000842,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "8bc6c63c3d2a9b26b6f06f748f58790e3b988ce7a79e9e5fcf0a4ebb1b219413",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.798702001309721,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164360.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 120,
+        "samples_with_live_group_processes": 120,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "4:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 660.7832679983403,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "652366fb940563e393c1985eb69c91e943b76b85180d76859df91a4940a5ea93",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 12.121812000259524,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188816.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 135,
+        "samples_with_live_group_processes": 135,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "4:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 743.8248850012315,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "983e1f620b8e69ea5ca15fd2898976a3fb343de57521d15eb1f92dbae514f79f",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 4,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 13.14321099926019,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164444.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 126,
+        "samples_with_live_group_processes": 126,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "4:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 699.7315699991304,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "c324e3e53864d94ea6bd6e7897e4b98cd80ce59edb1cfbad3dfc40e0f9d616bf",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.448639997164719,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233632.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 161,
+        "samples_with_live_group_processes": 161,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "5:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 876.9680219993461,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "f0b26001c822946ca6ddf780004c6f3d83dd271ef36f9c9791c85621bbd09ca7",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.689605001156451,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 414088.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 456,
+        "samples_with_live_group_processes": 456,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "5:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2493.3542719991237,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "ae20174b08c21f1502235e8678dce6f1f540a23e855138454e40f1f2221ea781",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 6.613877001655055,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233844.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 183,
+        "samples_with_live_group_processes": 183,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "5:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1019.3255239973951,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "8997ea287c9e569ca7e90d3992a19499ac1191fa0cc1e79d87fcc81eb3c46650",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.490599000651855,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413688.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 429,
+        "samples_with_live_group_processes": 429,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "5:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2343.3004029975564,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "be8beedd08e9add59818f7e3af972216c319b78d12866d3a7808e22563cb1ae8",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.95396900139167,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164592.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 130,
+        "samples_with_live_group_processes": 130,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "5:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 712.9964630003087,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "9d7d350bef776c3d7d9bf9b914c27f2ec9452a61f51ee7fe26a01fe902b72008",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.707788001425797,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188912.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 128,
+        "samples_with_live_group_processes": 128,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "5:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 702.099600002839,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "13781a3265f8b803dfbda9727b16a0481c667d7c977081bedf2aadab16d0925a",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.871597998222569,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164412.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 123,
+        "samples_with_live_group_processes": 123,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "5:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 675.9668289996625,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "b98d275ee9f004d08df21f9d736e76715558f66aaf121df810244d656d59e3b5",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 5,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.64929399904213,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188420.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 145,
+        "samples_with_live_group_processes": 145,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "5:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 823.9995490002912,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "e4db71fabaf14261840f9150300544ea46bc5f79b0d08db0e62f6c4615c6c0c4",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 17.106252002122346,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413644.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 493,
+        "samples_with_live_group_processes": 493,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "6:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2798.722818999522,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "1f932369347d9b704937826db143e1cf09fb234ca951f2227071097b0eaa131d",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 19.969458000559825,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233708.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 199,
+        "samples_with_live_group_processes": 199,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "6:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1140.4472030008037,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "bb3d098614425a801b1cc21bfb7b99824db6f62620f8274053874f9c35e7432f",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.873314000084065,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413676.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 449,
+        "samples_with_live_group_processes": 449,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "6:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2516.5960880003695,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "f61d569179780273edd882e96e7bda1a30bd79c7c694f4b4cf102dc32a457c38",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.774927998980274,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233556.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 193,
+        "samples_with_live_group_processes": 193,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "6:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1078.0636809977295,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "ba0774b0fd7aeb55e06ec86f23d50085ac137b417f78cdffb4acd2d53a633205",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.616284001414897,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188332.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 156,
+        "samples_with_live_group_processes": 156,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "6:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 883.6359399974754,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "270c2f0635ee2211e36935769c3bf20d6d075f32faaa1e2c46289e14f5149237",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.560002002923284,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164364.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 137,
+        "samples_with_live_group_processes": 137,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "6:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 761.2398029996257,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "6640ca091dc46a85ddab8c467704efeca335062f6f60453eafefe1b828f9468f",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.69698499829974,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188356.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 149,
+        "samples_with_live_group_processes": 149,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "6:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 842.6599869999336,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "a333bf73331978f7fe069cd2e91d6d39d5d1480c3a6f219299546d94ade28409",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 6,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 12.976968002476497,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164056.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 133,
+        "samples_with_live_group_processes": 133,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "6:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 745.0415639978019,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "0d9e18d787069ee5049a98944190ee9d0be975422c61bcefca40f9f496f55674",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.193222998466808,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233720.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 181,
+        "samples_with_live_group_processes": 181,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "7:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 1003.6465299999691,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "31db7f7e6e52915ac255a9899413f285c9cd7de5fbd2fda982af03dcca534b97",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.0660509991284925,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413648.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 449,
+        "samples_with_live_group_processes": 449,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "7:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2462.8644670010544,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "b5f8dee9364d66cebe0dc380faf857e170ef57ec017bff848c7f29336df5a1ae",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.44864100124687,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 233632.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 176,
+        "samples_with_live_group_processes": 176,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "7:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 977.1507290024601,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "29de2601206065e2f3407943a2723d41ba735c9c9d829226558db581ad4445f9",
+        "result": {
+          "range": {
+            "end": {
+              "character": 35,
+              "line": 164
+            },
+            "start": {
+              "character": 17,
+              "line": 164
+            }
+          },
+          "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 164
+          },
+          "start": {
+            "character": 17,
+            "line": 164
+          }
+        },
+        "target": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 9.378904000186594,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 413648.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 434,
+        "samples_with_live_group_processes": 434,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "gson",
+      "query": {
+        "position": {
+          "character": 52,
+          "line": 31
+        },
+        "source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+      },
+      "request_id": "7:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 2387.5085939980636,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "6ad06b19b3911f5205a2bdbb156c942fef55a92ae19af752c66a7c3cb5898a1d",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 7.857641001464799,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164208.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 1,
+        "samples": 126,
+        "samples_with_live_group_processes": 126,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "7:same_generation_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 688.8552639975387,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "77347070df3ae391223438dd2a66358b7d91f1f0b22e7f004aa5fbb246e8755e",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 8.721444999537198,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188324.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 136,
+        "samples_with_live_group_processes": 136,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "7:same_generation_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 753.740893000213,
+      "warmup": false,
+      "workload": "same_generation_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "f873d61d5cba508d7234c40dd09fc74c4ea5488e393cd9975ee467e55f9e4da1",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 12.639304000913398,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 164304.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 127,
+        "samples_with_live_group_processes": 127,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "7:target_edit_definition:candidate",
+      "variant": "candidate",
+      "wall_ms": 713.7550160005048,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    },
+    {
+      "actual": {
+        "response_sha256": "88d9baa3d70c60f543bf3c0df0bf7b8595a89138216363eac58f2973299963d6",
+        "result": {
+          "range": {
+            "end": {
+              "character": 23,
+              "line": 58
+            },
+            "start": {
+              "character": 13,
+              "line": 58
+            }
+          },
+          "target": "org/apache/commons/lang3/ArrayUtils.java",
+          "unexpected_uri": false
+        }
+      },
+      "correct": true,
+      "expected": {
+        "range": {
+          "end": {
+            "character": 23,
+            "line": 58
+          },
+          "start": {
+            "character": 13,
+            "line": 58
+          }
+        },
+        "target": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "iteration": 7,
+      "proc_sampling": {
+        "available": true,
+        "distinct_processes_observed": 3,
+        "max_observed_sample_gap_ms": 11.58096500148531,
+        "peak_simultaneously_observed_processes": 3,
+        "peak_sum_rss_kib": 188932.0,
+        "proc_enumeration_available": true,
+        "process_stat_read_failures_or_races": 0,
+        "samples": 145,
+        "samples_with_live_group_processes": 145,
+        "sampling_failure_category": null,
+        "thread_stopped": true
+      },
+      "project": "commons",
+      "query": {
+        "position": {
+          "character": 19,
+          "line": 7457
+        },
+        "source": "org/apache/commons/lang3/StringUtils.java"
+      },
+      "request_id": "7:target_edit_definition:baseline",
+      "variant": "baseline",
+      "wall_ms": 805.4527530002815,
+      "warmup": false,
+      "workload": "target_edit_definition"
+    }
+  ],
+  "schema_version": 1,
+  "started_utc": "2026-11-09T13:51:35.688468+00:00",
+  "status": "passed",
+  "summary": {
+    "commons": {
+      "same_generation_definition": {
+        "baseline": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            188772.0,
+            188988.0,
+            188580.0,
+            188628.0,
+            188912.0,
+            188332.0,
+            188324.0
+          ],
+          "raw_wall_ms": [
+            845.6870280024305,
+            786.8438459991012,
+            791.4201439998578,
+            738.957310000842,
+            702.099600002839,
+            883.6359399974754,
+            753.740893000213
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 188988.0,
+            "median": 188628.0,
+            "min": 188324.0
+          },
+          "wall_ms": {
+            "max": 883.6359399974754,
+            "median": 786.8438459991012,
+            "min": 702.099600002839
+          }
+        },
+        "candidate": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            164776.0,
+            165036.0,
+            164304.0,
+            164360.0,
+            164592.0,
+            164364.0,
+            164208.0
+          ],
+          "raw_wall_ms": [
+            750.9856289980235,
+            734.8981009999989,
+            740.2305180003168,
+            660.7832679983403,
+            712.9964630003087,
+            761.2398029996257,
+            688.8552639975387
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 165036.0,
+            "median": 164364.0,
+            "min": 164208.0
+          },
+          "wall_ms": {
+            "max": 761.2398029996257,
+            "median": 734.8981009999989,
+            "min": 660.7832679983403
+          }
+        }
+      },
+      "target_edit_definition": {
+        "baseline": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            189156.0,
+            188252.0,
+            188896.0,
+            188816.0,
+            188420.0,
+            188356.0,
+            188932.0
+          ],
+          "raw_wall_ms": [
+            768.8967819995014,
+            767.2703210009786,
+            763.297721001436,
+            743.8248850012315,
+            823.9995490002912,
+            842.6599869999336,
+            805.4527530002815
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 189156.0,
+            "median": 188816.0,
+            "min": 188252.0
+          },
+          "wall_ms": {
+            "max": 842.6599869999336,
+            "median": 768.8967819995014,
+            "min": 743.8248850012315
+          }
+        },
+        "candidate": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            164776.0,
+            164088.0,
+            164316.0,
+            164444.0,
+            164412.0,
+            164056.0,
+            164304.0
+          ],
+          "raw_wall_ms": [
+            755.6788520014379,
+            754.1085720004048,
+            729.4689509981254,
+            699.7315699991304,
+            675.9668289996625,
+            745.0415639978019,
+            713.7550160005048
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 164776.0,
+            "median": 164316.0,
+            "min": 164056.0
+          },
+          "wall_ms": {
+            "max": 755.6788520014379,
+            "median": 729.4689509981254,
+            "min": 675.9668289996625
+          }
+        }
+      }
+    },
+    "gson": {
+      "same_generation_definition": {
+        "baseline": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            413496.0,
+            413752.0,
+            413688.0,
+            413836.0,
+            414088.0,
+            413644.0,
+            413648.0
+          ],
+          "raw_wall_ms": [
+            2743.6259700007213,
+            2467.3389050003607,
+            2432.406883999647,
+            2464.979074000439,
+            2493.3542719991237,
+            2798.722818999522,
+            2462.8644670010544
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 414088.0,
+            "median": 413688.0,
+            "min": 413496.0
+          },
+          "wall_ms": {
+            "max": 2798.722818999522,
+            "median": 2467.3389050003607,
+            "min": 2432.406883999647
+          }
+        },
+        "candidate": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            233632.0,
+            233640.0,
+            233780.0,
+            233820.0,
+            233632.0,
+            233708.0,
+            233720.0
+          ],
+          "raw_wall_ms": [
+            1218.2906340021873,
+            965.505904998281,
+            1031.6409429979103,
+            954.9359109987563,
+            876.9680219993461,
+            1140.4472030008037,
+            1003.6465299999691
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 233820.0,
+            "median": 233708.0,
+            "min": 233632.0
+          },
+          "wall_ms": {
+            "max": 1218.2906340021873,
+            "median": 1003.6465299999691,
+            "min": 876.9680219993461
+          }
+        }
+      },
+      "target_edit_definition": {
+        "baseline": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            413708.0,
+            413692.0,
+            413680.0,
+            413788.0,
+            413688.0,
+            413676.0,
+            413648.0
+          ],
+          "raw_wall_ms": [
+            2530.87775899985,
+            2706.787159000669,
+            2401.2621809997654,
+            2355.593514999782,
+            2343.3004029975564,
+            2516.5960880003695,
+            2387.5085939980636
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 413788.0,
+            "median": 413688.0,
+            "min": 413648.0
+          },
+          "wall_ms": {
+            "max": 2706.787159000669,
+            "median": 2401.2621809997654,
+            "min": 2343.3004029975564
+          }
+        },
+        "candidate": {
+          "n": 7,
+          "raw_sampled_group_peak_rss_kib": [
+            233688.0,
+            233968.0,
+            233772.0,
+            233652.0,
+            233844.0,
+            233556.0,
+            233632.0
+          ],
+          "raw_wall_ms": [
+            1046.4255680017231,
+            954.6870879967173,
+            965.8209240005817,
+            912.4458289988979,
+            1019.3255239973951,
+            1078.0636809977295,
+            977.1507290024601
+          ],
+          "sampled_group_peak_rss_kib": {
+            "max": 233968.0,
+            "median": 233688.0,
+            "min": 233556.0
+          },
+          "wall_ms": {
+            "max": 1078.0636809977295,
+            "median": 977.1507290024601,
+            "min": 912.4458289988979
+          }
+        }
+      }
+    }
+  }
+}

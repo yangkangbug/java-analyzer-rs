@@ -30,7 +30,8 @@ pub struct CompilationConfig {
 }
 
 /// Graph and aggregate loading budgets. Repeated physical inputs are charged on
-/// every load: there is no cross-compilation parse/archive cache.
+/// every occurrence, even when equal archive bytes reuse parsed signatures within
+/// one load. Every occurrence still reads and checks the archive's current bytes.
 #[derive(Clone, Debug)]
 pub struct WorkspaceConfig {
     pub compilations: Vec<CompilationConfig>,
@@ -145,6 +146,15 @@ impl WorkspaceSnapshot {
     /// Source declarations always bind in their owner's context, even when queried
     /// from a dependent view. Binary hierarchy links use their own compilation's
     /// selected inputs; different versions can coexist in distinct contexts.
+    ///
+    /// Within this call, equal archive bytes at a checked canonical path may reuse
+    /// parsed signatures for the same format and exact JAR target release, provided
+    /// all current limits pass. Every occurrence still captures fresh bytes and is
+    /// charged to every budget. A bounded private FIFO retains at most 16 archives
+    /// and 64 MiB of raw bytes; eviction or oversized inputs only cause more decoding.
+    /// Signatures remain immutable and shared, but each scope builds its own binding
+    /// records. Nothing is retained for the next load. This is not an atomic view of
+    /// concurrently modified files or a persistent/incremental query cache.
     pub fn load(config: &WorkspaceConfig) -> Result<Self, WorkspaceLoadError> {
         use WorkspaceLoadErrorKind as K;
         if config.compilations.len() > config.max_compilations {
@@ -201,6 +211,7 @@ impl WorkspaceSnapshot {
             edges.insert(index);
         }
         let mut inputs = Vec::new();
+        let mut archives = crate::jar::ArchiveReads::default();
         let mut owners = BTreeSet::new();
         let (mut entries, mut bytes, mut expanded) = (0, 0, 0);
         for compilation in configs {
@@ -209,10 +220,12 @@ impl WorkspaceSnapshot {
             bounded.limits.max_input_bytes = bounded.limits.max_input_bytes.min(config.max_input_bytes - bytes);
             bounded.limits.max_archive_expanded_bytes =
                 bounded.limits.max_archive_expanded_bytes.min(config.max_archive_expanded_bytes - expanded);
-            let mut loaded = ProjectSnapshot::load(&bounded).map_err(|input| WorkspaceLoadError {
-                kind: K::Input,
-                detail: format!("{:?}: {input}", compilation.id),
-                input: Some(input),
+            let mut loaded = ProjectSnapshot::load_with_archives(&bounded, Some(&mut archives)).map_err(|input| {
+                WorkspaceLoadError {
+                    kind: K::Input,
+                    detail: format!("{:?}: {input}", compilation.id),
+                    input: Some(input),
+                }
             })?;
             // The remaining workspace allowance constrains this load, but is not
             // the compilation's limit for a later whole-batch source replacement.
@@ -240,8 +253,9 @@ impl WorkspaceSnapshot {
     ///
     /// No filesystem reads, path canonicalization, archive decoding or Java
     /// execution occur. Sources cannot be added/removed and the compilation graph
-    /// and binary contexts cannot be changed. Parsed binary signatures are cloned,
-    /// not reread; this is not zero-copy storage or an incremental semantic index.
+    /// and binary contexts cannot be changed. Immutable parsed binary signatures
+    /// are shared, not reread or deeply cloned. Other snapshot/index allocations
+    /// remain; this is not zero-copy storage or an incremental semantic index.
     /// A new prepared view still indexes the derived snapshot independently. Old
     /// snapshots and their prepared views remain valid. Revisions, cancellation
     /// and stale-result rejection remain the caller's responsibility.
@@ -416,3 +430,6 @@ impl<'a> PreparedCompilationScope<'a> {
         self.index.resolve_at(self.scope.index, path, byte)
     }
 }
+
+#[cfg(test)]
+mod archive_reuse_tests;

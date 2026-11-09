@@ -22,7 +22,8 @@ plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It 
 Missing foundations include build-tool/JDK discovery, JPMS rules, stable symbol
 IDs, type inference,
 general overload applicability/selection, generic substitution, references, rename,
-completion, semantic diagnostics, and an editor/LSP adapter. Unqualified invocation
+completion and semantic diagnostics. A narrow definition-only LSP adapter is
+available, with the limitations described below. Unqualified invocation
 names now use the method namespace independently of
 same-spelled local/parameter/field values. The parser still
 omits switch/pattern/module support and some parameter/type-annotation syntax.
@@ -258,6 +259,14 @@ coverage, automatic build import, UI latency budget or replacement of JDT LS is
 implied. Next gates must improve measured repeated-query behavior and practical
 semantic coverage without losing cross-buffer correctness or refusal boundaries.
 
+The measured [single-load archive reuse](docs/ARCHIVE_REUSE.md) prerequisite is implemented:
+sharing immutable parsed signatures across compilation scopes after freshly reading
+and exactly comparing their archive bytes. Per-scope contexts and logical input
+budgets remain separate. This targets duplicated decoding and snapshot cloning,
+not persistent snapshots or incremental semantic invalidation. A true importer
+also needs a model for source exclusions, generated inputs and build conditions;
+guessing these from Maven/Gradle directory names would not close M1.
+
 ## M4: usable analysis capabilities
 
 Build definition/hover, semantic diagnostics, completion/signature help,
@@ -288,7 +297,8 @@ file/compilation/workspace byte budgets without rereading binary inputs. Strict
 UTF-16 line/character conversion and one-shot CLI overlays allow a caller to query
 unsaved source text. Caller revision labels are not stale-result enforcement; a
 persistent adapter, asynchronous lifecycle and transactional project reload remain
-open. Full input cloning and fresh prepared indexes are not incremental caching.
+open. Snapshot cloning now shares immutable binary signatures; fresh prepared
+indexes are still required and this is not incremental caching.
 See [the buffer contract](docs/CLI_OVERLAYS.md).
 
 A separate [macOS source-build/runtime gate](docs/MACOS_NATIVE.md) targets declared

@@ -1,0 +1,666 @@
+{
+  "baseline_source": {
+    "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+    "rust_build_input_files": {
+      "Cargo.lock": "8bed30c7deca2c8ea96c4445cb41dbbecb0c686eacdd5e86f50919734599beee",
+      "Cargo.toml": "befac4fa42773f20f260ba846ce18439c9c80460709b63fbd3fe3737c0b8b728",
+      "rust-toolchain.toml": "e59c5da37d1f9f4e0f815bc188cb6056fc7410c9cdaa9673c2d44da557c75d12",
+      "src/bin/java-analyzer/config.rs": "371fc126b904588c78929f2296203add00fe6e0e985651d24248fca93fe364c1",
+      "src/bin/java-analyzer/editor.rs": "ba6ac81ae97a4b5d4e46985201ab2e065d0ea57ed0adcb93491bb57d87ec36a1",
+      "src/bin/java-analyzer/execution.rs": "355c859e9b7e8e18d05452c136609e191f59f9ebaeea41770c447cac7627a1fe",
+      "src/bin/java-analyzer/lsp/backend.rs": "f04b6817fe6a732565fae9c96df38874bc6248600db16a3e956166eb25fb604b",
+      "src/bin/java-analyzer/lsp/mod.rs": "394db7813e67831a10fb53acab2a249dfa1e8b191ec810df738d94035b479364",
+      "src/bin/java-analyzer/lsp/protocol.rs": "8aa9bf4007f973608135db866ec196cad68a8b4118bc8a915de610034ec669e6",
+      "src/bin/java-analyzer/lsp/state.rs": "008d34f2b95d98f0569fecbe32681a4a2785214cfe4ef78d811b643a9ae236dc",
+      "src/bin/java-analyzer/main.rs": "3b3e07a68dceab93f38ce0ff07db6082baee71f94ddce971fd0e262744b7174c",
+      "src/bin/java-analyzer/overlays.rs": "ee176ccabbbf699814c569d7b2dab798770e432530cc792ca28df0189feed729",
+      "src/bind.rs": "425b44c3fd01d955211deaddb2395dff0334d10b6ae1e3a64d1dbedccc4ea7d6",
+      "src/classfile.rs": "b711397566f2ac62505ec7a8f9340c23aba075fcc6625781890938db9617f5c4",
+      "src/green.rs": "5e467e519a510508bb7cd41badc3cde3d9c846feb66f6a035527f8dfd02ee9fb",
+      "src/jar.rs": "1e1bd5e3b83714798429aeaedad205cc4d09054602eca7bfdfb41c779bb53078",
+      "src/kind.rs": "83a35ba76bc2be3764ded67de6a0f9de6f55e4d6da758cb76f74031ea98fc2a6",
+      "src/lex.rs": "d0169fdd33a4b5286912343dd8d66945128e4f522ce2557ae7fba752605c9d93",
+      "src/lib.rs": "0929a5b1665f76c0cd6d54dbf30ea1681b49dc581608aee020b0af956f2d3fa0",
+      "src/parse.rs": "5c1138c3da094eebbbe799e358e9d0cbde5062db03b0fd88ed40830c1974f771",
+      "src/position.rs": "db5f62ed39612d2c806fa9e7fe2fce645508de2c4cd8c1d48574d8722029c814",
+      "src/project.rs": "3a3a99f1fcef54aa0294f275b61251be0557b6ba377ead510f168ae4b4baf45d",
+      "src/reparse.rs": "a4ec946b731fc3950886657f8abfb3f167ce74166f8576476ae2526100121494",
+      "src/workspace.rs": "453c13e9a24f2b67897c54933a2947554833653e0d53e1c6be2d7226dfca941a"
+    },
+    "rust_build_inputs_sha256": "430678f5e20ae3bf0a45c2b41cba707fa4844a733d13eddbb5949f99d452e632"
+  },
+  "build_provenance_trust": "Operator declarations cross-checked against binary and matching source bytes; not independent build attestation. git_revision labels matching source, not necessarily actual historical build commit.",
+  "builds": {
+    "baseline": {
+      "binary_sha256": "08e270a3f832a1cc865b7834b40ac40a778170695679742a657fcf0e9ad5deef",
+      "build_profile": "release",
+      "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+      "receipt_sha256": "cc443a2858e056fcae53d770e85a91c6c960cbadd21915f4aeb62f0b2a5c79b1",
+      "rust_build_inputs_sha256": "430678f5e20ae3bf0a45c2b41cba707fa4844a733d13eddbb5949f99d452e632",
+      "source_dirty": false,
+      "source_revision_kind": "source_equivalent",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "candidate": {
+      "binary_sha256": "dbb587ea45ce7d3473f3bf852c448159577df0d0c94030bb1678adf52e0f03b4",
+      "build_profile": "release",
+      "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+      "receipt_sha256": "94b3f7affb3d7e4d8517d3e6b232d7a5d7893ad5ff851993e75bfc6b05a5b3a2",
+      "rust_build_inputs_sha256": "fbd58b71cfe27af101311c99b7b690d0149677ccfdaa5268f7fe342415e1bb6a",
+      "source_dirty": true,
+      "source_revision_kind": "build_checkout",
+      "target": "x86_64-unknown-linux-gnu"
+    }
+  },
+  "candidate_source": {
+    "git_revision": "a0e1a1aee960d6a3e2e6f25a7fd0f126c9d4224b",
+    "rust_build_input_files": {
+      "Cargo.lock": "8bed30c7deca2c8ea96c4445cb41dbbecb0c686eacdd5e86f50919734599beee",
+      "Cargo.toml": "befac4fa42773f20f260ba846ce18439c9c80460709b63fbd3fe3737c0b8b728",
+      "rust-toolchain.toml": "e59c5da37d1f9f4e0f815bc188cb6056fc7410c9cdaa9673c2d44da557c75d12",
+      "src/bin/java-analyzer/config.rs": "371fc126b904588c78929f2296203add00fe6e0e985651d24248fca93fe364c1",
+      "src/bin/java-analyzer/editor.rs": "ba6ac81ae97a4b5d4e46985201ab2e065d0ea57ed0adcb93491bb57d87ec36a1",
+      "src/bin/java-analyzer/execution.rs": "355c859e9b7e8e18d05452c136609e191f59f9ebaeea41770c447cac7627a1fe",
+      "src/bin/java-analyzer/lsp/backend.rs": "f04b6817fe6a732565fae9c96df38874bc6248600db16a3e956166eb25fb604b",
+      "src/bin/java-analyzer/lsp/mod.rs": "394db7813e67831a10fb53acab2a249dfa1e8b191ec810df738d94035b479364",
+      "src/bin/java-analyzer/lsp/protocol.rs": "8aa9bf4007f973608135db866ec196cad68a8b4118bc8a915de610034ec669e6",
+      "src/bin/java-analyzer/lsp/state.rs": "008d34f2b95d98f0569fecbe32681a4a2785214cfe4ef78d811b643a9ae236dc",
+      "src/bin/java-analyzer/main.rs": "3b3e07a68dceab93f38ce0ff07db6082baee71f94ddce971fd0e262744b7174c",
+      "src/bin/java-analyzer/overlays.rs": "ee176ccabbbf699814c569d7b2dab798770e432530cc792ca28df0189feed729",
+      "src/bind.rs": "d64859da9ad74d46e6ff2f5d87253d8e95297c42dc44bb05d7b43fef1c926192",
+      "src/classfile.rs": "b711397566f2ac62505ec7a8f9340c23aba075fcc6625781890938db9617f5c4",
+      "src/green.rs": "5e467e519a510508bb7cd41badc3cde3d9c846feb66f6a035527f8dfd02ee9fb",
+      "src/jar.rs": "7bb488f9b5c5eed95e917b1a96b3f263bced756b66a4216e1faf280cd5e8a7b9",
+      "src/kind.rs": "83a35ba76bc2be3764ded67de6a0f9de6f55e4d6da758cb76f74031ea98fc2a6",
+      "src/lex.rs": "d0169fdd33a4b5286912343dd8d66945128e4f522ce2557ae7fba752605c9d93",
+      "src/lib.rs": "0929a5b1665f76c0cd6d54dbf30ea1681b49dc581608aee020b0af956f2d3fa0",
+      "src/parse.rs": "5c1138c3da094eebbbe799e358e9d0cbde5062db03b0fd88ed40830c1974f771",
+      "src/position.rs": "db5f62ed39612d2c806fa9e7fe2fce645508de2c4cd8c1d48574d8722029c814",
+      "src/project.rs": "0f7027b29e572afd46fb2b4e79a727b82c74e781d85bd31576b84fa088dd72b9",
+      "src/reparse.rs": "a4ec946b731fc3950886657f8abfb3f167ce74166f8576476ae2526100121494",
+      "src/workspace.rs": "b03c3c3090ab52ab53ba12fbf2c457cb771eb0ffffb9d1b99c823d34183347ef",
+      "src/workspace/archive_reuse_tests.rs": "047e5a717570f0c8af7cfd2c5c252872215d7309dc94314401fdf76fa0811677"
+    },
+    "rust_build_inputs_sha256": "fbd58b71cfe27af101311c99b7b690d0149677ccfdaa5268f7fe342415e1bb6a"
+  },
+  "child_environment": {
+    "PATH": ""
+  },
+  "clock": "local request/notification preparation through complete matching response; includes position/prefix/JSON work, IO and concurrent sampler overhead; oracle and cleanup excluded",
+  "disk": "fresh native job per query, likely warm filesystem cache; not incremental query timing",
+  "harness_and_fixture_sha256": {
+    "examples/real_source/queries.tsv": "cbce6c814a06f3acc0dc4598745713f642a2a3e5abf89957ed20a0f85b35eb37",
+    "examples/real_source/targets.tsv": "e0e4f055a476d27921dd089555aa253b938d5a5a7f45535a643e9d2639c0453f",
+    "examples/second_project/expected.json": "2eb227e75dc02dda469b5fbec55e3ac6012f3a8a3b0eeb6f14d3daca58bfd306",
+    "examples/second_project/query-plan.json": "2d23e0d0ae4ad4da7407c42a915b39e52663c3ead2bd41784b59c626cc14d953",
+    "scripts/acceptance-inputs.json": "3b37257db5a23a602bc57eca565d63abbb5713a57cd1c550223af011cb9cd962",
+    "scripts/check-cli-acceptance.py": "cd6e610b5a4611c66509b6d62702a108d568da2e94d1597ffadd0a7e1e4a009d",
+    "scripts/check-lsp-project.py": "ef4376e290cb719bdaa993347ee89fdd41728f20925f901c39af3902b893e9f0",
+    "scripts/check-second-project.py": "7e85fceb2cd0e899f008130ead6b3b9dc1f5cd73d88bf875d7de73d5e4671c9a",
+    "scripts/fetch-acceptance-inputs.py": "f290d474c3959ddd5112a0578830680d7c63cbecb5fc21b2075bbf16917a9348",
+    "scripts/fetch-second-project-inputs.py": "3b2455e65eb6923a6c0e79824101360300e84e3bc8417c595cc85e6256d2cd3b",
+    "scripts/measure-cli-preview.py": "b1b7c47be4706b74ee1c2381f51f387ea162aed770ec5ca8ae13926e7f6e6644",
+    "scripts/measure-lsp-reload.py": "30e6fcf81e2fc4a97963e3150700a4149d674c1f6d694fa72198b815c673e408",
+    "scripts/second-project-inputs.json": "fd75cd3639e579f68d80f9bc64df7fbeb734ab1d37df156963080f38167b8197"
+  },
+  "host": {
+    "architecture": "x86_64",
+    "cgroup_v2_limits": {
+      "cpu.max": null,
+      "memory.high": null,
+      "memory.max": null
+    },
+    "cpu_affinity_count": 9,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "kernel_release": "6.18.57",
+    "logical_cpus": 9,
+    "meminfo_kib": {
+      "MemAvailable": 8377160,
+      "MemTotal": 10206472,
+      "SwapTotal": 0
+    },
+    "os_release": {
+      "ID": "debian",
+      "PRETTY_NAME": "Debian GNU/Linux 13 (trixie)",
+      "VERSION_ID": "13"
+    },
+    "page_bytes": 4096,
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "initialization": "one initialize-request observation per project/variant after Popen; not full process startup or seven-sample startup timing",
+  "inputs": {
+    "commons": {
+      "definition": {
+        "initial_document_version": 1,
+        "query_buffer": "original disk bytes captured by didOpen",
+        "query_byte": 309172,
+        "query_source": "org/apache/commons/lang3/StringUtils.java",
+        "target_buffer": "original disk bytes plus the latest measured prefix",
+        "target_byte_range": [
+          2159,
+          2169
+        ],
+        "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+        "target_source": "org/apache/commons/lang3/ArrayUtils.java"
+      },
+      "input_provenance": {
+        "jdk": {
+          "jmod_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+          "license": "GPL-2.0 with Classpath Exception and assembly exception; additional component notices under legal/",
+          "max_entries": 2000,
+          "max_expanded": 536870912,
+          "max_file": 167772160,
+          "provenance": "Eclipse Temurin 21.0.13+9 Linux x64 HotSpot; https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9",
+          "root": "jdk-21.0.13+9",
+          "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c",
+          "size": 207858352,
+          "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz"
+        },
+        "sources": {
+          "license": "Apache-2.0; archive META-INF/LICENSE.txt and META-INF/NOTICE.txt",
+          "max_entries": 1000,
+          "max_expanded": 16777216,
+          "max_file": 4194304,
+          "provenance": "Apache Commons Lang 3.17.0 published source artifact; https://commons.apache.org/proper/commons-lang/",
+          "sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+          "size": 728980,
+          "url": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0-sources.jar"
+        }
+      },
+      "measured_query_count": 1,
+      "name": "Apache Commons Lang 3.17.0",
+      "normalized_manifest": {
+        "compilations": [
+          {
+            "classpath": [],
+            "dependencies": [],
+            "id": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "platform": [
+              {
+                "kind": "jmod",
+                "path": "<pinned-java.base.jmod>"
+              }
+            ],
+            "source_roots": [
+              "../sources"
+            ],
+            "target_release": 21
+          }
+        ],
+        "schema_version": 1
+      },
+      "normalized_manifest_sha256": "6652e72b93be2053d5181cfe87b00f2a3aee6d5424642ead58679b41d193ca63",
+      "platform_bytes": 24683914,
+      "platform_classes": 7615,
+      "platform_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+      "source_artifact_bytes": 728980,
+      "source_artifact_sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+      "source_bytes": 3676819,
+      "source_count": 249,
+      "source_inventory_sha256": "26ef116692f40cefd2d9ee82addd08f623d2e6c69a8582daf3fb8985bc4eb6e0"
+    },
+    "gson": {
+      "automatic_build_import": false,
+      "commit": "2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b",
+      "definition": {
+        "initial_document_version": 1,
+        "query_buffer": "original disk bytes captured by didOpen",
+        "query_byte": 1082,
+        "query_source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+        "target_buffer": "original disk bytes plus the latest measured prefix",
+        "target_byte_range": [
+          6402,
+          6420
+        ],
+        "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+        "target_source": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+      },
+      "inputs": {
+        "hamcrest": {
+          "filename": "hamcrest.jar",
+          "sha256": "66fdef91e9739348df7a096aa384a5685f4e875584cce89386a7a47251c4d8e9",
+          "size": 45024
+        },
+        "java_base": {
+          "filename": "java.base.jmod",
+          "sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+          "size": 24683914
+        },
+        "java_sql": {
+          "filename": "java.sql.jmod",
+          "sha256": "3dcb75061ccbab687679908001f96f0c8544930c2f3e94f738574bf944121004",
+          "size": 83900
+        },
+        "jsr250": {
+          "filename": "jsr250.jar",
+          "sha256": "a1a922d0d9b6d183ed3800dfac01d1e1eb159f0e8c6f94736931c1def54a941f",
+          "size": 5848
+        },
+        "junit": {
+          "filename": "junit.jar",
+          "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3",
+          "size": 384581
+        },
+        "sources": {
+          "filename": "gson.zip",
+          "sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+          "size": 628229
+        }
+      },
+      "jpms_supported": false,
+      "measured_query_count": 1,
+      "missing_generated_source": "com.google.gson.internal.GsonBuildConfig",
+      "project": "Gson core/extras 2.10.1 manual source-set model",
+      "source_bytes": 1484012,
+      "source_count": 211,
+      "upstream_build_or_tests_executed": false
+    },
+    "source_inventory_count": {
+      "commons": 249,
+      "gson": 226
+    },
+    "source_inventory_sha256": {
+      "commons": "26ef116692f40cefd2d9ee82addd08f623d2e6c69a8582daf3fb8985bc4eb6e0",
+      "gson": "c84510b1665bd2f7ee0e7aadbe6cc767ac2844309dfbdbed05494d99ddce0a34"
+    }
+  },
+  "memory": "sampled process-group RSS sum including broker/supervisor/worker when observed; /proc reads are non-atomic, shared pages double-counted, brief peaks/processes may be missed; availability alone does not prove all three were observed; not unique physical memory or a quota",
+  "order": "serial project/workload pairs; baseline/candidate order reverses each round",
+  "repetitions": 7,
+  "request_timeout_seconds": 60,
+  "sample_interval_ms": 5,
+  "schedule": [
+    [
+      0,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      0,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      0,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      0,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      0,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      0,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      0,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      0,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      1,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      1,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      1,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      1,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      1,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      1,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      1,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      1,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      2,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      2,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      2,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      2,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      2,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      2,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      2,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      2,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      3,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      3,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      3,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      3,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      3,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      3,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      3,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      3,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      4,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      4,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      4,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      4,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      4,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      4,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      4,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      4,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      5,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      5,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      5,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      5,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      5,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      5,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      5,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      5,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      6,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      6,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      6,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      6,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      6,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      6,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      6,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      6,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      7,
+      "gson",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      7,
+      "gson",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      7,
+      "gson",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      7,
+      "gson",
+      "target_edit_definition",
+      "baseline"
+    ],
+    [
+      7,
+      "commons",
+      "same_generation_definition",
+      "candidate"
+    ],
+    [
+      7,
+      "commons",
+      "same_generation_definition",
+      "baseline"
+    ],
+    [
+      7,
+      "commons",
+      "target_edit_definition",
+      "candidate"
+    ],
+    [
+      7,
+      "commons",
+      "target_edit_definition",
+      "baseline"
+    ]
+  ],
+  "schema_version": 1,
+  "scope": "Two successful fixed source definitions and one-line target-buffer edits; not full semantic acceptance.",
+  "session_timeout_seconds": 600,
+  "warmups_per_variant_workload": 1
+}

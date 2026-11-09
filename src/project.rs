@@ -9,8 +9,9 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use crate::jar::{read_jar_with_usage, read_jmod_with_usage};
+use crate::jar::{ArchiveReads, SharedArchiveRead, read_jar_with_usage, read_jmod_with_usage};
 use crate::{ClassSignature, JarOptions, JmodOptions, Project, ResolveResult, parse_class_bytes};
 
 /// One entry on the ordered, flat binary classpath. No discovery or downloads occur.
@@ -143,6 +144,13 @@ impl ProjectSnapshot {
     /// callers should avoid modifying inputs concurrently with a load. Bounds
     /// limit I/O and archive expansion; they are not a parser CPU/stack budget.
     pub fn load(config: &ProjectConfig) -> Result<Self, ProjectLoadError> {
+        Self::load_with_archives(config, None)
+    }
+
+    pub(crate) fn load_with_archives(
+        config: &ProjectConfig,
+        mut archives: Option<&mut ArchiveReads>,
+    ) -> Result<Self, ProjectLoadError> {
         if config.platform.len().saturating_add(config.classpath.len()) > config.limits.max_classpath_entries {
             return Err(error(
                 "classpath",
@@ -219,7 +227,7 @@ impl ProjectSnapshot {
                                 "class binary name does not match classpath-relative path",
                             ));
                         }
-                        signatures.push(signature);
+                        signatures.push(Arc::new(signature));
                     }
                     signatures
                 }
@@ -235,16 +243,22 @@ impl ProjectSnapshot {
                         options.max_entries = options.max_entries.min(remaining_entries);
                         options.max_total_uncompressed_bytes =
                             options.max_total_uncompressed_bytes.min(remaining_expansion);
-                        read_jmod_with_usage(&path, &options)
-                            .map_err(|err| error(&origin, ProjectLoadErrorKind::Jmod, &err.to_string()))?
+                        match archives.as_deref_mut() {
+                            Some(archives) => archives.read_jmod(&path, &options),
+                            None => read_jmod_with_usage(&path, &options).map(SharedArchiveRead::from),
+                        }
+                        .map_err(|err| error(&origin, ProjectLoadErrorKind::Jmod, &err.to_string()))?
                     } else {
                         let mut options = config.jar_options.clone();
                         options.max_archive_bytes = options.max_archive_bytes.min(remaining_bytes);
                         options.max_entries = options.max_entries.min(remaining_entries);
                         options.max_total_uncompressed_bytes =
                             options.max_total_uncompressed_bytes.min(remaining_expansion);
-                        read_jar_with_usage(&path, &options)
-                            .map_err(|err| error(&origin, ProjectLoadErrorKind::Jar, &err.to_string()))?
+                        match archives.as_deref_mut() {
+                            Some(archives) => archives.read_jar(&path, &options),
+                            None => read_jar_with_usage(&path, &options).map(SharedArchiveRead::from),
+                        }
+                        .map_err(|err| error(&origin, ProjectLoadErrorKind::Jar, &err.to_string()))?
                     };
                     budget.add_bytes(loaded.archive_bytes, &path)?;
                     budget.add_entries(loaded.entries, &path)?;
@@ -317,16 +331,16 @@ enum BinaryInput<'a> {
 
 fn register_class(
     project: &mut Project,
-    signature: ClassSignature,
+    signature: Arc<ClassSignature>,
     classes: &mut BTreeMap<String, String>,
     origins: &mut Vec<String>,
     shadowed: &mut Vec<ShadowedClass>,
 ) {
     if let Some(selected) = classes.get(&signature.binary_name) {
         shadowed.push(ShadowedClass {
-            binary_name: signature.binary_name,
+            binary_name: signature.binary_name.clone(),
             selected_origin: selected.clone(),
-            shadowed_origin: signature.origin,
+            shadowed_origin: signature.origin.clone(),
         });
     } else {
         classes.insert(signature.binary_name.clone(), signature.origin.clone());

@@ -37,6 +37,9 @@ navigation against edits in any attached buffer, including responses already in
 transit. It requires explicit project configuration and does not add completion,
 references, rename, hover or semantic diagnostics. [Native macOS CI](docs/MACOS_NATIVE.md) is a separate
 source-build/runtime gate, not a signed Mac distribution or user-device validation.
+The [archive-reuse acceptance plan](docs/ARCHIVE_REUSE.md) addresses repeated
+dependency decoding within a project load without adding a cross-request cache
+or changing the requirement for explicit project configuration.
 
 ### Experimental project CLI
 

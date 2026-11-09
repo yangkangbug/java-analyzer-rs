@@ -216,8 +216,11 @@ by path alone.
 - Workspace aggregate caps default to 200,000 filesystem/archive entries,
   512 MiB raw input, and 1 GiB declared archive expansion. Each local load is
   clamped to the remaining aggregate budget as well as its `ProjectLimits`.
-  Repeated physical archives are loaded and charged separately per compilation.
-  Archive limits still include resources. There is no cross-compilation cache.
+  Repeated physical archives are freshly read and charged separately for every
+  logical occurrence. Within one workspace load, equal bytes may reuse immutable
+  parsed signatures after all current limits pass. Archive limits still include
+  resources; the private reuse budget never expands accepted input budgets.
+  See [exact-byte reuse and its limits](ARCHIVE_REUSE.md). No reuse crosses loads.
 - Graph cap failures use `WorkspaceLoadErrorKind::LimitExceeded`. Filesystem,
   parser-input, and residual loading-budget failures use `Input` and preserve the
   underlying `ProjectLoadError`; duplicate cross-compilation source ownership

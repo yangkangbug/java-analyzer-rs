@@ -25,6 +25,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::classfile::{
     Access, ClassError, ClassSignature, MemberKind, MemberSignature, parse_class_bytes, read_class_directory,
@@ -106,7 +107,7 @@ impl ResolveResult {
 #[derive(Clone, Debug, Default)]
 pub struct Project {
     files: BTreeMap<String, ParsedFile>,
-    binaries: BTreeMap<String, ClassSignature>,
+    binaries: BTreeMap<String, Arc<ClassSignature>>,
 }
 
 impl Project {
@@ -136,7 +137,7 @@ impl Project {
     pub fn add_class_bytes(&mut self, origin: impl Into<String>, bytes: &[u8]) -> Result<(), ClassError> {
         let origin = origin.into();
         let signature = parse_class_bytes(&origin, bytes)?;
-        self.binaries.insert(origin, signature);
+        self.binaries.insert(origin, Arc::new(signature));
         Ok(())
     }
 
@@ -146,12 +147,12 @@ impl Project {
         let parsed = read_class_directory(root)?;
         let origins = parsed.iter().map(|class| class.origin.clone()).collect();
         for class in parsed {
-            self.binaries.insert(class.origin.clone(), class);
+            self.binaries.insert(class.origin.clone(), Arc::new(class));
         }
         Ok(origins)
     }
 
-    pub(crate) fn insert_class_signature(&mut self, signature: ClassSignature) {
+    pub(crate) fn insert_class_signature(&mut self, signature: Arc<ClassSignature>) {
         self.binaries.insert(signature.origin.clone(), signature);
     }
 
@@ -160,7 +161,7 @@ impl Project {
     }
 
     pub fn class_signature(&self, origin: &str) -> Option<&ClassSignature> {
-        self.binaries.get(origin)
+        self.binaries.get(origin).map(Arc::as_ref)
     }
 
     /// Prepare one immutable index for repeated half-open byte-offset queries.
@@ -310,11 +311,11 @@ struct Index {
 }
 
 impl Index {
-    fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, ClassSignature>) -> Self {
+    fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, Arc<ClassSignature>>) -> Self {
         #[cfg(test)]
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
-        let binaries = binaries.values().map(class_from_signature).collect();
+        let binaries = binaries.values().map(|signature| class_from_signature(signature)).collect();
         Self { files, binaries, visibility: vec![BTreeSet::from([0])] }
     }
 

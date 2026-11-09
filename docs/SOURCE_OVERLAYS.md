@@ -48,11 +48,12 @@ binary provenance and linking contexts. Source declarations continue binding in
 their owner's context even when queried from a consumer compilation.
 
 A derived snapshot does **not** reread source files, directories, JARs or JMODs.
-Loaded signatures are cloned, so their original files need not still exist to
-derive and query the snapshot. Cloning currently copies source strings and binary
-signature metadata; it is not zero-copy storage. Unchanged syntax trees share
-reference-counted nodes. Replaced files receive full parses rather than a series
-of incremental text edits.
+Loaded immutable signatures share reference-counted storage, so their original
+files need not still exist to derive and query the snapshot. Cloning still copies
+source strings, maps and other snapshot metadata; it is not wholly zero-copy
+storage. Unchanged syntax trees also share reference-counted nodes. Replaced files
+receive full parses rather than a series of incremental text edits. Signature
+sharing does not share a compilation's resolved hierarchy or binding records.
 
 Prepare the new snapshot independently. Its prepared workspace still rebuilds
 all source and binary index records once; there is no cross-revision index reuse,
