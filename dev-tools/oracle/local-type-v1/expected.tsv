@@ -1,0 +1,15 @@
+before_type	Resolved	before_local
+after_type	Resolved	before_local
+after_parameter	Resolved	outer_parameter
+before_shadow	Resolved	outer_field
+after_shadow	Resolved	after_local
+after_nested	Resolved	block_local
+outer_in_block	Resolved	before_local
+local_type_use	Unresolved	local_type
+after_type_use	Resolved	before_local
+inside_field	Unresolved	hidden_field
+inside_parameter	Unresolved	hidden_parameter
+inside_capture	Unresolved	before_local
+sibling_field	Resolved	outer_field
+sibling_parameter	Resolved	later_parameter
+later_call	Resolved	later_method

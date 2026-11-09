@@ -1,0 +1,115 @@
+{
+  "source_sha256": "24eab771c94196f4a0ffe95e625b4bb41ee5701a5b84e987529ce1a38bb929df",
+  "queries": [
+    {
+      "id": "thread_adapter_capture",
+      "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "byte": 5477,
+      "spelling": "threadAdapter",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+            "kind": "Local",
+            "owner": "",
+            "name": "threadAdapter",
+            "start": 4740,
+            "end": 4753
+          }
+        ]
+      }
+    },
+    {
+      "id": "adapter_counter_capture",
+      "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "byte": 5834,
+      "spelling": "adapterInstancesCreated",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+            "kind": "Local",
+            "owner": "",
+            "name": "adapterInstancesCreated",
+            "start": 4650,
+            "end": 4673
+          }
+        ]
+      }
+    },
+    {
+      "id": "adapter_counter_use",
+      "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "byte": 6042,
+      "spelling": "adapterInstancesCreated",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+            "kind": "Local",
+            "owner": "",
+            "name": "adapterInstancesCreated",
+            "start": 4650,
+            "end": 4673
+          }
+        ]
+      }
+    },
+    {
+      "id": "thread_adapter_use",
+      "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "byte": 6138,
+      "spelling": "threadAdapter",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+            "kind": "Local",
+            "owner": "",
+            "name": "threadAdapter",
+            "start": 4740,
+            "end": 4753
+          }
+        ]
+      }
+    },
+    {
+      "id": "unsupported_local_type",
+      "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "byte": 5900,
+      "spelling": "DummyAdapter",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "expected": {
+        "status": "Unresolved",
+        "targets": []
+      }
+    }
+  ]
+}

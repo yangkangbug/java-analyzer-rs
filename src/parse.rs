@@ -730,6 +730,7 @@ impl<'a> Parser<'a> {
             SyntaxKind::Assert => self.parse_assert(),
             SyntaxKind::Try => self.parse_try(),
             SyntaxKind::Switch => self.recover_switch(),
+            _ if self.looks_like_local_type_decl() => self.parse_local_type(),
             _ if self.looks_like_decl() => self.parse_local(true),
             _ if self.can_start_expr() => {
                 self.open(SyntaxKind::ExprStmt);
@@ -739,6 +740,55 @@ impl<'a> Parser<'a> {
             }
             _ => self.recover_stmt(),
         }
+    }
+
+    fn looks_like_local_type_decl(&self) -> bool {
+        // Recovery may reach the keyword in an unsupported primitive `.class`
+        // expression. It is not a declaration, even at a statement boundary.
+        let follows_dot = self.tokens[..self.next_sig()]
+            .iter()
+            .rev()
+            .find(|token| !token.kind.is_trivia())
+            .is_some_and(|token| token.kind == SyntaxKind::Dot);
+        !follows_dot && self.looks_like_type_decl()
+    }
+
+    // Keep unsupported local types contained, including nested bodies. Do not
+    // parse their members as declarations of the surrounding class or block.
+    fn parse_local_type(&mut self) {
+        self.open(SyntaxKind::LocalType);
+        self.set_message("local type bindings are unsupported");
+        self.parse_modifier_list();
+        self.bump(); // class, interface, enum or record
+        self.expect(SyntaxKind::Ident, "expected local type name");
+        while !self.eof() && !matches!(self.kind(), SyntaxKind::RBrace | SyntaxKind::Semi) {
+            match self.kind() {
+                SyntaxKind::At => {
+                    self.parse_annotation();
+                    continue;
+                }
+                SyntaxKind::LBrace => {
+                    // Header annotations were consumed above, so their array
+                    // values cannot be confused with the local type body.
+                    let mut braces = 1u32;
+                    self.bump();
+                    while !self.eof() && braces != 0 {
+                        match self.kind() {
+                            SyntaxKind::LBrace => braces += 1,
+                            SyntaxKind::RBrace => braces -= 1,
+                            _ => {}
+                        }
+                        self.bump();
+                    }
+                    self.finish();
+                    return;
+                }
+                _ => {}
+            }
+            self.bump();
+        }
+        self.eat(SyntaxKind::Semi);
+        self.finish();
     }
 
     fn parse_if(&mut self) {

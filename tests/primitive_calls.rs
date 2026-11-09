@@ -403,7 +403,14 @@ fn unsupported_competitors_and_contexts_do_not_supply_proof() {
         "static void test(float a) { class Local { void run() { m(a); } } }",
     ] {
         let source = format!("class Calls {{ static void m(float a) {{}} static void m(double a) {{}} {caller} }}");
-        refused(&source, "m(a)", ResolveStatus::OverloadNotResolved, 2);
+        if caller.contains("class Local") {
+            // Local-type internals are an opaque binding boundary.
+            let result = query(&project(&source), "m(a)");
+            assert_eq!(result.status, ResolveStatus::Unresolved);
+            assert!(result.targets.is_empty());
+        } else {
+            refused(&source, "m(a)", ResolveStatus::OverloadNotResolved, 2);
+        }
     }
     for body in ["m(1)", "m(1.0)", "m((float) a)", "m(a + a)", "m(unknown)", "m(null)", "m(a,)"] {
         let source = format!(

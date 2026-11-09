@@ -502,17 +502,79 @@ def run_acceptance(native, fixture):
             'persistent_reload': False, 'upstream_tests_executed': False}
 
 
+def local_type_probes(fixture):
+    """Independent additive positions; never replace the original 16 goldens."""
+    spec = json.loads((CORPUS / 'local-type-probes.json').read_text())
+    probes = spec['queries']
+    same(len(probes), 5, 'local-type probe count')
+    same(len({q['id'] for q in probes}), 5, 'unique local-type probes')
+    for query in probes:
+        data = fixture.sources[query['file']]
+        same(hashlib.sha256(data).hexdigest(), spec['source_sha256'], 'unaltered GsonTest bytes')
+        same((fixture.source_root / query['file']).read_bytes(), data, 'extracted source bytes')
+        same(data[query['byte']:query['byte'] + len(query['spelling'])],
+             query['spelling'].encode(), 'local-type use spelling')
+        for target in query['expected']['targets']:
+            same(data[target['start']:target['end']], target['name'].encode(), 'local declaration token')
+            same((target['kind'], target['owner']), ('Local', ''), 'local target convention')
+    return probes
+
+
+def check_local_type_response(response, probes, fixture):
+    actual = response['result']['queries']
+    same(len(actual), len(probes), 'local-type output completeness')
+    for index, (row, query) in enumerate(zip(actual, probes)):
+        check_query_row(row, query, query['expected'], fixture, index)
+
+
+def run_local_type_acceptance(native, fixture, capture_baseline=False):
+    probes = local_type_probes(fixture)
+    request = document(fixture, 'local-type-requests.json', {'schema_version': 1, 'queries': [
+        {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
+         'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in probes]})
+    response = successful(native, fixture, 'declaration', requests=request)
+    parser = successful(native, fixture, 'parser-report')['result']
+    check_parser(parser, fixture)
+    failure = None
+    try:
+        check_local_type_response(response, probes, fixture)
+    except AcceptanceError as error:
+        if not capture_baseline:
+            raise
+        failure = str(error)
+    # Hash every extracted source, including the 15 unselected paths. No source
+    # is rewritten or generated and no upstream Java compilation is attempted.
+    extracted = {p.relative_to(fixture.source_root).as_posix(): digest(p)
+                 for p in fixture.source_root.rglob('*.java')}
+    same(len(extracted), 226, 'complete extracted Java path inventory')
+    portable_queries = json.loads(json.dumps(response['result']['queries']).replace(
+        str(fixture.source_root) + '/', ''))
+    if failure:
+        failure = failure.replace(str(fixture.source_root) + '/', '')
+    return {'validation': 'baseline_failure' if failure else 'passed', 'failure': failure,
+            'queries': portable_queries, 'metadata': fixture.metadata,
+            'source_sha256': extracted,
+            'parser_inventory': {str(Path(f['path']).relative_to(fixture.source_root)): len(f['reports'])
+                                 for f in parser['files']},
+            'parser_report_count': parser['report_count'],
+            'javac_real_gson_equivalence': False, 'upstream_code_executed': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('inputs_dir', type=Path)
     parser.add_argument('--native', type=Path, default=ROOT / 'target/release/java-analyzer')
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--local-types', action='store_true', help='run independent additive local-type probes')
+    parser.add_argument('--capture-baseline', action='store_true', help='retain failing local-type evidence without treating it as acceptance')
     args = parser.parse_args()
     native = args.native.resolve()
     require(native.is_file(), f'build the CLI first: {native}')
     with tempfile.TemporaryDirectory(prefix='second-project-') as tmp:
         fixture = prepare_fixture(args.inputs_dir, Path(tmp) / 'fixture')
-        result = run_acceptance(native, fixture)
+        require(not args.capture_baseline or args.local_types, 'baseline capture requires --local-types')
+        result = (run_local_type_acceptance(native, fixture, args.capture_baseline)
+                  if args.local_types else run_acceptance(native, fixture))
         text = json.dumps(result, indent=2) + '\n'
         if args.output:
             reject_symlinks(args.output.absolute())

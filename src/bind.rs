@@ -287,6 +287,20 @@ struct LocalRec {
 }
 
 #[derive(Clone, Debug)]
+struct LocalTypeRec {
+    name: Option<String>,
+    start: u32,
+    end: u32,
+    scope_end: u32,
+}
+
+fn local_type_shadows(file: &FileRec, name: &str, byte: u32) -> bool {
+    file.local_types
+        .iter()
+        .any(|local| local.name.as_deref() == Some(name) && local.start <= byte && byte < local.scope_end)
+}
+
+#[derive(Clone, Debug)]
 struct FileRec {
     scope: usize,
     path: String,
@@ -296,6 +310,7 @@ struct FileRec {
     static_names: Vec<String>,
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
+    local_types: Vec<LocalTypeRec>,
     call_inventory_valid: bool,
 }
 
@@ -354,6 +369,9 @@ impl Index {
         let Some(file) = self.files.iter().find(|file| file.path == path) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
+        if file.local_types.iter().any(|local| local.start <= byte && byte < local.end) {
+            return ResolveResult::none(ResolveStatus::Unresolved);
+        }
         if let Some(hit) = innermost_ref(parsed.root(), 0, byte, false) {
             return self.resolve_hit(file, parsed, byte, hit);
         }
@@ -567,6 +585,9 @@ impl Index {
     }
 
     fn simple_type<'a>(&'a self, file: &'a FileRec, name: &str, byte: u32) -> TypeLookup<'a> {
+        if local_type_shadows(file, name, byte) {
+            return TypeLookup::MissingImport;
+        }
         if let Some(member) = member_type_here(file, byte, name) {
             return TypeLookup::One(member);
         }
@@ -666,10 +687,17 @@ impl Index {
         if matches!(current.status, ResolveStatus::Unresolved | ResolveStatus::StaticImportNotApplied) {
             current = self.qualify(file, &[chain[0].name.clone()], false, byte);
         }
+        let mut value_receiver = false;
         for (index, segment) in chain.iter().enumerate().skip(1) {
+            value_receiver |= current.targets.iter().any(|target| {
+                matches!(
+                    target.kind,
+                    TargetKind::Local | TargetKind::Parameter | TargetKind::Resource | TargetKind::Field
+                )
+            });
             let last = index + 1 == chain.len();
             let next = self.member_from_base(file, &current, &segment.name, call && last, byte);
-            if matches!(next.status, ResolveStatus::Unresolved | ResolveStatus::ReceiverNotBound) {
+            if !value_receiver && matches!(next.status, ResolveStatus::Unresolved | ResolveStatus::ReceiverNotBound) {
                 let parts = chain[..=index].iter().map(|segment| segment.name.clone()).collect::<Vec<_>>();
                 let qualified = self.qualify(file, &parts, call && last, byte);
                 current = if qualified.status == ResolveStatus::Unresolved { next } else { qualified };
@@ -761,7 +789,7 @@ impl Index {
     }
 
     fn qualify(&self, file: &FileRec, parts: &[String], call: bool, byte: u32) -> ResolveResult {
-        if parts.is_empty() {
+        if parts.is_empty() || local_type_shadows(file, &parts[0], byte) {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
         for length in (1..=parts.len()).rev() {
@@ -810,6 +838,9 @@ impl Index {
     }
 
     fn lookup_type_name<'a>(&'a self, file: &'a FileRec, parts: &[String], byte: u32) -> TypeLookup<'a> {
+        if parts.first().is_some_and(|name| local_type_shadows(file, name, byte)) {
+            return TypeLookup::MissingImport;
+        }
         if parts.len() == 1 {
             return self.simple_type(file, &parts[0], byte);
         }
@@ -877,6 +908,9 @@ impl Index {
     // Do not reinterpret a missing explicit import as a fully qualified name.
     fn signature_type<'a>(&'a self, file: &'a FileRec, parts: &[String], byte: u32) -> Option<&'a ClassRec> {
         let first = parts.first()?;
+        if local_type_shadows(file, first, byte) {
+            return None;
+        }
         for outer in enclosing_classes(file, byte) {
             let nested: Vec<_> = file
                 .classes
@@ -1581,6 +1615,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         static_names: Vec::new(),
         classes: Vec::new(),
         locals: Vec::new(),
+        local_types: Vec::new(),
         call_inventory_valid: parsed.errors().is_empty() && valid_call_inventory(parsed.root(), 0),
     };
     index_node(parsed.root(), 0, &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new() });
@@ -1604,6 +1639,20 @@ enum ScopeKind {
 
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     match node.kind() {
+        SyntaxKind::LocalType => {
+            let mut header =
+                node.children().iter().filter_map(|child| child.as_token()).filter(|token| !token.kind().is_trivia());
+            header.next(); // declaration keyword; annotations/modifiers are child nodes
+            let name =
+                header.next().filter(|token| token.kind() == SyntaxKind::Ident).map(|token| token.text().to_string());
+            ctx.file.local_types.push(LocalTypeRec {
+                name,
+                start,
+                end: start + node.utf8_len(),
+                scope_end: ctx.scope_stack.last().map_or(start + node.utf8_len(), |scope| scope.1),
+            });
+            return;
+        }
         SyntaxKind::PackageDecl => {
             if let Some(name) = child_kind(node, start, SyntaxKind::Name) {
                 ctx.file.package = name_strings(name.0, name.1).join(".");
@@ -2480,6 +2529,9 @@ fn plain_reference_type(node: &GreenNode) -> bool {
 }
 
 fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
+    if node.kind() == SyntaxKind::LocalType {
+        return false;
+    }
     if matches!(node.kind(), SyntaxKind::Method | SyntaxKind::Constructor) && source_call(node, start).is_none() {
         return false;
     }

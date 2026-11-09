@@ -156,6 +156,8 @@ pub enum SyntaxKind {
     Block,
     Initializer,
     LocalVar,
+    /// Opaque statement-local type; its body and bindings are unsupported.
+    LocalType,
     /// A variable declared in `try (...)`.
     Resource,
     EmptyStmt,

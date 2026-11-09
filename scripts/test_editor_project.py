@@ -38,4 +38,62 @@ class EditorChecks(unittest.TestCase):
         with self.assertRaises(ValueError): check.check_target(wrong, target)
 
 
+class ParserOverlayChecks(unittest.TestCase):
+    def setUp(self):
+        self.original = '// 🧭\nclass A {}'.encode()
+        start = self.original.index(b'A')
+        report = {'classification':'parser_limit_or_invalid_syntax', 'message':'unsupported',
+                  'range':{'start_byte':start, 'end_byte':start+1,
+                           'start_utf16':len(self.original[:start].decode().encode('utf-16-le'))//2,
+                           'end_utf16':len(self.original[:start+1].decode().encode('utf-16-le'))//2}}
+        self.baseline = {'source_count':2, 'files_with_reports':2, 'report_count':2,
+                         'files':[{'path':'/edited.java','reports':[report]},
+                                  {'path':'/unchanged.java','reports':[copy.deepcopy(report)]}]}
+        self.prefixes = {'/edited.java':(self.original, check.PREFIX)}
+        self.actual = copy.deepcopy(self.baseline)
+        self.actual['files'][0]['reports'][0] = check.shift_target(report, self.original, check.PREFIX)
+        self.actual['overlay_state'] = {'revision':41}
+
+    def check(self, actual):
+        check.check_parser_overlay(self.baseline, actual, self.prefixes)
+
+    def test_exact_shifted_and_unchanged_reports(self):
+        self.check(self.actual)
+        self.assertNotIn('overlay_state', self.baseline)
+        self.assertNotEqual(self.actual['files'][0]['reports'], self.baseline['files'][0]['reports'])
+        self.assertEqual(self.actual['files'][1], self.baseline['files'][1])
+
+    def test_dropped_extra_changed_report_and_counts(self):
+        mutations = [lambda a:a['files'][0]['reports'].clear(),
+                     lambda a:a['files'][0]['reports'].append(copy.deepcopy(a['files'][0]['reports'][0])),
+                     lambda a:a['files'].pop(),
+                     lambda a:a['files'].append(copy.deepcopy(a['files'][0])),
+                     lambda a:a.__setitem__('source_count',3),
+                     lambda a:a.__setitem__('files_with_reports',1),
+                     lambda a:a.__setitem__('report_count',3),
+                     lambda a:a['files'][0]['reports'][0].__setitem__('message','changed'),
+                     lambda a:a['files'][0]['reports'][0].__setitem__('classification','changed')]
+        for mutate in mutations:
+            actual = copy.deepcopy(self.actual)
+            mutate(actual)
+            with self.subTest(mutation=mutate), self.assertRaises(ValueError):
+                self.check(actual)
+
+    def test_wrong_byte_utf16_and_unedited_ranges(self):
+        for file_index in (0,1):
+            for key in ('start_byte','end_byte','start_utf16','end_utf16'):
+                actual = copy.deepcopy(self.actual)
+                actual['files'][file_index]['reports'][0]['range'][key] += 1
+                with self.subTest(file=file_index,key=key), self.assertRaises(ValueError):
+                    self.check(actual)
+
+    def test_dropping_report_and_adjusting_counts_still_fails(self):
+        actual = copy.deepcopy(self.actual)
+        actual['files'][0]['reports'].clear()
+        actual['report_count'] -= 1
+        actual['files_with_reports'] -= 1
+        with self.assertRaises(ValueError):
+            self.check(actual)
+
+
 if __name__ == '__main__': unittest.main()

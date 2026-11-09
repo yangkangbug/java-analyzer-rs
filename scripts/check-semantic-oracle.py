@@ -65,6 +65,61 @@ def compare(expected, queries, declarations, javac, native):
             raise AssertionError(f"unrecognized expectation status: {status}")
 
 
+def local_type_suite(jdk, native_binary, env, work, helper, empty):
+    """Contain unsupported local classes without claiming bindings inside them."""
+    root = ORACLE / "local-type-v1"
+    declarations, queries, requests = fixture_markers(root / "source", ("Containment.java",))
+    expected = {}
+    for query, status, target in rows(root / "expected.tsv", 3):
+        assert query not in expected and target in declarations, "duplicate or invalid local-type golden"
+        expected[query] = (status, target)
+    assert len(expected) == len(queries) == 15
+    assert sum(status == "Resolved" for status, _ in expected.values()) == 11
+    request = work / "local-type-requests.tsv"
+    request.write_text(requests)
+    javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
+                         root / "source", request, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request], {"PATH": "/nonexistent"}).stdout)
+    compiler_targets = {
+        "before_local": ("LOCAL_VARIABLE", "oracle.Containment"),
+        "outer_parameter": ("PARAMETER", "oracle.Containment"),
+        "outer_field": ("FIELD", "oracle.Containment"),
+        "after_local": ("LOCAL_VARIABLE", "oracle.Containment"),
+        "block_local": ("LOCAL_VARIABLE", "oracle.Containment"),
+        "local_type": ("CLASS", "Hidden"),
+        "hidden_field": ("FIELD", "Hidden"),
+        "hidden_parameter": ("PARAMETER", "Hidden"),
+        "later_parameter": ("PARAMETER", "oracle.Containment"),
+        "later_method": ("METHOD", "oracle.Containment"),
+    }
+    assert set(javac) == set(expected), "local-type compiler query completeness"
+    for query, (_, target) in expected.items():
+        assert tuple(javac[query][1:3]) == compiler_targets[target], f"{query}: compiler kind/owner differs"
+    for query in expected:
+        print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
+    compare(expected, queries, declarations, javac, native)
+    wrong = dict(expected)
+    wrong["after_shadow"] = ("Resolved", "outer_field")
+    must_reject(lambda: compare(wrong, queries, declarations, javac, native), "local type wrong shadow target")
+    for label in ("missing", "extra", "owner", "range", "unsupported_target"):
+        changed = {key: list(value) for key, value in native.items()}
+        if label == "missing":
+            del changed["after_type"]
+        elif label == "extra":
+            changed["not_requested"] = native["after_type"]
+        elif label == "unsupported_target":
+            changed["inside_capture"] = native["after_type"]
+        else:
+            parts = changed["after_type"][2].split("|")
+            if label == "owner":
+                parts[2] = "oracle.Containment"
+            else:
+                parts[-2:] = ["0", "1"]
+            changed["after_type"][2] = "|".join(parts)
+        must_reject(lambda: compare(expected, queries, declarations, javac, changed), "local type " + label)
+    print("PASS: 11 local-type surrounding bindings; four explicit unsupported type/body queries; mutation controls")
+
+
 def mixed_suite(jdk, native_binary, env, work, helper, empty):
     """Compile dependencies only; compare consumer source declarations over binaries."""
     root = ORACLE / "mixed-v1"
@@ -571,6 +626,7 @@ def main():
             pass
         else:
             raise AssertionError("oracle accepted corrupted compiler declaration range")
+        local_type_suite(jdk, args.native.resolve(), env, work, classes, empty)
         mixed_suite(jdk, args.native.resolve(), env, work, classes, empty)
         # Compiler failures must never become a green empty comparison.
         for invalid in ("Broken.java", "Missing.java", "NoCallable.java"):

@@ -27,6 +27,8 @@ available, with the limitations described below. Unqualified invocation
 names now use the method namespace independently of
 same-spelled local/parameter/field values. The parser still
 omits switch/pattern/module support and some parameter/type-annotation syntax.
+Local type declarations have an opaque containment boundary; their bindings
+remain unsupported rather than being indexed as ordinary members.
 
 ## M0: reproducible independent project
 
@@ -149,6 +151,23 @@ covered, including independent compiler-selected targets. This is a declaration
 correctness foundation for later symbol/type services, not persistent IDs,
 array-expression typing, definite assignment or complete Java scope rules.
 See [declaration boundaries](docs/DECLARATORS.md).
+
+### Local-type containment and surrounding navigation
+
+The second fixed project exposed a correctness problem beyond parser counts:
+method-local classes could disrupt the enclosing method and make later variable
+uses look like fields. An opaque local-type boundary now preserves surrounding
+statement structure, excludes unsupported descendants from the symbol index,
+and blocks type-name fallback within the declaration's lexical scope. Surrounding
+locals retain their own declaration identity. See [the precise boundary and
+acceptance evidence](docs/LOCAL_TYPES.md).
+
+This is not local-class binding, capture analysis, or record synthesis. A single
+unsupported boundary can replace many cascading reports without analyzing its
+body. Keep that distinction separate from actual repaired navigation. The next
+semantic work still includes qualified instance-call applicability and reference
+types: Gson's generic fromJson, overloaded add, and chained-call cases remain
+outside this slice.
 
 ## M2: semantic types and method applicability
 

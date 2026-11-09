@@ -43,6 +43,24 @@ def check_target(row, expected):
     require(row['targets'] == [expected], 'wrong exact source declaration/range')
 
 
+def check_parser_overlay(baseline, actual, prefixed_sources):
+    """A leading comment preserves every diagnostic except its shifted range.
+
+    prefixed_sources maps absolute paths to (original UTF-8 bytes, prefix bytes).
+    Both reports must also pass the ordinary parser schema/inventory validation.
+    Overlay revision/versions are checked independently by the caller.
+    """
+    require('overlay_state' not in baseline, 'disk parser report has overlay state')
+    expected = copy.deepcopy(baseline)
+    for file in expected['files']:
+        if file['path'] in prefixed_sources:
+            original, prefix = prefixed_sources[file['path']]
+            file['reports'] = [shift_target(report, original, prefix) for report in file['reports']]
+    observed = copy.deepcopy(actual)
+    observed.pop('overlay_state', None)
+    require(observed == expected, 'comment-only overlay changed exact parser reports/inventory/counts')
+
+
 def helpers():
     spec = importlib.util.spec_from_file_location('editor_second_project', ROOT/'scripts/check-second-project.py')
     module = importlib.util.module_from_spec(spec)
@@ -63,6 +81,8 @@ def run(native, inputs):
         base = helper.successful(native, fixture, 'declaration')
         helper.check_response('declaration', base, fixture)
         require('overlay_state' not in base['result'], 'legacy result gained overlay metadata')
+        disk_parser = helper.successful(native, fixture, 'parser-report')['result']
+        helper.check_parser(disk_parser, fixture)
         plan = fixture.plan[0]
         require(plan['id'] == 'cross_interface', 'predeclared query changed')
         target = fixture.expected[0]['targets'][0]
@@ -116,8 +136,8 @@ def run(native, inputs):
         changed_fixture.sources = dict(fixture.sources, **replacements)
         parser = invoke('parser-report')['result']
         helper.check_parser(parser, changed_fixture)
-        require((parser['source_count'],parser['files_with_reports'],parser['report_count']) == (211,58,1513),
-                'comment-only overlay changed parser baseline')
+        check_parser_overlay(disk_parser, parser, {
+            str(fixture.source_root/path): (fixture.sources[path], PREFIX) for path in replacements})
         wrong_owner = copy.deepcopy(overlay_data)
         wrong_owner['files'][1]['compilation'] = plan['compilation']
         error = invoke('declaration', helper.document(fixture,'wrong-owner.json',wrong_owner), False)
@@ -131,9 +151,11 @@ def run(native, inputs):
         return {'status':'passed', 'project_commit':fixture.metadata['commit'],
                 'source_count':211,'baseline_queries':16,'editor_query':'cross_interface',
                 'overlay_files':2,'prefix_utf8_bytes':len(PREFIX),'prefix_utf16_units':len(PREFIX.decode().encode('utf-16-le'))//2,
-                'parser_reports':1513,'files_with_parser_reports':58,
+                'parser_reports':parser['report_count'],
+                'files_with_parser_reports':parser['files_with_reports'],
                 'controls':['exact_target_mutation','wrong_source_owner','omit_overlays_restores_disk',
-                            'all_disk_java_hashes_unchanged','all_pinned_input_hashes_unchanged'],
+                            'all_disk_java_hashes_unchanged','all_pinned_input_hashes_unchanged',
+                            'comment_overlay_preserves_exact_current_disk_parser_reports'],
                 'runtime':'native_rust_no_jvm','upstream_code_executed':False,
                 'limits':'Fixed buffer/position evidence, not LSP, automatic stale rejection or semantic conformance'}
 

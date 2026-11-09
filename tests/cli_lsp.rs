@@ -182,6 +182,76 @@ fn native_cancel_then_reuse_request_id_has_one_terminal_reply_per_request() {
 }
 
 #[test]
+fn native_local_type_containment_survives_unsaved_replacements_and_stale_versions() {
+    fn position(text: &str, marker: &str) -> Value {
+        let prefix = &text[..text.find(marker).expect("unique source marker")];
+        json!({"line":prefix.bytes().filter(|b| *b == b'\n').count(),
+            "character":prefix.rsplit('\n').next().unwrap().encode_utf16().count()})
+    }
+    fn definition(session: &mut Session, id: i32, uri: &str, text: &str, marker: &str) -> Value {
+        session.send(json!({"jsonrpc":"2.0","id":id,"method":"textDocument/definition",
+            "params":{"textDocument":{"uri":uri},"position":position(text, marker)}}));
+        session.response(id)
+    }
+    fn expected(uri: &str, text: &str, name: &str) -> Value {
+        let start = position(text, &format!("{name} ="));
+        let mut end = start.clone();
+        end["character"] = json!(start["character"].as_u64().unwrap() + name.encode_utf16().count() as u64);
+        json!({"uri":uri,"range":{"start":start,"end":end}})
+    }
+    let path =
+        std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/cli_project/app/main/app/App.java"))
+            .unwrap();
+    let disk_text = std::fs::read_to_string(&path).unwrap();
+    let uri = format!("file://{}", path.to_str().unwrap());
+    let original = "package app;\nclass App { void run() {\n    class Local { int hidden; void nested() { hidden++; } }\n    int trueLocal = 1;\n    trueLocal++;\n} }\n";
+    let updated = format!(
+        "// 😀 unsaved replacement\r\n{}",
+        original
+            .replace("\n", "\r\n")
+            .replace("int trueLocal", "/* 😀 */ int renamedLocal")
+            .replace("trueLocal", "renamedLocal")
+    );
+    let mut session = Session::start(); // env_clear: the broker and workers need no Java runtime.
+    session.initialize();
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{
+        "textDocument":{"uri":uri,"languageId":"java","version":1,"text":original}}}));
+    assert_eq!(
+        definition(&mut session, 10, &uri, original, "trueLocal++")["result"],
+        expected(&uri, original, "trueLocal")
+    );
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{
+        "textDocument":{"uri":uri,"version":3},"contentChanges":[{"text":updated}]}}));
+    assert_eq!(
+        definition(&mut session, 11, &uri, &updated, "renamedLocal++")["result"],
+        expected(&uri, &updated, "renamedLocal")
+    );
+    let refused = definition(&mut session, 12, &uri, &updated, "hidden++");
+    assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+
+    // Nonincreasing versions poison synchronization rather than silently making
+    // either the old or updated buffer queryable. A newer full replacement repairs it.
+    for (id, version) in [(13, 3), (14, 2)] {
+        session.send(json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{
+            "textDocument":{"uri":uri,"version":version},"contentChanges":[{"text":original}]}}));
+        let refused = definition(&mut session, id, &uri, &updated, "renamedLocal++");
+        assert_eq!(refused["error"]["code"], -32602, "{refused}");
+        assert!(refused["error"]["message"].as_str().unwrap().contains("desynchronized"));
+    }
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{
+        "textDocument":{"uri":uri,"version":4},"contentChanges":[{"text":updated}]}}));
+    assert_eq!(
+        definition(&mut session, 15, &uri, &updated, "renamedLocal++")["result"],
+        expected(&uri, &updated, "renamedLocal")
+    );
+    session.send(json!({"jsonrpc":"2.0","id":16,"method":"shutdown","params":null}));
+    assert_eq!(session.response(16)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), disk_text);
+}
+
+#[test]
 fn nonreading_client_cannot_hold_server_alive_with_unbounded_output() {
     let mut child = Command::new(env!("CARGO_BIN_EXE_java-analyzer"))
         .args(["lsp", "--manifest"])

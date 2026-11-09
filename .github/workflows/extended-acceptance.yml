@@ -18,6 +18,7 @@ on:
       - 'scripts/test_second_project_inputs.py'
       - 'scripts/check-second-project.py'
       - 'scripts/test_second_project.py'
+      - 'scripts/test_local_type_acceptance.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
       - 'scripts/check-lsp-project.py'
@@ -95,6 +96,12 @@ jobs:
           python3 scripts/check-second-project.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
+      - name: Additive Gson local-type containment probes (no Java)
+        run: >-
+          python3 scripts/check-second-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+          --local-types
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
         run: >-
           python3 scripts/check-editor-project.py
