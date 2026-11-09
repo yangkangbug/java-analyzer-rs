@@ -51,22 +51,26 @@ are covered by its official Temurin distribution; it remains an external input.
 
 ## Fixed query corpus and evidence boundary
 
-`queries.tsv` pins 13 real source positions, the queried spelling, status,
-target count, kind, owner, name, source range and source path or JMOD suffix.
+`queries.tsv` pins 13 real source positions, the queried spelling, status, and
+target count. `targets.tsv` records each ordered candidate separately, including
+kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are nine resolved queries, two explicit overload refusals, one unresolved
-same-project method, and one unbound receiver:
+There are nine resolved queries, three explicit overload refusals, and one
+unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
 - Explicit `Objects` import, implicit `java.lang` classes, binary `String.length`.
 - `Character.isWhitespace` and `Objects.requireNonNull` remain overload refusals.
-- `ArrayUtils.isEmpty` remains unresolved while that source has extensive parser
-  recovery gaps. This is a known gap, not an assertion that valid Java is invalid.
+- `ArrayUtils.isEmpty` now finds all nine source overload declarations after catch
+  parsing no longer loses that part of the file. It remains `OverloadNotResolved`:
+  argument-based overload selection is not implemented. The earlier baseline
+  reported `Unresolved`. Each candidate range was checked against its unmodified
+  declaration, rather than selecting one candidate to make the query pass.
 - `ImmutablePair`'s `Map.Entry` receiver remains `ReceiverNotBound`.
 
-The baseline inventory is 249 losslessly represented files, 186 without reported
-parser errors and 63 with a total of 8,187 error nodes. Zero errors is not proof
+The current baseline inventory is 249 losslessly represented files, 221 without
+reported parser errors and 28 with a total of 149 error nodes. Zero errors is not proof
 of Java conformance. Error nodes can cascade and are not independent defects.
 `parser-errors.tsv` records this baseline; changes are reported, **not rejected**
 by a fixed count gate. The example prints all affected file names, counts, and
@@ -76,10 +80,14 @@ asserted and should be reviewed explicitly when semantics improve.
 A narrow diagnostic experiment on in-memory copies removed only `final` after
 `catch (`. It reduced ArrayUtils's 3,041 errors to 54 (one occurrence), ClassUtils's
 444 to zero (four occurrences), and ObjectUtils's 429 to zero (one occurrence).
-This points to catch-parameter parsing/recovery as a high-impact next fix, not
-thousands of unrelated defects. Other first errors include unsupported `switch`
-and multiple initializer/update expressions in a `for` header. The acceptance
-run always uses the **unmodified** archive bytes.
+This identified the catch-parameter parsing/recovery fix now implemented; it did
+not represent thousands of unrelated defects. The full unmodified corpus improved
+from 8,187 to 149 error nodes, and 63 to 28 affected files. All 44 changed file
+counts decreased; no file count increased. `catch-parser-comparison.tsv` retains
+the exact before/after inventory for every source file. Other remaining errors
+include unsupported `switch` and multiple initializer/update expressions in a
+`for` header. The acceptance run always uses the **unmodified** archive bytes.
+See [catch parsing boundaries](../../docs/CATCH_PARAMETERS.md).
 
 ## Measurements
 
@@ -90,7 +98,7 @@ include result construction but exclude equality checks and output. p50/p95 use
 nearest rank over individual query samples, with total/min/max also reported.
 The corpus is heterogeneous; these aggregates are only this fixed workload.
 
-One Linux cloud release run on 2026-11-09 recorded load/parse 494.47 ms, index
+Before the catch-parser follow-up, one Linux cloud release run on 2026-11-09 recorded load/parse 494.47 ms, index
 preparation 51.69 ms, rebuild-per-query p50/p95 59.27/72.77 ms and prepared warm
 query p50/p95 7.60/16.86 ms. These noisy wall-clock observations are not a speed
 promise, comparison against an IDE, stable budget, or general project benchmark.

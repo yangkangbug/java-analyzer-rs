@@ -1,14 +1,14 @@
-# id	file	UTF-8 byte offset	name	status	target count	target path/suffix	kind	owner	target name	start	end
-q01	org/apache/commons/lang3/StringUtils.java	309172	ArrayUtils	Resolved	1	org/apache/commons/lang3/ArrayUtils.java	Class	org.apache.commons.lang3.ArrayUtils	ArrayUtils	2159	2169
-q02	org/apache/commons/lang3/StringUtils.java	309183	EMPTY_STRING_ARRAY	Resolved	1	org/apache/commons/lang3/ArrayUtils.java	Field	org.apache.commons.lang3.ArrayUtils	EMPTY_STRING_ARRAY	4802	4820
-q03	org/apache/commons/lang3/StringUtils.java	59582	Character	Resolved	1	!/classes/java/lang/Character.class	Class	java.lang.Character	Character	0	0
-q04	org/apache/commons/lang3/StringUtils.java	59592	isWhitespace	OverloadNotResolved	2	!/classes/java/lang/Character.class	Method	java.lang.Character	isWhitespace	0	0
-q05	org/apache/commons/lang3/StringUtils.java	15516	str	Resolved	1	org/apache/commons/lang3/StringUtils.java	Parameter	-	str	14835	14838
-q06	org/apache/commons/lang3/StringUtils.java	15520	length	Resolved	1	!/classes/java/lang/String.class	Method	java.lang.String	length	0	0
-q07	org/apache/commons/lang3/StringUtils.java	44758	isEmpty	Unresolved	0	-	-	-	-	-	-
-q08	org/apache/commons/lang3/StringUtils.java	89517	StringBuilder	Resolved	1	!/classes/java/lang/StringBuilder.class	Class	java.lang.StringBuilder	StringBuilder	0	0
-q09	org/apache/commons/lang3/tuple/ImmutablePair.java	1377	Pair	Resolved	1	org/apache/commons/lang3/tuple/Pair.java	Class	org.apache.commons.lang3.tuple.Pair	Pair	1751	1755
-q10	org/apache/commons/lang3/tuple/ImmutablePair.java	5207	Objects	Resolved	1	!/classes/java/util/Objects.class	Class	java.util.Objects	Objects	0	0
-q11	org/apache/commons/lang3/tuple/ImmutablePair.java	5215	requireNonNull	OverloadNotResolved	3	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
-q12	org/apache/commons/lang3/tuple/ImmutablePair.java	4497	getKey	ReceiverNotBound	0	-	-	-	-	-	-
-q13	org/apache/commons/lang3/tuple/ImmutablePair.java	3328	NULL	Resolved	1	org/apache/commons/lang3/tuple/ImmutablePair.java	Field	org.apache.commons.lang3.tuple.ImmutablePair	NULL	1815	1819
+# id	file	UTF-8 byte offset	name	status	target count
+q01	org/apache/commons/lang3/StringUtils.java	309172	ArrayUtils	Resolved	1
+q02	org/apache/commons/lang3/StringUtils.java	309183	EMPTY_STRING_ARRAY	Resolved	1
+q03	org/apache/commons/lang3/StringUtils.java	59582	Character	Resolved	1
+q04	org/apache/commons/lang3/StringUtils.java	59592	isWhitespace	OverloadNotResolved	2
+q05	org/apache/commons/lang3/StringUtils.java	15516	str	Resolved	1
+q06	org/apache/commons/lang3/StringUtils.java	15520	length	Resolved	1
+q07	org/apache/commons/lang3/StringUtils.java	44758	isEmpty	OverloadNotResolved	9
+q08	org/apache/commons/lang3/StringUtils.java	89517	StringBuilder	Resolved	1
+q09	org/apache/commons/lang3/tuple/ImmutablePair.java	1377	Pair	Resolved	1
+q10	org/apache/commons/lang3/tuple/ImmutablePair.java	5207	Objects	Resolved	1
+q11	org/apache/commons/lang3/tuple/ImmutablePair.java	5215	requireNonNull	OverloadNotResolved	3
+q12	org/apache/commons/lang3/tuple/ImmutablePair.java	4497	getKey	ReceiverNotBound	0
+q13	org/apache/commons/lang3/tuple/ImmutablePair.java	3328	NULL	Resolved	1

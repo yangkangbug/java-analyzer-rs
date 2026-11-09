@@ -859,19 +859,206 @@ impl<'a> Parser<'a> {
             self.open(SyntaxKind::CatchClause);
             self.bump();
             self.expect(SyntaxKind::LParen, "expected '('");
-            self.parse_type();
+            self.parse_catch_modifiers();
+            self.parse_catch_type();
             while self.eat(SyntaxKind::Pipe) {
-                self.parse_type();
+                self.parse_catch_type();
             }
+            let named = self.at(SyntaxKind::Ident);
             self.expect(SyntaxKind::Ident, "expected name");
+            self.parse_catch_dimensions();
+            // Without a ')' an immediately following local declaration belongs
+            // to the enclosing block, even if its initializer contains ')'.
+            if !named || !self.looks_like_decl() {
+                self.recover_catch_header();
+            }
             self.expect(SyntaxKind::RParen, "expected ')'");
-            self.parse_block();
+            if self.at(SyntaxKind::LBrace) {
+                self.parse_block();
+            } else {
+                self.expect(SyntaxKind::LBrace, "expected catch body");
+            }
             self.finish();
         }
         if self.eat(SyntaxKind::Finally) {
             self.parse_block();
         }
         self.finish();
+    }
+
+    // Catch parameters deliberately do not use ordinary formal-parameter grammar:
+    // only annotations/final, reference types separated by '|', and one name.
+    fn parse_catch_modifiers(&mut self) {
+        if !self.has_modifier() {
+            return;
+        }
+        self.open(SyntaxKind::ModifierList);
+        let mut saw_final = false;
+        while self.has_modifier() {
+            if self.at(SyntaxKind::At) {
+                self.parse_catch_annotation();
+            } else if self.at(SyntaxKind::Final) && !saw_final {
+                self.bump();
+                saw_final = true;
+            } else {
+                self.error_one("invalid catch parameter modifier");
+            }
+        }
+        self.finish();
+    }
+
+    fn parse_catch_type(&mut self) {
+        self.parse_catch_type_part(false);
+    }
+
+    fn parse_catch_type_part(&mut self, argument: bool) {
+        self.open(SyntaxKind::Type);
+        while self.at(SyntaxKind::At) {
+            self.parse_catch_annotation();
+        }
+        if argument && self.eat(SyntaxKind::Question) {
+            if self.eat(SyntaxKind::Extends) || self.eat(SyntaxKind::Super) {
+                self.parse_catch_type_part(true);
+            }
+        } else if argument && !self.at(SyntaxKind::Void) && self.eat_primitive() {
+            // Primitive arrays are reference types; bare primitives are not.
+            if !self.at(SyntaxKind::LBracket) && !self.at(SyntaxKind::At) {
+                self.expect(SyntaxKind::LBracket, "expected array type argument");
+            }
+        } else {
+            // Retain the direct Type/Name shape used by index_catch, while
+            // keeping nested generic annotations on the bounded catch path.
+            self.open(SyntaxKind::Name);
+            self.expect(SyntaxKind::Ident, "expected catch type name");
+            self.parse_catch_type_args();
+            while self.eat(SyntaxKind::Dot) {
+                while self.at(SyntaxKind::At) {
+                    self.parse_catch_annotation();
+                }
+                self.expect(SyntaxKind::Ident, "expected catch type name");
+                self.parse_catch_type_args();
+            }
+            self.finish();
+        }
+        if argument {
+            self.parse_catch_dimensions();
+        }
+        self.finish();
+    }
+
+    fn parse_catch_type_args(&mut self) {
+        if !self.at(SyntaxKind::Lt) {
+            return;
+        }
+        self.open(SyntaxKind::TypeArgList);
+        self.bump();
+        loop {
+            self.parse_catch_type_part(true);
+            if !self.eat(SyntaxKind::Comma) {
+                break;
+            }
+        }
+        if !self.eat_gt() {
+            self.expect(SyntaxKind::Gt, "expected '>'");
+        }
+        self.finish();
+    }
+
+    fn parse_catch_dimensions(&mut self) {
+        while self.at(SyntaxKind::At) || self.at(SyntaxKind::LBracket) {
+            while self.at(SyntaxKind::At) {
+                self.parse_catch_annotation();
+            }
+            self.expect(SyntaxKind::LBracket, "expected '['");
+            self.expect(SyntaxKind::RBracket, "expected ']'");
+        }
+    }
+
+    /// Parse an annotation in isolation only when its delimiters and syntax are
+    /// complete. A broken annotation must not interpret the catch body as an
+    /// annotation array initializer or eat a subsequent declaration.
+    fn parse_catch_annotation(&mut self) {
+        self.drain();
+        let start = self.pos;
+        let mut look = Look::from(self);
+        look.eat(SyntaxKind::At);
+        look.eat(SyntaxKind::Ident);
+        while look.eat(SyntaxKind::Dot) && look.eat(SyntaxKind::Ident) {}
+        let mut complete = true;
+        if look.eat(SyntaxKind::LParen) {
+            let mut delimiters = vec![SyntaxKind::RParen];
+            while !delimiters.is_empty() {
+                let kind = look.kind();
+                match kind {
+                    SyntaxKind::Eof | SyntaxKind::Semi | SyntaxKind::Catch | SyntaxKind::Finally => {
+                        complete = false;
+                        break;
+                    }
+                    SyntaxKind::LParen => delimiters.push(SyntaxKind::RParen),
+                    SyntaxKind::LBrace => delimiters.push(SyntaxKind::RBrace),
+                    SyntaxKind::LBracket => delimiters.push(SyntaxKind::RBracket),
+                    SyntaxKind::RParen | SyntaxKind::RBrace | SyntaxKind::RBracket
+                        if delimiters.pop() != Some(kind) =>
+                    {
+                        complete = false;
+                        break;
+                    }
+                    _ => {}
+                }
+                look.bump();
+            }
+        }
+        let end = look.i;
+        if complete {
+            let mut annotation = Parser::new(self.src, self.tokens[start..end].to_vec());
+            annotation.start(SyntaxKind::ModifierList);
+            annotation.parse_annotation();
+            annotation.drain();
+            let node = annotation.finish();
+            if annotation.eof() && crate::green::collect_errors(&node).is_empty() {
+                self.stack.last_mut().expect("frame").children.extend(node.children().iter().cloned());
+                self.pos = end;
+                return;
+            }
+        }
+        self.error_one("incomplete or invalid catch annotation");
+        // Keep malformed annotation material inside Error, not as a fake name.
+        self.recover_catch_header();
+    }
+
+    // The first brace is a synchronization boundary. An unmatched annotation
+    // array brace is not distinguishable from the intended body opener here;
+    // this does not repair arbitrary brace imbalance in incomplete source.
+    fn recover_catch_header(&mut self) {
+        let mut look = Look::from(self);
+        while !matches!(
+            look.kind(),
+            SyntaxKind::RParen
+                | SyntaxKind::LBrace
+                | SyntaxKind::RBrace
+                | SyntaxKind::Semi
+                | SyntaxKind::Catch
+                | SyntaxKind::Finally
+                | SyntaxKind::Eof
+        ) {
+            look.bump();
+        }
+        let has_close = look.kind() == SyntaxKind::RParen;
+        while !matches!(
+            self.kind(),
+            SyntaxKind::RParen
+                | SyntaxKind::LBrace
+                | SyntaxKind::RBrace
+                | SyntaxKind::Semi
+                | SyntaxKind::Catch
+                | SyntaxKind::Finally
+                | SyntaxKind::Eof
+        ) {
+            if !has_close && self.looks_like_decl() {
+                break;
+            }
+            self.error_one("unexpected catch parameter token");
+        }
     }
 
     fn recover_switch(&mut self) {

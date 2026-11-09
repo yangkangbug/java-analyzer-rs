@@ -107,6 +107,16 @@ provenance, not persistent symbol IDs, even when their path/range values are equ
 Stable input/declaration identities, scoped invalidation, cancellation, and measured
 project-scale memory/latency budgets remain open work.
 
+### Real-source-driven catch recovery implemented
+
+The pinned Commons Lang source workload identified catch-parameter `final` as a
+large recovery discontinuity. Catch-specific modifier/type/annotation parsing now
+preserves following declarations and supplies bounded error recovery. Across the
+unmodified 249-file corpus, parser error nodes decreased from 8,187 to 149; this
+counts recovery cascades, not independent semantic features. The exact inventory
+and query-target changes are versioned. Throwable legality, union least-upper-
+bound semantics, remaining parser gaps and general project support are still open.
+
 ## M2: semantic types and method applicability
 
 Introduce types separate from spelling: primitives, arrays, declared types,

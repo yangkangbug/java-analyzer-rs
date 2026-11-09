@@ -11,19 +11,21 @@ struct Query {
     path: String,
     offset: u32,
     fields: Vec<String>,
+    targets: Vec<Vec<String>>,
 }
 
 fn check(query: &Query, result: &ResolveResult) {
     let f = &query.fields;
     assert_eq!(format!("{:?}", result.status), f[4], "{} status", query.id);
     assert_eq!(result.targets.len(), f[5].parse::<usize>().unwrap(), "{} count", query.id);
-    for target in &result.targets {
-        assert!(target.path.ends_with(&f[6]), "{} target origin", query.id);
-        assert_eq!(format!("{:?}", target.kind), f[7], "{} kind", query.id);
-        assert_eq!(target.owner, if f[8] == "-" { "" } else { &f[8] }, "{} owner", query.id);
-        assert_eq!(target.name, f[9], "{} name", query.id);
-        assert_eq!(target.start_byte, f[10].parse::<u32>().unwrap(), "{} start", query.id);
-        assert_eq!(target.end_byte, f[11].parse::<u32>().unwrap(), "{} end", query.id);
+    assert_eq!(query.targets.len(), result.targets.len(), "{} fixture target count", query.id);
+    for (target, expected) in result.targets.iter().zip(&query.targets) {
+        assert!(target.path.ends_with(&expected[1]), "{} target origin", query.id);
+        assert_eq!(format!("{:?}", target.kind), expected[2], "{} kind", query.id);
+        assert_eq!(target.owner, if expected[3] == "-" { "" } else { &expected[3] }, "{} owner", query.id);
+        assert_eq!(target.name, expected[4], "{} name", query.id);
+        assert_eq!(target.start_byte, expected[5].parse::<u32>().unwrap(), "{} start", query.id);
+        assert_eq!(target.end_byte, expected[6].parse::<u32>().unwrap(), "{} end", query.id);
     }
 }
 
@@ -100,16 +102,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!("parser_gap_baseline_changed=false");
     }
+    let target_rows: Vec<Vec<String>> = include_str!("real_source/targets.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(|line| {
+            let fields: Vec<String> = line.split('\t').map(str::to_owned).collect();
+            assert_eq!(fields.len(), 7);
+            fields
+        })
+        .collect();
     let queries: Vec<Query> = include_str!("real_source/queries.tsv")
         .lines()
         .filter(|line| !line.starts_with('#'))
         .map(|line| {
             let fields: Vec<String> = line.split('\t').map(str::to_owned).collect();
-            assert_eq!(fields.len(), 12);
+            assert_eq!(fields.len(), 6);
             Query {
                 id: fields[0].clone(),
                 path: root.join(&fields[1]).to_str().unwrap().to_owned(),
                 offset: fields[2].parse().unwrap(),
+                targets: target_rows.iter().filter(|target| target[0] == fields[0]).cloned().collect(),
                 fields,
             }
         })

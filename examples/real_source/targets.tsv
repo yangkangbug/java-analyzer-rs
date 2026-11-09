@@ -1,0 +1,24 @@
+# query id	target path/suffix	kind	owner	name	start	end (ordered per query)
+q01	org/apache/commons/lang3/ArrayUtils.java	Class	org.apache.commons.lang3.ArrayUtils	ArrayUtils	2159	2169
+q02	org/apache/commons/lang3/ArrayUtils.java	Field	org.apache.commons.lang3.ArrayUtils	EMPTY_STRING_ARRAY	4802	4820
+q03	!/classes/java/lang/Character.class	Class	java.lang.Character	Character	0	0
+q04	!/classes/java/lang/Character.class	Method	java.lang.Character	isWhitespace	0	0
+q04	!/classes/java/lang/Character.class	Method	java.lang.Character	isWhitespace	0	0
+q05	org/apache/commons/lang3/StringUtils.java	Parameter	-	str	14835	14838
+q06	!/classes/java/lang/String.class	Method	java.lang.String	length	0	0
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	131163	131170
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	128952	128959
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	129271	129278
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	129587	129594
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	129905	129912
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	130224	130231
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	130540	130547
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	130855	130862
+q07	org/apache/commons/lang3/ArrayUtils.java	Method	org.apache.commons.lang3.ArrayUtils	isEmpty	131482	131489
+q08	!/classes/java/lang/StringBuilder.class	Class	java.lang.StringBuilder	StringBuilder	0	0
+q09	org/apache/commons/lang3/tuple/Pair.java	Class	org.apache.commons.lang3.tuple.Pair	Pair	1751	1755
+q10	!/classes/java/util/Objects.class	Class	java.util.Objects	Objects	0	0
+q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
+q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
+q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
+q13	org/apache/commons/lang3/tuple/ImmutablePair.java	Field	org.apache.commons.lang3.tuple.ImmutablePair	NULL	1815	1819

@@ -210,3 +210,50 @@ ClassUtils from 444 to zero, and ObjectUtils from 429 to zero. The acceptance ru
 always uses unmodified source bytes. Catch-parameter parsing/recovery is a concrete
 next priority; `switch` and multi-expression `for` headers are additional observed
 gaps. No parser behavior was silently changed as part of the index work.
+
+
+## Catch-parameter parsing follow-up
+
+Baseline: `13271ceae6fa64e61b7745decf72aa9c1ef84338`. The old compiled analyzer
+and pinned source/platform inputs were retained for comparison. The same source
+archive SHA-256 and all 249 Java source byte strings were verified unchanged.
+The fresh acceptance command still runs only the prebuilt Rust analyzer under
+an empty environment with `PATH=/nonexistent`; no Java compiler or process runs.
+
+Exact original-corpus comparison:
+
+- 249 files, 3,676,819 source bytes, all lossless before and after.
+- Files with parser errors: 63 before, 28 after; files without reported errors:
+  186 before, 221 after. Neither number is a conformance score.
+- Parser error nodes: 8,187 before, 149 after. These count recovery cascades.
+- Per-file counts: 44 improved, 205 unchanged, none increased.
+- ArrayUtils: 3,041 → 54; ClassUtils: 444 → 0; ObjectUtils: 429 → 0.
+- [Full per-file comparison](../examples/real_source/catch-parser-comparison.tsv)
+  includes zero-count files, not just the improved examples.
+
+The original fixed query positions remain unchanged. Twelve query contracts stay
+the same. `ArrayUtils.isEmpty` at StringUtils byte 44,758 changes from Unresolved
+to OverloadNotResolved with nine source candidates: Object[], boolean[], byte[],
+char[], double[], float[], int[], long[], and short[]. Each exact declaration range
+was checked against the original source; no candidate is guessed. The harness now
+stores each ordered candidate separately in `targets.tsv`, rather than assuming
+all candidates share one range. All thirteen queries still compare prepared and
+rebuild results, including unsupported overload/receiver cases.
+
+Five initial focused tests failed before implementation. Eight catch regressions
+now cover syntax, malformed/incomplete headers, parameter scope, exact ranges,
+UTF-16, ordinary formal parameters, and incremental/full equivalence. Independent
+review tested 33 header forms and 165 incremental replacements. A nested generic
+annotation path that bypassed bounded recovery was corrected. The documented
+first-brace synchronization limit remains; see [catch boundaries](CATCH_PARAMETERS.md).
+
+The final five-round release corpus run uses 65 samples per query mode. Its query
+shape changed from zero to nine candidates for one case, so this slice makes no
+before/after performance comparison or speed claim. Loading, index preparation,
+and query timings remain observations emitted by the existing optional harness.
+
+Final repository checks pass: **138 tests**, two intentionally ignored manual
+measurements, one compile-fail doctest, formatting, strict Clippy/rustdoc,
+examples and empty-environment native-runtime checks, and Cargo package verification.
+No dependencies or JVM requirements were added. The real-source harness's final
+inventory matches its updated baseline exactly.

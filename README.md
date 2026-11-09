@@ -59,6 +59,9 @@ are not.
   listed in `src/lib.rs`, including lambdas, method references, and
   try-with-resources (`Resource` nodes).
 - Names, literals, `this`, and `super` used as expressions are nodes. Tokens stay leaves.
+- Catch parameters support annotations and `final`, with bounded malformed-header
+  recovery. See [catch parsing](docs/CATCH_PARAMETERS.md) for syntax versus type
+  legality, union-typing limits, and recovery boundaries.
 - Error nodes. A broken statement does not have to discard the rest of the block.
   `switch` is still an error node that skips one brace group. Patterns, modules,
   and explicit type arguments on a call (`Collections.<String>emptyList()`) are
