@@ -48,8 +48,9 @@ batch shares one prepared snapshot.
 Source targets retain exact byte ranges; binary targets explicitly have no source
 range. Refused or ambiguous results remain candidates, not a guessed first match.
 Parser reports may indicate unsupported grammar rather than invalid Java.
-This is limited declaration navigation, not argument applicability, semantic
-diagnostics, a build importer or an editor language server. Inputs are local and
+This is limited declaration navigation with a narrow checked primitive-call
+subset, not general applicability, semantic diagnostics, a build importer or an
+editor language server. Inputs are local and
 explicit; no Java executable is called or JDK discovered.
 
 See the [command/configuration contract](docs/CLI.md) and
@@ -82,8 +83,9 @@ generics and overload resolution, then reference search. Syntax, class-file
 signatures, and name binding across source files and those class files are
 implemented. Explicit source roots and an ordered directory/JAR classpath can now
 be loaded as an immutable snapshot, with explicit platform JMOD or legacy JAR inputs.
-A JDK is not included or discovered. Overload selection and generic instantiation
-are not.
+A JDK is not included or discovered. A narrow same-class static primitive-call
+subset can select a source overload. General overload selection and generic
+instantiation are not implemented; see [the supported proof](docs/PRIMITIVE_CALLS.md).
 
 ### Syntax
 
@@ -199,7 +201,8 @@ and then its members. A source field used as a receiver (`box.result.value`)
 keeps its declaration's file, imports, package, and enclosing type, including
 when the field is inherited. Access to the next member is still checked at
 the caller. Source array receivers are deliberately not treated as scalar element objects.
-Array indexing/length/clone binding is not implemented. Object-valued class-file
+General array receiver/length/clone binding is not implemented. Primitive array
+elements can be typed only inside the supported call-argument proof. Object-valued class-file
 field receivers are not bound yet.
 A package prefix of an indexed class is `Package`, not a type.
 `Type::new` is `ConstructorRefNotBound`.
@@ -211,7 +214,8 @@ Statuses that refuse to guess:
 | `Resolved` | Exactly one candidate |
 | `Unresolved` | No candidate, including a missing import target |
 | `Ambiguous` | Conflicting types, fields or same-signature methods, including unresolved bridge duplicates. The first one is not chosen |
-| `OverloadNotResolved` | Distinct parameter signatures remain after supported type-identity comparison and justified inherited hiding. Primitive/array/declared types use the declaration context; return types do not distinguish signatures. The call's argument types are not compared |
+| `OverloadNotResolved` | No supported unique overload selection. The narrow primitive proof did not establish a winner; original candidates remain hints, not proven applicable methods |
+| `CallNotResolved` | A single source invocation was not proved applicable, including known contradictions and unsupported argument/conversion cases. The retained target is a candidate, not a selection or a Java error diagnostic |
 | `SignatureNotCompared` | A malformed signature or unsupported/unresolved type comparison prevents distinguishing inherited equal signatures from overloads. Mixed source/binary representation alone no longer causes refusal |
 | `Cycle` | A supertype path visits a type that is already on that path |
 | `NotDetermined` | Every candidate has contradictory access flags |
@@ -220,16 +224,24 @@ Statuses that refuse to guess:
 | `Package` | The name is only a package prefix |
 | `ConstructorRefNotBound` | The selector is `new` after `::` |
 
-The one-candidate rule is the same decision as `ResolveClassUtil.resolveClass`
-at the commit in `NOTICE`. The scope processor is not a translation of
-`ClassResolverProcessor`.
+The original one-candidate name-navigation rule follows `ResolveClassUtil.resolveClass`
+at the commit in `NOTICE`. Source invocation guards now reject supported argument
+contradictions, while a closed same-class primitive subset can justify overload
+selection. Outside those boundaries, a unique name is still not a general
+applicability proof. The scope processor is not a translation of `ClassResolverProcessor`.
+
+The added public `ResolveStatus::CallNotResolved` variant requires clients with
+exhaustive matches to add a case. Public target fields are unchanged. See
+[primitive calls and compatibility](docs/PRIMITIVE_CALLS.md).
 
 Not implemented, and not claimed:
 
 - A JDK or any classpath the caller did not add. `java.lang.String` stays
   unresolved until that source or class file is inserted.
-- Choosing one overload from several. A call `m(1)` with both `m()` and `m(int)`
-  indexed is `OverloadNotResolved`.
+- General overload selection and arbitrary expression typing. The supported
+  same-class static subset uses explicit primitive locals/parameters and array
+  elements; literal arguments, boxing, reference conversions and varargs
+  expansion remain outside it.
 - Complete generic, bridge and class/interface/default-method override semantics.
   Supported mixed source/binary signatures can now match; uncertain cases refuse.
 - Instantiating a `Signature` attribute or a source type argument.
@@ -292,7 +304,9 @@ access, and an edit that changes the next query.
 parameter names, varargs equivalence, inheritance, malformed parameters, and edits.
 `tests/method_identity.rs` additionally checks source/binary parameter identity,
 imports and compilation contexts, descriptors, hierarchy branches and conservative
-unsupported cases. Comparison still does not select overloads or substitute generics. Type-use annotations on array dimensions
+unsupported cases. Signature comparison alone does not select overloads or substitute generics.
+`tests/primitive_calls.rs` checks the separate narrow call proof and conservative
+single-candidate refusal. Type-use annotations on array dimensions
 and typed-lambda postfix dimensions are outside this parser subset.
 `tests/receivers.rs` checks cross-file field chains, conflicting caller imports,
 same-name/offset collisions, inherited and nested field types, method calls,
@@ -398,8 +412,9 @@ analysis and default native tests do not acquire a Java dependency.
 Follow [ROADMAP.md](ROADMAP.md) for the project-level milestones. The semantic
 work below follows explicit classpath and JDK/model foundations.
 
-1. Argument applicability and overload selection, building on supported parameter
-   identities. Comparing declaration signatures does not choose a call target.
+1. Broader argument applicability and overload selection, beyond the supported
+   source primitive subset. Comparing declaration signatures alone does not
+   choose a call target.
 2. Generic substitution and inference for source and stored `Signature` attributes;
    unsupported generic comparisons currently remain explicit.
 3. Reference search, then one refactoring at a time.

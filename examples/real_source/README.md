@@ -56,7 +56,7 @@ target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are twenty-seven resolved queries, eleven explicit overload refusals, two
+There are thirty-one resolved queries, seven explicit overload refusals, two
 unsupported signature comparisons, and one unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
@@ -144,6 +144,16 @@ but follows the current declaration traversal rather than the earlier spelling
 sort. These changes do not prove argument applicability or generic inference.
 The separate optional mixed oracle uses actual compiled dependency bytes and
 compiler-verified `@Override` consumer declarations, not two source-only copies.
+
+## Primitive call-selection evidence
+
+`primitive-comparison.tsv` records four changes in IEEE754rUtils: double/float
+array-loop calls to max/min now select the exact two-parameter source method.
+An independent javac analysis over all 249 original sources confirms those
+declarations. All other 37 fixed results and candidate sets are unchanged. The
+41-query set now has 66 candidate records (56 source, ten binary). This is a
+strict primitive/static/same-owner subset, not general overload selection;
+see [the eligibility and refusal contract](../../docs/PRIMITIVE_CALLS.md).
 
 ## Measurements
 

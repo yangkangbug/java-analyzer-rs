@@ -15,8 +15,10 @@
 //! Field and method lookup walks `extends` and `implements`, including class
 //! files registered on [`Project`]. A missing supertype contributes nothing.
 //! A cycle is [`ResolveStatus::Cycle`]. Two members that share a name stay
-//! ambiguous or [`ResolveStatus::OverloadNotResolved`]; the first is not
-//! chosen. Method parameters are compared by resolved type identity in their
+//! ambiguous or [`ResolveStatus::OverloadNotResolved`] unless the bounded
+//! primitive source-call proof selects a unique most-specific method. Unsupported
+//! singleton calls may retain a candidate as [`ResolveStatus::CallNotResolved`].
+//! The first candidate is never chosen arbitrarily. Method parameters are compared by resolved type identity in their
 //! declaration context; unsupported comparisons stay
 //! [`ResolveStatus::SignatureNotCompared`]. Legacy queries rebuild the index;
 //! [`Project::prepare`] retains it for repeated queries. There is no JDK and no classpath beyond what the caller added.
@@ -36,8 +38,11 @@ pub enum ResolveStatus {
     Resolved,
     Unresolved,
     Ambiguous,
-    /// More than one method has this name. Argument types are not compared.
+    /// No supported unique overload selection. The original candidates are retained.
     OverloadNotResolved,
+    /// A single source invocation was not proved applicable. Retained targets are
+    /// candidates, not a selection. This is not a Java semantic diagnostic.
+    CallNotResolved,
     /// The qualifier is `super` or a value whose declared type is not a source class.
     ReceiverNotBound,
     /// A static import names this identifier, and static imports are not applied.
@@ -220,6 +225,7 @@ struct Member {
     declared: Option<QualName>,
     access: Access,
     shape: Shape,
+    source_call: Option<SourceCall>,
 }
 
 #[derive(Clone, Debug)]
@@ -237,6 +243,8 @@ struct ClassRec {
     binary: bool,
     is_interface: bool,
     type_variables: Vec<String>,
+    primitive_owner: bool,
+    binary_root: bool,
     fields: Vec<Member>,
     methods: Vec<Member>,
 }
@@ -273,6 +281,7 @@ struct LocalRec {
     scope_end: u32,
     visible_from: u32,
     declared: Option<QualName>,
+    primitive: Option<PrimitiveValue>,
     path: String,
 }
 
@@ -286,6 +295,7 @@ struct FileRec {
     static_names: Vec<String>,
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
+    call_inventory_valid: bool,
 }
 
 #[cfg(test)]
@@ -356,12 +366,163 @@ impl Index {
         match hit.node.kind() {
             SyntaxKind::ReferenceExpr => {
                 let name = token_name(hit.node);
-                self.simple_name(file, byte, &name, hit.call)
+                if hit.call {
+                    self.simple_call(file, parsed, byte, &name, hit.arguments)
+                } else {
+                    self.simple_name(file, byte, &name, false)
+                }
             }
             SyntaxKind::Name => self.resolve_type_name(file, parsed, hit, byte),
             SyntaxKind::FieldExpr => self.resolve_field(file, parsed, hit, byte),
             SyntaxKind::MethodRefExpr => self.resolve_method_ref(file, parsed, hit, byte),
             _ => ResolveResult::none(ResolveStatus::Unresolved),
+        }
+    }
+
+    // Name navigation remains the fallback. Only this direct-callee path has
+    // argument syntax; receiver/member-reference lookup does not infer calls.
+    fn simple_call(
+        &self,
+        file: &FileRec,
+        parsed: &ParsedFile,
+        byte: u32,
+        name: &str,
+        arguments: Option<(&GreenNode, u32)>,
+    ) -> ResolveResult {
+        for class in enclosing_classes(file, byte) {
+            let found = match self.collect(class, name, true, file, byte) {
+                Ok(found) => found,
+                Err(err) => return walk_error(err),
+            };
+            let mut result = select_methods(found.clone());
+            if result.status == ResolveStatus::Unresolved {
+                continue;
+            }
+            let Some((args, args_at)) = arguments else { return result };
+            let actuals = delimited_nodes(args, args_at);
+            let caller = direct_caller(parsed.root(), byte);
+            // A negative guard needs no Object inventory. An arity mismatch
+            // does not type a literal or discard variable-arity possibilities.
+            if result.status == ResolveStatus::Resolved && found.len() == 1 {
+                let candidate = &found[0];
+                if let Some(source) = &candidate.member.source_call {
+                    let fixed_arity_mismatch = !source.varargs
+                        && actuals.as_ref().is_some_and(|args| {
+                            candidate.signature.as_ref().is_some_and(|sig| args.len() != sig.parameters.len())
+                        });
+                    let primitive_mismatch = caller.is_some_and(|(caller, start, end)| {
+                        if !file.call_inventory_valid || source_call(caller, start).is_none() {
+                            return false;
+                        }
+                        actuals.as_ref().is_some_and(|args| {
+                            let Shape::Source { parameters, .. } = &candidate.member.shape else { return false };
+                            // One independently known contradiction is enough;
+                            // unrelated unknown formals cannot erase it.
+                            !source.varargs
+                                && args.len() == parameters.len()
+                                && args.iter().zip(parameters).any(|((arg, at), formal)| {
+                                    formal.primitive.filter(|_| !formal.unsupported).is_some_and(|primitive| {
+                                        primitive_expression(file, arg, *at, start, end).is_some_and(|actual| {
+                                            !actual.converts_to(PrimitiveValue { primitive, rank: formal.array_rank })
+                                        })
+                                    })
+                                })
+                        })
+                    });
+                    if fixed_arity_mismatch || primitive_mismatch {
+                        result.status = ResolveStatus::CallNotResolved;
+                        return result;
+                    }
+                }
+            }
+            let Some((caller_node, caller_start, caller_end)) = caller else { return result };
+            if !self.closed_primitive_owner(file, class, name)
+                || !file.call_inventory_valid
+                || !caller_node.child_nodes().any(|node| node.kind() == SyntaxKind::Block)
+                || !source_call(caller_node, caller_start).is_some_and(|call| call.is_static)
+                || child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_some()
+            {
+                return result;
+            }
+            if !matches!(result.status, ResolveStatus::Resolved | ResolveStatus::OverloadNotResolved) {
+                return result;
+            }
+            // Every same-name declaration is considered before access filtering.
+            // No unsupported competitor may be dropped to manufacture a winner.
+            let members: Vec<_> = class.methods.iter().filter(|member| member.name == name).collect();
+            let selected = actuals.as_ref().and_then(|args| {
+                let actuals = args
+                    .iter()
+                    .map(|(arg, at)| primitive_expression(file, arg, *at, caller_start, caller_end))
+                    .collect::<Option<Vec<_>>>()?;
+                let formals = members
+                    .iter()
+                    .map(|member| {
+                        member.source_call.as_ref().filter(|call| call.is_static)?;
+                        primitive_formals(member)
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                // Duplicate declarations invalidate the inventory even if that
+                // signature would not be applicable to these particular actuals.
+                for (i, left) in formals.iter().enumerate() {
+                    if formals[i + 1..].contains(left) {
+                        return None;
+                    }
+                }
+                let applicable: Vec<_> = formals
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, parameters)| {
+                        actuals.len() == parameters.len()
+                            && actuals.iter().zip(parameters.iter()).all(|(actual, formal)| actual.converts_to(*formal))
+                    })
+                    .map(|(i, _)| i)
+                    .collect();
+                let most_specific: Vec<_> = applicable
+                    .iter()
+                    .copied()
+                    .filter(|&i| {
+                        applicable
+                            .iter()
+                            .all(|&j| formals[i].iter().zip(&formals[j]).all(|(left, right)| left.converts_to(*right)))
+                    })
+                    .collect();
+                match most_specific.as_slice() {
+                    [one] => Some(members[*one]),
+                    _ => None,
+                }
+            });
+            if let Some(member) = selected {
+                return ResolveResult::one(ResolveStatus::Resolved, member_target(class, member));
+            }
+            if result.status == ResolveStatus::Resolved {
+                result.status = ResolveStatus::CallNotResolved;
+            }
+            return result;
+        }
+        if file.static_names.iter().any(|imported| imported == name) {
+            ResolveResult::none(ResolveStatus::StaticImportNotApplied)
+        } else {
+            ResolveResult::none(ResolveStatus::Unresolved)
+        }
+    }
+
+    fn closed_primitive_owner(&self, file: &FileRec, class: &ClassRec, name: &str) -> bool {
+        if !class.primitive_owner
+            || !matches!(self.class_named(class.scope, &class.dotted()), Named::One(found) if same_class(found, class))
+        {
+            return false;
+        }
+        let Some(parent) = &class.super_parts else { return false };
+        match self.resolve_edge(class, parent) {
+            Named::One(object) => {
+                // Source Object implicitly extends itself in this index. A
+                // supplied binary root is the bounded, verifiable closure.
+                object.binary_root
+                    && object.scope == file.scope
+                    && object.methods.iter().all(|member| member.name != name)
+            }
+            _ => false,
         }
     }
 
@@ -830,14 +991,14 @@ impl Index {
         select_methods(found)
     }
 
-    fn collect(
-        &self,
-        class: &ClassRec,
+    fn collect<'a>(
+        &'a self,
+        class: &'a ClassRec,
         name: &str,
         call: bool,
         site: &FileRec,
         byte: u32,
-    ) -> Result<Vec<Candidate>, WalkError> {
+    ) -> Result<Vec<Candidate<'a>>, WalkError> {
         let steps = self.hierarchy(class)?;
         let mut found = Vec::new();
         for step in steps {
@@ -851,6 +1012,7 @@ impl Index {
                     continue;
                 }
                 found.push(Candidate {
+                    member,
                     target: member_target(step.class, member),
                     depth: step.depth,
                     signature: if call { self.method_signature(step.class, member) } else { None },
@@ -991,7 +1153,7 @@ fn walk_error(err: WalkError) -> ResolveResult {
     }
 }
 
-fn select_fields(found: Vec<Candidate>) -> ResolveResult {
+fn select_fields(found: Vec<Candidate<'_>>) -> ResolveResult {
     if found.is_empty() {
         return ResolveResult::none(ResolveStatus::Unresolved);
     }
@@ -1012,7 +1174,7 @@ fn select_fields(found: Vec<Candidate>) -> ResolveResult {
     }
 }
 
-fn select_methods(found: Vec<Candidate>) -> ResolveResult {
+fn select_methods(found: Vec<Candidate<'_>>) -> ResolveResult {
     if found.is_empty() {
         return ResolveResult::none(ResolveStatus::Unresolved);
     }
@@ -1152,6 +1314,7 @@ enum Comparison {
     Different,
     Unknown,
 }
+#[derive(Clone)]
 struct MethodIdentity {
     parameters: Vec<Option<SemanticType>>,
     generic: bool,
@@ -1175,7 +1338,9 @@ fn same_class(left: &ClassRec, right: &ClassRec) -> bool {
     ClassIdentity::of(left) == ClassIdentity::of(right)
 }
 
-struct Candidate {
+#[derive(Clone)]
+struct Candidate<'a> {
+    member: &'a Member,
     target: Target,
     depth: u32,
     signature: Option<MethodIdentity>,
@@ -1275,6 +1440,7 @@ struct Hit<'a> {
     node: &'a GreenNode,
     start: u32,
     call: bool,
+    arguments: Option<(&'a GreenNode, u32)>,
 }
 
 fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Option<Hit<'_>> {
@@ -1288,7 +1454,10 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
         if let Some(child_node) = child.as_node() {
             let child_called = node.kind() == SyntaxKind::CallExpr && !saw_node;
             saw_node = true;
-            if let Some(hit) = innermost_ref(child_node, child_at, byte, child_called) {
+            if let Some(mut hit) = innermost_ref(child_node, child_at, byte, child_called) {
+                if child_called && hit.call && std::ptr::eq(hit.node, child_node.as_ref()) {
+                    hit.arguments = child_kind(node, start, SyntaxKind::ArgList);
+                }
                 return Some(hit);
             }
         }
@@ -1298,7 +1467,7 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
         node.kind(),
         SyntaxKind::ReferenceExpr | SyntaxKind::Name | SyntaxKind::FieldExpr | SyntaxKind::MethodRefExpr
     ) {
-        Some(Hit { node, start, call: called })
+        Some(Hit { node, start, call: called, arguments: None })
     } else {
         None
     }
@@ -1448,6 +1617,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         static_names: Vec::new(),
         classes: Vec::new(),
         locals: Vec::new(),
+        call_inventory_valid: parsed.errors().is_empty() && valid_call_inventory(parsed.root(), 0),
     };
     index_node(parsed.root(), 0, &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new() });
     file
@@ -1565,6 +1735,12 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         binary: false,
         is_interface: node.kind() == SyntaxKind::Interface,
         type_variables: type_variables(node, start),
+        primitive_owner: node.kind() == SyntaxKind::Class
+            && ctx.class_stack.is_empty()
+            && child_kind(node, start, SyntaxKind::TypeParamList).is_none()
+            && !tokens(node, start).iter().any(|t| matches!(t.0, SyntaxKind::Extends | SyntaxKind::Implements))
+            && valid_modifiers(node, start, false),
+        binary_root: false,
         fields: Vec::new(),
         methods: Vec::new(),
     };
@@ -1604,6 +1780,7 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
                 declared: read_type(child, offset),
                 access: read_access(child, offset),
                 shape: source_type_shape(child, offset),
+                source_call: None,
             });
         }
         offset += child.utf8_len();
@@ -1629,6 +1806,7 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
             } else {
                 source_type_shape(node, start)
             },
+            source_call: (node.kind() == SyntaxKind::Method).then(|| source_call(node, start)).flatten(),
         };
         if kind == TargetKind::Field {
             ctx.file.classes[class_index].fields.push(member);
@@ -1704,6 +1882,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
             scope_end,
             visible_from: name_end,
             declared,
+            primitive: primitive_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
     }
@@ -1721,6 +1900,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         scope_end,
         visible_from: name_end,
         declared: read_type(node, start),
+        primitive: None,
         path: ctx.file.path.clone(),
     });
 }
@@ -1740,6 +1920,7 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             scope_end,
             visible_from: name_end,
             declared: read_type(node, start),
+            primitive: primitive_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
     }
@@ -2023,6 +2204,12 @@ fn class_from_signature(sig: &ClassSignature) -> ClassRec {
         binary: true,
         is_interface: sig.is_interface,
         type_variables: Vec::new(),
+        primitive_owner: false,
+        binary_root: sig.dotted_name == "java.lang.Object"
+            && !sig.is_interface
+            && sig.signature.is_none()
+            && sig.super_class.is_none()
+            && sig.interfaces.is_empty(),
         fields: sig.fields.iter().map(|member| member_from_signature(member, TargetKind::Field)).collect(),
         methods: sig
             .methods
@@ -2042,6 +2229,392 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
         declared: None,
         access: member.access,
         shape: Shape::Binary { descriptor: member.descriptor.clone(), generic: member.signature.is_some() },
+        source_call: None,
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SourceCall {
+    is_static: bool,
+    varargs: bool,
+}
+
+// Kept separate from QualName: retaining primitive values must not teach the
+// receiver resolver to interpret a primitive or array as a declared class.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PrimitiveValue {
+    primitive: Primitive,
+    rank: usize,
+}
+impl PrimitiveValue {
+    fn converts_to(self, other: Self) -> bool {
+        if self.rank != 0 || other.rank != 0 {
+            return self == other;
+        }
+        use Primitive::*;
+        self.primitive == other.primitive
+            || matches!(
+                (self.primitive, other.primitive),
+                (Byte, Short | Int | Long | Float | Double)
+                    | (Short | Char, Int | Long | Float | Double)
+                    | (Int, Long | Float | Double)
+                    | (Long, Float | Double)
+                    | (Float, Double)
+            )
+    }
+}
+
+fn primitive_formals(member: &Member) -> Option<Vec<PrimitiveValue>> {
+    let Shape::Source { parameters, variables } = &member.shape else { return None };
+    if !variables.is_empty() || member.access == Access::Unspecified {
+        return None;
+    }
+    parameters
+        .iter()
+        .map(|parameter| {
+            if parameter.unsupported {
+                return None;
+            }
+            Some(PrimitiveValue { primitive: parameter.primitive?, rank: parameter.array_rank })
+        })
+        .collect()
+}
+
+// Parameter/argument lists must alternate expressions and commas. The lossless
+// parser deliberately accepts some incomplete lists without an Error node.
+fn delimited_nodes(node: &GreenNode, start: u32) -> Option<Vec<(&GreenNode, u32)>> {
+    let mut state = 0;
+    let mut nodes = Vec::new();
+    let mut at = start;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                state = match (state, token.kind()) {
+                    (0, SyntaxKind::LParen) => 1,
+                    (1 | 2, SyntaxKind::RParen) => 4,
+                    (2, SyntaxKind::Comma) => 3,
+                    _ => return None,
+                };
+            }
+        } else if let Some(child) = child.as_node() {
+            if !matches!(state, 1 | 3) {
+                return None;
+            }
+            nodes.push((child.as_ref(), at));
+            state = 2;
+        }
+        at += child.utf8_len();
+    }
+    (state == 4).then_some(nodes)
+}
+
+fn valid_modifiers(node: &GreenNode, start: u32, method: bool) -> bool {
+    let Some((modifiers, _)) = child_kind(node, start, SyntaxKind::ModifierList) else { return true };
+    let mut seen = Vec::new();
+    for (kind, _, _) in tokens(modifiers, 0).into_iter().filter(|token| !token.0.is_trivia()) {
+        let allowed = if method {
+            matches!(
+                kind,
+                SyntaxKind::Public
+                    | SyntaxKind::Protected
+                    | SyntaxKind::Private
+                    | SyntaxKind::Static
+                    | SyntaxKind::Final
+                    | SyntaxKind::Abstract
+                    | SyntaxKind::Synchronized
+                    | SyntaxKind::Native
+                    | SyntaxKind::Strictfp
+            )
+        } else {
+            matches!(kind, SyntaxKind::Public | SyntaxKind::Final | SyntaxKind::Abstract | SyntaxKind::Strictfp)
+        };
+        if !allowed || seen.contains(&kind) {
+            return false;
+        }
+        seen.push(kind);
+    }
+    if read_access(node, start) == Access::Unspecified {
+        return false;
+    }
+    let abstract_conflict = seen.contains(&SyntaxKind::Abstract)
+        && seen.iter().any(|kind| {
+            matches!(
+                kind,
+                SyntaxKind::Static
+                    | SyntaxKind::Final
+                    | SyntaxKind::Native
+                    | SyntaxKind::Private
+                    | SyntaxKind::Synchronized
+                    | SyntaxKind::Strictfp
+            )
+        });
+    let native_conflict = seen.contains(&SyntaxKind::Native) && seen.contains(&SyntaxKind::Strictfp);
+    !(abstract_conflict || native_conflict)
+}
+
+fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
+    if !valid_modifiers(node, start, true) {
+        return None;
+    }
+    let (params, at) = child_kind(node, start, SyntaxKind::ParamList)?;
+    let parameters = delimited_nodes(params, at)?;
+    let mut varargs = false;
+    let mut names = BTreeSet::new();
+    for (index, (parameter, at)) in parameters.iter().enumerate() {
+        if parameter.kind() != SyntaxKind::Parameter {
+            return None;
+        }
+        let mut kinds = Vec::new();
+        let mut type_seen = false;
+        for child in parameter.children() {
+            if let Some(token) = child.as_token() {
+                if !token.kind().is_trivia() {
+                    kinds.push(token.kind());
+                }
+            } else if let Some(child) = child.as_node() {
+                match child.kind() {
+                    SyntaxKind::ModifierList if !type_seen && kinds.is_empty() => {
+                        let mods: Vec<_> =
+                            tokens(child, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
+                        if !matches!(mods.as_slice(), [] | [SyntaxKind::Final]) {
+                            return None;
+                        }
+                    }
+                    SyntaxKind::Type if !type_seen && kinds.is_empty() => {
+                        type_seen = true;
+                        if tokens(child, 0).iter().any(|t| t.0 == SyntaxKind::Void) {
+                            return None;
+                        }
+                    }
+                    _ => return None,
+                }
+            }
+        }
+        if !type_seen {
+            return None;
+        }
+        let (name, _, _) = direct_ident(parameter, *at)?;
+        if !names.insert(name) {
+            return None;
+        }
+        if kinds.first() == Some(&SyntaxKind::DotDotDot) {
+            if kinds.as_slice() != [SyntaxKind::DotDotDot, SyntaxKind::Ident] || index + 1 != parameters.len() {
+                return None;
+            }
+            varargs = true;
+        } else if kinds.first() != Some(&SyntaxKind::Ident) || bracket_rank(&kinds[1..]).is_none_or(|rank| rank > 255) {
+            return None;
+        }
+    }
+    if !matches!(source_method_shape(node, start), Shape::Source { .. }) {
+        return None;
+    }
+    if node.kind() == SyntaxKind::Method {
+        let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
+        if tokens(ty, at).iter().any(|t| t.0 == SyntaxKind::Void)
+            && (tokens(ty, at).iter().filter(|t| !t.0.is_trivia()).count() != 1
+                || tokens(node, start).iter().any(|t| t.0 == SyntaxKind::LBracket))
+        {
+            return None;
+        }
+    }
+    let mods = child_kind(node, start, SyntaxKind::ModifierList).map(|(mods, _)| tokens(mods, 0)).unwrap_or_default();
+    if node.kind() == SyntaxKind::Constructor
+        && mods.iter().any(|t| {
+            !t.0.is_trivia() && !matches!(t.0, SyntaxKind::Public | SyntaxKind::Protected | SyntaxKind::Private)
+        })
+    {
+        return None;
+    }
+    if mods.iter().any(|t| matches!(t.0, SyntaxKind::Abstract | SyntaxKind::Native))
+        && child_kind(node, start, SyntaxKind::Block).is_some()
+    {
+        return None;
+    }
+    if mods.iter().any(|t| t.0 == SyntaxKind::Static)
+        && child_kind(node, start, SyntaxKind::Block).is_none()
+        && !mods.iter().any(|t| t.0 == SyntaxKind::Native)
+    {
+        return None;
+    }
+    Some(SourceCall { is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static), varargs })
+}
+
+fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
+    if matches!(node.kind(), SyntaxKind::Method | SyntaxKind::Constructor) && source_call(node, start).is_none() {
+        return false;
+    }
+    let mut at = start;
+    for child in node.children() {
+        if let Some(child) = child.as_node()
+            && !valid_call_inventory(child, at)
+        {
+            return false;
+        }
+        at += child.utf8_len();
+    }
+    true
+}
+
+fn bracket_rank(kinds: &[SyntaxKind]) -> Option<usize> {
+    (kinds.len().is_multiple_of(2)
+        && kinds.chunks_exact(2).all(|pair| pair == [SyntaxKind::LBracket, SyntaxKind::RBracket]))
+    .then_some(kinds.len() / 2)
+}
+
+fn primitive_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<PrimitiveValue> {
+    let (ty, _) = child_kind(node, start, SyntaxKind::Type)?;
+    // Annotated/parameterized/other unmodeled type trees do not borrow a token.
+    if ty.child_nodes().next().is_some() {
+        return None;
+    }
+    let primitive = primitive_type(node, start).as_deref().and_then(Primitive::source)?;
+    let kinds: Vec<_> = tokens(ty, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
+    let mut rank = bracket_rank(kinds.get(1..)?)?;
+    let direct: Vec<_> = tokens(node, start).into_iter().filter(|t| !t.0.is_trivia()).collect();
+    let name_index = direct.iter().position(|t| t.0 == SyntaxKind::Ident && t.1 == name_at)?;
+    if name_index > 0 && direct[name_index - 1].0 == SyntaxKind::DotDotDot {
+        rank += 1;
+    }
+    let suffix: Vec<_> = direct[name_index + 1..]
+        .iter()
+        .take_while(|t| !matches!(t.0, SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::Semi))
+        .map(|t| t.0)
+        .collect();
+    rank += bracket_rank(&suffix)?;
+    (rank <= 255).then_some(PrimitiveValue { primitive, rank })
+}
+
+// Only a File -> Class -> ClassBody -> Method path owns modeled method locals.
+// Lambdas and anonymous/local/nested classes must not borrow an outer variable.
+fn direct_caller(root: &GreenNode, byte: u32) -> Option<(&GreenNode, u32, u32)> {
+    let mut path = Vec::new();
+    let mut node = root;
+    let mut start = 0;
+    loop {
+        path.push((node, start));
+        let mut at = start;
+        let mut next = None;
+        for child in node.children() {
+            if let Some(child_node) = child.as_node()
+                && at <= byte
+                && byte < at + child.utf8_len()
+            {
+                next = Some((child_node.as_ref(), at));
+                break;
+            }
+            at += child.utf8_len();
+        }
+        let Some((child, at)) = next else { break };
+        node = child;
+        start = at;
+    }
+    if path.len() < 5
+        || path[0].0.kind() != SyntaxKind::File
+        || path[1].0.kind() != SyntaxKind::Class
+        || path[2].0.kind() != SyntaxKind::ClassBody
+        || path[3].0.kind() != SyntaxKind::Method
+        || path[4].0.kind() != SyntaxKind::Block
+        || path[4..].iter().any(|(node, _)| {
+            matches!(
+                node.kind(),
+                SyntaxKind::Annotation
+                    | SyntaxKind::LambdaExpr
+                    | SyntaxKind::NewExpr
+                    | SyntaxKind::Class
+                    | SyntaxKind::Interface
+                    | SyntaxKind::Enum
+                    | SyntaxKind::Record
+                    | SyntaxKind::ClassBody
+                    | SyntaxKind::Method
+                    | SyntaxKind::Constructor
+            )
+        })
+    {
+        return None;
+    }
+    // An enhanced-for variable is not in scope in its iterable expression.
+    // The general name index does not model that boundary; do not borrow it.
+    if path.iter().any(|(node, start)| {
+        let header = tokens(node, *start);
+        node.kind() == SyntaxKind::ForStmt
+            && header.iter().any(|t| t.0 == SyntaxKind::Colon)
+            && header.iter().find(|t| t.0 == SyntaxKind::RParen).is_none_or(|t| byte < t.2)
+    }) {
+        return None;
+    }
+    let (method, start) = path[3];
+    Some((method, start, start + method.utf8_len()))
+}
+
+fn primitive_expression(
+    file: &FileRec,
+    node: &GreenNode,
+    start: u32,
+    caller_start: u32,
+    caller_end: u32,
+) -> Option<PrimitiveValue> {
+    match node.kind() {
+        SyntaxKind::ReferenceExpr => {
+            let name = token_name(node);
+            let mut locals = file.locals.iter().filter(|local| {
+                local.name == name
+                    && local.start >= caller_start
+                    && local.end <= caller_end
+                    && local.scope_start <= start
+                    && start < local.scope_end
+                    && local.visible_from <= start
+            });
+            let one = locals.next()?;
+            if locals.next().is_some() {
+                return None;
+            }
+            if !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
+                return None;
+            }
+            one.primitive
+        }
+        SyntaxKind::ParenExpr => {
+            let expressions = delimited_nodes(node, start)?;
+            let [(expression, at)] = expressions.as_slice() else { return None };
+            primitive_expression(file, expression, *at, caller_start, caller_end)
+        }
+        SyntaxKind::IndexExpr => {
+            let mut nodes = Vec::new();
+            let mut kinds = Vec::new();
+            let mut at = start;
+            for child in node.children() {
+                if let Some(token) = child.as_token() {
+                    if !token.kind().is_trivia() {
+                        kinds.push(token.kind());
+                    }
+                } else if let Some(child) = child.as_node() {
+                    // Node positions distinguish base[index] from missing or
+                    // reordered operands even when the parser has no errors.
+                    if (nodes.is_empty() && !kinds.is_empty()) || (nodes.len() == 1 && kinds != [SyntaxKind::LBracket])
+                    {
+                        return None;
+                    }
+                    nodes.push((child.as_ref(), at));
+                }
+                at += child.utf8_len();
+            }
+            let [(base, base_at), (index, index_at)] = nodes.as_slice() else { return None };
+            if kinds != [SyntaxKind::LBracket, SyntaxKind::RBracket] {
+                return None;
+            }
+            let mut base = primitive_expression(file, base, *base_at, caller_start, caller_end)?;
+            let index = primitive_expression(file, index, *index_at, caller_start, caller_end)?;
+            if base.rank == 0
+                || index.rank != 0
+                || !matches!(index.primitive, Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int)
+            {
+                return None;
+            }
+            base.rank -= 1;
+            Some(base)
+        }
+        _ => None,
     }
 }
 

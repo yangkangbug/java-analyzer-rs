@@ -1,0 +1,5 @@
+# query	source path	use byte	method	primitive parameter	name start	name end
+q28	org/apache/commons/lang3/math/IEEE754rUtils.java	1820	max	double	2155	2158
+q29	org/apache/commons/lang3/math/IEEE754rUtils.java	3435	max	float	3768	3771
+q30	org/apache/commons/lang3/math/IEEE754rUtils.java	5044	min	double	5380	5383
+q31	org/apache/commons/lang3/math/IEEE754rUtils.java	6661	min	float	6995	6998

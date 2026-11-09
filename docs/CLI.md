@@ -245,7 +245,7 @@ Successful commands emit one JSON object on stdout, ending with a newline:
 ```
 
 This is a shortened envelope example, not an actual zero-query response.
-`capabilities` explicitly reports limited binding, absent method applicability,
+`capabilities` explicitly reports limited binding, absent general method applicability,
 absent semantic diagnostics, parser classification, native runtime, missing
 server/reload/overlay facilities, native worker execution bounds, and adapter
 limits. Snapshot ID is an **invocation-local label** only, not a content hash, persistent symbol ID,
@@ -298,18 +298,31 @@ supported lookup/access/signature rules:
 
 - `Resolved`: one limited navigation candidate. **Not proof of method argument
   applicability, accessibility under every Java rule, or successful compilation.**
-  Even a single `m()` candidate for an `m(1)` call can receive this status.
+  The [primitive source-call subset](PRIMITIVE_CALLS.md) has a stronger supported
+  argument proof, but that guarantee does not extend to all Resolved results.
 - `Unresolved`: no candidate within this configured subset, including missing
   implicit-platform types. Not a compiler diagnostic.
 - `Ambiguous`: conflicting candidates; no first-candidate selection.
-- `OverloadNotResolved`: distinct method parameter signatures; call arguments
-  are not used to select among them.
+- `OverloadNotResolved`: no unique winner established by supported call selection;
+  original candidates remain, including unsupported cases.
+- `CallNotResolved`: a single source invocation was not proved applicable. The
+  candidate may be known contradictory or merely unsupported, such as boxing or
+  expanded varargs in the closed source-call subset. It is not a Java error
+  diagnostic and must not be treated as successful navigation. A uniquely collected
+  unqualified source `m()` queried by `m(1)` is conservatively refused; qualified,
+  binary and inherited-hidden-singleton guards remain outside this change.
 - `SignatureNotCompared`: unsupported/missing/ambiguous signature type identity.
 - `ReceiverNotBound`, `StaticImportNotApplied`, `ConstructorRefNotBound`:
   explicitly unsupported receiver/static-import/constructor-reference binding.
 - `Cycle`: encountered supertype cycle.
 - `NotDetermined`: contradictory access flags prevent a justified result.
 - `Package`: package prefix only.
+
+`CallNotResolved` is an added public library enum variant; exhaustive client
+matches must handle it. CLI schema version stays 1, with the additive status and
+`capabilities.limited_call_selection` fields documented here. The existing
+`method_argument_applicability:false` flag still means general applicability is
+not provided. Check status before using a candidate as a navigation target.
 
 ### Exit codes and errors
 

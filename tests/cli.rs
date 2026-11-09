@@ -654,3 +654,28 @@ fn internal_worker_spelling_remains_an_opaque_data_value() {
     assert_eq!(result["result"]["queries"][0]["status"], "Resolved");
     assert_eq!(result["result"]["queries"][0]["targets"][0]["name"], "field");
 }
+
+#[test]
+fn unique_source_contradictions_are_refused_without_platform_data() {
+    for text in [
+        "class A { static void m() {} static void use() { m(1); } }",
+        "class A { static void m(int x) {} static void use(boolean x) { m(x); } }",
+        "class A { static void m(float x) {} static void use(double x) { m(x); } }",
+    ] {
+        let f = Fixture::new();
+        f.write("src/A.java", text);
+        f.manifest();
+        let response = f.declaration("src/A.java", text.rfind("m(").unwrap());
+        let query = &response["result"]["queries"][0];
+        assert_eq!(query["status"], "CallNotResolved");
+        assert_eq!(query["targets"].as_array().unwrap().len(), 1);
+        let target = &query["targets"][0];
+        assert_eq!(target["origin"], "source");
+        assert_eq!(target["range"]["start_byte"], text.find("m(").unwrap());
+        assert_eq!(target["range"]["end_byte"], text.find("m(").unwrap() + 1);
+        assert_eq!(response["capabilities"]["method_argument_applicability"], false);
+        assert_eq!(response["capabilities"]["limited_call_selection"]["source_primitive_strict_phase"], true);
+        assert_eq!(response["capabilities"]["limited_call_selection"]["single_source_contradiction_guard"], true);
+        assert_eq!(response["capabilities"]["limited_call_selection"]["general_applicability"], false);
+    }
+}

@@ -26,10 +26,10 @@ q24	org/apache/commons/lang3/Streams.java	19732	stream	SignatureNotCompared	2
 q25	org/apache/commons/lang3/StringUtils.java	257605	repeat	OverloadNotResolved	3
 q26	org/apache/commons/lang3/StringUtils.java	259409	repeat	OverloadNotResolved	3
 q27	org/apache/commons/lang3/StringUtils.java	259586	repeat	OverloadNotResolved	3
-q28	org/apache/commons/lang3/math/IEEE754rUtils.java	1820	max	OverloadNotResolved	6
-q29	org/apache/commons/lang3/math/IEEE754rUtils.java	3435	max	OverloadNotResolved	6
-q30	org/apache/commons/lang3/math/IEEE754rUtils.java	5044	min	OverloadNotResolved	6
-q31	org/apache/commons/lang3/math/IEEE754rUtils.java	6661	min	OverloadNotResolved	6
+q28	org/apache/commons/lang3/math/IEEE754rUtils.java	1820	max	Resolved	1
+q29	org/apache/commons/lang3/math/IEEE754rUtils.java	3435	max	Resolved	1
+q30	org/apache/commons/lang3/math/IEEE754rUtils.java	5044	min	Resolved	1
+q31	org/apache/commons/lang3/math/IEEE754rUtils.java	6661	min	Resolved	1
 q32	org/apache/commons/lang3/reflect/MethodUtils.java	18026	distance	Resolved	1
 q33	org/apache/commons/lang3/text/StrBuilder.java	11934	length	Resolved	1
 q34	org/apache/commons/lang3/text/StrBuilder.java	12601	length	Resolved	1

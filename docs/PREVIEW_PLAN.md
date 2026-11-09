@@ -14,7 +14,10 @@ compilation/source-set relationships already load into native immutable snapshot
 Prepared indexes, declaration provenance, UTF-8/absolute-UTF-16 helpers and parser
 error ranges exist. The optional native CLI adds strict versioned project and
 query documents with JSON results. The fixed real-source and optional compiler
-gates provide bounded evidence, not a language-conformance suite.
+gates provide bounded evidence, not a language-conformance suite. A first
+[primitive source-call proof](PRIMITIVE_CALLS.md) now improves four real project
+queries and refuses known unique-source contradictions. General call applicability
+and the remaining end-to-end gates below are still open.
 
 ## Offline CLI preview: required acceptance
 

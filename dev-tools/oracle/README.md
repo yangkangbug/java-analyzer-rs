@@ -86,9 +86,10 @@ classpath and an empty sourcepath. The JDK platform API is available to javac,
 but every queried declaration is in the fixture sources; no platform data is
 implicitly loaded into the native analyzer.
 
-Scope is narrow: no overload selection proof, generic inference, JPMS, platform
-binding, full access-control, malformed-buffer semantic equivalence, or Java
-conformance claim. Review golden changes against Java semantics independently;
+The original source-only suite is narrow: it gives no overload selection proof,
+generic inference, JPMS, platform binding, full access-control, malformed-buffer
+semantic equivalence, or Java conformance claim. The separate strict primitive
+suite below adds only its explicitly bounded source overload evidence. Review golden changes against Java semantics independently;
 do not rewrite expectations just because the native implementation disagrees.
 
 ## Multi-declarator baseline
@@ -185,3 +186,104 @@ bindings and four explicit refusals, separately from the unchanged original
 59 matches and four refusals. Both omission controls and the exact refusal
 candidate checks pass. These are nine additional valid-source probes, not nine
 additional successful semantic matches.
+
+## Strict primitive source-call suite
+
+`primitive-v1` is a separate fixed three-file handwritten suite. The existing
+source-only 59 matches/four refusals and mixed five matches/four refusals remain
+independently required, with their original comparison rules unchanged.
+The Java helper is unchanged: every compiler-selected target is a real source
+method, identified by `Trees.getElement`, `Trees.getPath`, and a unique name marker
+inside its actual declaration-tree range. An astral character before queries
+continues to distinguish UTF-16 compiler positions from UTF-8 byte offsets.
+
+The new gate requires twelve source bindings: ten newly selectable overload
+queries, plus a correctly typed singleton and a zero-argument singleton. It checks
+primitive identity, widening specificity, differing arity with known argument
+types, and primitive-array elements indexed by declared `int` names. A nested
+inner call can resolve while the outer call refuses because return-expression
+inference is not implemented. No positive probe depends on literal typing; `pick(array[0], value)` explicitly
+refuses while named `int` indices can support selection. A separate
+`chain(f).other(d)` probe requires the inner `chain(float)` target rather than
+`chain(double)`: a surrounding call must not replace the inner argument list.
+Both overloads return the same source class, and the outer instance call remains
+`Unresolved` with no target, matching its pre-slice unsupported boundary.
+Return types do not choose the overload. An enhanced-for scope probe has a
+static double field and a same-name float loop variable: the loop variable is not
+in scope in its own iterable. Javac selects the double overload there; native
+lookup must refuse the unsupported field argument, not select the float overload.
+Twenty valid Java queries require explicit native refusals, including generic
+competitors, boxing/unboxing, null/reference selection, variable-arity invocation,
+unknown argument expressions, receivers, instance methods and inheritance.
+Four singleton unknown-applicability cases use `CallNotResolved` with their
+original candidate retained. This is neutral: the compiler accepts these calls,
+and the native refusal is not a Java-invalidity diagnostic.
+
+The target sets in `expected.tsv` are hand-authored declaration markers plus
+owners. Every field of every native candidate is checked, including duplicates
+and exact source name ranges. Refusals are not accepted merely for having two
+same-name candidates. Wrong same-name overloads, wrong owners/ranges, corrupted
+compiler ranges, missing/extra queries, duplicate targets and deleted refusal
+candidates must fail the checker. These negative mutations test the comparison,
+not additional successful native bindings.
+
+The suite supplies only the real `java/lang/Object.class` platform declaration,
+extracted as data from the pinned JDK's `jmods/java.base.jmod` after checking the
+JMOD checksum against `scripts/acceptance-inputs.json`. It never executes a JMOD
+tool or embeds platform bytes in the repository. This explicit input closes the
+ordinary source class's superclass inventory; missing parents must not silently
+be treated as empty. Omitting Object must prevent the ten newly supported
+selections and fail the comparison. The default native Rust regressions construct
+their own signature bytes and still need neither a JDK nor Java execution.
+
+Sixteen invalid-source fixtures are analyzed separately, one at a time. Each
+must produce javac errors and no successful binding output, while native lookup
+preserves the exact refused candidates. They cover an arity-compatible but
+wrongly typed argument, primitive narrowing, char-to-short conversion,
+primitive-array invariance, long/float indices, crossed most-specific candidates,
+instance calls from static contexts, missing names/parents, and malformed argument
+lists. Three singleton regressions forbid `Resolved` for `m(1)` when only `m()`
+exists, for boolean passed to int, or for double passed to float, both with
+and without Object input. The native
+`CallNotResolved` result preserves the candidate without claiming compiler-like
+diagnostics. These sixteen cases are not counted as compiler binding matches.
+
+Before implementation, a native endpoint built from commit `1dfa0576` failed the original
+nine new overload selections with `OverloadNotResolved`. The three invalid
+singletons instead incorrectly reported `Resolved`. The integrated gate failed
+with `single_primitive_mismatch: native status Resolved, expected CallNotResolved`,
+after the unchanged original and mixed gates had passed. Independent baseline
+probes also verified valid singleton boxing and varargs calls, preventing a fix
+that labels all unsupported conversions as invalid Java.
+
+### Optional four real source selections
+
+Add the existing checksum-pinned Commons Lang source archive to the same optional
+development comparator:
+
+```
+python3 scripts/check-semantic-oracle.py --jdk /path/to/verified/jdk \
+  --sources-jar /path/to/commons-lang3-3.17.0-sources.jar
+```
+
+This optional branch verifies the archive hash and exact 249-file/3,676,819-byte
+Java inventory, extracts the unmodified sources only into a temporary directory,
+and asks javac to parse/analyze all files with annotation processing and implicit
+compilation disabled. It never generates or executes upstream application
+classes. No source archive or upstream implementation is redistributed.
+The existing [source provenance and licenses](../../examples/real_source/README.md)
+continue to apply.
+
+`primitive-v1/real-expected.tsv` independently pins four actual use sites in
+`IEEE754rUtils.java`: the double/float calls to `max` at bytes 1820/3435 and `min`
+at 5044/6661. Javac selects source name ranges 2155..2158, 3768..3771,
+5380..5383 and 6995..6998 respectively. The gate checks compiler kind, owner,
+selected declaration tree, primitive method header, exact name range and every
+native target field. A wrong same-name sibling and omitted Object input must
+fail. All four were six-candidate `OverloadNotResolved` results on the preserved
+baseline. Four successful source selections are not full-project equivalence,
+reference/generic/boxing/varargs support, or binary overload identity evidence.
+
+Binary methods with identical owner/name currently share a public zero range;
+this suite does not claim to distinguish those overloads. Production and ordinary
+Cargo tests remain JVM/JNI/JDT-LS-free. Only this opt-in comparator executes Java.

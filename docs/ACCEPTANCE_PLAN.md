@@ -59,7 +59,7 @@ python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
 python3 scripts/fetch-acceptance-inputs.py --cache /tmp/java-acceptance-cache --output /tmp/java-acceptance --include-oracle-jdk
 python3 scripts/check-real-source.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --profile debug --rounds 1
 python3 scripts/check-cli-acceptance.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --native target/debug/java-analyzer
-python3 scripts/check-semantic-oracle.py --jdk /tmp/java-acceptance/jdk --native target/debug/examples/oracle_bindings
+python3 scripts/check-semantic-oracle.py --jdk /tmp/java-acceptance/jdk --native target/debug/examples/oracle_bindings --sources-jar /tmp/java-acceptance/sources.jar
 ```
 
 For no-network setup after filling the cache, pass `--offline` and a fresh output
@@ -131,13 +131,34 @@ compiler rejection. The real-source harness also audits all direct unqualified
 invocation names for accidental variable/type targets; zero wrong-namespace
 results is a negative invariant, not proof that every call resolves correctly.
 
+A separate `primitive-v1` suite requires twelve strict primitive source-call
+bindings and twenty explicit refusals, with exact candidate identities and
+unchanged Trees-based source declaration evidence. Sixteen isolated invalid
+fixtures require compiler errors and native refusal, including unique method
+names with incompatible arity or primitive arguments. `CallNotResolved` preserves
+a singleton candidate without claiming Java invalidity; valid boxing/varargs
+controls also require that neutral refusal. A checksum-verified Object class,
+extracted as data from the supplied JMOD, closes the source classes' inventory;
+omitting it must block the ten newly supported overload selections.
+
+The optional `--sources-jar` branch checks four independently compiler-selected
+source overloads over all 249 unchanged Commons Lang sources. It verifies the
+existing archive hash/inventory and analyzes without generating or executing
+upstream classes. Exact source declaration headers and ranges distinguish the
+float/double `IEEE754rUtils.max/min` overloads. Same-name target mutation and
+missing-Object controls remain required. This does not establish binary-selected
+method identity: public binary targets still lack overload-distinguishing
+source ranges/descriptors. See the complete [oracle contract](../dev-tools/oracle/README.md).
+
 ## Remaining coverage limits
 
 The full real-source workload still has known parser/semantic gaps. Its default
 forty-one fixed queries and error-node inventory are not whole-project semantic
 coverage. Prepared/rebuild agreement proves consistency, not Java correctness.
-The small independent oracle does not cover generic inference, overload selection,
-platform bindings, JPMS, complete access control, malformed-buffer equivalence,
+The independent oracle covers only a closed, same-owner static primitive
+source-call selection subset. It does not cover generic inference, general
+overload selection, binary-selected platform bindings, JPMS, complete access
+control, malformed-buffer equivalence,
 or general Java conformance. A compiler oracle cannot replace editor recovery,
 cancellation or incremental invalidation tests.
 

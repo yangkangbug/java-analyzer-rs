@@ -606,3 +606,66 @@ all thread/setup work or hard OS scheduling limits. It is not a memory/CPU quota
 security sandbox or arbitrary descendant-tree supervisor. Linux evidence is not
 cross-platform certification. See [the exact contract](CLI_EXECUTION.md); editor
 callers still need asynchronous stream handling and their own outer watchdog.
+
+## Bounded primitive source calls
+
+Baseline: `1dfa0576ac4c17e7b31bcf450da0ea7deed42eba`. The new call proof covers
+explicit primitive locals/parameters and array elements in a closed same-owner
+static source context. It uses strict identity/widening and a unique most-specific
+formal vector. A separate negative guard refuses known unique-source arity and
+primitive contradictions without requiring platform data. `CallNotResolved`
+retains candidates rather than reporting Java errors. See
+[eligibility, API compatibility and exclusions](PRIMITIVE_CALLS.md).
+
+Before implementation, the native regression set recorded six failures and three
+passes against the unchanged baseline. Independently authored native/compiler
+comparisons also failed on the old executable, including four real source calls
+and a unique source `m(1)` incorrectly selecting `m()`. These RED observations
+were preserved before corrections; expected selections were not inferred from
+new analyzer output.
+
+Final checks pass: 216 default Rust tests, 247 all-feature tests (216 core, 22 CLI
+integration and nine supervision), one doctest, strict fmt/Clippy/rustdoc,
+examples, native/CLI/JMOD no-Java-environment checks, feature-enabled package
+verification and twelve fetch-security tests. Seventeen new core tests cover the
+bounded proof and refusal cases. A CLI integration test checks three singleton
+contradictions without platform data, retaining exact candidates with status
+CallNotResolved and a successful query exit code.
+
+Independent review checked 74 exact query results, including prepared/rebuilt
+parity and complete refusal candidate multisets. Five discovered proof leaks were
+reproduced and corrected: outer receiver arguments overwriting inner arguments,
+resource declarations typed as ordinary locals, constructors treated as methods,
+annotation expressions borrowing body parameters, and enhanced-for variables
+visible too early in iterable expressions. Valid receiver/enhanced-for cases were
+also independently compiler-checked. This is not a full Java scope/control-flow
+or conformance proof.
+
+The optional compiler gate preserves the original 59 matches/four refusals and
+mixed source/binary five matches/four refusals. The new suite has twelve source
+matches, twenty conservative refusals and sixteen compiler-invalid exact-refusal
+cases. Mutation, omitted-output and missing-Object controls pass. Optional javac
+analysis of all 249 unchanged pinned sources confirms the four IEEE754rUtils
+source method selections. No upstream application classes are generated or run.
+Only this optional development gate executes Java; native execution still uses
+PATH=/nonexistent with no inherited variables. This host has a JDK for the gate,
+so these checks do not claim a physically JVM-free host or syscall isolation.
+
+The complete real-source harness and shipped release CLI both match all 41
+queries: 31 Resolved, seven OverloadNotResolved, two SignatureNotCompared and one
+ReceiverNotBound. The four changed queries reduce 86 candidates to 66 (56 source,
+ten binary); every other query and ordered candidate set is unchanged. The full
+3,030-call negative namespace audit passes. Parser inventory stays at 85 errors
+in 24 files; all 249 source files retain their original bytes.
+
+One Linux cloud release run observed load/parse 466.93 ms, index preparation
+61.40 ms, rebuild-per-query p50/p95 68.20/77.84 ms and prepared-query p50/p95
+8.15/18.50 ms over 205 samples per mode. A separate shipped CLI run observed
+581 ms inspection, 591 ms parser reporting and 896 ms for the 41-query batch,
+each including fresh load. These noisy fixed-workload measurements are not an
+improvement claim, IDE responsiveness budget or general project benchmark.
+CLI SHA-256: `c62a978e43b23816efe3a69006893944f335771604a1b1e16784abf70ef0ff5d`.
+
+No dependencies or production Java execution were added. General expression
+and overload semantics, incremental reload, editor integration, semantic
+diagnostics, references and refactoring remain on the project roadmap.

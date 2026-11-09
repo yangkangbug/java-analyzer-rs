@@ -205,6 +205,11 @@ fn capabilities() -> Value {
         "experimental": true,
         "declaration_navigation": "limited_name_binding",
         "method_argument_applicability": false,
+        "limited_call_selection": {
+            "source_primitive_strict_phase": true,
+            "single_source_contradiction_guard": true,
+            "general_applicability": false
+        },
         "semantic_diagnostics": false,
         "parser_reports": "parser_limit_or_invalid_syntax",
         "runtime": "native_rust_no_jvm",
@@ -304,6 +309,7 @@ fn status_name(status: ResolveStatus) -> &'static str {
         ResolveStatus::Unresolved => "Unresolved",
         ResolveStatus::Ambiguous => "Ambiguous",
         ResolveStatus::OverloadNotResolved => "OverloadNotResolved",
+        ResolveStatus::CallNotResolved => "CallNotResolved",
         ResolveStatus::ReceiverNotBound => "ReceiverNotBound",
         ResolveStatus::StaticImportNotApplied => "StaticImportNotApplied",
         ResolveStatus::Package => "Package",

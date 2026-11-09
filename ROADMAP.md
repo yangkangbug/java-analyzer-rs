@@ -21,7 +21,7 @@ plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It 
 
 Missing foundations include build-tool/JDK discovery, JPMS rules, stable symbol
 IDs, type inference,
-overload applicability/selection, generic substitution, references, rename,
+general overload applicability/selection, generic substitution, references, rename,
 completion, semantic diagnostics, and an editor/LSP adapter. Unqualified invocation
 names now use the method namespace independently of
 same-spelled local/parameter/field values. The parser still
@@ -193,9 +193,16 @@ candidates, without argument-based selection. Two generic comparisons become
 more conservative rather than retaining unsupported spelling assumptions. This
 is a project-navigation capability, not a reduction in parser error counts.
 
-The next M2 gate is call applicability over these identities, starting with
-explicitly supported arity/conversions and independently checked refusals. Couple
-that with stable declaration/query identity and a small real-project definition/
+A first bounded source-call slice now proves strict primitive identity/widening
+and fixed-array applicability in closed same-owner static contexts. Four real
+IEEE754rUtils calls select compiler-verified source declarations; known unique
+source arity/primitive contradictions refuse instead of choosing a wrong target.
+Unknown expressions and unsupported competitors remain explicit. See the
+[precise contract and API change](docs/PRIMITIVE_CALLS.md). General literal,
+reference, boxing, generic, inherited and binary call selection remain open.
+
+The next M2 gate broadens expression/type evidence without weakening these
+refusals. Couple that with stable declaration/query identity and a small real-project definition/
 hover acceptance surface before claiming IDE usability. Generic inference,
 incremental invalidation, completion, diagnostics, references and safe refactoring
 remain required work; do not replace that route with unrelated syntax cleanup.

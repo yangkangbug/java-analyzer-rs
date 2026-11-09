@@ -73,6 +73,7 @@ jobs:
           python3 scripts/check-semantic-oracle.py
           --jdk "$RUNNER_TEMP/acceptance/jdk"
           --native target/debug/examples/oracle_bindings
+          --sources-jar "$RUNNER_TEMP/acceptance/sources.jar"
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/acceptance-cache"

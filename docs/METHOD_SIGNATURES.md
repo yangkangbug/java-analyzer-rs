@@ -45,12 +45,17 @@ They can remain `Ambiguous`; bridge selection is not implemented.
 A lone syntactically valid method may still be a `Resolved` name-navigation target
 with unknown parameter types. This does not prove applicability. Malformed source
 signatures or invalid descriptors remain input errors or explicit refusals.
+The separate [primitive call proof](PRIMITIVE_CALLS.md) can now select supported
+source overloads and refuse singleton invocation contradictions/unknowns. It does
+not change the distinction between declaration identity and call applicability.
 
 ## API and execution boundaries
 
 `ClassSignature.is_interface` records the actual class-file `ACC_INTERFACE` flag.
 Code manually constructing a `ClassSignature` struct literal must supply this new
-field. Parsing APIs and public resolve statuses/target fields are unchanged.
+field. This signature-identity change preserved resolve statuses/target fields;
+the later primitive-call slice adds `ResolveStatus::CallNotResolved`, requiring
+exhaustive client matches to add a case. Public target fields remain unchanged.
 
 The library and normal Rust tests do not require Java. Native tests construct
 signature-only class bytes. A separate optional compiler oracle can compile
@@ -59,7 +64,7 @@ source overrides against those real bytes. Fixture programs are never executed.
 Compiler-selected binary targets are not represented as fake source declarations.
 
 This is one foundation for project definition/hover and later type services.
-Generic substitution, overload applicability, static/instance legality, complete
+Generic substitution, general overload applicability, static/instance legality, complete
 access rules, stable symbol IDs, incremental invalidation, references, diagnostics,
 completion and refactoring remain separate milestones. Normalization is currently
 performed during lookup; prepared handles are not a new semantic-result cache.
