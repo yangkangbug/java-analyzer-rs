@@ -898,3 +898,13 @@ All three deliberately weakened client variants failed with actual wrong-cursor
 navigation. The final real-client and Gson release executable's SHA-256 was
 `08e270a3f832a1cc865b7834b40ac40a778170695679742a657fcf0e9ad5deef`.
 Independent review reran both gates and found no remaining blocking findings.
+
+The first hosted editor run exposed a development-harness portability gap:
+CPython on both Mac runners lacked `os.waitid`. Native Mac Rust/CLI tests passed,
+but the editor stage had not executed. The harness now uses registered kqueue
+exit events with a pre-exec pipe gate on Darwin, retaining the child identity
+until group cleanup. Linux retains WNOWAIT. Eleven additional offline tests
+bring the local Python total to 143; all 23 Neovim setup/harness tests and the
+13 real Linux editor checks pass. The Rust source and executable are unchanged.
+Linux simulations prove gate/cleanup ordering, not Darwin kernel behavior; the
+subsequent exact-commit hosted editor jobs remain the required Mac evidence.

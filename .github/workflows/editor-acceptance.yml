@@ -67,6 +67,25 @@ jobs:
           --nvim "$RUNNER_TEMP/neovim/bin/nvim"
           --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
           --output "$RUNNER_TEMP/neovim-result"
+      - name: Record bounded verification summary (no source text or private paths)
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, platform
+          report = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'neovim-result/result.json').read_text())
+          identity = report['identity']
+          print(json.dumps({
+              'host_system': platform.system(), 'host_machine': platform.machine(),
+              'source_revision': identity['source_revision'], 'source_tree': identity['source_tree'],
+              'source_dirty': identity['source_dirty'],
+              'native_sha256': identity['native_sha256'], 'neovim_sha256': identity['neovim_sha256'],
+              'adapter_sha256': identity['adapter_sha256'], 'editor': report['editor'],
+              'native_sessions_cleanly_exited': report['native_sessions_cleanly_exited'],
+              'native_no_java_environment': report['native_no_java_environment'],
+              'unchanged_inputs': report['unchanged_inputs'],
+              'unchanged_executables': report['unchanged_executables'],
+              'process': report['process'],
+          }, indent=2))
+          PY
       - name: Remove temporary client and owned acceptance data (never uploaded)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache" "$RUNNER_TEMP/neovim-result"

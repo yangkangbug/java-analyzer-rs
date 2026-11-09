@@ -136,6 +136,25 @@ Fixture sources, a handwritten class-file fixture and executable hashes must sta
 unchanged. Stdout/stderr capture and time are bounded; cleanup checks direct
 process exits, native sessions, drainers and the owned process group.
 
+The development checker observes child exit without reaping the session leader,
+then signals its owned process group **before** `wait()`. Linux uses
+`waitid(WNOWAIT)`. Darwin Python builds without `os.waitid` use standard-library
+[`kqueue` / `EVFILT_PROC` / `NOTE_EXIT`](https://docs.python.org/3.12/library/select.html#kqueue-objects).
+Apple documents [`NOTE_EXIT` as process-exit notification](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/kqueue.2.html);
+XNU's [`filt_procattach`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_event.c)
+captures edge-triggered events after attachment. A fixed Python gate
+(`sys.executable -I -S`) waits on a private pipe until registration succeeds,
+then closes the pipe and execs the target with the same PID/PGID. Registration
+failure or gate EOF never starts the target. No sleep substitutes for registration.
+The checker requires default `SIGCHLD` handling. Ownership loss fails the run and
+never signals a possibly reused numeric group; unfinished output drainers cannot
+keep the checker alive. This is trusted test-process cleanup, not an OS sandbox.
+
+Offline regressions exercise ordering, registration failure, pre-release death,
+exact target status, descriptor closure, bounded output and timeout cleanup.
+On Linux, simulated kqueue events test only the gate plumbing, not Darwin kernel
+behavior. Actual macOS acceptance still requires the separate hosted CI runs.
+
 `result.json` records individual checks, process outcome, exact client/native
 hashes, script hashes, input hashes and Git revision/tree/dirty state.
 `protocol.jsonl` records only the generated public fixture session, not user data.

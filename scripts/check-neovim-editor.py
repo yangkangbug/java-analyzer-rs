@@ -5,10 +5,12 @@ Requires the separately pinned dev-only Neovim input. No download, build,
 Java, plugin, system install, or user-machine access occurs here.
 """
 import argparse
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path
+import select
 import signal
 import subprocess
 import sys
@@ -28,18 +30,99 @@ def inventory(root):
     return {str(p.relative_to(root)): digest(p) for p in sorted(root.rglob('*')) if p.is_file()}
 
 
+class ChildOwnershipLost(ValueError):
+    """The unreaped-child identity is no longer known; never signal its PID/PGID."""
+
+
+class WaitidObserver:
+    name = 'waitid-wnowait'
+    requires_gate = False
+
+    def register(self, pid):
+        self.pid = pid
+
+    def exited(self):
+        try:
+            return os.waitid(os.P_PID, self.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is not None
+        except ChildProcessError as error:
+            raise ChildOwnershipLost('child ownership lost (ECHILD); refusing numeric group signal') from error
+
+    def close(self):
+        pass
+
+
+class KqueueObserver:
+    name = 'kqueue-note-exit-gated-exec'
+    requires_gate = True
+
+    def __init__(self):
+        self.queue = select.kqueue()
+        self.pid = None
+        self.seen_exit = False
+
+    def register(self, pid):
+        self.pid = pid
+        event = select.kevent(pid, filter=select.KQ_FILTER_PROC,
+            flags=select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_ONESHOT,
+            fflags=select.KQ_NOTE_EXIT)
+        # PROC is edge-triggered on Darwin. The trusted child gate cannot exec
+        # the requested target until this registration has succeeded.
+        self.queue.control([event], 0, 0)
+
+    def exited(self):
+        if self.seen_exit:
+            return True
+        for event in self.queue.control(None, 1, 0):
+            if event.flags & select.KQ_EV_ERROR:
+                raise OSError(event.data or errno.EIO, 'kqueue child observation failed')
+            if event.ident != self.pid or event.filter != select.KQ_FILTER_PROC \
+                    or not event.fflags & select.KQ_NOTE_EXIT:
+                raise ValueError('unexpected kqueue child event')
+            self.seen_exit = True
+        return self.seen_exit
+
+    def close(self):
+        if self.queue is not None:
+            self.queue.close()
+            self.queue = None
+
+
+def exit_observer():
+    if os.name != 'posix' or signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+        raise ValueError('headless acceptance requires POSIX default SIGCHLD ownership')
+    if callable(getattr(os, 'waitid', None)) and hasattr(os, 'WNOWAIT'):
+        return WaitidObserver()
+    names = ('kqueue', 'kevent', 'KQ_FILTER_PROC', 'KQ_EV_ADD', 'KQ_EV_ENABLE',
+             'KQ_EV_ONESHOT', 'KQ_EV_ERROR', 'KQ_NOTE_EXIT')
+    if sys.platform == 'darwin' and all(hasattr(select, name) for name in names):
+        return KqueueObserver()
+    raise ValueError('no supported non-reaping child observer (waitid or Darwin kqueue)')
+
+
+# Fixed dev-only gate. -I -S avoids site/user configuration. The inherited read
+# FD is closed before exec, which retains the same session leader PID/PGID.
+EXEC_GATE = ('import os, sys\n'
+             'fd = int(sys.argv[1])\n'
+             'token = os.read(fd, 1)\n'
+             'os.close(fd)\n'
+             'if token != b"G": os._exit(125)\n'
+             'os.execvpe(sys.argv[2], sys.argv[2:], os.environ)\n')
+
+
 def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
     """Bound output and wall time; reap the direct child and stop its owned group.
 
     This is a trusted test-process cleanup boundary, not a general OS sandbox.
     Output cap is shared by stdout/stderr; drainers never accumulate excess data.
-    WNOWAIT reserves the leader's PID/PGID until the final group signal. Never
-    poll/reap first and then signal a potentially reused numeric process group.
+    Linux uses WNOWAIT; Darwin Python builds without it use standard kqueue with
+    a gated exec. Both leave the child unreaped until the final group signal.
+    Never poll/reap first and then signal a potentially reused numeric group.
     """
-    if os.name != 'posix' or not hasattr(os, 'waitid') or not hasattr(os, 'WNOWAIT'):
-        raise ValueError('headless acceptance requires POSIX waitid(WNOWAIT) cleanup')
-    process = subprocess.Popen(command, env=env, cwd=cwd, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, start_new_session=True)
+    observer = exit_observer()
+    process = None
+    gate_read = gate_write = None
+    owned = True
+    reaped = False
     chunks = [bytearray(), bytearray()]
     lock = threading.Lock()
     problem = threading.Event()
@@ -57,7 +140,7 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
                     if keep < len(block) and not problem.is_set():
                         errors.append('output cap exceeded')
                         problem.set()
-        except OSError as error:
+        except (OSError, ValueError) as error:
             with lock:
                 if not problem.is_set():
                     errors.append('output read failed: ' + str(error))
@@ -69,35 +152,77 @@ def run_bounded(command, *, env, cwd, timeout, max_output=1048576):
         except ProcessLookupError:
             pass
 
-    threads = [threading.Thread(target=drain, args=(0, process.stdout)),
-               threading.Thread(target=drain, args=(1, process.stderr))]
     started = []
     try:
+        spawn_command, extra = command, {}
+        if observer.requires_gate:
+            if not os.path.isabs(sys.executable):
+                raise ValueError('Darwin child gate requires an absolute Python executable')
+            gate_read, gate_write = os.pipe()
+            spawn_command = [sys.executable, '-I', '-S', '-c', EXEC_GATE, str(gate_read), *command]
+            extra['pass_fds'] = (gate_read,)
+        process = subprocess.Popen(spawn_command, env=env, cwd=cwd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, start_new_session=True, **extra)
+        if gate_read is not None:
+            fd = gate_read
+            gate_read = None
+            os.close(fd)
+        observer.register(process.pid)
+        if gate_write is not None:
+            if os.write(gate_write, b'G') != 1:
+                raise ValueError('could not release registered child gate')
+            fd = gate_write
+            gate_write = None
+            os.close(fd)
+        # Raw-fd drainers are daemonized only as a final fail-closed escape if
+        # ECHILD invalidates ownership and a foreign-held pipe cannot be stopped
+        # safely. A successful run still requires both drainers to finish.
+        threads = [threading.Thread(target=drain, args=(0, process.stdout), daemon=True),
+                   threading.Thread(target=drain, args=(1, process.stderr), daemon=True)]
         for thread in threads:
             thread.start()
             started.append(thread)
         deadline = time.monotonic() + timeout
-        while os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is None \
-                and not problem.wait(0.01):
+        while not observer.exited() and not problem.wait(0.01):
             if time.monotonic() >= deadline:
                 errors.append('timeout exceeded')
                 problem.set()
+    except ChildOwnershipLost as error:
+        owned = False
+        errors.append(str(error))
     finally:
-        # Also covers every exception after Popen. The leader is still running
-        # or retained as a zombie here, so its process-group ID cannot be reused.
-        # Killing an already exited leader does not change its exit status.
-        kill_group()
-        process.wait(timeout=5)
-        for thread in started:
-            thread.join(timeout=5)
-        if any(thread.is_alive() for thread in started):
-            errors.append('output drainer failed to finish after group cleanup')
-        else:
-            process.stdout.close()
-            process.stderr.close()
+        # A failed resource close must not prevent the owned group cleanup or
+        # another resource close. Do not retry close on a possibly reused FD.
+        for fd in (gate_read, gate_write):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError as error:
+                    errors.append('gate close failed: ' + str(error))
+        try:
+            if process is not None and owned:
+                # Registration errors (including ESRCH) are failures, not exit
+                # evidence. No one reaped this owned child, so cleanup is safe.
+                # Keep the zombie/session leader reserved through the signal.
+                kill_group()
+                process.wait(timeout=5)
+                reaped = True
+        finally:
+            try:
+                observer.close()
+            except OSError as error:
+                errors.append('observer close failed: ' + str(error))
+            for thread in started:
+                thread.join(timeout=5)
+            if any(thread.is_alive() for thread in started):
+                errors.append('output drainer failed to finish after group cleanup')
+            if process is not None:
+                process.stdout.close()
+                process.stderr.close()
     return {'returncode': process.returncode, 'stdout': bytes(chunks[0]), 'stderr': bytes(chunks[1]),
-            'failure': '; '.join(errors) if errors else None, 'reaped': process.returncode is not None,
-            'drainers_finished': not any(t.is_alive() for t in threads)}
+            'failure': '; '.join(errors) if errors else None, 'reaped': reaped,
+            'exit_observer': observer.name,
+            'drainers_finished': not any(t.is_alive() for t in started)}
 
 
 def run(args):
