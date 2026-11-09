@@ -569,3 +569,40 @@ This is a usable experimental command surface for trusted local inputs, not the
 completed preview gate. Process supervision/cancellation, automatic reload,
 unsaved overlays, LSP positions, full semantic diagnostics, persistent IDs,
 overload selection and cross-platform binary distribution remain unfinished.
+
+## Native CLI worker execution boundary
+
+Baseline: `f3baf21f9005f64910bb90f2f4797d8263530ae6`. The public executable now
+supervises a worker instance of the same native executable. Default worker
+execution/capture deadline is 30 seconds, configurable from 1 to 300,000 ms.
+Optional stdin-EOF cancellation and a worker lease handle cancellation and
+supervisor disappearance. Core analysis APIs/semantics, the lockfile and all
+dependency versions are unchanged. There is no Java or arbitrary command path.
+
+Final checks pass: 199 default Rust tests, 229 with the CLI feature (199 core,
+21 CLI integration and nine supervision tests), one doctest, strict formatting,
+Clippy/rustdoc, examples, no-Java-environment source/class/JMOD checks and
+feature-enabled package verification. The real CLI workload still matches all
+249 source files, 7,615 platform classes, 41 queries/86 candidates and 85 parser
+reports. Twelve fetch-security tests and both optional compiler suites retain
+their previous passing results. Linux crash tests run with core dumps disabled.
+
+Real-binary probes contain a 100,000-level parser stack SIGABRT and report the
+worker reaped, turn short deadlines into `execution_timeout`, and turn opt-in
+stdin EOF into `execution_cancelled`. Test-only fixtures cover abnormal exits,
+concurrent bounded stream draining, inherited pipes, malformed/contradictory
+protocol responses and bounded cleanup. Fixtures are not shipped as production
+backdoors. Independent review compared eight old response payloads (excluding
+declared capability/help additions), sent SIGTERM/SIGABRT to actual workers,
+and killed the supervisor with SIGKILL while observing worker termination and
+performing scratch-process reaping. Opaque IDs/paths equal to control-looking
+spellings are preserved after fixing an initially overbroad reserved-name check.
+
+The independent review also verified an important exclusion: a caller that does
+not read final stdout can block delivery after worker execution has finished.
+Closing that pipe reports `output_io`, but an OS-written prefix cannot be
+retracted. The deadline does not cover final caller writes, protocol validation,
+all thread/setup work or hard OS scheduling limits. It is not a memory/CPU quota,
+security sandbox or arbitrary descendant-tree supervisor. Linux evidence is not
+cross-platform certification. See [the exact contract](CLI_EXECUTION.md); editor
+callers still need asynchronous stream handling and their own outer watchdog.

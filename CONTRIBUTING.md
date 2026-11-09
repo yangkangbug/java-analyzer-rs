@@ -10,6 +10,8 @@ Run from the project root:
 cargo fmt --all --check
 cargo clippy --all-targets --all-features --locked -- -D warnings
 cargo test --all-targets --locked
+# POSIX: crash-containment tests intentionally abort a child; disable core dumps.
+ulimit -c 0
 cargo test --all-targets --all-features --locked
 cargo test --doc --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features --locked
@@ -37,6 +39,10 @@ The optional `cli` feature adds only the executable's JSON adapter dependencies.
 Test both the default library build and the feature-enabled executable. The CLI
 subprocess tests and runtime script do not invoke Java; parser reports are not
 semantic diagnostics. See [CLI contract](docs/CLI.md) for the experimental boundary.
+Execution supervision tests include deterministic worker failure/timeout fixtures
+and real native-binary checks. Test-only arbitrary child commands must remain
+under `cfg(test)`; the production supervisor runs only its own native executable.
+Keep wall-clock/capture tests distinct from OS sandbox, memory or CPU quota claims.
 
 Platform regressions in `tests/platform.rs` and archive regressions in
 `tests/jmod.rs` construct class/archive bytes in Rust; no javac or installed JDK

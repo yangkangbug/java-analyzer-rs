@@ -1,6 +1,7 @@
 //! Experimental, one-shot native project CLI. No protocol or runtime integration
 //! is added to the library. See docs/CLI.md for the versioned wire contract.
 mod config;
+mod execution;
 
 use config::{Encoding, Id, Manifest, Position, Query, Requests};
 use java_engine::{CompilationId, ParsedFile, ResolveStatus, Target, TargetKind, WorkspaceSnapshot};
@@ -27,10 +28,12 @@ struct Error {
     path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     query_index: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    worker_reaped: Option<bool>,
 }
 impl Error {
     fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into(), path: None, query_index: None }
+        Self { code, message: message.into(), path: None, query_index: None, worker_reaped: None }
     }
     fn at(mut self, path: impl AsRef<Path>) -> Self {
         self.path = Some(path.as_ref().to_string_lossy().into_owned());
@@ -78,12 +81,8 @@ struct Arguments {
     filter: Option<Id>,
     details: bool,
 }
-fn arguments() -> Result<Option<Arguments>, Error> {
-    let args = std::env::args_os()
-        .skip(1)
-        .map(|arg| arg.into_string().map_err(|_| Error::new("usage", "arguments must be UTF-8")))
-        .collect::<Result<Vec<_>, _>>()?;
-    if args.as_slice() == ["--help"] || args.as_slice() == ["--version"] {
+fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
+    if args == ["--help"] || args == ["--version"] {
         return Ok(None);
     }
     let Some(command) = args.first() else {
@@ -212,11 +211,12 @@ fn capabilities() -> Value {
         "build_tool_import": false,
         "implicit_platform": false,
         "persistent_server_reload_overlays": false,
-        "process_timeout_isolation": false,
+        "process_timeout_isolation": true,
+        "execution": execution::capabilities(),
         "persistent_symbol_identity": false,
         "limits": {"document_bytes":MAX_DOCUMENT_BYTES,"batch_queries":MAX_QUERIES,
             "result_items":MAX_RESULT_ITEMS,"response_bytes":MAX_RESPONSE_BYTES},
-        "resource_caveat": "Input and output bounds are not parser CPU, stack or process memory limits. Use trusted inputs."
+        "resource_caveat": "Worker wall-clock timeout and crash isolation are not CPU quotas, memory limits or a security sandbox. Use trusted inputs; consume output concurrently."
     })
 }
 fn help() -> Value {
@@ -225,7 +225,7 @@ fn help() -> Value {
         "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N)",
         "java-analyzer declaration --manifest FILE --requests FILE",
         "java-analyzer parser-report --manifest FILE [--project ID --source-set ID]"
-    ],"documentation":"docs/CLI.md"})
+    ],"execution_options":["--timeout-ms 1..300000 (default 30000)","--cancel-on-stdin-close"],"documentation":"docs/CLI.md"})
 }
 
 struct Source<'a> {
@@ -466,8 +466,8 @@ fn parser_report(
         "scope":"owned_sources_only","source_count":source_count,"files_with_reports":files_with_reports,
         "report_count":report_count,"files":files}))
 }
-fn run() -> Result<Value, Error> {
-    let Some(args) = arguments()? else {
+fn run(raw_args: &[String]) -> Result<Value, Error> {
+    let Some(args) = arguments(raw_args)? else {
         return Ok(help());
     };
     let (manifest, path): (Manifest, _) = read_document(Path::new(&args.manifest))?;
@@ -506,10 +506,31 @@ fn run() -> Result<Value, Error> {
         "capabilities":capabilities(),"result":result}))
 }
 fn main() {
-    match run().and_then(|value| encode(&value)) {
-        Ok(bytes) => {
-            if let Err(e) = io::stdout().lock().write_all(&bytes) {
-                emit_error(Error::new("output_io", e.to_string()));
+    let args = std::env::args_os()
+        .skip(1)
+        .map(|arg| arg.into_string().map_err(|_| Error::new("usage", "arguments must be UTF-8")))
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|error| emit_error(error));
+    if args.first().is_some_and(|arg| arg == execution::WORKER_ARGUMENT) {
+        execution::watch_parent().unwrap_or_else(|error| emit_error(error));
+        let bytes = run(&args[1..]).and_then(|value| encode(&value)).unwrap_or_else(|error| emit_error(error));
+        if let Err(error) = io::stdout().lock().write_all(&bytes) {
+            emit_error(Error::new("output_io", error.to_string()));
+        }
+        return;
+    }
+    match execution::run(args) {
+        Ok(response) => {
+            let result = if response.success {
+                io::stdout().lock().write_all(&response.bytes)
+            } else {
+                io::stderr().lock().write_all(&response.bytes)
+            };
+            if let Err(error) = result {
+                emit_error(Error::new("output_io", error.to_string()));
+            }
+            if !response.success {
+                std::process::exit(2);
             }
         }
         Err(error) => emit_error(error),

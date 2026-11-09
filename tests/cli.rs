@@ -566,3 +566,91 @@ fn inspect_summary_handles_shared_platforms_above_detailed_output_cap() {
         assert_eq!(f.run(&args, false)["error"]["code"], "usage");
     }
 }
+
+#[test]
+fn execution_options_are_strict_and_capabilities_describe_real_bounds() {
+    let f = Fixture::new();
+    for value in ["0", "300001", "-1", "+1", "1.5", "", " 5", "5 ", "999999999999999999999"] {
+        let result = f.run(&["--help", "--timeout-ms", value], false);
+        assert_eq!(result["error"]["code"], "usage", "{value}");
+    }
+    for args in [
+        vec!["--help", "--timeout-ms"],
+        vec!["--help", "--timeout-ms", "5", "--timeout-ms", "5"],
+        vec!["--help", "--cancel-on-stdin-close", "--cancel-on-stdin-close"],
+    ] {
+        assert_eq!(f.run(&args, false)["error"]["code"], "usage");
+    }
+    let result = f.run(&["--help", "--timeout-ms", "300000"], true);
+    assert_eq!(result["capabilities"]["process_timeout_isolation"], true);
+    assert_eq!(result["capabilities"]["execution"]["default_timeout_ms"], 30000);
+    assert_eq!(result["capabilities"]["execution"]["memory_limit"], false);
+    assert_eq!(result["capabilities"]["execution"]["final_output_backpressure_bounded"], false);
+    // A data value is not accidentally swallowed as a supervisor flag.
+    assert_eq!(f.run(&["inspect", "--manifest", "--timeout-ms"], false)["error"]["code"], "io");
+}
+
+#[test]
+fn actual_project_timeout_and_stdin_cancellation_return_one_json_error() {
+    let f = Fixture::new();
+    f.write("src/Large.java", format!("class Large {{ {} }}", "int field;".repeat(30000)));
+    let manifest = f.manifest();
+    let started = std::time::Instant::now();
+    let result = f.run(&["inspect", "--manifest", manifest.to_str().unwrap(), "--timeout-ms", "1"], false);
+    assert_eq!(result["error"]["code"], "execution_timeout");
+    assert_eq!(result["error"]["worker_reaped"], true);
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    // Command::output closes stdin. Cancellation is opt-in; other fixture runs use the same closed stdin.
+    let result = f.run(&["inspect", "--manifest", manifest.to_str().unwrap(), "--cancel-on-stdin-close"], false);
+    assert_eq!(result["error"]["code"], "execution_cancelled");
+    assert_eq!(result["error"]["worker_reaped"], true);
+}
+
+#[test]
+fn deeply_recursive_project_cannot_abort_supervisor_or_leak_panic_text() {
+    let f = Fixture::new();
+    f.write(
+        "src/Deep.java",
+        format!("class Deep {{ void run() {{ {}1{}; }} }}", "(".repeat(100000), ")".repeat(100000)),
+    );
+    let manifest = f.manifest();
+    let result = f.run(&["parser-report", "--manifest", manifest.to_str().unwrap(), "--timeout-ms", "5000"], false);
+    assert_eq!(result["error"]["code"], "worker_failed");
+    assert_eq!(result["error"]["worker_reaped"], true);
+    #[cfg(target_os = "linux")]
+    assert!(
+        result["error"]["message"].as_str().unwrap().contains("signal: 6"),
+        "expected actual SIGABRT from worker stack exhaustion"
+    );
+}
+
+#[test]
+fn internal_worker_spelling_remains_an_opaque_data_value() {
+    let f = Fixture::new();
+    let id = "__java_analyzer_worker_v1";
+    let source = "class A { int field; void run() { field++; } }";
+    f.write("src/A.java", source);
+    let manifest = f.write(
+        id,
+        json!({"schema_version":1,"compilations":[{"id":{"project":id,"source_set":id},"source_roots":["src"]}]})
+            .to_string(),
+    );
+    let result = f.run(
+        &[
+            "declaration",
+            "--manifest",
+            manifest.to_str().unwrap(),
+            "--project",
+            id,
+            "--source-set",
+            id,
+            "--file",
+            "src/A.java",
+            "--byte",
+            &source.rfind("field").unwrap().to_string(),
+        ],
+        true,
+    );
+    assert_eq!(result["result"]["queries"][0]["status"], "Resolved");
+    assert_eq!(result["result"]["queries"][0]["targets"][0]["name"], "field");
+}

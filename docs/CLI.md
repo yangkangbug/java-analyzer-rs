@@ -8,9 +8,11 @@ are data, not executable tools. No JDK or dependency is discovered implicitly.
 
 This implements part of the [preview plan](PREVIEW_PLAN.md), **not all preview
 gates**. It has no persistent server, reload transaction, unsaved overlay, LSP,
-process timeout/cancellation isolation, distribution certification, or measured
-project-scale performance budget. Use trusted local inputs. Byte limits are not
-parser CPU/stack or whole-process memory limits.
+distribution certification, or measured project-scale performance budget. It now
+supervises a separate native worker with a default 30-second wall-clock timeout,
+optional stdin-EOF cancellation and machine-readable crash/output failures. See
+[execution bounds and remaining limits](CLI_EXECUTION.md). Use trusted local
+inputs: this is not a security sandbox, CPU quota or whole-process memory limit.
 
 ## Build and run the checked-in project
 
@@ -44,7 +46,11 @@ The package is not published on crates.io. `cargo build` without `--features cli
 continues to build the library without the CLI serialization dependencies.
 
 `--help` and `--version` each return JSON containing version, command usage and
-capability boundaries. No text-output mode is provided in schema version 1.
+capability boundaries. No text-output mode is provided in schema version 1. Every
+command accepts `--timeout-ms N` (ASCII decimal digits, 1..300000; default 30000)
+and optional `--cancel-on-stdin-close`. Duplicates and invalid values fail. No
+unlimited timeout is available. Read both output streams concurrently; final
+output delivery is outside the worker deadline. See [execution contract](CLI_EXECUTION.md).
 
 ## Commands and path rules
 
@@ -177,11 +183,13 @@ it does not silently truncate or switch to summary mode.
 
 Input byte/archive expansion limits remain the core loader's limits. Parsed
 trees, preparation, resolver candidate lists and parser error collection can
-allocate before the output limit is checked. There is no process isolation,
-timeout, cancellation, maximum total process memory, atomic filesystem load, or
-guarantee of recoverable errors for recursive parser/stack exhaustion. A consumer
-must not run this preview synchronously on an editor UI thread or expose it as a
-trusted service for hostile inputs.
+allocate before the output limit is checked. The CLI worker isolates ordinary
+parser crashes from the supervisor and is subject to a wall-clock deadline. This
+does not impose maximum total process memory or make filesystem loading atomic. Supervisor memory exhaustion or
+external termination can still prevent a JSON error. A consumer must not run this
+preview synchronously on an editor UI thread or expose it as a trusted service for
+hostile inputs. [Execution details](CLI_EXECUTION.md) distinguish worker deadlines,
+cleanup grace, parent-death handling, and final-output backpressure.
 
 ## Requests and position semantics
 
@@ -239,8 +247,8 @@ Successful commands emit one JSON object on stdout, ending with a newline:
 This is a shortened envelope example, not an actual zero-query response.
 `capabilities` explicitly reports limited binding, absent method applicability,
 absent semantic diagnostics, parser classification, native runtime, missing
-server/reload/overlay and timeout facilities, and adapter limits. Snapshot ID is
-an **invocation-local label** only, not a content hash, persistent symbol ID,
+server/reload/overlay facilities, native worker execution bounds, and adapter
+limits. Snapshot ID is an **invocation-local label** only, not a content hash, persistent symbol ID,
 filesystem revision or cross-process equality test. Every batch query belongs to
 that one loaded snapshot. A new invocation reloads disk inputs and prepares anew;
 no index survives between processes.
@@ -325,14 +333,19 @@ and emit one JSON object on stderr:
 Stable codes: `usage`, `io`, `invalid_path`, `invalid_json`, `unsupported_version`,
 `invalid_configuration`, `document_limit`, `request_limit`, `unknown_compilation`,
 `load_failed`, `invisible_source`, `invalid_position`, `invalid_target`,
-`output_limit`, `output_io`. `path` and zero-based `query_index` are included when
+`output_limit`, `output_io`. Supervision adds `execution_timeout`,
+`execution_cancelled`, `execution_io`, `worker_failed`, `worker_output`, and
+`worker_output_limit`; see [execution errors](CLI_EXECUTION.md#machine-readable-failures).
+`path` and zero-based `query_index` are included when
 applicable; prose `message` is explanatory, not a machine-stable protocol.
 `invalid_target` means the adapter could not verify the core target's provenance
 or exact source range, so no declaration result was emitted. Loader details
 retain the offending source/archive path where available. A broken output pipe
 can leave an OS-written stdout prefix before `output_io`; transport errors are
-not the all-or-nothing validation guarantee. Signals, process aborts and memory/
-stack exhaustion are outside this JSON error contract.
+not the all-or-nothing validation guarantee. Worker aborts/signals are mapped to
+`worker_failed`. Termination or exhaustion of the supervisor itself remains outside this JSON error contract. Supervisor
+errors include `worker_reaped` when a worker was started; `false` means cleanup
+was not confirmed within its bounded grace.
 
 ## Validation
 
@@ -342,6 +355,8 @@ batch reuse, source ownership/ranges, binary and package provenance, ambiguity,
 UTF-8/UTF-16/CRLF/astral positions, strict JSON/configuration, missing dependencies,
 invalid UTF-8, document/result caps, summary/detailed inspection across repeated
 platform contexts, symlink aliases and the checked-in sample.
-Run `cargo test --locked --features cli --test cli`.
+Run `cargo test --locked --features cli --bin java-analyzer --test cli` for the
+CLI contract plus deterministic supervision tests, real timeout/cancellation,
+recursive parser crash isolation, and Linux parent-death coverage.
 The [fixed-source CLI acceptance](../examples/cli_acceptance/README.md) is a separate
 optional real-project gate, not a replacement for native tests or full conformance.

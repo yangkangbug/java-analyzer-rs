@@ -41,6 +41,10 @@ gates provide bounded evidence, not a language-conformance suite.
    are supplemented by bounded worker/process execution, timeout/cancel handling
    and recoverable failures. Recursive parser/tree work is not bounded merely by
    an input-byte limit. This does not require a full incremental query engine.
+   The CLI now has [native worker supervision](CLI_EXECUTION.md), an execution
+   deadline, bounded protocol capture and optional stdin-EOF cancellation. This
+   isolates worker failures, not all host resource exhaustion: memory limits,
+   blocked caller-output handling and core cooperative cancellation remain open.
 7. Test the shipped interface on the fixed Commons Lang workload and one distinct
    project shape, including source/test isolation, missing dependency, source edit,
    malformed buffer and reload failure. Report supported and refused cases.

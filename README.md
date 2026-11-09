@@ -53,9 +53,14 @@ diagnostics, a build importer or an editor language server. Inputs are local and
 explicit; no Java executable is called or JDK discovered.
 
 See the [command/configuration contract](docs/CLI.md) and
-[remaining preview gates](docs/PREVIEW_PLAN.md). Use trusted local projects:
-parser CPU/stack containment, cancellation, unsaved buffers, automatic reload,
-cross-platform release certification and performance budgets remain unfinished.
+[remaining preview gates](docs/PREVIEW_PLAN.md). The public CLI supervises a worker
+running the same native executable, with a default 30-second execution deadline,
+structured crash/output errors and optional stdin-EOF cancellation. See
+[execution guarantees and limits](docs/CLI_EXECUTION.md). This is not a security
+sandbox, CPU quota or memory limit; use trusted local projects. Direct library
+callers do not receive this process boundary automatically. Unsaved buffers,
+automatic reload, cross-platform release certification and performance budgets
+remain unfinished.
 
 ## Project boundaries
 

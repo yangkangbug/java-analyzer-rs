@@ -159,7 +159,8 @@ It does not infer Maven/Gradle models or fetch dependencies. Source targets reta
 their owning compilation and ranges; binary targets do not invent source locations.
 This provides a narrow end-to-end entry point for real-project validation, not a
 completed IDE preview. See [CLI contract](docs/CLI.md) and
-[preview acceptance gates](docs/PREVIEW_PLAN.md). Process containment, automatic
+[preview acceptance gates](docs/PREVIEW_PLAN.md). Native worker supervision now
+adds execution deadlines and crash/cancellation reporting; see M3 below. Automatic
 reload, unsaved buffers, protocol positions, performance budgets and distribution
 remain needed, alongside the semantic work below.
 
@@ -210,6 +211,19 @@ Gate: full recomputation agrees with incremental results after file/import/JAR
 edits and deletions. Record cold/warm p50/p95 latency, peak memory, and edit-to-result
 latency on versioned small/medium/large Java projects. Set budgets from those
 measurements; the existing one-sample timing test is not a substitute.
+
+### First CLI execution boundary implemented
+
+The public CLI runs analysis in a supervised instance of its own native executable.
+Wall-clock deadlines, bounded output capture, protocol checks and optional
+stdin-EOF cancellation convert worker failures into explicit errors. A stdin
+lease lets the worker exit when its supervisor disappears. This is coarse process
+cancellation, not incremental or cooperative analysis cancellation. Core parsing
+and binding APIs are unchanged, and no JVM or external analysis tool is started.
+The [execution contract](docs/CLI_EXECUTION.md) excludes memory quotas, arbitrary
+descendant containment, caller-output backpressure and hard real-time guarantees.
+The next interactive gates still need snapshot/reload correctness and measurement,
+alongside method applicability and the semantic coverage described in M2.
 
 ## M4: usable analysis capabilities
 

@@ -96,4 +96,5 @@ serde_derive 1.0.229 and itoa 1.0.19 (MIT OR Apache-2.0), plus zmij 1.0.23 (MIT)
 Published license texts are preserved in licenses/<crate>-<version>/, with
 source links and reused transitive-dependency notices in THIRD_PARTY_LICENSES.md.
 The executable's versioned JSON DTOs do not add a serialization requirement to
-the core analysis API. This feature starts no JVM or external analysis process.
+the core analysis API. This feature starts no JVM or third-party analysis tool.
+CLI supervision runs a worker instance of the same native Rust executable.
