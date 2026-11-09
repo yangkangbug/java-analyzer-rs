@@ -12,7 +12,7 @@ class files. The analysis library and its tests do not start a JVM.
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`
-selects it. Cargo downloads the three locked registry dependencies on the
+selects it. Cargo downloads the locked registry dependencies on the
 first build; no OpenIDEA checkout, Node, Tauri, JDK, or JDT LS is required.
 
 ```sh
@@ -22,8 +22,8 @@ cargo clippy --all-targets --locked -- -D warnings
 cargo run --locked --example resolve
 ```
 
-The direct dependency is `cafebabe` 0.9.0. Its transitive dependencies are
-`bitflags` 1.3.2 and `cesu8` 1.1.0. See [third-party notices](THIRD_PARTY_LICENSES.md).
+Direct dependencies are `cafebabe` 0.9.0 for class files and exact-pinned
+`zip` 9.5.0 with pure-Rust DEFLATE for archives. See [third-party notices](THIRD_PARTY_LICENSES.md).
 `publish = false` is intentional; this package has not been published to crates.io.
 The independent source repository is
 [yangkangbug/java-analyzer-rs](https://github.com/yangkangbug/java-analyzer-rs).
@@ -46,7 +46,8 @@ The goal is a native Java analysis engine: syntax, binding, class path,
 generics and overload resolution, then reference search. Syntax, class-file
 signatures, and name binding across source files and those class files are
 implemented. Explicit source roots and an ordered directory/JAR classpath can now
-be loaded as an immutable snapshot. A JDK is not included. Overload selection and generic instantiation
+be loaded as an immutable snapshot, with explicit platform JMOD or legacy JAR inputs.
+A JDK is not included or discovered. Overload selection and generic instantiation
 are not.
 
 ### Syntax
@@ -91,7 +92,7 @@ files under a directory and does not follow symlinks. A truncated file, a bad
 magic, a bad constant pool, or a major version outside 45..=71 (or a minor
 other than 0 or 65535 when the major is at least 56) is an error and is not
 inserted. The lower-level `Project` API still accepts manually registered inputs.
-`ProjectSnapshot::load` loads explicit source roots, class directories, and JARs
+`ProjectSnapshot::load` loads explicit source roots, class directories, JARs, and platform JMODs
 without invoking Java. Maven and Gradle are not read. See
 [project loading](docs/PROJECT_LOADING.md) for configuration and bounds.
 
@@ -180,7 +181,7 @@ Not implemented, and not claimed:
   statement in this parser).
 - The full protected-access rule, and any distinction between static and instance.
 - Multi-catch beyond the first type before `|`.
-- JDK discovery/JMOD, JPMS module graphs, Maven, Gradle, reference search,
+- JDK discovery, jimage/ct.sym, JPMS module graphs, Maven, Gradle, reference search,
   rename, and refactoring. JAR loading is a flat-classpath subset, described below.
 - Reuse inside the one reparsed brace node. That node is parsed again from its
   text. Green nodes outside it keep their allocations.
@@ -264,7 +265,7 @@ the project example with an empty environment and no executable search path.
 ## Project loading and JVM-free analysis
 
 See [project loading](docs/PROJECT_LOADING.md) and the
-[validation record](docs/VALIDATION.md). This is the first M1 slice, not a complete
+[validation record](docs/VALIDATION.md). These are early M1 slices, not a complete
 build model or JDK import. Run the checked-in multi-file/JAR fixture:
 
 ```sh
@@ -275,10 +276,22 @@ sh scripts/check-native-runtime.sh
 
 The example resolves `app.Use -> app.Bridge -> lib.Lib.run()` from a local JAR.
 No Java installation, Java executable, JDT LS, JNI bridge, or Java sidecar is
-required by analysis. JARs and class files are input data, decoded in Rust.
+required by analysis. JARs, JMODs, and class files are input data, decoded in Rust.
 `inspect_project` also accepts a source root, source-relative file, UTF-8 byte
 offset, and local JAR paths. Java application compilation/run/debug remains a
 separate concern and is not part of this library.
+
+To supply platform classes explicitly (optional, no Java executable is used):
+
+```sh
+cargo run --locked --example platform -- /path/to/java.base.jmod
+```
+
+The example resolves implicit `java.lang.String` and inherited `Object.toString()`.
+`ProjectConfig.platform` accepts ordered JMOD or legacy platform JAR paths and
+loads them before the application classpath. No JPMS exports/readability,
+JDK discovery, or `--release` compatibility is implied. The mandatory suite uses
+hand-assembled class signatures and requires no JDK artifact.
 
 ## Later stages
 

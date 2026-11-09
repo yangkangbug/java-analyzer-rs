@@ -58,3 +58,45 @@ No complete-Java or large-project benchmark claims follow from this one query.
 The mandatory checked-in fixture is hand-assembled Java class data, not generated
 by javac during testing. The CI runtime step uses only that fixture and no network
 input. The optional real-archive check is fully offline once the JAR is supplied.
+
+## Native platform-input follow-up
+
+Baseline for this follow-up: `558d7c34d34b7a6f54b1e7fd1585e9c0043c641d`.
+The full suite now has **114 passing tests**: 97 from the preceding slice,
+11 JMOD tests, and six platform-input tests. The same formatting, strict Clippy,
+rustdoc, offline build, examples, and package checks pass. Platform acceptance
+first failed behaviorally with platform inputs ignored. A large ignored-native-
+section regression failed under the original 16 MiB JMOD entry ceiling and passed
+with the JMOD-only 64 MiB default; explicit smaller limits still reject it.
+Independent review covered shared limits, platform precedence, snapshot isolation,
+and provenance, including collisions involving shadowed classes.
+
+Only the `java.base.jmod` data member was extracted from the official Eclipse
+Temurin 21.0.13+9 Linux archive after verifying its published SHA-256. No JDK
+executable was installed or run, and no platform artifact is redistributed here.
+
+- Release: https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9
+- Archive: `OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz`
+- Archive SHA-256: `d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c`
+- Extracted JMOD: 24,683,914 bytes.
+- JMOD SHA-256: `fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91`
+- ZIP inventory: 7,682 entries, 59,382,714 declared uncompressed bytes.
+- Loaded class signatures: 7,615, matching an independent ZIP inventory excluding
+  `classes/module-info.class` and nonclass sections.
+
+Reproduce with the local data file after building examples:
+
+```sh
+sh scripts/check-platform-runtime.sh /path/to/java.base.jmod
+```
+
+Under `env -i PATH=/nonexistent`, the example resolves:
+
+- `String` to `java.lang.String` in `java.base.jmod!/classes/java/lang/String.class`.
+- Inherited `toString()` to `java.lang.Object` in
+  `java.base.jmod!/classes/java/lang/Object.class`.
+
+The same evidence boundary applies: this shows native analysis without a Java
+launch or runtime dependency, not a physically JVM-free host. JPMS export and
+readability rules, platform release/API compatibility, and automatic JDK discovery
+are explicitly outside this flat platform-input slice.

@@ -17,7 +17,7 @@ The source started as a Java syntax/name-binding subset, not a language server.
 It has source parsing and block reparsing, source/class-file registration,
 limited name lookup, and supertype member walks. Every resolve query rebuilds
 the index. The suite includes receiver provenance and array/varargs signature regressions,
-plus bounded native JAR and immutable project-loading acceptance tests. It has no real-project performance budget.
+plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It has no real-project performance budget.
 
 Missing foundations include build-tool/JDK discovery, module graphs, stable symbol
 IDs, type inference,
@@ -58,10 +58,22 @@ fixture resolves through inheritance, and a real Commons Lang JAR was analyzed
 with no Java executable on PATH; see docs/VALIDATION.md.
 
 This does not close M1: canonical path identities are not persistent symbol IDs;
-no JDK discovery/JMOD/JPMS or build-tool model exists yet. The next coherent slice
-is explicit JDK platform input and compilation-scope/module relationships, followed
-by stable identities and invalidation. The current snapshot rebuilds from disk,
+no JDK discovery/JPMS or build-tool model exists yet. The next coherent slice
+is compilation-scope/module relationships, followed by stable identities and
+invalidation. The current snapshot rebuilds from disk,
 and the binder rebuilds its index per query; neither is incremental caching.
+
+### Explicit platform input slice implemented
+
+`ProjectConfig.platform` accepts caller-supplied JMOD 1.0 or legacy platform JAR
+paths before application binaries. Native archive loading selects `classes/`
+signatures from JMOD data, ignores module descriptors and nonclass sections, and
+shares project entry/input/expansion budgets with application dependencies.
+Duplicate precedence, provenance, source collisions, and fresh-snapshot semantics
+remain explicit. Tests resolve implicit `java.lang` types and Object members with
+platform data and leave them unresolved when absent. No JDK binary is bundled,
+discovered, started, linked, or embedded. This is a flat class-library input,
+not JPMS resolution, jimage/ct.sym reading, or a `--release` API model.
 
 ## M2: semantic types and method applicability
 

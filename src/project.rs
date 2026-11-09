@@ -10,8 +10,8 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::jar::read_jar_with_usage;
-use crate::{ClassSignature, JarOptions, Project, ResolveResult, parse_class_bytes};
+use crate::jar::{read_jar_with_usage, read_jmod_with_usage};
+use crate::{ClassSignature, JarOptions, JmodOptions, Project, ResolveResult, parse_class_bytes};
 
 /// One entry on the ordered, flat binary classpath. No discovery or downloads occur.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,19 +20,28 @@ pub enum ClasspathEntry {
     Jar(PathBuf),
 }
 
-/// Filesystem loading limits, in addition to per-archive [`JarOptions`] limits.
+/// Explicit platform class libraries, read only as data. No JDK is discovered.
+/// Entries are searched before the application classpath; JPMS is not enforced.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlatformEntry {
+    Jmod(PathBuf),
+    /// A legacy platform JAR such as rt.jar, with normal JAR selection rules.
+    Jar(PathBuf),
+}
+
+/// Filesystem loading limits, in addition to [`JarOptions`] and [`JmodOptions`] limits.
 #[derive(Clone, Debug)]
 pub struct ProjectLimits {
-    /// Maximum entries visited across directory walks and all JAR entries.
+    /// Maximum entries visited across directory walks and all archive entries.
     pub max_entries: usize,
-    /// Maximum number of binary classpath entries.
+    /// Maximum combined number of platform and application binary entries.
     pub max_classpath_entries: usize,
     /// Maximum bytes in one source or directory class file.
     pub max_file_bytes: u64,
     /// Sum of source/class bytes read and compressed archive file lengths.
-    /// Decompressed archive bytes are bounded separately by `JarOptions` per JAR.
+    /// Decompressed archive bytes are also bounded separately per archive.
     pub max_input_bytes: u64,
-    /// Sum of declared uncompressed entry sizes across all JARs, including resources.
+    /// Sum of declared uncompressed entry sizes across all JARs/JMODs, including resources.
     pub max_archive_expanded_bytes: u64,
     /// Maximum subdirectory nesting below an explicitly configured root.
     pub max_directory_depth: usize,
@@ -64,6 +73,9 @@ pub struct ProjectConfig {
     /// First entry wins for duplicate binary names. Discarded origins are reported.
     /// Duplicate source types, including source/binary collisions, remain ambiguous.
     pub classpath: Vec<ClasspathEntry>,
+    /// Ordered platform binaries, taking precedence over application binaries.
+    pub platform: Vec<PlatformEntry>,
+    pub jmod_options: JmodOptions,
     pub jar_options: JarOptions,
     pub limits: ProjectLimits,
 }
@@ -79,6 +91,7 @@ pub enum ProjectLoadErrorKind {
     UnsupportedModule,
     ClassFile,
     Jar,
+    Jmod,
 }
 
 /// A load failure never changes any previously returned snapshot.
@@ -95,7 +108,7 @@ impl fmt::Display for ProjectLoadError {
 }
 impl std::error::Error for ProjectLoadError {}
 
-/// A class ignored because an earlier classpath entry supplied the same binary name.
+/// A class ignored because an earlier platform or application classpath entry supplied the same binary name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShadowedClass {
     pub binary_name: String,
@@ -120,15 +133,19 @@ pub struct ProjectSnapshot {
 
 impl ProjectSnapshot {
     /// Read all explicit inputs in deterministic order. Incomplete source syntax
-    /// is retained for editor use; I/O, invalid UTF-8, and bad class/JAR inputs
+    /// is retained for editor use; I/O, invalid UTF-8, and bad class/JAR/JMOD inputs
     /// fail the whole load. Directory symlinks and symlink entries are rejected.
     ///
     /// This is an owned snapshot after loading, not an atomic filesystem view:
     /// callers should avoid modifying inputs concurrently with a load. Bounds
     /// limit I/O and archive expansion; they are not a parser CPU/stack budget.
     pub fn load(config: &ProjectConfig) -> Result<Self, ProjectLoadError> {
-        if config.classpath.len() > config.limits.max_classpath_entries {
-            return Err(error("classpath", ProjectLoadErrorKind::LimitExceeded, "too many classpath entries"));
+        if config.platform.len().saturating_add(config.classpath.len()) > config.limits.max_classpath_entries {
+            return Err(error(
+                "classpath",
+                ProjectLoadErrorKind::LimitExceeded,
+                "too many platform and application classpath entries",
+            ));
         }
         let mut budget = Budget { limits: &config.limits, entries: 0, bytes: 0 };
         let mut expanded_bytes = 0_u64;
@@ -156,11 +173,23 @@ impl ProjectSnapshot {
             }
         }
         let mut classes = BTreeMap::<String, String>::new();
+        let mut observed_origins = BTreeMap::<String, String>::new();
         let mut class_origins = Vec::new();
         let mut shadowed_classes = Vec::new();
-        for entry in &config.classpath {
+        let inputs = config
+            .platform
+            .iter()
+            .map(|entry| match entry {
+                PlatformEntry::Jmod(path) => BinaryInput::Jmod(path),
+                PlatformEntry::Jar(path) => BinaryInput::Jar(path),
+            })
+            .chain(config.classpath.iter().map(|entry| match entry {
+                ClasspathEntry::Directory(path) => BinaryInput::Directory(path),
+                ClasspathEntry::Jar(path) => BinaryInput::Jar(path),
+            }));
+        for entry in inputs {
             let signatures = match entry {
-                ClasspathEntry::Directory(root) => {
+                BinaryInput::Directory(root) => {
                     let root = checked_path(root, true)?;
                     let mut signatures = Vec::new();
                     for path in walk(&root, "class", 0, &mut budget)? {
@@ -191,19 +220,29 @@ impl ProjectSnapshot {
                     }
                     signatures
                 }
-                ClasspathEntry::Jar(path) => {
+                BinaryInput::Jar(path) | BinaryInput::Jmod(path) => {
                     let path = checked_path(path, false)?;
                     let origin = path_string(&path)?;
-                    let mut options = config.jar_options.clone();
-                    options.max_archive_bytes =
-                        options.max_archive_bytes.min(config.limits.max_input_bytes.saturating_sub(budget.bytes));
-                    options.max_entries =
-                        options.max_entries.min(config.limits.max_entries.saturating_sub(budget.entries));
-                    options.max_total_uncompressed_bytes = options
-                        .max_total_uncompressed_bytes
-                        .min(config.limits.max_archive_expanded_bytes.saturating_sub(expanded_bytes));
-                    let loaded = read_jar_with_usage(&path, &options)
-                        .map_err(|err| error(&origin, ProjectLoadErrorKind::Jar, &err.to_string()))?;
+                    let remaining_bytes = config.limits.max_input_bytes.saturating_sub(budget.bytes);
+                    let remaining_entries = config.limits.max_entries.saturating_sub(budget.entries);
+                    let remaining_expansion = config.limits.max_archive_expanded_bytes.saturating_sub(expanded_bytes);
+                    let loaded = if matches!(entry, BinaryInput::Jmod(_)) {
+                        let mut options = config.jmod_options.clone();
+                        options.max_archive_bytes = options.max_archive_bytes.min(remaining_bytes);
+                        options.max_entries = options.max_entries.min(remaining_entries);
+                        options.max_total_uncompressed_bytes =
+                            options.max_total_uncompressed_bytes.min(remaining_expansion);
+                        read_jmod_with_usage(&path, &options)
+                            .map_err(|err| error(&origin, ProjectLoadErrorKind::Jmod, &err.to_string()))?
+                    } else {
+                        let mut options = config.jar_options.clone();
+                        options.max_archive_bytes = options.max_archive_bytes.min(remaining_bytes);
+                        options.max_entries = options.max_entries.min(remaining_entries);
+                        options.max_total_uncompressed_bytes =
+                            options.max_total_uncompressed_bytes.min(remaining_expansion);
+                        read_jar_with_usage(&path, &options)
+                            .map_err(|err| error(&origin, ProjectLoadErrorKind::Jar, &err.to_string()))?
+                    };
                     budget.add_bytes(loaded.archive_bytes, &path)?;
                     budget.add_entries(loaded.entries, &path)?;
                     expanded_bytes = expanded_bytes
@@ -220,9 +259,9 @@ impl ProjectSnapshot {
                 }
             };
             for signature in signatures {
-                if project
-                    .class_signature(&signature.origin)
-                    .is_some_and(|prior| prior.binary_name != signature.binary_name)
+                if observed_origins
+                    .insert(signature.origin.clone(), signature.binary_name.clone())
+                    .is_some_and(|prior| prior != signature.binary_name)
                 {
                     return Err(error(
                         &signature.origin,
@@ -252,6 +291,13 @@ impl ProjectSnapshot {
     pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
         self.project.resolve_at(path, byte)
     }
+}
+
+#[derive(Clone, Copy)]
+enum BinaryInput<'a> {
+    Directory(&'a Path),
+    Jar(&'a Path),
+    Jmod(&'a Path),
 }
 
 fn register_class(

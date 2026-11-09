@@ -27,3 +27,15 @@ build-tool integrations behind explicit adapter boundaries. See ROADMAP.md.
 The runtime script is a Linux/POSIX check. Its optional local Commons Lang JAR
 argument runs the pinned real-artifact check described in docs/VALIDATION.md.
 Do not add Java tools to the mandatory test or analysis runtime requirements.
+
+Platform regressions in `tests/platform.rs` and archive regressions in
+`tests/jmod.rs` construct class/archive bytes in Rust; no javac or installed JDK
+is required. The platform example is built in CI, but running it with real JDK
+data is optional: `cargo run --locked --example platform -- /path/to/java.base.jmod`.
+Treat the supplied JMOD strictly as data. Never execute Java/JMOD tools or load
+native library sections to perform analysis. Record actual-artifact checks
+separately from mandatory tests and do not commit a JDK binary.
+
+After `cargo build --locked --examples`, run
+`sh scripts/check-platform-runtime.sh /path/to/java.base.jmod` for the optional
+platform acceptance check with an empty environment and no executable search path.

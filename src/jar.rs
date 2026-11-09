@@ -1,10 +1,10 @@
-//! Bounded, native flat-classpath JAR loading. Nothing is extracted or fetched.
+//! Bounded, native flat-classpath JAR and JMOD loading. Nothing is extracted or fetched.
 //!
 //! Only stored/DEFLATE ZIP entries and UTF-8 entry names are supported. All
 //! entries count toward metadata limits, including ignored resources/versions.
-//! Only the manifest and selected classes are decompressed and CRC-checked;
+//! Only the JAR manifest and selected classes are decompressed and CRC-checked;
 //! this is not a whole-archive integrity or JAR-signature verifier. Module
-//! descriptors are skipped, and nonempty manifest Class-Path is an error.
+//! descriptors are skipped, and nonempty JAR manifest Class-Path is an error.
 use crate::classfile::{ClassSignature, parse_class_bytes};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
@@ -34,6 +34,53 @@ impl Default for JarOptions {
             max_total_uncompressed_bytes: 512 * 1024 * 1024,
         }
     }
+}
+/// Resource bounds for a JMOD 1.0 data input. All sections count toward limits,
+/// and `max_archive_bytes` includes the four-byte JMOD header.
+#[derive(Clone, Debug)]
+pub struct JmodOptions {
+    pub max_archive_bytes: u64,
+    pub max_entries: usize,
+    pub max_entry_bytes: u64,
+    pub max_total_uncompressed_bytes: u64,
+}
+impl Default for JmodOptions {
+    fn default() -> Self {
+        let limits = JarOptions::default();
+        Self {
+            max_archive_bytes: limits.max_archive_bytes,
+            max_entries: limits.max_entries,
+            // Native-library sections in ordinary JDK JMODs can exceed 16 MiB.
+            max_entry_bytes: 64 * 1024 * 1024,
+            max_total_uncompressed_bytes: limits.max_total_uncompressed_bytes,
+        }
+    }
+}
+/// Read a JMOD 1.0 file as a flat platform class input, entirely in Rust.
+/// Only `classes/` entries are selected; the module descriptor and `META-INF/`
+/// resources are skipped. There is no JPMS export/readability enforcement,
+/// multi-release selection, manifest dependency expansion, or JDK discovery.
+/// Selected classes are CRC-checked and their internal names must match the
+/// entry below `classes/`. Origins retain `path!/classes/actual-entry`.
+/// Other sections are validated and bounded but not decompressed or executed.
+/// Errors use the same categories as [`read_jar`]; the call is all-or-nothing.
+pub fn read_jmod(path: &Path, options: &JmodOptions) -> Result<Vec<ClassSignature>, JarError> {
+    Ok(read_jmod_with_usage(path, options)?.classes)
+}
+pub(crate) fn read_jmod_with_usage(path: &Path, options: &JmodOptions) -> Result<JarRead, JarError> {
+    let limits = JarOptions {
+        target_release: 0,
+        max_archive_bytes: options.max_archive_bytes,
+        max_entries: options.max_entries,
+        max_entry_bytes: options.max_entry_bytes,
+        max_total_uncompressed_bytes: options.max_total_uncompressed_bytes,
+    };
+    read_archive_with_usage(path, &limits, ArchiveFormat::Jmod)
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ArchiveFormat {
+    Jar,
+    Jmod,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum JarErrorKind {
@@ -79,6 +126,9 @@ pub(crate) struct JarRead {
     pub uncompressed_bytes: u64,
 }
 pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<JarRead, JarError> {
+    read_archive_with_usage(path, options, ArchiveFormat::Jar)
+}
+fn read_archive_with_usage(path: &Path, options: &JarOptions, format: ArchiveFormat) -> Result<JarRead, JarError> {
     let origin = path.display().to_string();
     let fail = |kind, detail: &str| error(&origin, kind, detail);
     let file = File::open(path).map_err(|e| error(&origin, JarErrorKind::Io, e))?;
@@ -97,8 +147,20 @@ pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<J
     if bytes.len() as u64 > options.max_archive_bytes {
         return Err(fail(JarErrorKind::LimitExceeded, "archive byte limit exceeded"));
     }
+    let archive_bytes = bytes.len() as u64;
+    let payload = if format == ArchiveFormat::Jmod {
+        if bytes.len() < 4 || !bytes.starts_with(b"JM") {
+            return Err(fail(JarErrorKind::Archive, "invalid or truncated JMOD header"));
+        }
+        if bytes[2..4] != [1, 0] {
+            return Err(fail(JarErrorKind::Unsupported, "unsupported JMOD version (expected 1.0)"));
+        }
+        &bytes[4..]
+    } else {
+        bytes.as_slice()
+    };
     // Exact-pinned zip's iterable API reads EOCD without allocating an entry index.
-    let mut preflight = ZipIterable::try_new(Cursor::new(&bytes), zip::read::Config::default())
+    let mut preflight = ZipIterable::try_new(Cursor::new(payload), zip::read::Config::default())
         .map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
     if preflight.len() > options.max_entries {
         return Err(fail(JarErrorKind::LimitExceeded, "entry count limit exceeded"));
@@ -130,7 +192,7 @@ pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<J
             return Err(fail(JarErrorKind::Unsupported, "encrypted, symlink, or unsupported compression entry"));
         }
     }
-    let mut archive = ZipArchive::new(Cursor::new(&bytes)).map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
+    let mut archive = ZipArchive::new(Cursor::new(payload)).map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
     if archive.has_duplicate_names() {
         return Err(fail(JarErrorKind::DuplicateEntry, "duplicate ZIP entry"));
     }
@@ -138,7 +200,10 @@ pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<J
     let mut manifest_index = None;
     for index in 0..archive.len() {
         let entry = archive.by_index_data(index).map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
-        if entry.name_raw().eq_ignore_ascii_case(b"META-INF/MANIFEST.MF") && manifest_index.replace(index).is_some() {
+        if format == ArchiveFormat::Jar
+            && entry.name_raw().eq_ignore_ascii_case(b"META-INF/MANIFEST.MF")
+            && manifest_index.replace(index).is_some()
+        {
             return Err(fail(JarErrorKind::DuplicateEntry, "multiple case-insensitive manifest entries"));
         }
     }
@@ -152,7 +217,12 @@ pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<J
     for index in 0..archive.len() {
         let entry = archive.by_index_data(index).map_err(|e| error(&origin, JarErrorKind::Archive, e))?;
         let name = std::str::from_utf8(entry.name_raw()).map_err(|e| error(&origin, JarErrorKind::UnsafePath, e))?;
-        let (release, logical) = if let Some(rest) = name.strip_prefix("META-INF/versions/") {
+        let (release, logical) = if format == ArchiveFormat::Jmod {
+            let Some(logical) = name.strip_prefix("classes/") else {
+                continue;
+            };
+            (0, logical)
+        } else if let Some(rest) = name.strip_prefix("META-INF/versions/") {
             if !multi_release || options.target_release < 9 {
                 continue;
             }
@@ -191,7 +261,7 @@ pub(crate) fn read_jar_with_usage(path: &Path, options: &JarOptions) -> Result<J
         }
         result.push(signature);
     }
-    Ok(JarRead { classes: result, entries: names.len(), archive_bytes: bytes.len() as u64, uncompressed_bytes: total })
+    Ok(JarRead { classes: result, entries: names.len(), archive_bytes, uncompressed_bytes: total })
 }
 fn validate_path(name: &str) -> Result<(), &'static str> {
     if name.is_empty() || name.contains(['\\', ':', '\0']) || name.chars().any(char::is_control) {
@@ -204,7 +274,7 @@ fn validate_path(name: &str) -> Result<(), &'static str> {
     Ok(())
 }
 fn read_entry(
-    archive: &mut ZipArchive<Cursor<&Vec<u8>>>,
+    archive: &mut ZipArchive<Cursor<&[u8]>>,
     index: usize,
     origin: &str,
     options: &JarOptions,

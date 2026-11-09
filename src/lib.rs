@@ -39,11 +39,11 @@ mod parse;
 mod project;
 mod reparse;
 
-pub use jar::{JarError, JarErrorKind, JarOptions, read_jar};
+pub use jar::{JarError, JarErrorKind, JarOptions, JmodOptions, read_jar, read_jmod};
 
 pub use project::{
-    ClasspathEntry, ProjectConfig, ProjectLimits, ProjectLoadError, ProjectLoadErrorKind, ProjectSnapshot,
-    ShadowedClass,
+    ClasspathEntry, PlatformEntry, ProjectConfig, ProjectLimits, ProjectLoadError, ProjectLoadErrorKind,
+    ProjectSnapshot, ShadowedClass,
 };
 
 pub use bind::{Project, ResolveResult, ResolveStatus, Target, TargetKind};
