@@ -200,6 +200,12 @@ covered by an [additive gate](examples/second_project/STRING_CALLS.md); unknown
 binary generic edges, text blocks, Unicode preprocessing and other literal types
 remain refused. This does not enable String/Object overload selection or general
 reference conversion through generic class-file signatures.
+Validated scalar primitive formals no longer block a proved strict reference
+winner: reference actuals cannot unbox in that first phase. The
+[Gson strict-phase gate](examples/second_project/STRICT_REFERENCE_PHASE.md) selects
+`remove(JsonElement)` for an explicit `JsonPrimitive` argument while retaining
+integer/mixed-argument and chained-call refusals. Complete candidate validation,
+primitive signature identity and all existing evidence limits remain required.
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one

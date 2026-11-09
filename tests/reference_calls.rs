@@ -320,10 +320,7 @@ fn source_and_binary_reference_identities_stay_in_the_owning_compilation() {
     for dir in ["lib", "app", "platform/java/lang"] {
         fs::create_dir_all(fixture.0.join(dir)).unwrap();
     }
-    let callee =
-        "package api; public class C { public void m(Object a) {} public void m(C a) {} public void same(C a) {} }";
     let caller = "package app; import api.C; public class Calls { void run(C c, Object a) { c.m(a); c.same(c); } }";
-    fs::write(fixture.0.join("lib/C.java"), callee).unwrap();
     fs::write(fixture.0.join("app/Calls.java"), caller).unwrap();
     fs::write(fixture.0.join("platform/java/lang/Object.class"), binary("java/lang/Object", None, &[], true)).unwrap();
     let lib = CompilationId::new("lib", "main");
@@ -340,14 +337,21 @@ fn source_and_binary_reference_identities_stay_in_the_owning_compilation() {
         ],
         ..Default::default()
     };
-    let snapshot = WorkspaceSnapshot::load(&config).unwrap();
-    let path = fixture.0.join("app/Calls.java").canonicalize().unwrap().to_str().unwrap().to_owned();
-    for (needle, expected) in [("m(a)", ResolveStatus::OverloadNotResolved), ("same(c)", ResolveStatus::Resolved)] {
-        let at = caller.find(needle).unwrap() as u32;
-        let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
-        assert_eq!(result.status, expected, "{result:?}");
-        assert_eq!(snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at), result);
-        assert!(result.targets.iter().all(|t| t.path.ends_with("lib/C.java")));
+    // Preserve the original identity fixture alongside its scalar-competitor extension.
+    for callee in [
+        "package api; public class C { public void m(Object a) {} public void m(C a) {} public void same(C a) {} }",
+        "package api; public class C { public void m(Object a) {} public void m(C a) {} public void m(int a) {} public void same(C a) {} public void same(int a) {} }",
+    ] {
+        fs::write(fixture.0.join("lib/C.java"), callee).unwrap();
+        let snapshot = WorkspaceSnapshot::load(&config).unwrap();
+        let path = fixture.0.join("app/Calls.java").canonicalize().unwrap().to_str().unwrap().to_owned();
+        for (needle, expected) in [("m(a)", ResolveStatus::OverloadNotResolved), ("same(c)", ResolveStatus::Resolved)] {
+            let at = caller.find(needle).unwrap() as u32;
+            let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
+            assert_eq!(result.status, expected, "{result:?}");
+            assert_eq!(snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at), result);
+            assert!(result.targets.iter().all(|t| t.path.ends_with("lib/C.java")));
+        }
     }
 }
 
@@ -683,7 +687,12 @@ fn string_literals_preserve_competitor_and_budget_refusals() {
         let source = format!(
             "class C {{ public void m(String x) {{}} {competitor} }} class Calls {{ void run(C c) {{ c.m(\"x\"); }} }}"
         );
-        assert_ne!(query(&literal_project(&source), "Calls.java", "m(\"x\")").status, ResolveStatus::Resolved);
+        if competitor == "public void m(int x) {}" {
+            // Intentional additive change: exact String beats a strict-inapplicable scalar.
+            selected(&literal_project(&source), "m(\"x\")", "Calls.java", "m(String x)");
+        } else {
+            assert_ne!(query(&literal_project(&source), "Calls.java", "m(\"x\")").status, ResolveStatus::Resolved);
+        }
     }
     for literal in [format!("\"{}\"", "x".repeat(5000)), format!("{}\"x\"{}", "(".repeat(40), ")".repeat(40))] {
         let source =
@@ -867,4 +876,131 @@ fn string_literal_identity_across_compilations_requires_matching_binary_closure(
     )
     .unwrap();
     check(inputs("app", "platform"));
+}
+
+#[test]
+fn strict_reference_winner_precedes_scalar_primitive_competitors() {
+    for methods in [
+        "public void m(Parent x) {} public void m(int x) {}",
+        "public void m(int x) {} public void m(Parent x) {}",
+        "public void m(Object x) {} public void m(int x) {} public void m(Parent x) {}",
+        "public void m(Parent x) {} public void m(Object x) {} public void m(int x) {}",
+        "public void m(int x) {} public void m(Parent x) {} public void m(Object x) {}",
+        "public void m(Parent x) {} public void m(int x) {} public void m(long x) {} public void m(boolean x) {}",
+    ] {
+        let source = format!(
+            "class Parent {{}} class Child extends Parent {{}} class C {{ {methods} }} class Calls {{ void run(C c, Child a) {{ c.m(a); }} }}"
+        );
+        selected(&project(&source), "m(a)", "Calls.java", "m(Parent x)");
+    }
+    let source = "class C { public void m(Object x) {} public void m(int x) {} } class Calls { void run(C c, Integer a) { c.m(a); } }";
+    let mut p = project(source);
+    // Signature-only nongeneric hierarchy tests phase ordering, not real JDK Integer support.
+    p.add_class_bytes("Integer.class", &binary("java/lang/Integer", Some("java/lang/Object"), &[], true)).unwrap();
+    selected(&p, "m(a)", "Calls.java", "m(Object x)");
+}
+
+#[test]
+fn strict_reference_mixed_vectors_preserve_primitive_identity() {
+    let source = "class A {} class B extends A {} class C { public void m(A x, A y) {} public void m(int x, A y) {} public void m(A x, int y) {} public void m(long x, A y) {} } class Calls { void run(C c, B a) { c.m(a, a); } }";
+    selected(&project(source), "m(a, a)", "Calls.java", "m(A x, A y)");
+    for duplicate in ["m(int x, A y)", "m(A x, int y)"] {
+        let source = format!(
+            "class A {{}} class C {{ public void m(A x, A y) {{}} public void {duplicate} {{}} public void {duplicate} {{}} }} class Calls {{ void run(C c, A a) {{ c.m(a, a); }} }}"
+        );
+        let result = query(&project(&source), "Calls.java", "m(a, a)");
+        assert_ne!(result.status, ResolveStatus::Resolved);
+        assert_eq!(result.targets.len(), 3);
+    }
+}
+
+#[test]
+fn strict_reference_no_winner_keeps_complete_candidates() {
+    for methods in [
+        vec!["m(int x)"],
+        vec!["m(int x)", "m(long x)"],
+        vec!["m(Other x)", "m(int x)"],
+        vec!["m(Left x)", "m(Right x)", "m(int x)"],
+    ] {
+        let declarations = methods.iter().map(|m| format!("public void {m} {{}} ")).collect::<String>();
+        let source = format!(
+            "interface Left {{}} interface Right {{}} class A implements Left, Right {{}} class Other {{}} class C {{ {declarations} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
+        );
+        let expected = methods.iter().map(|m| ("Calls.java", *m)).collect::<Vec<_>>();
+        refused(&project(&source), "m(a)", &expected);
+    }
+}
+
+#[test]
+fn strict_reference_does_not_discard_unsupported_primitive_competitors() {
+    for competitor in [
+        "public static void m(int x) {}",
+        "private void m(int x) {}",
+        "public <T> void m(int x) {}",
+        "public void m(int... x) {}",
+        "public void m(int[] x) {}",
+        "public void m(int x[]) {}",
+        "public void m(A[] x) {}",
+        "public void m(int x) throws int {}",
+        "public void m(int x);",
+        "public public void m(int x) {}",
+        "public void m(int x) {} public void m(int y) {}",
+        "public void m(A x) {}",
+        "public void m(int x, Missing y) {}",
+        "public void m(int x, Hidden<A> y) {}",
+    ] {
+        let source = format!(
+            "class A {{}} class Hidden<T> {{}} class C {{ public void m(A x) {{}} {competitor} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
+        );
+        let result = query(&project(&source), "Calls.java", "m(a)");
+        assert_ne!(result.status, ResolveStatus::Resolved, "{competitor}: {result:?}");
+        assert!(result.targets.len() >= 2, "{competitor}: {result:?}");
+    }
+}
+
+#[test]
+fn strict_reference_competitors_preserve_hierarchy_and_argument_guards() {
+    for ancestry in ["extends Missing", "extends Base"] {
+        let source = format!(
+            "class A {{}} class Base {{ public void m(int x) {{}} }} class C {ancestry} {{ public void m(A x) {{}} public void m(long x) {{}} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
+        );
+        let result = query(&project(&source), "Calls.java", "m(a)");
+        assert_ne!(result.status, ResolveStatus::Resolved);
+        assert_eq!(result.targets.len(), if ancestry == "extends Base" { 3 } else { 2 });
+    }
+    let source = "class A {} class C { public void m(A x) {} public void m(int x) {} } class Calls { void run(C c, A a) { c.m(a); } }";
+    let mut p = project(source);
+    p.remove_class("Object.class");
+    refused(&p, "m(a)", &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
+    p = project(source);
+    p.insert("Duplicate.java", "class A {}");
+    refused(&p, "m(a)", &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
+    for expression in
+        ["null".to_owned(), "give()".to_owned(), "1".to_owned(), format!("{}a{}", "(".repeat(40), ")".repeat(40))]
+    {
+        let text = source.replace("c.m(a)", &format!("c.m({expression})"));
+        refused(&project(&text), &format!("m({expression})"), &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
+    }
+    // Formal evidence must be complete even for a primitive-inapplicable vector.
+    for extra in ["class B extends Missing {}", "class B {} class B {}"] {
+        let source = format!(
+            "class A {{}} {extra} class C {{ public void m(A x, A y) {{}} public void m(int x, B y) {{}} }} class Calls {{ void run(C c, A a) {{ c.m(a, a); }} }}"
+        );
+        refused(&project(&source), "m(a, a)", &[("Calls.java", "m(A x, A y)"), ("Calls.java", "m(int x, B y)")]);
+    }
+}
+
+#[test]
+fn strict_reference_refresh_preserves_exact_target_ranges_and_access() {
+    let call = "class A {} class Calls { void run(C c, A a) { c.m(a); } }";
+    let mut p = project(call);
+    for prefix in ["", "// 😀\r\n"] {
+        let callee = format!("{prefix}class C {{ public void m(A x) {{}} public void m(int x) {{}} }}");
+        p.insert("C.java", &callee);
+        selected(&p, "m(a)", "C.java", "m(A x)");
+        p.insert("C.java", &callee.replace("public void m(int", "private void m(int"));
+        refused(&p, "m(a)", &[("C.java", "m(A x)"), ("C.java", "m(int x)")]);
+        p.insert("C.java", &callee);
+        selected(&p, "m(a)", "C.java", "m(A x)");
+    }
 }

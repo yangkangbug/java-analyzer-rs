@@ -1,0 +1,16 @@
+# query	native status	javac selected	exact native candidates
+strict_child	Resolved	parent@strict.Target	parent@strict.Target
+strict_identity	Resolved	parent@strict.Target	parent@strict.Target
+strict_specific	Resolved	specific_parent@strict.Target	specific_parent@strict.Target
+strict_reverse	Resolved	reverse_parent@strict.Target	reverse_parent@strict.Target
+strict_mixed	Resolved	mixed_ref@strict.Target	mixed_ref@strict.Target
+strict_wrapper	OverloadNotResolved	wrapper_object@strict.Target	wrapper_object@strict.Target,wrapper_scalar@strict.Target
+strict_loose	CallNotResolved	loose_scalar@strict.Target	loose_scalar@strict.Target
+strict_array	OverloadNotResolved	array_parent@strict.Target	array_parent@strict.Target,array_primitive@strict.Target
+strict_unknown	OverloadNotResolved	unknown_parent@strict.Target	unknown_parent@strict.Target,unknown_scalar@strict.Target
+strict_static	OverloadNotResolved	static_parent@strict.Target	static_parent@strict.Target,static_scalar@strict.Target
+strict_private	OverloadNotResolved	private_parent@strict.Target	private_parent@strict.Target,private_scalar@strict.Target
+strict_generic	SignatureNotCompared	generic_parent@strict.Target	generic_parent@strict.Target,generic_scalar@strict.Target
+strict_varargs	OverloadNotResolved	varargs_parent@strict.Target	varargs_parent@strict.Target,varargs_scalar@strict.Target
+strict_inherited	OverloadNotResolved	inherited_parent@strict.Derived	inherited_parent@strict.Derived,inherited_scalar@strict.Base
+strict_string	Resolved	string_ref@strict.Target	string_ref@strict.Target

@@ -3437,6 +3437,22 @@ struct ReferenceValue<'a> {
     string_literal: bool,
 }
 
+// Scalar primitives are retained for signature validation, even though proved
+// reference actuals cannot match them in strict invocation (JLS 15.12.2.2).
+enum ReferenceFormal<'a> {
+    Reference(&'a ClassRec),
+    Primitive(Primitive),
+}
+impl ReferenceFormal<'_> {
+    fn same_type(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Reference(a), Self::Reference(b)) => same_class(a, b),
+            (Self::Primitive(a), Self::Primitive(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
 struct ReferenceCallProof<'a> {
     index: &'a Index,
     file: &'a FileRec,
@@ -4013,17 +4029,20 @@ impl<'a> ReferenceCallProof<'a> {
             let mut types = Vec::new();
             for parameter in parameters {
                 self.charge(1)?;
-                if parameter.unsupported || parameter.primitive.is_some() || parameter.array_rank != 0 {
+                if parameter.unsupported || parameter.array_rank != 0 {
                     return None;
                 }
-                types.push(self.reference_type(file, &parameter.name, member.start)?);
+                types.push(match parameter.primitive {
+                    Some(primitive) => ReferenceFormal::Primitive(primitive),
+                    None => ReferenceFormal::Reference(self.reference_type(file, &parameter.name, member.start)?),
+                });
             }
             formals.push(types);
         }
         for (i, left) in formals.iter().enumerate() {
             for right in &formals[i + 1..] {
                 self.charge(left.len().max(1))?;
-                if left.len() == right.len() && left.iter().zip(right).all(|(a, b)| same_class(a, b)) {
+                if left.len() == right.len() && left.iter().zip(right).all(|(a, b)| a.same_type(b)) {
                     return None;
                 }
             }
@@ -4035,6 +4054,12 @@ impl<'a> ReferenceCallProof<'a> {
             }
             let mut applies = true;
             for (actual, formal) in actuals.iter().zip(parameters) {
+                let ReferenceFormal::Reference(formal) = formal else {
+                    // No unboxing in the strict phase. Keep validating all other
+                    // formals; a primitive slot must not hide unknown evidence.
+                    applies = false;
+                    continue;
+                };
                 applies &= if actual.string_literal
                     && actual.class.scope != formal.scope
                     && formal.package == "java.lang"
@@ -4055,6 +4080,9 @@ impl<'a> ReferenceCallProof<'a> {
             let mut specific = true;
             for &j in &applicable {
                 for (left, right) in formals[i].iter().zip(&formals[j]) {
+                    let (ReferenceFormal::Reference(left), ReferenceFormal::Reference(right)) = (left, right) else {
+                        return None;
+                    };
                     specific &= self.converts(left, right)?;
                 }
             }

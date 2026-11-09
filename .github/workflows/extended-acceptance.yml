@@ -30,6 +30,10 @@ on:
       - 'scripts/test_string_call_acceptance.py'
       - 'scripts/check-string-oracle.py'
       - 'scripts/test_string_oracle.py'
+      - 'scripts/check-strict-reference-acceptance.py'
+      - 'scripts/test_strict_reference_acceptance.py'
+      - 'scripts/check-strict-reference-oracle.py'
+      - 'scripts/test_strict_reference_oracle.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
       - 'scripts/check-lsp-project.py'
@@ -133,6 +137,11 @@ jobs:
           python3 scripts/check-string-call-acceptance.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
+      - name: Gson strict reference winner and preserved primitive refusals (no Java)
+        run: >-
+          python3 scripts/check-strict-reference-acceptance.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
       - name: Generate Commons and four-scope Gson configurations and preserve results (no Java)
         run: >-
           python3 scripts/check-configure-acceptance.py
@@ -166,6 +175,13 @@ jobs:
           python3 scripts/check-string-oracle.py
           --jdk "$RUNNER_TEMP/acceptance/jdk"
           --native target/debug/examples/oracle_bindings
+      - name: Independent strict reference phase oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-strict-reference-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

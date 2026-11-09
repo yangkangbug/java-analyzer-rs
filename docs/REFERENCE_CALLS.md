@@ -36,7 +36,7 @@ of the following are proved:
   the proof. This is not general expression typing or complete Java scope analysis.
 - Every same-name declaration is considered before access filtering. Selection
   requires direct, public, nongeneric, fixed-arity source instance methods and
-  supported scalar reference formal types. Any inherited same-name, static,
+  supported scalar reference or primitive formal types. Any inherited same-name, static,
   generic or varargs competitor prevents selection in this slice.
 - Class and formal identities are resolved in their owning compilation/file and
   declaration context. Both declaration-site and use-site access are checked.
@@ -49,6 +49,20 @@ of the following are proved:
   one formal vector is most specific. There is no declaration-order or numeric
   conversion-score tie-breaker.
 
+Scalar primitive competitors retain their exact primitive identities through
+complete header/access checks and duplicate-signature validation. With already
+proved reference actuals, they are inapplicable in the strict invocation phase
+([JLS 5.3](https://docs.oracle.com/javase/specs/jls/se25/html/jls-5.html#jls-5.3),
+[JLS 15.12.2.2](https://docs.oracle.com/javase/specs/jls/se25/html/jls-15.html#jls-15.12.2.2)).
+A unique strict reference winner is selected before loose invocation/unboxing
+could participate. This does not claim reference values never unbox, implement
+unboxing, or type primitive arguments. If no unique strict winner is proved,
+the original refusal and candidate inventory remain. Primitive arrays are
+reference types, still unsupported here, and are never skipped as scalars.
+Mixed formal vectors are checked in full, including reference evidence on a
+candidate with a primitive slot. Exact primitive identity matters for duplicate
+signatures; distinct primitive overloads are not duplicate declarations.
+
 Source and binary nongeneric types can be formal endpoints. Conversion follows
 only proved nongeneric edges. A raw generic ancestor inventory may establish
 that it contributes no same-name method, as with JsonArray's Iterable ancestor;
@@ -59,7 +73,9 @@ Actual JDK String has a generic Signature attribute. Existing binary edge
 handling conservatively marks all its edges as lacking plain conversion evidence.
 The string slice therefore proves exact String formal identity on that platform,
 including mixed argument lists, but does not establish String-to-Object widening
-or resolve String/Object and String/unrelated overload sets. Supplying literal
+or resolve String/Object and String/unrelated overload sets. The same generic
+binary-edge limitation can prevent proving real Integer-to-Object widening;
+strict Object-over-int phase ordering does not relax that guard. Supplying literal
 type evidence does not weaken that existing conversion boundary. Final class-file
 metadata is a prerequisite, not JVM bytecode verification or proof that every
 class-file flag combination is legal.
@@ -158,6 +174,15 @@ String signatures. The [pinned Gson string gate](../examples/second_project/STRI
 adds exact queries without changing upstream source, historical queries, or parser
 records. Neither gate claims whole-Gson compilation or general overload coverage.
 The separate real Neovim gate remains a client regression check.
+
+The [strict-phase Gson gate](../examples/second_project/STRICT_REFERENCE_PHASE.md)
+adds exact `remove(JsonElement)` selection despite `remove(int)`, preserving all
+earlier reports and source bytes. Its [separate handwritten compiler comparator](../dev-tools/oracle/strict-reference-v1/README.md)
+checks six new selections, nine compiler-valid native limitations and four
+compiler-rejected cases. Real JDK Integer remains a native refusal when generic
+binary metadata prevents the proof, even though javac chooses Object before int.
+Native LSP evidence checks scalar-competitor selection, dirty UTF-16 target ranges,
+refusal/repair and stale versions without adding an analysis-time JVM dependency.
 
 Beyond the explicit zero-argument construction boundary above, new-expression
 typing remains unsupported: no new receivers, enclosing-instance construction,

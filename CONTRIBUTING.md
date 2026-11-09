@@ -68,6 +68,11 @@ unit tests are offline Python tests; only explicit input setup downloads archive
 Only the optional comparator runs Java. It may compile explicit handwritten
 dependency fixtures into temporary class files, but must never execute fixture
 programs or make those files a requirement of native Cargo tests.
+The strict-reference comparator separately verifies its pinned JDK archive and
+installed tool bytes before optional compiler execution. Its exact compiler
+targets, native selections and intentional native refusals remain distinct.
+The real-Gson strict-reference gate uses only the native executable and pinned
+source/platform data; it does not compile or execute Gson.
 
 Preview tooling has offline standard-library tests: `python3 -m unittest discover
 -s scripts -p "test_*.py" -v`. Packaging builds only this repository with the pinned

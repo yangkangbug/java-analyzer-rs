@@ -51,6 +51,9 @@ set of explicit local/parameter, proved zero-argument construction, and ordinary
 string-literal arguments with complete inheritance and access evidence. The
 [string-call gate](examples/second_project/STRING_CALLS.md) checks exact real-source
 navigation while retaining unsupported overloads. Missing evidence stays refused, even for a unique candidate.
+The [strict reference-phase gate](examples/second_project/STRICT_REFERENCE_PHASE.md)
+additionally proves Gson `remove(a)` despite its scalar `int` competitor, without
+adding unboxing, integer-argument typing or chained-call inference.
 
 ### Experimental project CLI
 

@@ -286,6 +286,66 @@ fn native_reference_calls_follow_unsaved_argument_and_dependency_replacements() 
 }
 
 #[test]
+fn native_strict_reference_calls_exclude_scalar_competitor_without_stale_targets() {
+    let fixture = ReferenceCallFixture::new();
+    let mut session = fixture.session();
+    let use_uri = fixture.uri("Use");
+    let receiver_uri = fixture.uri("Receiver");
+    // Derived -> Base is a proved strict reference conversion. The int overload
+    // is inapplicable without unboxing, which this native resolver does not infer.
+    let receiver =
+        "package p;\r\npublic class Receiver { public void m(int value) {} public void m(Base value) {} }\r\n";
+    let consumer = ReferenceCallFixture::USE.replace("receiver.m(value)", "/* 😀 */ receiver.m(value)");
+    open_source(&mut session, &receiver_uri, receiver);
+    open_source(&mut session, &use_uri, &consumer);
+    let initial_location = method_location(&receiver_uri, receiver, "m(Base value)", "m");
+    let initial = source_definition(&mut session, 70, &use_uri, &consumer, "m(value)");
+    assert_eq!(initial.get("result"), Some(&initial_location), "{initial}");
+
+    let dirty_receiver =
+        format!("// unsaved target 🐬\r\n{}", receiver.replace("public void m(Base", "/* 😀 */ public void m(Base"));
+    replace_source(&mut session, &receiver_uri, 2, &dirty_receiver);
+    let location = method_location(&receiver_uri, &dirty_receiver, "m(Base value)", "m");
+    let moved = source_definition(&mut session, 71, &use_uri, &consumer, "m(value)");
+    assert_eq!(moved.get("result"), Some(&location), "{moved}");
+    assert_ne!(location, initial_location);
+
+    // Removing the only strict candidate must not retain either its overlay or
+    // disk Location, nor choose an unsupported primitive conversion instead.
+    let scalar_only = dirty_receiver.replace("m(Base value)", "m(long value)");
+    replace_source(&mut session, &receiver_uri, 3, &scalar_only);
+    let refused = source_definition(&mut session, 72, &use_uri, &consumer, "m(value)");
+    assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+    replace_source(&mut session, &receiver_uri, 4, &dirty_receiver);
+    let repaired = source_definition(&mut session, 73, &use_uri, &consumer, "m(value)");
+    assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+
+    // Inspect the full overload set: a newer more-specific reference candidate
+    // must replace the old answer even with the scalar competitor still present.
+    let expanded = dirty_receiver.replace("m(int value)", "m(Derived value) {} public void m(int value)");
+    replace_source(&mut session, &receiver_uri, 5, &expanded);
+    let specific = method_location(&receiver_uri, &expanded, "m(Derived value)", "m");
+    let switched = source_definition(&mut session, 74, &use_uri, &consumer, "m(value)");
+    assert_eq!(switched.get("result"), Some(&specific), "{switched}");
+    assert_ne!(specific, location);
+    for (id, version) in [(75, 5), (76, 4)] {
+        replace_source(&mut session, &receiver_uri, version, &dirty_receiver);
+        let stale = source_definition(&mut session, id, &use_uri, &consumer, "m(value)");
+        assert_eq!(stale["error"]["code"], -32602, "{stale}");
+        assert!(stale["error"]["message"].as_str().unwrap().contains("desynchronized"));
+        assert!(stale.get("result").is_none());
+    }
+    replace_source(&mut session, &receiver_uri, 6, &dirty_receiver);
+    let repaired = source_definition(&mut session, 77, &use_uri, &consumer, "m(value)");
+    assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    session.send(json!({"jsonrpc":"2.0","id":78,"method":"shutdown","params":null}));
+    assert_eq!(session.response(78)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    fixture.assert_sources_unchanged();
+}
+
+#[test]
 fn native_reference_calls_refuse_unique_wrong_arity_and_type_qualified_instance() {
     let fixture = ReferenceCallFixture::new();
     let use_uri = fixture.uri("Use");
