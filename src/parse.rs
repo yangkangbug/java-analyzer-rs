@@ -502,14 +502,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_declarators(&mut self) {
-        self.expect(SyntaxKind::Ident, "expected name");
-        if self.eat(SyntaxKind::Eq) {
-            self.parse_expr();
-        }
-        while self.eat(SyntaxKind::Comma) {
+        loop {
             self.expect(SyntaxKind::Ident, "expected name");
+            self.parse_array_dimensions();
             if self.eat(SyntaxKind::Eq) {
                 self.parse_expr();
+            }
+            if !self.eat(SyntaxKind::Comma) {
+                break;
             }
         }
     }

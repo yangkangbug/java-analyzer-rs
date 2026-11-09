@@ -14,3 +14,31 @@ overload	OverloadNotResolved	pick_int
 super_receiver	ReceiverNotBound	inherited_field
 # inherited -> child_inherited is ordinary unqualified shadowing; in contrast,
 # super_receiver's javac declaration remains inherited_field in the superclass.
+# Multi-declarator fixtures, authored independently of native output.
+earlier_initializer	Resolved	local_first
+first_field	Resolved	field_first
+second_field	Resolved	field_second
+first_local	Resolved	local_first
+second_local	Resolved	local_second
+local_scalar_use	Resolved	local_scalar
+field_object_use	Resolved	field_object
+field_object_member	Resolved	payload_count
+local_object_use	Resolved	local_object
+local_object_member	Resolved	payload_count
+holder_right_use	Resolved	holder_right
+holder_scalar_use	Resolved	holder_scalar
+imported_scalar_member	Resolved	payload_count
+holder_second_use	Resolved	holder_second
+imported_second_member	Resolved	payload_count
+field_vector_use	Resolved	field_vector
+field_row_use	Resolved	field_row
+local_vector_use	Resolved	local_vector
+local_row_use	Resolved	local_row
+field_matrix_use	Resolved	field_matrix
+local_matrix_use	Resolved	local_matrix
+local_array_use	Resolved	local_values
+before_shadow_declaration	Resolved	field_shadow
+scope_first_local	Resolved	scope_before
+scope_second_local	Resolved	scope_shadow
+after_shadow_scope	Resolved	field_shadow
+array_receiver	Unresolved	payload_count

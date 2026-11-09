@@ -14,3 +14,9 @@ q12	org/apache/commons/lang3/tuple/ImmutablePair.java	4497	getKey	ReceiverNotBou
 q13	org/apache/commons/lang3/tuple/ImmutablePair.java	3328	NULL	Resolved	1
 q14	org/apache/commons/lang3/CharSequenceUtils.java	1261	j	Resolved	1
 q15	org/apache/commons/lang3/CharSequenceUtils.java	1376	j	Resolved	1
+q16	org/apache/commons/lang3/StringUtils.java	222340	xn	Resolved	1
+q17	org/apache/commons/lang3/StringUtils.java	222811	si	Resolved	1
+q18	org/apache/commons/lang3/StringUtils.java	222988	si	Resolved	1
+q19	org/apache/commons/lang3/text/StrBuilder.java	92925	rightIdx	Resolved	1
+q20	org/apache/commons/lang3/math/Fraction.java	5353	delta2	Resolved	1
+q21	org/apache/commons/lang3/math/Fraction.java	5853	delta1	Resolved	1

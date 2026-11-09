@@ -24,3 +24,9 @@ q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	
 q13	org/apache/commons/lang3/tuple/ImmutablePair.java	Field	org.apache.commons.lang3.tuple.ImmutablePair	NULL	1815	1819
 q14	org/apache/commons/lang3/CharSequenceUtils.java	Local	-	j	1234	1235
 q15	org/apache/commons/lang3/CharSequenceUtils.java	Local	-	j	1234	1235
+q16	org/apache/commons/lang3/StringUtils.java	Local	-	xn	222290	222292
+q17	org/apache/commons/lang3/StringUtils.java	Local	-	si	222717	222719
+q18	org/apache/commons/lang3/StringUtils.java	Local	-	si	222902	222904
+q19	org/apache/commons/lang3/text/StrBuilder.java	Local	-	rightIdx	92788	92796
+q20	org/apache/commons/lang3/math/Fraction.java	Local	-	delta2	5248	5254
+q21	org/apache/commons/lang3/math/Fraction.java	Local	-	delta1	5240	5246

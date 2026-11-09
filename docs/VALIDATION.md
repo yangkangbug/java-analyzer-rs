@@ -368,3 +368,49 @@ rust-toolchain `b725eda525362e7cf34af9a7243cac1e3f01a7ec` with Rust 1.96.0). It 
 PR code, limits runtime, and uploads no upstream artifacts. These pins do not
 constitute a hermetic runner/dependency graph. Default CI, extended CI, local
 corpus checks and semantic coverage must always be reported separately.
+
+## Multiple declarators and receiver-type boundary follow-up
+
+Baseline: `024fe573d973c771d9d6d17e82c5eff9ae6089a5`. Focused failing tests reproduced
+missing second/third field names and recovery errors for postfix array dimensions.
+Multiple ordinary local names already resolved correctly; that behavior is
+preserved rather than claimed as newly implemented.
+
+Field and local declarations now share a declarator walk that retains every
+name's exact range and independent suffix rank, without descending into initializer
+names/commas. Shared type dimensions and per-name dimensions are kept separately.
+Native internal tests verify exact ranks and exclude generic-argument brackets.
+Named array receivers now refuse scalar member lookup; array element-expression
+typing and `length`/`clone` remain unimplemented. See [boundaries](DECLARATORS.md).
+
+Final local checks pass: **165 Rust tests**, two intentionally ignored manual
+measurements, one compile-fail doctest, formatting, all-target Clippy, strict docs,
+all contributor examples, no-Java-environment real JAR/JMOD checks, twelve offline
+fetch-security tests and verified Cargo packaging. Fourteen new integration tests
+cover declaration targets, nested initializer commas, local scopes, Unicode,
+imports/provenance/access, malformed buffers, edits and workspace/prepared APIs.
+One new internal test verifies actual array ranks, not merely receiver refusal.
+Independent review checked lossless token text and insertion/deletion/replacement
+at every byte boundary of eight valid/malformed cases against full reparsing.
+
+The independent compiler fixture grew from three to seven handwritten files.
+Before the fix, javac accepted the complete fixture and selected all forty query
+positions, but eleven supported native probes failed. After the fix, **37 supported
+bindings** match the independently selected declarations and **three unsupported
+boundaries** remain explicit: overload choice, super receiver and indexed-array
+receiver. The last is `Unresolved` with no target, not semantic-equivalence success.
+The unchanged compiler helper still supplies actual element name/kind/owner/range.
+Wrong-sibling and same-name/wrong-package perturbations fail despite overlapping
+javac ranges for comma declarations. Existing invalid/incomplete compiler inputs,
+corrupted evidence and optimized-Python controls also pass. This oracle checks
+array variable identity, not independent array-rank/type equivalence.
+
+The original Commons Lang source bytes remain unchanged. A syntax-tree inventory
+finds six multi-local declarations and no multi-field declarations in the 249-file
+corpus. Six new hand-anchored queries in StringUtils, StrBuilder and Fraction passed
+on the baseline executable and still pass after the fix; they protect existing
+behavior, not newly successful upstream navigation. The complete corpus retains
+**85 diagnostics in 24 files**, exact lossless source coverage and all **21 query
+baselines**. The release run uses five rounds, 105 samples per mode, with no timing
+threshold or general performance claim. No production dependencies changed and
+only the explicit development comparator executes Java.

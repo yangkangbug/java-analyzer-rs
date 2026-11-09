@@ -208,6 +208,7 @@ impl PreparedProject<'_> {
 #[derive(Clone, Debug)]
 struct QualName {
     parts: Vec<String>,
+    array_rank: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -591,6 +592,9 @@ impl Index {
                         let Some(qual) = declared_of(declaration_file, target) else {
                             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
                         };
+                        if qual.array_rank != 0 {
+                            return ResolveResult::none(ResolveStatus::ReceiverNotBound);
+                        }
                         // Resolve the receiver type where it was declared, but check member access at the use site.
                         match self.lookup_type_name(declaration_file, &qual.parts, target.start_byte) {
                             TypeLookup::One(class) => self.lookup_member(class, name, call, file, byte),
@@ -1373,13 +1377,18 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
 }
 
 fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_index: usize, kind: TargetKind) {
-    if let Some((name, name_start, name_end)) = direct_ident(node, start) {
+    let declarations = if kind == TargetKind::Field {
+        variable_declarators(node, start)
+    } else {
+        direct_ident(node, start).map(|(name, at, end)| (name, at, end, read_type(node, start))).into_iter().collect()
+    };
+    for (name, name_start, name_end, declared) in declarations {
         let member = Member {
             name,
             kind,
             start: name_start,
             end: name_end,
-            declared: read_type(node, start),
+            declared,
             access: read_access(node, start),
             shape: if kind == TargetKind::Method {
                 source_method_shape(node, start)
@@ -1407,27 +1416,62 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
     ctx.scope_stack.pop();
 }
 
-fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: TargetKind) {
-    let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
-    let declared = read_type(node, start);
+// Declaration names and suffix brackets are direct children; initializer names,
+// commas, and array accesses are nested expressions and must never become symbols.
+// Keep the existing lossless CST layout and reset suffix rank at each comma.
+fn variable_declarators(node: &GreenNode, start: u32) -> Vec<(String, u32, u32, Option<QualName>)> {
+    let shared = child_kind(node, start, SyntaxKind::Type).and_then(|(ty, at)| {
+        let parts = type_parts(ty, at)?;
+        let array_rank = tokens(ty, at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count();
+        Some(QualName { parts, array_rank })
+    });
+    let mut result = Vec::new();
+    let mut current: Option<(String, u32, u32, Option<QualName>)> = None;
+    let mut in_initializer = false;
     let mut offset = start;
     for child in node.children() {
-        if let Some(token) = child.as_token()
-            && token.kind() == SyntaxKind::Ident
-        {
-            ctx.file.locals.push(LocalRec {
-                name: token.text().to_string(),
-                kind,
-                start: offset,
-                end: offset + token.utf8_len(),
-                scope_start,
-                scope_end,
-                visible_from: offset + token.utf8_len(),
-                declared: declared.clone(),
-                path: ctx.file.path.clone(),
-            });
+        if let Some(token) = child.as_token() {
+            match token.kind() {
+                SyntaxKind::Ident if current.is_none() && !in_initializer => {
+                    current = Some((token.text().to_string(), offset, offset + token.utf8_len(), shared.clone()));
+                }
+                SyntaxKind::LBracket if !in_initializer => {
+                    if let Some((_, _, _, Some(ty))) = current.as_mut() {
+                        ty.array_rank += 1;
+                    }
+                }
+                SyntaxKind::Eq => in_initializer = true,
+                SyntaxKind::Comma => {
+                    if let Some(declaration) = current.take() {
+                        result.push(declaration);
+                    }
+                    in_initializer = false;
+                }
+                _ => {}
+            }
         }
         offset += child.utf8_len();
+    }
+    if let Some(declaration) = current {
+        result.push(declaration);
+    }
+    result
+}
+
+fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: TargetKind) {
+    let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
+    for (name, name_start, name_end, declared) in variable_declarators(node, start) {
+        ctx.file.locals.push(LocalRec {
+            name,
+            kind,
+            start: name_start,
+            end: name_end,
+            scope_start,
+            scope_end,
+            visible_from: name_end,
+            declared,
+            path: ctx.file.path.clone(),
+        });
     }
 }
 
@@ -1671,7 +1715,16 @@ fn read_type(node: &GreenNode, start: u32) -> Option<QualName> {
     } else {
         Vec::new()
     };
-    if parts.is_empty() { None } else { Some(QualName { parts }) }
+    if parts.is_empty() {
+        None
+    } else {
+        let array_rank = tokens(type_node, type_at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count()
+            + tokens(node, start)
+                .iter()
+                .filter(|token| matches!(token.0, SyntaxKind::LBracket | SyntaxKind::DotDotDot))
+                .count();
+        Some(QualName { parts, array_rank })
+    }
 }
 
 fn child_kind(node: &GreenNode, start: u32, kind: SyntaxKind) -> Option<(&GreenNode, u32)> {
@@ -1822,5 +1875,33 @@ mod prepared_tests {
             assert!(prepared.scope(&CompilationId::new("missing", "main")).is_none());
         }
         assert_eq!(INDEX_BUILDS.with(|count| count.get()), 2);
+    }
+}
+
+#[cfg(test)]
+mod declarator_tests {
+    use super::*;
+
+    #[test]
+    fn ranks_combine_shared_and_per_name_dimensions_only() {
+        let text = "class A { Box<A[]>[] one, two[][]; void m() { Box<A[]> first[], second, third[][] = make(first, second); } }";
+        let parsed = ParsedFile::parse(text);
+        assert!(parsed.errors().is_empty());
+        let file = index_file("A.java", &parsed);
+        let fields = &file.classes[0].fields;
+        assert_eq!(
+            fields
+                .iter()
+                .map(|field| (field.name.as_str(), field.declared.as_ref().unwrap().array_rank))
+                .collect::<Vec<_>>(),
+            vec![("one", 1), ("two", 3)]
+        );
+        assert_eq!(
+            file.locals
+                .iter()
+                .map(|local| (local.name.as_str(), local.declared.as_ref().unwrap().array_rank))
+                .collect::<Vec<_>>(),
+            vec![("first", 1), ("second", 0), ("third", 2)]
+        );
     }
 }

@@ -51,12 +51,12 @@ are covered by its official Temurin distribution; it remains an external input.
 
 ## Fixed query corpus and evidence boundary
 
-`queries.tsv` pins 15 real source positions, the queried spelling, status, and
+`queries.tsv` pins 21 real source positions, the queried spelling, status, and
 target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are eleven resolved queries, three explicit overload refusals, and one
+There are seventeen resolved queries, three explicit overload refusals, and one
 unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
@@ -72,6 +72,14 @@ unbound receiver:
   resolve to the exact `j` declaration at bytes 1234..1235. These expectations
   were checked independently against the original source and lexical scope,
   not generated from prepared/rebuild agreement.
+
+Six additional queries pin existing multi-local behavior in StringUtils, StrBuilder,
+and Fraction: sibling declaration ordering, distinct loop scopes, and exact names
+in a shared declaration. All six passed before the multi-field fix. A syntax-tree
+inventory found six multi-local declarations and no multi-field declarations in
+this corpus, so this workload provides regression coverage rather than evidence
+that the new multi-field capability improves this particular upstream project.
+The separate handwritten compiler oracle supplies that feature evidence.
 
 The current baseline inventory is 249 losslessly represented files, 225 without
 reported parser errors and 24 with a total of 85 error nodes. Zero errors is not proof
@@ -103,7 +111,7 @@ comparison and all source-grounded diagnostic groups are retained in
 ## Measurements
 
 Load/parse/platform decoding and one index preparation are separately timed.
-The 15-query corpus is first checked, then repeated five times by default (75
+The 21-query corpus is first checked, then repeated five times by default (105
 samples per mode). Prepared/rebuild order alternates between rounds. Latencies
 include result construction but exclude equality checks and output. p50/p95 use
 nearest rank over individual query samples, with total/min/max also reported.

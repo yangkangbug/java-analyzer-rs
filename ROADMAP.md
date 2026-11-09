@@ -128,12 +128,24 @@ independent compiler oracle. Neither prepared/rebuild agreement nor error counts
 
 A separate trusted-main/manual workflow verifies pinned upstream artifacts and
 runs the native real-source workload, then a development-only javac declaration
-oracle. Eleven supported bindings and two explicit refusal boundaries are checked
+oracle. Thirty-seven supported bindings and three explicit refusal boundaries are checked
 independently; the oracle exposed a shadowed-super field error now conservatively
 refused. This does not implement full super semantics or close project/type gates.
 The default native test path and production library remain JVM-free. Broader
 projects, diagnostics, overload/generic semantics and required-gate policy remain
 open work; see the validation boundary document.
+
+### Multiple declarator identity implemented
+
+Every sibling field in a comma declaration now receives its own source target.
+Field/local declarators retain the shared type and their own postfix array rank;
+initializer names and nested commas are not declarations. Arrays remain explicit
+unsupported receivers instead of borrowing scalar element members. Existing
+local declaration ordering, source-owner imports and compilation visibility stay
+covered, including independent compiler-selected targets. This is a declaration
+correctness foundation for later symbol/type services, not persistent IDs,
+array-expression typing, definite assignment or complete Java scope rules.
+See [declaration boundaries](docs/DECLARATORS.md).
 
 ## M2: semantic types and method applicability
 

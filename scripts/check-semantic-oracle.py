@@ -9,7 +9,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ORACLE = ROOT / "dev-tools/oracle"
-FILES = ("app/Use.java", "lib/Base.java", "lib/Value.java")
+FILES = ("app/Use.java", "app/Declarations.java", "app/Payload.java",
+         "lib/Base.java", "lib/Value.java", "lib/Holder.java", "model/Payload.java")
 MARKER = re.compile(rb"/\*([DQ]):([a-z_]+)\*/([A-Za-z_$][A-Za-z0-9_$]*)")
 
 
@@ -54,7 +55,7 @@ def compare(expected, queries, declarations, javac, native):
             assert nowner == expected_owner, f"{query}: native owner differs"
         elif status == "OverloadNotResolved":
             assert int(count) >= 2, f"{query}: overload candidates missing"
-        elif status == "ReceiverNotBound":
+        elif status in ("ReceiverNotBound", "Unresolved"):
             assert int(count) == 0, f"{query}: unsupported receiver fabricated target"
         else:
             raise AssertionError(f"unrecognized expectation status: {status}")
@@ -110,14 +111,19 @@ def main():
         javac = records(run(command, env).stdout)
         native = records(run([args.native.resolve(), fixture, request], env).stdout)
         compare(expected, queries, declarations, javac, native)
-        perturbed = dict(expected)
-        perturbed["parameter"] = ("Resolved", "shadow_field")
-        try:
-            compare(perturbed, queries, declarations, javac, native)
-        except AssertionError:
-            pass
-        else:
-            raise AssertionError("oracle accepted deliberately wrong declaration")
+        # Reject both a sibling inside overlapping javac ranges and a same-name
+        # field in the caller package instead of the declaration's imported type.
+        for query, wrong_target in (("parameter", "shadow_field"),
+                                    ("second_field", "field_first"),
+                                    ("imported_scalar_member", "decoy_count")):
+            perturbed = dict(expected)
+            perturbed[query] = ("Resolved", wrong_target)
+            try:
+                compare(perturbed, queries, declarations, javac, native)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"oracle accepted deliberately wrong declaration: {query}")
         corrupted = {key: list(value) for key, value in javac.items()}
         corrupted["parameter"][4] = "0"
         corrupted["parameter"][5] = "1"

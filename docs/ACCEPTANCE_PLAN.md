@@ -68,7 +68,7 @@ flow rather than an arbitrary ambient JDK.
 
 ## Independent compiler evidence
 
-The three-file handwritten fixture and expectations are versioned under
+The seven-file handwritten fixture and expectations are versioned under
 `dev-tools/oracle`. javac `Trees.getElement` selects each referenced declaration,
 then `Trees.getPath` supplies its actual declaration tree and range. Compiler
 UTF-16 positions are converted to UTF-8 bytes, including an astral-character
@@ -76,10 +76,11 @@ case. The wrapper associates the actual compiler tree with a unique declaration
 marker and checks the native target's path, kind, name, owner convention and exact
 name-token range. Expectations are not generated from native output.
 
-Eleven supported bindings are checked against this independent evidence. Two
-separate cases verify explicit refusal boundaries: javac selects an overload and
-resolves `super.inherited`, while the native engine respectively reports
-`OverloadNotResolved` and `ReceiverNotBound`. These are not semantic-equivalence
+Thirty-seven supported bindings are checked against this independent evidence. Three
+separate cases verify explicit refusal boundaries: javac selects an overload,
+resolves `super.inherited`, and binds an indexed-array source-field receiver,
+while the native engine respectively reports `OverloadNotResolved`,
+`ReceiverNotBound`, and `Unresolved` with no target. These are not semantic-equivalence
 passes. Missing-name/incomplete compiler failures, native missing-name behavior,
 wrong-golden and corrupted-compiler evidence, and optimized-Python rejection are
 negative controls. Both compiler stages disable annotation processing and
@@ -93,10 +94,17 @@ instead of silently dropping `super`. Full super binding is still unimplemented.
 `this`, ordinary inheritance, locals/parameters, and qualified type-prefix lookup
 have separate regression coverage across legacy/prepared/workspace APIs.
 
+The multi-declarator follow-up independently confirms every named sibling field,
+local declaration order and block scope, mixed scalar/array declaration names,
+and imported field receiver provenance despite a caller-package name collision.
+The compiler helper is unchanged. Wrong-sibling and same-name/wrong-package
+perturbations must fail even when comma-declaration tree ranges overlap. This is
+still binding evidence, not a type-inference or definite-assignment checker.
+
 ## Remaining coverage limits
 
 The full real-source workload still has known parser/semantic gaps. Its default
-fifteen fixed queries and error-node inventory are not whole-project semantic
+twenty-one fixed queries and error-node inventory are not whole-project semantic
 coverage. Prepared/rebuild agreement proves consistency, not Java correctness.
 The small independent oracle does not cover generic inference, overload selection,
 platform bindings, JPMS, complete access control, malformed-buffer equivalence,

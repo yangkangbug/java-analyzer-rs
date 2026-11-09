@@ -59,6 +59,8 @@ are not.
   listed in `src/lib.rs`, including lambdas, method references, and
   try-with-resources (`Resource` nodes).
 - Names, literals, `this`, and `super` used as expressions are nodes. Tokens stay leaves.
+- Comma-separated field/local declarations preserve each name and postfix array
+  suffix. See [declaration binding boundaries](docs/DECLARATORS.md).
 - Basic-for initialization/update support statement-expression lists without a
   general comma operator. See [for-loop boundaries](docs/FOR_LOOPS.md).
 - Catch parameters support annotations and `final`, with bounded malformed-header
@@ -153,7 +155,9 @@ A qualified name (`b.Foo`, `box.value`) walks the longest indexed class prefix
 and then its members. A source field used as a receiver (`box.result.value`)
 keeps its declaration's file, imports, package, and enclosing type, including
 when the field is inherited. Access to the next member is still checked at
-the caller. Object-valued class-file field receivers are not bound yet.
+the caller. Source array receivers are deliberately not treated as scalar element objects.
+Array indexing/length/clone binding is not implemented. Object-valued class-file
+field receivers are not bound yet.
 A package prefix of an indexed class is `Package`, not a type.
 `Type::new` is `ConstructorRefNotBound`.
 
