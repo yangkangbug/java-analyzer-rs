@@ -81,3 +81,10 @@ pure-Rust zlib-rs backend; no JVM or native zlib runtime is invoked.
 ZipIterable's bounded metadata preflight API requires an exact version pin.
 All additional locked packages, target-specific dependencies, upstream
 licenses, and preserved notices are listed in THIRD_PARTY_LICENSES.md.
+
+Optional validation tools under dev-tools/oracle are original Apache-2.0 project
+code. External Commons Lang sources and the Eclipse Temurin JDK are downloaded
+only for explicit acceptance checks and are not distributed with this project.
+The input manifest and docs/ACCEPTANCE_PLAN.md record their hashes, licenses and
+retained notices. Only the optional compiler comparator executes Java; these
+inputs are not production or Cargo dependencies.

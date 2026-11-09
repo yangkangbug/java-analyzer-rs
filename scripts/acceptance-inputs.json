@@ -1,0 +1,24 @@
+{
+  "sources": {
+    "url": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0-sources.jar",
+    "sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+    "size": 728980,
+    "max_entries": 1000,
+    "max_expanded": 16777216,
+    "max_file": 4194304,
+    "license": "Apache-2.0; archive META-INF/LICENSE.txt and META-INF/NOTICE.txt",
+    "provenance": "Apache Commons Lang 3.17.0 published source artifact; https://commons.apache.org/proper/commons-lang/"
+  },
+  "jdk": {
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz",
+    "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c",
+    "size": 207858352,
+    "max_entries": 2000,
+    "max_expanded": 536870912,
+    "max_file": 167772160,
+    "root": "jdk-21.0.13+9",
+    "jmod_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+    "license": "GPL-2.0 with Classpath Exception and assembly exception; additional component notices under legal/",
+    "provenance": "Eclipse Temurin 21.0.13+9 Linux x64 HotSpot; https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9"
+  }
+}

@@ -37,7 +37,7 @@ pub enum ResolveStatus {
     Ambiguous,
     /// More than one method has this name. Argument types are not compared.
     OverloadNotResolved,
-    /// The qualifier is a value whose declared type is not a source class.
+    /// The qualifier is `super` or a value whose declared type is not a source class.
     ReceiverNotBound,
     /// A static import names this identifier, and static imports are not applied.
     StaticImportNotApplied,
@@ -500,6 +500,11 @@ impl Index {
     }
 
     fn resolve_field(&self, file: &FileRec, _parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
+        // Super lookup is not implemented. Do not let field_chain discard an
+        // unsupported receiver and reinterpret its selector as a simple name.
+        if has_super_receiver(hit.node) {
+            return ResolveResult::none(ResolveStatus::ReceiverNotBound);
+        }
         let chain = field_chain(hit.node, hit.start);
         let Some(index) = chain.iter().position(|segment| segment.start <= byte && byte < segment.end) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
@@ -1068,6 +1073,28 @@ struct Segment {
     start: u32,
     end: u32,
     this: bool,
+}
+
+// Follow only the receiver/callee spine, never call arguments or index operands.
+// Qualified `Outer.super` is a FieldExpr with a Super token, whereas plain
+// `super` is a SuperExpr. Inspect syntax, not source text (comments may say super).
+fn has_super_receiver(node: &GreenNode) -> bool {
+    match node.kind() {
+        SyntaxKind::SuperExpr => true,
+        SyntaxKind::FieldExpr
+        | SyntaxKind::MethodRefExpr
+        | SyntaxKind::CallExpr
+        | SyntaxKind::IndexExpr
+        | SyntaxKind::ParenExpr => {
+            (node.kind() == SyntaxKind::FieldExpr
+                && node
+                    .children()
+                    .iter()
+                    .any(|child| child.as_token().is_some_and(|token| token.kind() == SyntaxKind::Super)))
+                || node.children().iter().find_map(|child| child.as_node()).is_some_and(|base| has_super_receiver(base))
+        }
+        _ => false,
+    }
 }
 
 fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {

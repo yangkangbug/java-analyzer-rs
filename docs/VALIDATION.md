@@ -311,3 +311,60 @@ checks, and Cargo package verification. The local real-source run has fifteen
 queries repeated five times (75 samples per query mode), and its diagnostic
 inventory matches the updated baseline. No dependency or Java-runtime requirement
 was added.
+
+## Fixed-input extended CI and independent javac follow-up
+
+Baseline: `c05f6586f3260a8b6d05b8803e1c3f82ac4314ce`. This slice adds a separate
+trusted-main/manual acceptance workflow; it does not add a JDK requirement to the
+Rust library or default native tests. See [execution boundaries](ACCEPTANCE_PLAN.md).
+
+Local frozen checks pass: **150 Rust tests**, two intentionally ignored manual
+measurements, one compile-fail doctest, strict formatting/Clippy/rustdoc, examples,
+empty-environment native checks and verified Cargo packaging. Twelve offline
+Python fetch-security tests pass. No Rust dependencies changed.
+
+External inputs retain the previously recorded source/JDK/JMOD hashes. A fresh,
+empty-cache network run downloaded the exact official 728,980-byte Commons Lang
+sources artifact and 207,858,352-byte Temurin archive, verified their hashes, and
+produced only JMOD/legal data. A separately verified compiler extraction was used
+for the optional oracle. Offline cache hits were reverified; missing/corrupt
+cache entries failed closed. Tests and independent probes covered path traversal,
+symlinks/ancestors, duplicate normalized names, special entries, compression/count
+budgets, corrupt CRC/gzip, download size limits, HTTPS policy and partial cleanup.
+No external archives/JDK are included in the repository or source deliverable.
+
+The original 249-file real-source run remains unchanged at 85 parser diagnostics
+across 24 files. All fifteen pinned queries pass, with lossless source coverage.
+This Rust child runs with no Java environment. The comparator is a separate,
+explicit development step and is the only added path that executes Java.
+
+The handwritten three-file oracle uses pinned javac 21.0.13+9/release 21 to select
+actual declaration elements, then obtains declaration source ranges independently.
+Eleven supported native bindings agree, including cross-file types/inheritance,
+fields, parameters, local scope and a uniquely named source method. Compiler
+UTF-16 positions are converted to UTF-8; an astral character precedes query sites.
+All public target fields are checked using documented owner conventions.
+
+Two additional cases remain explicit native refusals, not semantic-equivalence
+passes: an overload chosen by javac and a super-qualified field. The latter first
+exposed a real bug: native lookup dropped the super receiver and resolved to a
+shadowing subclass field. Failing Rust regressions reproduced it in legacy and
+workspace APIs. The conservative syntax-receiver guard now refuses super fields,
+calls, method references and receiver chains instead of returning that wrong
+symbol; this/unqualified lookup and ordinary scope behavior remain covered. Full
+super semantics are still not implemented.
+
+Negative controls reject a wrong golden target, a corrupted compiler declaration
+range, missing or malformed output, native wrong status/target, and optimized
+Python. Missing-name/incomplete Java files must produce compiler errors, and the
+native missing-name probe stays unresolved. Independent review additionally
+altered seven pieces of evidence and exercised a separate nine-query super/this
+fixture. Annotation processing and implicit source compilation are disabled;
+fixture programs are analyzed, never generated or executed.
+
+The workflow uses read-only permissions, nonpersistent checkout credentials and
+verified official action commits (checkout `11d5960a326750d5838078e36cf38b85af677262`,
+rust-toolchain `b725eda525362e7cf34af9a7243cac1e3f01a7ec` with Rust 1.96.0). It excludes
+PR code, limits runtime, and uploads no upstream artifacts. These pins do not
+constitute a hermetic runner/dependency graph. Default CI, extended CI, local
+corpus checks and semantic coverage must always be reported separately.

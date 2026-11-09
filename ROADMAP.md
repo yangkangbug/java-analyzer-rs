@@ -120,9 +120,20 @@ bound semantics, remaining parser gaps and general project support are still ope
 The next source-grounded slice implements basic-for expression lists and prevents
 partial incremental fragments from losing source coverage. The complete corpus
 now reports 85 diagnostics, with every cause retained and the unrelated contextual-
-`var` recovery increase disclosed. [Validation plans](docs/ACCEPTANCE_PLAN.md)
-separate current local corpus checks from future CI and independent compiler
-oracles. Neither prepared/rebuild agreement nor error counts prove Java semantics.
+`var` recovery increase disclosed. [Validation boundaries](docs/ACCEPTANCE_PLAN.md)
+separate default native CI from fixed-input extended CI and the optional
+independent compiler oracle. Neither prepared/rebuild agreement nor error counts prove Java semantics.
+
+### Independent acceptance gate implemented
+
+A separate trusted-main/manual workflow verifies pinned upstream artifacts and
+runs the native real-source workload, then a development-only javac declaration
+oracle. Eleven supported bindings and two explicit refusal boundaries are checked
+independently; the oracle exposed a shadowed-super field error now conservatively
+refused. This does not implement full super semantics or close project/type gates.
+The default native test path and production library remain JVM-free. Broader
+projects, diagnostics, overload/generic semantics and required-gate policy remain
+open work; see the validation boundary document.
 
 ## M2: semantic types and method applicability
 

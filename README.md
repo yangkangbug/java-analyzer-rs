@@ -339,8 +339,11 @@ data. It checks 15 fixed query positions, reports parser gaps, and measures
 preparation separately from repeated queries. It currently exposes substantial
 parser/semantic limitations; it is not a claim of complete project support.
 No upstream source archive or JDK data is bundled, and no Java process runs.
-This external corpus is not currently a default CI step. See
-[validation boundaries and next gates](docs/ACCEPTANCE_PLAN.md).
+The default native CI stays separate from the opt-in, trusted-main
+[extended acceptance workflow](.github/workflows/extended-acceptance.yml). That
+workflow verifies fixed external inputs and runs an independent development-only
+javac comparator. See [validation boundaries](docs/ACCEPTANCE_PLAN.md); production
+analysis and default native tests do not acquire a Java dependency.
 
 ## Later stages
 

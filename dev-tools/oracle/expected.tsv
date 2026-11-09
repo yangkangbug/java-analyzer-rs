@@ -1,0 +1,16 @@
+# Hand-authored v1: query native-status javac-declaration-marker
+own_field	Resolved	count_field
+base_import	Resolved	base_type
+value_import	Resolved	value_type
+parameter	Resolved	param
+local_shadow	Resolved	shadow_local
+field_after_scope	Resolved	shadow_field
+local_use	Resolved	local
+inherited	Resolved	child_inherited
+base_only	Resolved	base_only_field
+field_chain	Resolved	count_field
+method_chain	Resolved	read_method
+overload	OverloadNotResolved	pick_int
+super_receiver	ReceiverNotBound	inherited_field
+# inherited -> child_inherited is ordinary unqualified shadowing; in contrast,
+# super_receiver's javac declaration remains inherited_field in the superclass.

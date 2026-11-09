@@ -119,8 +119,9 @@ invalidation, or medium/large project measurements have been made here.
 
 ## CI and independent correctness evidence
 
-This external corpus harness is currently optional/local, not a default CI step.
-Prepared/rebuild equality alone is not a Java semantic oracle. The repository
-contains a small hand-authored lexical-scope oracle; a pinned real-corpus CI job
-and optional independent compiler oracle remain [planned work](../../docs/ACCEPTANCE_PLAN.md),
-not completed checks.
+This external corpus harness remains separate from default native CI. It is now
+also run by the opt-in trusted-main `extended-acceptance` workflow after fixed-
+hash input setup. That workflow separately runs a small javac declaration oracle;
+its Java execution is development-only and never part of the native analyzer.
+Prepared/rebuild equality alone is not a Java semantic oracle. See the exact
+[execution and evidence boundaries](../../docs/ACCEPTANCE_PLAN.md).

@@ -1,0 +1,67 @@
+name: extended-acceptance
+
+# Optional network/data/compiler gate, separate from mandatory JVM-free ci.
+# Manual runs are restricted to main too; no PR code or pull_request_target.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/extended-acceptance.yml'
+      - 'scripts/acceptance-inputs.json'
+      - 'scripts/fetch-acceptance-inputs.py'
+      - 'scripts/test_fetch_acceptance_inputs.py'
+      - 'scripts/check-real-source.py'
+      - 'scripts/check-semantic-oracle.py'
+      - 'examples/real_source/**'
+      - 'examples/real_source.rs'
+      - 'examples/oracle_bindings.rs'
+      - 'dev-tools/oracle/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extended-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-inputs-and-oracle:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # Official refs verified through GitHub API; fixed commits, not floating tags.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action implementation
+        with:
+          toolchain: 1.96.0
+      - name: Offline fetch-security unit tests (no Java)
+        run: python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
+      - name: Build native acceptance executables (no Java)
+        run: cargo build --locked --example real_source --example oracle_bindings
+      - name: Fetch exact external inputs (network gate, no Java execution)
+        run: >-
+          python3 scripts/fetch-acceptance-inputs.py
+          --cache "$RUNNER_TEMP/acceptance-cache"
+          --output "$RUNNER_TEMP/acceptance"
+          --include-oracle-jdk
+      - name: Analyze real source corpus (Rust child has no Java environment)
+        run: >-
+          python3 scripts/check-real-source.py
+          "$RUNNER_TEMP/acceptance/sources.jar"
+          "$RUNNER_TEMP/acceptance/java.base.jmod"
+          --profile debug --rounds 1
+      - name: Independent javac oracle (only this step executes Java)
+        run: >-
+          python3 scripts/check-semantic-oracle.py
+          --jdk "$RUNNER_TEMP/acceptance/jdk"
+          --native target/debug/examples/oracle_bindings
+      - name: Remove external inputs (never uploaded or redistributed)
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/acceptance-cache"
+
+# Pins cover external acceptance archives, not the entire runner/dependency graph.
+# Network failure fails setup explicitly; skipped jobs do not constitute acceptance.

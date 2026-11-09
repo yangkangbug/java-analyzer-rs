@@ -47,5 +47,8 @@ optional [real-source acceptance harness](examples/real_source/README.md) uses
 checksum-pinned local artifacts and records parser gaps and timings without
 performance thresholds. It must not fetch inputs or invoke Java.
 
-The full external real-source harness is not currently part of default CI. Keep
-its results separate from CI status. See [acceptance boundaries and next work](docs/ACCEPTANCE_PLAN.md).
+The external corpus and javac comparator run in the separate optional
+`extended-acceptance` workflow, not default native CI. Keep these statuses distinct.
+See [execution boundaries and reproduction](docs/ACCEPTANCE_PLAN.md). Fetch-security
+unit tests are offline Python tests; only explicit input setup downloads archives.
+Only the optional comparator runs Java, and it must never execute fixture programs.
