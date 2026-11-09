@@ -87,3 +87,12 @@ response before awaiting the successor. The response must never navigate or
 settle twice, and the new session must still navigate exactly. Waiting for a new
 session while withholding the old session's shutdown response would contradict
 the new no-overlap contract.
+
+Initialization timeout includes process startup, so its test must not require a
+successful response before verifying timeout. A separate delayed-response-read
+fixture exercises this ordering with the same 200 ms test deadline. Both paths
+require a real initialize frame written and flushed to the native pipe, no ready
+state or successor, observed native/proxy exits and a persistent blocked state.
+Pipe delivery is not proof that native processing completed or was interrupted.
+Failed runs print only bounded, allowlisted diagnostic fields; raw source, paths
+and error text remain in local evidence rather than public CI summaries.

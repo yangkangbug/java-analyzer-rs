@@ -19,10 +19,13 @@ api.nvim_buf_attach = function(buf, send_buffer, options)
   return original_attach(buf, send_buffer, options)
 end
 local adapter = require('java_analyzer')
-local observed = { replays = {}, disk_actions = {}, disk_checks = 0, peak_clients = 0 }
+local observed = { replays = {}, disk_actions = {}, disk_checks = 0, peak_clients = 0, ready_seen = false, failure_stage = 'setup' }
 local exits, notifications, expected_disk, buffers = {}, {}, vim.deepcopy(cfg.original_disk), {}
 vim.notify = function(message) notifications[#notifications + 1] = tostring(message) end
 local function wait_for(predicate, label, timeout)
+  observed.failure_stage = ({ ['held initialize'] = 'await_initialize_evidence',
+    ['bounded fail-closed status'] = 'await_blocked', ['all observed client exits'] = 'await_client_exit' })[label]
+    or 'await_editor_operation'
   assert(vim.wait(timeout or 7000, predicate, 5), 'timeout: ' .. label)
 end
 local function clients()
@@ -31,6 +34,7 @@ end
 local poll = uv.new_timer()
 poll:start(0, 2, vim.schedule_wrap(function()
   observed.peak_clients = math.max(observed.peak_clients, clients())
+  observed.ready_seen = observed.ready_seen or adapter.status().ready
 end))
 local function raw_read(path)
   local f = io.open(path, 'rb'); if not f then return nil end
@@ -142,9 +146,15 @@ local function blocked()
   wait_for(function() return adapter.status().restart_blocked == true end, 'bounded fail-closed status')
   assert(not adapter.status().ready and not adapter.status().pending_start, 'blocked session still ready/queued')
   assert(type(adapter.status().error) == 'string', 'missing explicit lifecycle failure')
+  observed.timeout_status = adapter.status()
   adapter.restart(); adapter.start(); pause(150)
   assert(adapter.status().restart_blocked and not adapter.status().pending_start, 'unsafe replacement accepted')
   stopped()
+  -- A late start/restart after observed process exit must remain blocked.
+  adapter.restart(); adapter.start(); pause(50)
+  observed.post_exit_status = adapter.status()
+  assert(clients() == 0 and adapter.status().restart_blocked and not adapter.status().pending_start,
+    'uncertain cleanup became restartable after process exit')
 end
 local function run()
   for _, key in ipairs({ 'app', 'target', 'extra', 'inventory', 'second' }) do buffers[key] = open(cfg[key]) end
@@ -155,10 +165,14 @@ local function run()
       if #exits == 1 and cfg.scenario == 'exit_stop' then adapter.stop()
       elseif #exits == 1 and cfg.scenario == 'exit_restart' then adapter.restart() end
     end }
-  if cfg.scenario == 'initialize_timeout' then config.lifecycle_timeouts.initialize_ms = 200 end
+  local initialization_timeout = cfg.scenario == 'initialize_timeout' or cfg.scenario == 'initialize_startup_timeout'
+  if initialization_timeout then
+    config.lifecycle_timeouts.initialize_ms = 200
+    observed.initialize_timeout_ms = 200
+  end
   if cfg.scenario == 'shutdown_timeout' then config.lifecycle_timeouts.shutdown_ms = 200 end
   adapter.setup(config)
-  local initial_hold = cfg.scenario:match('^initializing_') or cfg.scenario == 'initialize_timeout'
+  local initial_hold = cfg.scenario:match('^initializing_') or initialization_timeout
   if initial_hold then mark('initialize') end
   adapter.start()
   observed.expected_spawns = 1
@@ -363,23 +377,36 @@ local function run()
     assert(observed.observer_mutation_callbacks == 1, 'one edit invoked accumulated old buffer observers')
     query('valueB', 'jumped', buffers.target)
   elseif initial_hold then
-    local data = held('initialize')
-    assert(data.message.result and data.message.result.capabilities, 'held actual initialize success missing')
-    assert(not adapter.status().ready, 'initialization hold exposed readiness')
-    if scenario == 'initialize_timeout' then blocked()
-    elseif scenario == 'initializing_stop' then
-      adapter.stop(); adapter.stop(); pause(80); assert(clients() == 1, 'stop blindly terminated pending initialize')
-      release(data); stopped(); assert(not adapter.status().pending_start, 'stop left queued restart')
-    elseif scenario == 'initializing_restart' then
-      for _ = 1, 6 do adapter.restart() end
-      assert(clients() == 1, 'pending initialize restart overlap')
-      release(data); observed.expected_spawns = 2; ready(); replay(2, { 'app', 'target', 'extra', 'inventory' })
-      query('valueB', 'jumped', buffers.target); query('deepB', 'jumped', buffers.extra)
+    if initialization_timeout then
+      -- The deadline includes native/proxy startup. A timeout may correctly
+      -- happen before this fixture receives a reply, so never wait for held
+      -- response evidence before checking the product's fail-closed state.
+      blocked()
+      observed.initialize_timeout_stage = 'before_response'
+      for _, line in ipairs(vim.fn.readfile(cfg.control .. '/protocol.jsonl')) do
+        local e = vim.json.decode(line)
+        if e.event == 'held' and e.kind == 'initialize' then
+          observed.initialize_timeout_stage = 'held_response'
+        end
+      end
     else
-      text(buffers.extra, '// edited while initializing\n' .. cfg.extra_text:gsub('deepA', 'deepB'))
-      observed.before.extra = snapshot(buffers.extra)
-      release(data); ready(); replay(1, { 'app', 'target', 'extra', 'inventory' })
-      query('valueB', 'jumped', buffers.target); query('deepB', 'jumped', buffers.extra)
+      local data = held('initialize')
+      assert(data.message.result and data.message.result.capabilities, 'held actual initialize success missing')
+      assert(not adapter.status().ready, 'initialization hold exposed readiness')
+      if scenario == 'initializing_stop' then
+        adapter.stop(); adapter.stop(); pause(80); assert(clients() == 1, 'stop blindly terminated pending initialize')
+        release(data); stopped(); assert(not adapter.status().pending_start, 'stop left queued restart')
+      elseif scenario == 'initializing_restart' then
+        for _ = 1, 6 do adapter.restart() end
+        assert(clients() == 1, 'pending initialize restart overlap')
+        release(data); observed.expected_spawns = 2; ready(); replay(2, { 'app', 'target', 'extra', 'inventory' })
+        query('valueB', 'jumped', buffers.target); query('deepB', 'jumped', buffers.extra)
+      else
+        text(buffers.extra, '// edited while initializing\n' .. cfg.extra_text:gsub('deepA', 'deepB'))
+        observed.before.extra = snapshot(buffers.extra)
+        release(data); ready(); replay(1, { 'app', 'target', 'extra', 'inventory' })
+        query('valueB', 'jumped', buffers.target); query('deepB', 'jumped', buffers.extra)
+      end
     end
   elseif scenario == 'shutdown_timeout' then
     mark('shutdown'); adapter.restart(); local data = held('shutdown')
@@ -392,15 +419,22 @@ local function run()
     vim.fn.writefile({ 'terminate owned native child' }, cfg.control .. '/terminate-native-' .. pid)
     blocked()
   else error('unknown scenario ' .. scenario) end
+  observed.failure_stage = 'assert_preservation'
   unchanged(observed.before); observed.after = snapshots()
   adapter.stop(); adapter.stop(); stopped(); pause(30)
   observed.terminal_status = adapter.status()
   observed.terminal_phase = observed.terminal_status.phase or 'legacy'
   assert(not adapter.status().ready and not adapter.status().pending_start, 'not stopped at completion')
   observed.completed = true
+  observed.failure_stage = 'completed'
 end
 local ok, failure = xpcall(run, debug.traceback)
-if not ok then observed.failure = failure; pcall(adapter.stop) end
+if not ok then
+  observed.failure = failure
+  local status_ok, status = pcall(adapter.status)
+  if status_ok then observed.failure_status = status end
+  pcall(adapter.stop)
+end
 -- Restoration is the harness's deliberate disk action, including failure paths.
 observed.before_restore = {}
 for path in pairs(expected_disk) do observed.before_restore[path] = raw_read(path) or false end

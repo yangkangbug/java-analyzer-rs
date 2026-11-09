@@ -19,11 +19,92 @@ EDITOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EDITOR)
 SCENARIOS = ('add', 'delete', 'rename', 'configuration', 'owner', 'edge', 'add_new_buffer',
     'initialize_refusal', 'readiness_reentrant', 'held_restarts', 'observer_stability',
-    'initializing_edits', 'initializing_stop', 'initializing_restart', 'initialize_timeout',
+    'initializing_edits', 'initializing_stop', 'initializing_restart', 'initialize_timeout', 'initialize_startup_timeout',
     'shutdown_timeout', 'abnormal_exit', 'reentrant_restart', 'reentrant_stop',
     'attach_load_edit', 'attach_restart', 'attach_stop', 'request_restart', 'request_stop', 'explicit_cancel',
     'exit_restart', 'exit_stop')
-FAULT_SCENARIOS = ('initialize_timeout', 'shutdown_timeout', 'abnormal_exit')
+FAULT_SCENARIOS = ('initialize_timeout', 'initialize_startup_timeout', 'shutdown_timeout', 'abnormal_exit')
+
+
+PUBLIC_STAGES = frozenset(('setup', 'await_initialize_evidence', 'await_blocked',
+    'await_client_exit', 'await_editor_operation', 'assert_preservation', 'completed', 'unknown'))
+PUBLIC_FAILURE_CODES = frozenset(('EVIDENCE_SCHEMA', 'CALLBACK_SETTLEMENT', 'CLIENT_OVERLAP',
+    'DEFINITION_BEFORE_REPLAY_FLUSH', 'EDITOR_ASSERTION', 'EXECUTABLE_CHANGED', 'FIXTURE_RESTORATION',
+    'HELD_RESULT_DELIVERY', 'HELD_RESULT_EVIDENCE', 'INITIALIZATION_ORDER', 'NATIVE_CANCELLATION_MISSING',
+    'NATIVE_ENVIRONMENT_OR_IDENTITY', 'NATIVE_EXIT_IDENTITY', 'NATIVE_EXIT_MISSING', 'NATIVE_EXIT_STATUS',
+    'NAVIGATION_EMPTY', 'NAVIGATION_ERROR', 'NAVIGATION_EVIDENCE', 'NAVIGATION_RANGE', 'NAVIGATION_TARGET',
+    'OBSERVER_ACCUMULATION', 'PARTIAL_REPLAY_READINESS', 'PROCESS_CLEANUP', 'PROCESS_OVERLAP',
+    'PROTOCOL_SESSION_IDENTITY', 'PROXY_CLEANUP', 'REFUSAL_STATE', 'REPLAY_DOCUMENT_SET',
+    'REPLAY_DUPLICATE_OPEN', 'REPLAY_EVIDENCE_MISSING', 'REPLAY_FLUSH_MISSING', 'REPLAY_NOT_FULL_TEXT',
+    'REPLAY_SESSION_MISSING', 'REPLAY_TEXT', 'TERMINAL_STATE', 'UNEXPECTED_SESSION_COUNT',
+    'UNINTENTIONAL_DISK_CHANGE', 'INITIALIZATION_TIMEOUT_EVIDENCE'))
+PUBLIC_PHASES = frozenset(('idle', 'initializing', 'replaying', 'ready', 'retiring', 'failed', 'blocked'))
+
+
+def public_failure_summary(report):
+    """Strict allowlist: never copy raw diagnostics, source, paths, or process IDs.
+
+    Bounds apply even to malformed evidence. Unknown values become fixed enums
+    or null, never repr/str of the input. Keep this output safe for public CI.
+    """
+    def mapping(value):
+        return value if type(value) is dict else {}
+    def enum(value, allowed):
+        return value if type(value) is str and len(value) <= 64 and value in allowed else 'unknown'
+    def boolean(value):
+        return value if type(value) is bool else None
+    def exit_code(value):
+        return value if type(value) is int and -255 <= value <= 255 else None
+    report = mapping(report)
+    process = mapping(report.get('process'))
+    observed = mapping(mapping(report.get('editor')).get('observed'))
+    status = mapping(observed.get('failure_status', observed.get('terminal_status')))
+    codes = report.get('failure_codes')
+    codes = codes if type(codes) is list else ['EVIDENCE_SCHEMA']
+    safe_codes = {code if type(code) is str and len(code) <= 64 and code in PUBLIC_FAILURE_CODES
+                  else 'EVIDENCE_SCHEMA' for code in codes[:256]}
+    if len(codes) > 256: safe_codes.add('EVIDENCE_SCHEMA')
+    events = report.get('events')
+    events = events if type(events) is list else []
+    spawned, forwarded, responses, phase, count, exits = set(), set(), set(), 0, 0, []
+    held_responses, delivered_responses = set(), set()
+    for raw in events[:8192]:
+        event = mapping(raw)
+        pid, kind = event.get('proxy_pid'), event.get('event')
+        valid_pid = type(pid) is int and 0 < pid <= 2147483647
+        if kind == 'spawn' and valid_pid:
+            spawned.add(pid); count = min(1024, count + 1); phase = max(phase, 1)
+        if kind == 'native_exit' and len(exits) < 32:
+            exits.append(exit_code(event.get('code')))
+        request_id = event.get('request_id')
+        valid_id = type(request_id) is int and 0 <= request_id <= 2147483647
+        if valid_pid and pid in spawned and kind == 'forwarded' and event.get('method') == 'initialize' and valid_id:
+            forwarded.add((pid, request_id)); phase = max(phase, 2)
+        message = mapping(event.get('message'))
+        response_id = message.get('id')
+        if (valid_pid and pid in spawned and type(response_id) is int
+                and event.get('direction') == 'server_to_client' and event.get('method') == 'initialize'):
+            responses.add((pid, response_id))
+        if valid_pid and valid_id:
+            if kind == 'held' and event.get('kind') == 'initialize': held_responses.add((pid, request_id))
+            if kind == 'delivered' and event.get('method') == 'initialize': delivered_responses.add((pid, request_id))
+    # Forwarding and response records come from different proxy threads. Their
+    # log order is not a processing barrier; correlate identities after scanning.
+    genuine_responses = forwarded & responses
+    if genuine_responses & held_responses: phase = max(phase, 3)
+    if genuine_responses & delivered_responses: phase = max(phase, 4)
+    return {'scenario': enum(report.get('scenario'), SCENARIOS), 'failure_codes': sorted(safe_codes),
+        'stage': enum(observed.get('failure_stage'), PUBLIC_STAGES),
+        'process': {'returncode': exit_code(process.get('returncode')), 'failure': bool(process.get('failure')),
+            'reaped': boolean(process.get('reaped')), 'drainers_finished': boolean(process.get('drainers_finished')),
+            'group_cleanup': enum(process.get('group_cleanup'), ('signalled', 'darwin-confirmed-exited-only', 'failed'))},
+        'lifecycle': {'phase': enum(status.get('phase'), PUBLIC_PHASES), 'active': boolean(status.get('active')),
+            'ready': boolean(status.get('ready')), 'pending_start': boolean(status.get('pending_start')),
+            'restart_blocked': boolean(status.get('restart_blocked')),
+            'cleanup': enum(status.get('cleanup'), ('pending', 'safe', 'uncertain'))},
+        'initialize_stage': ('not_spawned', 'spawned_not_forwarded', 'forwarded_no_response',
+            'response_held', 'response_delivered')[phase],
+        'native_exit_codes': exits, 'session_count': count}
 
 
 def _validate(report):
@@ -78,7 +159,7 @@ def _validate(report):
                     or event.get('fault') != native_exit.get('fault')):
                 failures.append('PROXY_CLEANUP')
             proxy_exits.add(pid)
-        if (event.get('direction') or kind in ('held', 'released', 'delivered')) and pid not in live:
+        if (event.get('direction') or kind in ('held', 'released', 'delivered', 'forwarded', 'test_delay_response_read')) and pid not in live:
             failures.append('PROTOCOL_SESSION_IDENTITY')
         if event.get('direction') == 'server_to_client' and event.get('method') == 'initialize':
             message = event.get('message', {})
@@ -129,7 +210,7 @@ def _validate(report):
         failures.append('CLIENT_OVERLAP')
     replays = editor.get('observed', {}).get('replays')
     scenario = report.get('scenario')
-    expected_ordinals = ({'initializing_stop': [], 'initialize_timeout': [],
+    expected_ordinals = ({'initializing_stop': [], 'initialize_timeout': [], 'initialize_startup_timeout': [],
         'initializing_restart': [2], 'initialize_refusal': [1, 3],
         'attach_restart': [1, 3], 'attach_stop': [1]}.get(scenario,
         list(range(1, expected + 1)) if type(expected) is int else []))
@@ -192,7 +273,7 @@ def _validate(report):
                 or refused.get('client_id') is not None or not isinstance(refused.get('error'), str)):
             failures.append('REFUSAL_STATE')
     navigation, results = observed.get('navigation', []), observed.get('results', [])
-    if len(navigation) != len(results) or (not navigation and scenario not in ('initialize_timeout', 'initializing_stop')):
+    if len(navigation) != len(results) or (not navigation and scenario not in ('initialize_timeout', 'initialize_startup_timeout', 'initializing_stop')):
         failures.append('NAVIGATION_EVIDENCE')
     for nav, result in zip(navigation, results):
         if (result.get('status') != nav.get('expected_status') or nav.get('actual_buf') != nav.get('expected_buf')
@@ -210,6 +291,64 @@ def _validate(report):
             failures.append('NAVIGATION_EMPTY')
         elif nav.get('expected_status') == 'error' and not isinstance(result.get('error'), dict):
             failures.append('NAVIGATION_ERROR')
+    if scenario in ('initialize_timeout', 'initialize_startup_timeout'):
+        timeout_valid = (observed.get('ready_seen') is False
+            and type(observed.get('initialize_timeout_ms')) is int and observed['initialize_timeout_ms'] == 200
+            and len(spawned) == 1 and expected == 1)
+        for status_name in ('timeout_status', 'post_exit_status'):
+            status = observed.get(status_name, {})
+            timeout_valid = timeout_valid and (status.get('phase') == 'blocked'
+                and status.get('active') is False and status.get('ready') is False
+                and status.get('pending_start') is False and status.get('restart_blocked') is True
+                and status.get('cleanup') == 'uncertain')
+        initialize = [e for e in events if e.get('direction') == 'client_to_server'
+            and e.get('message', {}).get('method') == 'initialize']
+        forwarded = [e for e in events if e.get('event') == 'forwarded' and e.get('method') == 'initialize']
+        replies = [e for e in events if e.get('direction') == 'server_to_client'
+            and e.get('method') == 'initialize']
+        holds = [e for e in events if e.get('event') == 'held' and e.get('kind') == 'initialize']
+        if len(initialize) != 1 or len(forwarded) != 1:
+            timeout_valid = False
+        else:
+            request = initialize[0]
+            pid, request_id = request['proxy_pid'], request['message'].get('id')
+            timeout_valid = timeout_valid and (type(pid) is int and pid in spawned and type(request_id) is int
+                and type(forwarded[0].get('proxy_pid')) is int and forwarded[0]['proxy_pid'] == pid
+                and type(forwarded[0].get('request_id')) is int
+                and forwarded[0]['request_id'] == request_id)
+            native_exit_positions = [i for i, e in enumerate(events)
+                if e.get('event') == 'native_exit' and e.get('proxy_pid') == pid]
+            timeout_valid = timeout_valid and (len(native_exit_positions) == 1
+                and events.index(request) < events.index(forwarded[0]) < native_exit_positions[0])
+            if replies:
+                timeout_valid = timeout_valid and (len(replies) == 1 and len(holds) == 1
+                    and type(replies[0].get('proxy_pid')) is int and replies[0]['proxy_pid'] == pid
+                    and type(replies[0]['message'].get('id')) is int and replies[0]['message']['id'] == request_id
+                    and isinstance(replies[0]['message'].get('result'), dict)
+                    and isinstance(replies[0]['message']['result'].get('capabilities'), dict)
+                    and type(holds[0].get('proxy_pid')) is int and holds[0]['proxy_pid'] == pid
+                    and type(holds[0].get('request_id')) is int and holds[0]['request_id'] == request_id
+                    and observed.get('initialize_timeout_stage') == 'held_response')
+            else:
+                timeout_valid = timeout_valid and not holds and observed.get('initialize_timeout_stage') == 'before_response'
+        if any((e.get('event') in ('delivered', 'released') and (e.get('method') == 'initialize' or e.get('kind') == 'initialize'))
+                or (e.get('direction') == 'client_to_server' and e.get('message', {}).get('method') != 'initialize')
+                for e in events):
+            timeout_valid = False
+        if scenario == 'initialize_startup_timeout':
+            delays = [e for e in events if e.get('event') == 'test_delay_response_read']
+            timeout_valid = timeout_valid and (not replies and len(delays) == 1
+                and type(delays[0].get('proxy_pid')) is int and delays[0]['proxy_pid'] in spawned
+                and type(delays[0].get('delay_ms')) is int
+                and delays[0]['delay_ms'] == 350 and delays[0].get('release_gate') is True
+                and type(delays[0].get('gate_timeout_ms')) is int and delays[0]['gate_timeout_ms'] == 12000)
+            if len(delays) == 1:
+                delay_pid = delays[0].get('proxy_pid')
+                starts = [i for i, e in enumerate(events) if e.get('event') == 'spawn' and e.get('proxy_pid') == delay_pid]
+                ends = [i for i, e in enumerate(events) if e.get('event') == 'native_exit' and e.get('proxy_pid') == delay_pid]
+                timeout_valid = timeout_valid and (len(starts) == len(ends) == 1
+                    and starts[0] < events.index(delays[0]) < ends[0])
+        if not timeout_valid: failures.append('INITIALIZATION_TIMEOUT_EVIDENCE')
     if scenario == 'observer_stability':
         observers = observed.get('observers', [])
         if len(observers) != 6 or any(type(n) is not int or n != observers[0] for n in observers):
@@ -315,8 +454,11 @@ def run(args):
         home, control = folder / 'home', folder / 'control'
         home.mkdir(); control.mkdir()
         proxy, proxy_script = folder / 'proxy', ROOT / 'editors/neovim/tests/refresh_proxy.py'
+        proxy_arguments = [str(proxy_script), '--native', str(native), '--control', str(control)]
+        if scenario == 'initialize_startup_timeout':
+            proxy_arguments += ['--delay-response-read-ms', '350']
         proxy.write_text(f'#!{sys.executable}\nimport runpy,sys\n'
-            f'sys.argv = {[str(proxy_script), "--native", str(native), "--control", str(control)]!r} + sys.argv[1:]\n'
+            f'sys.argv = {proxy_arguments!r} + sys.argv[1:]\n'
             f'runpy.run_path({str(proxy_script)!r}, run_name="__main__")\n')
         proxy.chmod(0o755)
         cfg.update({'scenario': scenario, 'adapter': str(adapter), 'control': str(control),
@@ -354,17 +496,20 @@ def run(args):
         report['intentional_disk_verified'] = bool(actual_disk) and actual_disk == intended
         report['failure_codes'] = validate(report)
         report['ok'] = not report['failure_codes']
+        report['public_failure_summary'] = public_failure_summary(report) if not report['ok'] else None
         (folder / 'result.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
         results.append({'scenario': scenario, 'ok': report['ok'], 'failure_codes': report['failure_codes'],
             'session_count': sum(e.get('event') == 'spawn' for e in events),
             'cleanup': capture.get('group_cleanup'), 'terminal_phase': editor.get('observed', {}).get('terminal_phase')})
         print(scenario + ': ' + ('PASS' if report['ok'] else ','.join(report['failure_codes'])), flush=True)
+        if not report['ok']:
+            print('FAILURE_SUMMARY: ' + json.dumps(report['public_failure_summary'], sort_keys=True), flush=True)
     summary = {'kind': 'real_neovim_explicit_refresh', 'scenarios': results,
         'passed': sum(r['ok'] for r in results), 'total': len(results), 'ok': all(r['ok'] for r in results)}
     (output / 'result.json').write_text(json.dumps({'identity': identity, 'summary': summary}, indent=2) + '\n')
     if not summary['ok']:
-        raise ValueError(f'refresh acceptance failed; inspect {output / "result.json"}')
-    print(f'PASS: {len(results)} real Neovim refresh scenarios; {output / "result.json"}')
+        raise ValueError('refresh acceptance failed; inspect local result files')
+    print(f'PASS: {len(results)} real Neovim refresh scenarios')
 
 
 def main():
@@ -376,8 +521,8 @@ def main():
     args = parser.parse_args()
     try:
         run(args)
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
-        parser.exit(1, f'NEOVIM REFRESH FAILED: {error}\n')
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError, subprocess.SubprocessError):
+        parser.exit(1, 'NEOVIM REFRESH FAILED: setup or acceptance failed; inspect local result files\n')
 
 
 if __name__ == '__main__':

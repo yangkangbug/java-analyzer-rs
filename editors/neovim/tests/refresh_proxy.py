@@ -26,6 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--native', type=Path, required=True)
     parser.add_argument('--control', type=Path, required=True)
+    parser.add_argument('--delay-response-read-ms', type=int, choices=(0, 350), default=0)
     args, remaining = parser.parse_known_args()
     native = args.native.resolve(strict=True)
     pid = os.getpid()
@@ -113,6 +114,7 @@ def main():
                         batch = None
                     child.stdin.write(raw)
                     child.stdin.flush()
+                    log({'event': 'forwarded', 'method': method, 'request_id': message.get('id')})
         except (OSError, ValueError) as error:
             if not stopped.is_set():
                 errors.append(str(error))
@@ -141,6 +143,22 @@ def main():
     drain.start()
     code, fault = None, None
     try:
+        if args.delay_response_read_ms:
+            # Test-only scheduler/startup delay. Incoming frames still reach the
+            # real child; its responses are neither read nor fabricated here.
+            log({'event': 'test_delay_response_read', 'delay_ms': args.delay_response_read_ms,
+                 'release_gate': True, 'gate_timeout_ms': 12000})
+            deadline = time.monotonic() + 12
+            release = args.control / f'release-response-read-{pid}'
+            time.sleep(args.delay_response_read_ms / 1000)
+            # Do not race a descheduled editor's real deadline callback: after
+            # the minimum delay, require explicit release or observed SIGTERM.
+            # This gates only test transport reads, never the product's timer.
+            while not release.exists():
+                if time.monotonic() >= deadline:
+                    raise ValueError('test response-read gate timed out')
+                time.sleep(0.005)
+            release.unlink()
         while pair := DELAY.frame(child.stdout):
             raw, message = pair
             method = methods.get(message.get('id'))
@@ -176,11 +194,13 @@ def main():
                 child.kill()
                 child.wait(timeout=2)
         code = child.returncode
-        log({'event': 'native_exit', 'code': code, 'fault': fault})
         reader.join(timeout=1)
         drain.join(timeout=1)
         if reader.is_alive() or drain.is_alive():
             errors.append('proxy threads did not finish')
+        # The child was reaped above; record it after the I/O threads settle so
+        # a successful write+flush cannot be logged after its observed exit.
+        log({'event': 'native_exit', 'code': code, 'fault': fault})
         log({'event': 'proxy_exit', 'code': code, 'fault': fault, 'errors': errors})
     if errors:
         raise ValueError('; '.join(errors))

@@ -111,7 +111,7 @@ def fault_report(scenario):
         'phase': 'blocked', 'cleanup': 'uncertain', 'active': False, 'ready': False,
         'pending_start': False, 'restart_blocked': True, 'client_id': 1}
     events = session(101)
-    if scenario == 'initialize_timeout':
+    if scenario in ('initialize_timeout', 'initialize_startup_timeout'):
         events = events[:3] + [{'proxy_pid': 101, 'event': 'held',
                                'kind': 'initialize', 'request_id': 1}]
         report['editor']['observed']['replays'] = []
@@ -128,8 +128,22 @@ def fault_report(scenario):
     ]
     report['events'] = events
     report['editor']['observed']['expected_spawns'] = 1
-    if scenario != 'initialize_timeout':
+    if scenario not in ('initialize_timeout', 'initialize_startup_timeout'):
         report['editor']['observed']['replays'] = report['editor']['observed']['replays'][:1]
+    if scenario in ('initialize_timeout', 'initialize_startup_timeout'):
+        observed = report['editor']['observed']
+        observed.update({'ready_seen': False, 'initialize_timeout_ms': 200,
+                         'initialize_timeout_stage': 'held_response',
+                         'timeout_status': copy.deepcopy(observed['terminal_status']),
+                         'post_exit_status': copy.deepcopy(observed['terminal_status'])})
+        events.insert(2, {'event': 'forwarded', 'proxy_pid': 101,
+                          'method': 'initialize', 'request_id': 1})
+        if scenario == 'initialize_startup_timeout':
+            report['events'] = [e for e in events if e.get('direction') != 'server_to_client'
+                                and e.get('event') != 'held']
+            report['events'].insert(1, {'event': 'test_delay_response_read', 'proxy_pid': 101, 'delay_ms': 350,
+                                        'release_gate': True, 'gate_timeout_ms': 12000})
+            observed['initialize_timeout_stage'] = 'before_response'
     return report
 
 
@@ -656,6 +670,140 @@ class RefreshEvidenceTests(unittest.TestCase):
             self.report[key] = value
             self.assertEqual(MOD.validate(self.report), ['EVIDENCE_SCHEMA'])
 
+    def test_initialize_timeout_requires_actual_forwarding_and_blocked_status(self):
+        for mutation in ('missing_forwarded', 'wrong_forwarded_pid', 'wrong_forwarded_id',
+                         'ready_seen', 'timeout_changed', 'timeout_boolean',
+                         'timeout_status_ready', 'post_exit_active', 'post_exit_safe',
+                         'wrong_timeout_stage', 'null_initialize_result', 'missing_hold',
+                         'delivered_initialize', 'initialized', 'didOpen', 'definition'):
+            with self.subTest(mutation=mutation):
+                self.report = fault_report('initialize_timeout')
+                self.assertEqual(MOD.validate(self.report), [])
+                observed = self.report['editor']['observed']
+                if mutation.startswith('missing_forwarded'):
+                    self.report['events'].remove(self.events(event='forwarded')[0])
+                elif mutation.startswith('wrong_forwarded'):
+                    key = 'proxy_pid' if mutation.endswith('pid') else 'request_id'
+                    self.events(event='forwarded')[0][key] = 999
+                elif mutation == 'ready_seen':
+                    observed['ready_seen'] = True
+                elif mutation in ('timeout_changed', 'timeout_boolean'):
+                    observed['initialize_timeout_ms'] = 201 if mutation == 'timeout_changed' else True
+                elif mutation == 'timeout_status_ready':
+                    observed['timeout_status']['ready'] = True
+                elif mutation == 'post_exit_active':
+                    observed['post_exit_status']['active'] = True
+                elif mutation == 'post_exit_safe':
+                    observed['post_exit_status']['cleanup'] = 'safe'
+                elif mutation == 'wrong_timeout_stage':
+                    observed['initialize_timeout_stage'] = 'before_response'
+                elif mutation == 'null_initialize_result':
+                    next(e for e in self.report['events'] if e.get('direction') == 'server_to_client')['message']['result'] = None
+                elif mutation == 'missing_hold':
+                    self.report['events'].remove(self.events(event='held')[0])
+                else:
+                    event = ({'event': 'delivered', 'proxy_pid': 101, 'method': 'initialize', 'request_id': 1}
+                             if mutation == 'delivered_initialize' else
+                             wire(101, 'initialized' if mutation == 'initialized' else 'textDocument/definition', {}, 9))
+                    if mutation == 'didOpen':
+                        event = wire(101, 'textDocument/didOpen', {'textDocument': {
+                            'uri': URI, 'languageId': 'java', 'version': 0, 'text': TEXT}})
+                    self.report['events'].insert(-2, event)
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
+    def test_timeout_initialize_identities_reject_boolean_integer_aliases(self):
+        for kind in ('forwarded', 'reply', 'held'):
+            for key in ('pid', 'request_id'):
+                with self.subTest(kind=kind, key=key):
+                    self.report = fault_report('initialize_timeout')
+                    for event in self.report['events']:
+                        if event.get('proxy_pid') == 101:
+                            event['proxy_pid'] = 1
+                    self.assertEqual(MOD.validate(self.report), [])
+                    event = (next(e for e in self.report['events'] if e.get('direction') == 'server_to_client')
+                             if kind == 'reply' else self.events(event=kind)[0])
+                    if key == 'pid':
+                        event['proxy_pid'] = True
+                    elif kind == 'reply':
+                        event['message']['id'] = True
+                    else:
+                        event['request_id'] = True
+                    self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
+    def test_timeout_forwarding_stays_between_request_and_native_exit(self):
+        for mutation in ('before_request', 'after_exit'):
+            with self.subTest(mutation=mutation):
+                self.report = fault_report('initialize_timeout')
+                forwarded = self.events(event='forwarded')[0]
+                self.report['events'].remove(forwarded)
+                target = (self.events(method='initialize')[0] if mutation == 'before_request'
+                          else self.events(event='native_exit')[0])
+                index = self.report['events'].index(target) + (mutation == 'after_exit')
+                self.report['events'].insert(index, forwarded)
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+        # Reader and writer threads can record the successful response before
+        # the post-flush marker; do not invent an order between those threads.
+        self.report = fault_report('initialize_timeout')
+        forwarded = self.events(event='forwarded')[0]
+        self.report['events'].remove(forwarded)
+        response_event = next(e for e in self.report['events'] if e.get('direction') == 'server_to_client')
+        self.report['events'].insert(self.report['events'].index(response_event) + 1, forwarded)
+        self.assertEqual(MOD.validate(self.report), [])
+
+    def test_startup_delay_marker_must_be_inside_native_lifetime(self):
+        for mutation in ('before_spawn', 'after_exit'):
+            with self.subTest(mutation=mutation):
+                self.report = fault_report('initialize_startup_timeout')
+                delay = self.events(event='test_delay_response_read')[0]
+                self.report['events'].remove(delay)
+                target = self.events(event='spawn' if mutation == 'before_spawn' else 'native_exit')[0]
+                index = self.report['events'].index(target) + (mutation == 'after_exit')
+                self.report['events'].insert(index, delay)
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
+    def test_startup_response_read_gate_requires_exact_bounded_configuration(self):
+        for mutation in ('missing_gate', 'false_gate', 'integer_gate',
+                         'missing_timeout', 'boolean_timeout', 'wrong_timeout'):
+            with self.subTest(mutation=mutation):
+                self.report = fault_report('initialize_startup_timeout')
+                delay = self.events(event='test_delay_response_read')[0]
+                if mutation == 'missing_gate':
+                    del delay['release_gate']
+                elif mutation in ('false_gate', 'integer_gate'):
+                    delay['release_gate'] = False if mutation == 'false_gate' else 1
+                elif mutation == 'missing_timeout':
+                    del delay['gate_timeout_ms']
+                else:
+                    delay['gate_timeout_ms'] = True if mutation == 'boolean_timeout' else 12001
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
+    def test_startup_delay_pid_rejects_boolean_integer_alias(self):
+        self.report = fault_report('initialize_startup_timeout')
+        for event in self.report['events']:
+            if event.get('proxy_pid') == 101:
+                event['proxy_pid'] = 1
+        self.assertEqual(MOD.validate(self.report), [])
+        self.events(event='test_delay_response_read')[0]['proxy_pid'] = True
+        self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
+    def test_initialize_startup_timeout_accepts_only_verified_pre_response_delay(self):
+        self.report = fault_report('initialize_startup_timeout')
+        self.assertEqual(MOD.validate(self.report), [])
+        original = copy.deepcopy(self.report)
+        for mutation in ('missing_delay', 'wrong_delay', 'boolean_delay', 'unexpected_response'):
+            with self.subTest(mutation=mutation):
+                self.report = copy.deepcopy(original)
+                delay = self.events(event='test_delay_response_read')[0]
+                if mutation == 'missing_delay':
+                    self.report['events'].remove(delay)
+                elif mutation == 'wrong_delay':
+                    delay['delay_ms'] = 1
+                elif mutation == 'boolean_delay':
+                    delay['delay_ms'] = True
+                else:
+                    self.report['events'].insert(-2, response(101, 'initialize', 1, {'capabilities': {}})[0])
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+
 
 class RefreshInputGuardTests(unittest.TestCase):
     def setUp(self):
@@ -721,6 +869,47 @@ class RefreshInputGuardTests(unittest.TestCase):
                         MOD.run(self.args)
                     self.assertEqual(run.call_args.kwargs['env'], {'PATH': '/nonexistent'})
 
+    def test_cli_setup_failure_never_discloses_input_paths_or_raw_exception(self):
+        sentinel = 'DO_NOT_DISCLOSE_中_private_path'
+        missing = self.root / sentinel / 'nonexistent'
+        command = [sys.executable, str(Path(MOD.__file__)),
+                   '--nvim', str(missing / 'nvim'), '--native', str(missing / 'native'),
+                   '--output', str(missing / 'output')]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, '')
+        self.assertEqual(result.stderr,
+                         'NEOVIM REFRESH FAILED: setup or acceptance failed; inspect local result files\n')
+        for forbidden in (sentinel, str(missing), 'FileNotFoundError', 'OSError',
+                          'Traceback', '[Errno', 'No such file or directory'):
+            self.assertNotIn(forbidden, result.stdout + result.stderr)
+        self.assertFalse(missing.exists())
+
+    def test_cli_malformed_provenance_never_leaks_traceback_or_paths(self):
+        sentinel = 'DO_NOT_DISCLOSE_provenance_中'
+        input_root = self.root / sentinel
+        nvim = input_root / 'bin/nvim'
+        nvim.parent.mkdir(parents=True)
+        nvim.write_bytes(b'offline dummy; must never execute')
+        native = input_root / 'native'
+        native.write_bytes(b'offline dummy; must never execute')
+        malformed = ([], None, {}, {'binary_sha256': MOD.EDITOR.digest(nvim)},
+                     {'binary_sha256': [], 'manifest': None})
+        for index, value in enumerate(malformed):
+            with self.subTest(value=value):
+                (input_root / 'INPUT.json').write_text(json.dumps(value))
+                result = subprocess.run([
+                    sys.executable, str(Path(MOD.__file__)), '--nvim', str(nvim),
+                    '--native', str(native), '--output', str(input_root / f'out-{index}')],
+                    capture_output=True, text=True, timeout=10)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(result.stderr,
+                                 'NEOVIM REFRESH FAILED: setup or acceptance failed; inspect local result files\n')
+                for forbidden in (sentinel, str(input_root), 'Traceback', 'TypeError',
+                                  'KeyError', 'AttributeError', 'IndexError', 'OSError', '[Errno'):
+                    self.assertNotIn(forbidden, result.stdout + result.stderr)
+
     def test_cli_missing_arguments_and_unknown_scenario_fail(self):
         for args in ([], ['--nvim', str(self.nvim), '--native', str(self.native),
                           '--output', str(self.args.output), '--scenario', 'invented']):
@@ -729,6 +918,233 @@ class RefreshInputGuardTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn('error:', result.stderr)
             self.assertFalse(self.args.output.exists())
+
+
+class PublicFailureSummaryTests(unittest.TestCase):
+    """Public CI summaries contain only bounded enum/count facts, never raw evidence."""
+
+    def summarize(self, report):
+        summary = MOD.public_failure_summary(report)
+        self.assertIs(type(summary), dict)
+        self.assertEqual(set(summary), {'scenario', 'failure_codes', 'stage', 'process',
+                                       'lifecycle', 'initialize_stage', 'native_exit_codes',
+                                       'session_count'})
+        encoded = json.dumps(summary, ensure_ascii=True, allow_nan=False)
+        self.assertLessEqual(len(encoded), 8192)
+        self.assertEqual(json.loads(encoded), summary)
+        self.assertIs(type(summary['session_count']), int)
+        self.assertTrue(0 <= summary['session_count'] <= 1024)
+        self.assertLessEqual(len(summary['native_exit_codes']), 32)
+        for code in summary['native_exit_codes']:
+            self.assertTrue(code is None or (type(code) is int and -255 <= code <= 255))
+        self.assertEqual(set(summary['process']),
+                         {'returncode', 'failure', 'reaped', 'drainers_finished', 'group_cleanup'})
+        self.assertIs(type(summary['process']['failure']), bool)
+        for key in ('reaped', 'drainers_finished'):
+            self.assertTrue(summary['process'][key] is None or type(summary['process'][key]) is bool)
+        self.assertIn(summary['process']['group_cleanup'],
+                      ('signalled', 'darwin-confirmed-exited-only', 'failed', 'unknown'))
+        self.assertEqual(set(summary['lifecycle']),
+                         {'phase', 'active', 'ready', 'pending_start', 'restart_blocked', 'cleanup'})
+        self.assertIn(summary['lifecycle']['phase'],
+                      ('idle', 'initializing', 'replaying', 'ready', 'retiring', 'failed', 'blocked', 'unknown'))
+        self.assertIn(summary['lifecycle']['cleanup'], ('pending', 'safe', 'uncertain', 'unknown'))
+        for key in ('active', 'ready', 'pending_start', 'restart_blocked'):
+            self.assertTrue(summary['lifecycle'][key] is None or type(summary['lifecycle'][key]) is bool)
+        self.assertIn(summary['initialize_stage'],
+                      ('not_spawned', 'spawned_not_forwarded', 'forwarded_no_response',
+                       'response_held', 'response_delivered'))
+        return summary
+
+    def test_literal_stage_and_failure_code_whitelists_are_preserved(self):
+        for stage in MOD.PUBLIC_STAGES:
+            with self.subTest(stage=stage):
+                report = valid_report()
+                report['editor']['observed']['failure_stage'] = stage
+                report['failure_codes'] = list(MOD.PUBLIC_FAILURE_CODES)
+                summary = self.summarize(report)
+                self.assertEqual(summary['stage'], stage)
+                self.assertEqual(set(summary['failure_codes']), MOD.PUBLIC_FAILURE_CODES)
+        for scenario in MOD.SCENARIOS:
+            report = valid_report()
+            report['scenario'] = scenario
+            self.assertEqual(self.summarize(report)['scenario'], scenario)
+
+    def test_expected_process_and_lifecycle_facts_survive(self):
+        report = valid_report()
+        report['events'].insert(2, {'event': 'forwarded', 'proxy_pid': 101,
+                                    'method': 'initialize', 'request_id': 1})
+        report['failure_codes'] = ['PROCESS_CLEANUP', 'TERMINAL_STATE']
+        report['process']['failure'] = 'private exception with source path'
+        summary = self.summarize(report)
+        self.assertEqual(summary['scenario'], 'add')
+        self.assertEqual(set(summary['failure_codes']), {'PROCESS_CLEANUP', 'TERMINAL_STATE'})
+        self.assertEqual(summary['process'], {
+            'returncode': 0, 'failure': True, 'reaped': True,
+            'drainers_finished': True, 'group_cleanup': 'signalled'})
+        self.assertEqual(summary['lifecycle'], {
+            'phase': 'idle', 'cleanup': 'safe', 'active': False, 'ready': False,
+            'pending_start': False, 'restart_blocked': False})
+        self.assertEqual(summary['session_count'], 2)
+        self.assertEqual(summary['native_exit_codes'], [0, 0])
+        self.assertEqual(summary['initialize_stage'], 'response_delivered')
+
+    def test_failure_status_precedes_terminal_status(self):
+        report = valid_report()
+        report['editor']['observed']['failure_status'] = {
+            'phase': 'blocked', 'cleanup': 'uncertain', 'active': False, 'ready': False,
+            'pending_start': False, 'restart_blocked': True, 'client_id': 987654,
+        }
+        summary = self.summarize(report)
+        self.assertEqual(summary['lifecycle']['phase'], 'blocked')
+        self.assertEqual(summary['lifecycle']['cleanup'], 'uncertain')
+        self.assertIs(summary['lifecycle']['restart_blocked'], True)
+        self.assertNotIn('client_id', summary['lifecycle'])
+
+    def test_source_paths_text_pids_exceptions_and_injected_labels_never_escape(self):
+        secret = '/private/DO_NOT_DISCLOSE_中😀\n::error::secret.java'
+        report = valid_report()
+        report.update({'scenario': secret, 'failure_codes': ['PROCESS_CLEANUP', secret],
+                       'identity': {'native': secret}, 'secret': secret})
+        report['process'].update({'failure': secret, 'stdout': secret, 'stderr': secret,
+                                  'group_cleanup': secret, 'pid': 987654321})
+        report['editor'].update({'error': secret, 'traceback': secret})
+        report['editor']['observed'].update({
+            'failure_stage': secret,
+            'failure_status': {'phase': secret, 'cleanup': secret, 'active': secret,
+                               'ready': secret, 'pending_start': secret, 'restart_blocked': secret,
+                               'error': secret, 'client_id': 987654321},
+            'source_text': secret,
+        })
+        report['events'].append({'event': 'native_exit', 'proxy_pid': 987654321,
+                                 'code': secret, 'fault': secret, 'message': {'text': secret}})
+        summary = self.summarize(report)
+        encoded = json.dumps(summary, ensure_ascii=False)
+        for forbidden in (secret, 'DO_NOT_DISCLOSE', '987654321', 'stdout', 'traceback', 'source_text'):
+            self.assertNotIn(forbidden, encoded)
+        self.assertEqual(summary['scenario'], 'unknown')
+        self.assertEqual(summary['stage'], 'unknown')
+        self.assertEqual(summary['lifecycle']['phase'], 'unknown')
+        self.assertEqual(summary['lifecycle']['cleanup'], 'unknown')
+        self.assertEqual(summary['process']['group_cleanup'], 'unknown')
+        self.assertIn('EVIDENCE_SCHEMA', summary['failure_codes'])
+
+    def test_numeric_exit_fields_reject_bools_out_of_range_and_nonints(self):
+        for value in (True, False, 256, -256, 1.0, '0', None, [], {}, float('nan'), float('inf')):
+            with self.subTest(value=value):
+                report = valid_report()
+                report['process']['returncode'] = value
+                report['events'] = [{'event': 'native_exit', 'code': value}]
+                summary = self.summarize(report)
+                self.assertIsNone(summary['process']['returncode'])
+                self.assertEqual(summary['native_exit_codes'], [None])
+        for value in (-255, -15, 0, 1, 255):
+            with self.subTest(valid=value):
+                report = valid_report()
+                report['process']['returncode'] = value
+                report['events'] = [{'event': 'native_exit', 'code': value}]
+                summary = self.summarize(report)
+                self.assertEqual(summary['process']['returncode'], value)
+                self.assertEqual(summary['native_exit_codes'], [value])
+
+    def test_flags_require_actual_booleans(self):
+        for value in (0, 1, 'false', 'true', [], {}, None):
+            with self.subTest(value=value):
+                report = valid_report()
+                report['process'].update({'reaped': value, 'drainers_finished': value})
+                status = report['editor']['observed']['terminal_status']
+                for key in ('active', 'ready', 'pending_start', 'restart_blocked'):
+                    status[key] = value
+                summary = self.summarize(report)
+                self.assertIsNone(summary['process']['reaped'])
+                self.assertIsNone(summary['process']['drainers_finished'])
+                for key in ('active', 'ready', 'pending_start', 'restart_blocked'):
+                    self.assertIsNone(summary['lifecycle'][key])
+
+    def test_malformed_nested_inputs_remain_bounded_json_without_exception(self):
+        for malformed in (None, [], 7, True, 'private' * 10000):
+            with self.subTest(report_type=type(malformed).__name__):
+                self.summarize(malformed)
+        for key in ('process', 'editor', 'events', 'failure_codes', 'scenario'):
+            for value in (None, True, 7, [], {}, ['private' * 10000], {'private': [None]}):
+                with self.subTest(key=key, value_type=type(value).__name__):
+                    report = valid_report()
+                    report[key] = value
+                    self.summarize(report)
+        for key in ('failure_status', 'terminal_status', 'failure_stage'):
+            for value in (None, True, 7, [], {'phase': [], 'cleanup': {}}):
+                with self.subTest(observed_key=key, value_type=type(value).__name__):
+                    report = valid_report()
+                    report['editor']['observed'][key] = value
+                    self.summarize(report)
+
+    def test_large_lists_and_untrusted_counts_are_bounded(self):
+        report = valid_report()
+        report['events'] = ([{'event': 'spawn', 'proxy_pid': n} for n in range(1, 1101)]
+                            + [{'event': 'native_exit', 'code': -15} for _ in range(1, 1101)])
+        report['failure_codes'] = ['PROCESS_CLEANUP'] * 10000 + ['private' * 10000]
+        report['session_count'] = 'untrusted'
+        report['editor']['observed']['expected_spawns'] = True
+        summary = self.summarize(report)
+        self.assertEqual(summary['session_count'], 1024)
+        self.assertEqual(summary['native_exit_codes'], [-15] * 32)
+        self.assertLessEqual(len(summary['failure_codes']), 2)
+
+    def test_unicode_and_long_enum_injections_map_only_to_unknown(self):
+        for value in ('x' * 100000, '\ud800', 'ready\n::error::private', 'idle\x00private',
+                      'reаdy', [], {'ready': True}):
+            with self.subTest(value_type=type(value).__name__):
+                report = valid_report()
+                report['scenario'] = value
+                observed = report['editor']['observed']
+                observed['failure_stage'] = value
+                observed['terminal_status']['phase'] = value
+                observed['terminal_status']['cleanup'] = value
+                summary = self.summarize(report)
+                self.assertEqual(summary['scenario'], 'unknown')
+                self.assertEqual(summary['stage'], 'unknown')
+                self.assertEqual(summary['lifecycle']['phase'], 'unknown')
+                self.assertEqual(summary['lifecycle']['cleanup'], 'unknown')
+
+    def test_initialize_summary_handles_response_before_forwarded_log(self):
+        for delivered in (False, True):
+            with self.subTest(delivered=delivered):
+                report = valid_report()
+                secret = 'DO_NOT_DISCLOSE_response_order_中/private.java'
+                report['events'] = [
+                    {'event': 'spawn', 'proxy_pid': 101, 'native': secret},
+                    wire(101, 'initialize', {'private': secret}, 1),
+                    response(101, 'initialize', 1, {'capabilities': {}, 'private': secret})[0],
+                    {'event': 'held', 'proxy_pid': 101, 'kind': 'initialize', 'request_id': 1},
+                ]
+                if delivered:
+                    report['events'].append({'event': 'delivered', 'proxy_pid': 101,
+                                             'method': 'initialize', 'request_id': 1})
+                report['events'].append({'event': 'forwarded', 'proxy_pid': 101,
+                                         'method': 'initialize', 'request_id': 1})
+                summary = self.summarize(report)
+                self.assertEqual(summary['initialize_stage'],
+                                 'response_delivered' if delivered else 'response_held')
+                self.assertNotIn(secret, json.dumps(summary, ensure_ascii=False))
+                self.assertNotIn('private.java', json.dumps(summary))
+
+    def test_initialize_progress_uses_only_initialize_events(self):
+        report = valid_report()
+        spawn = {'event': 'spawn', 'proxy_pid': 101}
+        forwarded = {'event': 'forwarded', 'proxy_pid': 101, 'method': 'initialize', 'request_id': 1}
+        reply = response(101, 'initialize', 1, {'capabilities': {}})[0]
+        held = {'event': 'held', 'proxy_pid': 101, 'kind': 'initialize', 'request_id': 1}
+        delivered = {'event': 'delivered', 'proxy_pid': 101, 'method': 'initialize', 'request_id': 1}
+        for events, expected in (([], 'not_spawned'), ([spawn], 'spawned_not_forwarded'),
+                                 ([spawn, forwarded], 'forwarded_no_response'),
+                                 ([spawn, forwarded, reply, held], 'response_held'),
+                                 ([spawn, forwarded, reply, held, delivered], 'response_delivered')):
+            with self.subTest(stage=expected):
+                report['events'] = events
+                self.assertEqual(self.summarize(report)['initialize_stage'], expected)
+        report['events'] = [spawn, wire(101, 'textDocument/definition', {}, 1),
+                            *response(101, 'textDocument/definition', 1, {})]
+        self.assertEqual(self.summarize(report)['initialize_stage'], 'spawned_not_forwarded')
 
 
 if __name__ == '__main__':
