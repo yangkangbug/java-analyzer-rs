@@ -68,3 +68,11 @@ unit tests are offline Python tests; only explicit input setup downloads archive
 Only the optional comparator runs Java. It may compile explicit handwritten
 dependency fixtures into temporary class files, but must never execute fixture
 programs or make those files a requirement of native Cargo tests.
+
+Preview tooling has offline standard-library tests: `python3 -m unittest discover
+-s scripts -p "test_*.py" -v`. Packaging builds only this repository with the pinned
+locked Rust toolchain, then tests its trusted local artifact. Do not execute
+external project build scripts or applications during input setup or runtime
+acceptance. Keep fixed network input setup separate from offline analysis and
+measurements; record unsupported outcomes, not a success-only sample. See
+[preview evaluation](docs/CLI_PREVIEW.md) and [installation](docs/CLI_INSTALL.md).

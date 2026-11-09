@@ -1,0 +1,319 @@
+[
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+        "kind": "Class",
+        "owner": "com.google.gson.TypeAdapterFactory",
+        "name": "TypeAdapterFactory",
+        "start": 6402,
+        "end": 6420
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Class",
+        "owner": "com.google.gson.Gson",
+        "name": "Gson",
+        "start": 6437,
+        "end": 6441
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+        "kind": "Class",
+        "owner": "com.google.gson.typeadapters.PostConstructAdapterFactory",
+        "name": "PostConstructAdapterFactory",
+        "start": 1043,
+        "end": 1070
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Class",
+        "owner": "com.google.gson.JsonArray",
+        "name": "JsonArray",
+        "start": 1467,
+        "end": 1476
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/test/java/com/google/gson/common/MoreAsserts.java",
+        "kind": "Class",
+        "owner": "com.google.gson.common.MoreAsserts",
+        "name": "MoreAsserts",
+        "start": 982,
+        "end": 993
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+        "kind": "Local",
+        "owner": "",
+        "name": "gson",
+        "start": 1008,
+        "end": 1012
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+        "kind": "Field",
+        "owner": "com.google.gson.typeadapters.PostConstructAdapterFactoryTest.Sandwich",
+        "name": "bread",
+        "start": 2388,
+        "end": 2393
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "size",
+        "start": 6003,
+        "end": 6007
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "binary",
+        "artifact": "junit",
+        "binary_name": "org/junit/Assert",
+        "name": "Assert",
+        "owner": "org.junit.Assert",
+        "kind": "Class"
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "binary",
+        "artifact": "jsr250",
+        "binary_name": "javax/annotation/PostConstruct",
+        "name": "PostConstruct",
+        "owner": "javax.annotation.PostConstruct",
+        "kind": "Class"
+      }
+    ]
+  },
+  {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "binary",
+        "artifact": "java_sql",
+        "binary_name": "java/sql/Time",
+        "name": "Time",
+        "owner": "java.sql.Time",
+        "kind": "Class"
+      }
+    ]
+  },
+  {
+    "status": "SignatureNotCompared",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 42925,
+        "end": 42933
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 44593,
+        "end": 44601
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 46083,
+        "end": 46091
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 47816,
+        "end": 47824
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 49588,
+        "end": 49596
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 51170,
+        "end": 51178
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 53695,
+        "end": 53703
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 55515,
+        "end": 55523
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 57779,
+        "end": 57787
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 59238,
+        "end": 59246
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "kind": "Method",
+        "owner": "com.google.gson.Gson",
+        "name": "fromJson",
+        "start": 60484,
+        "end": 60492
+      }
+    ]
+  },
+  {
+    "status": "OverloadNotResolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 2652,
+        "end": 2655
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 2918,
+        "end": 2921
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3192,
+        "end": 3195
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3454,
+        "end": 3457
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3703,
+        "end": 3706
+      }
+    ]
+  },
+  {
+    "status": "Unresolved",
+    "targets": []
+  },
+  {
+    "status": "Unresolved",
+    "targets": []
+  },
+  {
+    "status": "ReceiverNotBound",
+    "targets": []
+  }
+]

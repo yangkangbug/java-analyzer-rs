@@ -73,3 +73,16 @@ Persistent symbol IDs are not a prerequisite for a one-shot CLI, but results tha
 outlive a request must belong to a known revision/context. Reference search, rename,
 completion, semantic diagnostics, generic inference and full overload selection
 remain later capabilities, each with its own correctness gate.
+
+## Delivery-evaluation slice
+
+[Linux installation and local archive verification](CLI_INSTALL.md) and the
+[fixed two-project/resource protocol](CLI_PREVIEW.md) provide concrete ways to
+exercise this CLI. Gson adds a real core/extras main/test shape, with all selected
+files and predeclared refusal cases retained. Its substantial parser gaps remain
+a readiness limit, not a successful full-project compatibility claim.
+
+The one-shot executable is not a persistent editor session. Distribution checks
+cover Linux x86_64 GNU only; macOS/Windows and a broader glibc matrix are untested.
+Measured resource observations do not by themselves establish latency/memory
+budgets or certify arbitrary source inputs.

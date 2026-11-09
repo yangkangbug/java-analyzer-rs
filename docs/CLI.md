@@ -374,3 +374,11 @@ CLI contract plus deterministic supervision tests, real timeout/cancellation,
 recursive parser crash isolation, and Linux parent-death coverage.
 The [fixed-source CLI acceptance](../examples/cli_acceptance/README.md) is a separate
 optional real-project gate, not a replacement for native tests or full conformance.
+
+## Installation and preview evaluation
+
+See [installation and package checks](CLI_INSTALL.md) and the
+[fixed preview evaluation protocol](CLI_PREVIEW.md). Linux packaging does not
+certify macOS/Windows, and successful sample checks do not imply complete Java
+or Maven/Gradle support. External project build scripts are never executed by
+the native acceptance or measurement paths.

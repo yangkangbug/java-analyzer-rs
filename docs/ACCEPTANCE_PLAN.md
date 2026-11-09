@@ -178,3 +178,21 @@ comparison, explicit unsupported-result accounting, additional versioned real
 projects, and an intentional decision about making extended gates required or
 triggering them on every core change. Compiler/Java requirements must stay outside
 the production/native analysis core and default native test path.
+
+## Second project and local delivery
+
+The [Gson fixture](../examples/second_project/README.md) adds a distinct manually
+configured core/extras main/test graph. Its separate
+[`second-project-inputs.json`](../scripts/second-project-inputs.json) fixes four
+public archives and two data-only JMOD files. The optional setup retains notices,
+requires fresh outputs, verifies hashes/archive bounds and never executes project
+scripts. Default CI runs its offline security/validator tests. Extended CI fetches
+only those pins and runs the actual CLI with all predeclared outcomes retained.
+Gson reports 1,513 parser gaps in 58 selected files; this is not Java invalidity
+or complete project support.
+
+Default CI also builds and verifies a local Linux CLI archive without uploading
+it. [Installation](CLI_INSTALL.md) and [resource evaluation](CLI_PREVIEW.md) keep
+source/build provenance, deterministic packaging, native build reproducibility
+and measured runtime observations separate. Full repeated resource measurements
+are explicit local runs, not inferred from a green CI status.

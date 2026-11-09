@@ -1,0 +1,119 @@
+{
+  "format_version": 1,
+  "project": {
+    "name": "Gson",
+    "version": "2.10.1",
+    "commit": "2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b",
+    "repository": "https://github.com/google/gson",
+    "platform_scope": "Explicit partial flat classpath: java.base and java.sql only, not a JPMS closure or complete platform."
+  },
+  "artifacts": {
+    "sources": {
+      "url": "https://codeload.github.com/google/gson/zip/2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b",
+      "size": 628229,
+      "sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+      "filename": "gson.zip",
+      "kind": "zip",
+      "root": "gson-2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b",
+      "max_entries": 512,
+      "max_expanded": 4194304,
+      "max_file": 4194304,
+      "required_notices": [
+        "gson-2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b/LICENSE",
+        "gson-2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b/gson/LICENSE"
+      ],
+      "license": "Apache-2.0",
+      "provenance": "Google Gson 2.10.1 official source tree at immutable commit 2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b; root pom.xml declares version 2.10.1. Both root and gson/LICENSE are preserved."
+    },
+    "junit": {
+      "url": "https://repo.maven.apache.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
+      "size": 384581,
+      "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3",
+      "filename": "junit.jar",
+      "kind": "zip",
+      "max_entries": 512,
+      "max_expanded": 2097152,
+      "max_file": 1048576,
+      "required_notices": [
+        "LICENSE-junit.txt"
+      ],
+      "license": "EPL-1.0",
+      "provenance": "JUnit 4.13.2 published binary; embedded META-INF/MANIFEST.MF declares implementation version 4.13.2.",
+      "metadata_url": "https://repo.maven.apache.org/maven2/junit/junit/4.13.2/junit-4.13.2.pom"
+    },
+    "hamcrest": {
+      "url": "https://repo.maven.apache.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar",
+      "size": 45024,
+      "sha256": "66fdef91e9739348df7a096aa384a5685f4e875584cce89386a7a47251c4d8e9",
+      "filename": "hamcrest.jar",
+      "kind": "zip",
+      "max_entries": 128,
+      "max_expanded": 262144,
+      "max_file": 131072,
+      "required_notices": [
+        "LICENSE.txt"
+      ],
+      "license": "BSD-3-Clause",
+      "provenance": "Hamcrest Core 1.3 published binary; embedded META-INF/MANIFEST.MF declares implementation version 1.3.",
+      "metadata_url": "https://repo.maven.apache.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.pom"
+    },
+    "jsr250": {
+      "url": "https://repo.maven.apache.org/maven2/javax/annotation/jsr250-api/1.0/jsr250-api-1.0.jar",
+      "size": 5848,
+      "sha256": "a1a922d0d9b6d183ed3800dfac01d1e1eb159f0e8c6f94736931c1def54a941f",
+      "filename": "jsr250.jar",
+      "kind": "zip",
+      "max_entries": 32,
+      "max_expanded": 32768,
+      "max_file": 16384,
+      "required_notices": [],
+      "license": "CDDL-1.0",
+      "provenance": "javax.annotation:jsr250-api:1.0 published binary. This artifact contains no embedded license file; CDDL-1.0 is recorded from publisher Maven metadata, not an invented extracted notice.",
+      "metadata_url": "https://repo.maven.apache.org/maven2/javax/annotation/jsr250-api/1.0/jsr250-api-1.0.pom"
+    },
+    "java_base": {
+      "filename": "java.base.jmod",
+      "kind": "jmod",
+      "size": 24683914,
+      "sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+      "max_entries": 8192,
+      "max_expanded": 83886080,
+      "max_file": 33554432,
+      "required_notices": [
+        "legal/ADDITIONAL_LICENSE_INFO",
+        "legal/ASSEMBLY_EXCEPTION",
+        "legal/LICENSE",
+        "legal/aes.md",
+        "legal/asm.md",
+        "legal/c-libutl.md",
+        "legal/cldr.md",
+        "legal/gcc.md",
+        "legal/icu.md",
+        "legal/public_suffix.md",
+        "legal/siphash.md",
+        "legal/unicode.md",
+        "legal/zlib.md"
+      ],
+      "license": "GPL-2.0-with-classpath-exception; assembly exception and component notices preserved from JMOD legal/ entries.",
+      "provenance": "Eclipse Temurin 21.0.13+9 Linux x64 HotSpot, copied as data from explicit --platform-dir. Full distribution is pinned in scripts/acceptance-inputs.json; no JDK download or execution here.",
+      "metadata_url": "https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9"
+    },
+    "java_sql": {
+      "filename": "java.sql.jmod",
+      "kind": "jmod",
+      "size": 83900,
+      "sha256": "3dcb75061ccbab687679908001f96f0c8544930c2f3e94f738574bf944121004",
+      "max_entries": 128,
+      "max_expanded": 1048576,
+      "max_file": 131072,
+      "required_notices": [
+        "legal/ADDITIONAL_LICENSE_INFO",
+        "legal/ASSEMBLY_EXCEPTION",
+        "legal/LICENSE"
+      ],
+      "license": "GPL-2.0-with-classpath-exception; assembly exception and component notices preserved from JMOD legal/ entries.",
+      "provenance": "Eclipse Temurin 21.0.13+9 Linux x64 HotSpot, copied as data from explicit --platform-dir. Full distribution is pinned in scripts/acceptance-inputs.json; no JDK download or execution here.",
+      "metadata_url": "https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9"
+    }
+  }
+}

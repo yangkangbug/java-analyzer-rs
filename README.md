@@ -53,6 +53,10 @@ subset, not general applicability, semantic diagnostics, a build importer or an
 editor language server. Inputs are local and
 explicit; no Java executable is called or JDK discovered.
 
+For an explicitly supported installation/build path and Linux archive boundary,
+see [CLI installation](docs/CLI_INSTALL.md). The [preview evaluation protocol](docs/CLI_PREVIEW.md)
+separates reproducible checks, observed resource use and remaining usability gaps.
+
 See the [command/configuration contract](docs/CLI.md) and
 [remaining preview gates](docs/PREVIEW_PLAN.md). The public CLI supervises a worker
 running the same native executable, with a default 30-second execution deadline,

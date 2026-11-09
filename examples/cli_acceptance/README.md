@@ -8,7 +8,8 @@ Commons Lang 3.17.0 source JAR and Temurin 21.0.13+9 `java.base.jmod` as the
 
 ## Reproduce
 
-Use Rust 1.96.0, Python 3.11+, and a POSIX host. Obtain inputs separately using
+Use Rust 1.96.0, Python 3.11+, and POSIX `waitid(WNOWAIT)` support, tested on
+Linux. Obtain inputs separately using
 the [documented fixed-input setup](../../docs/ACCEPTANCE_PLAN.md). From the
 repository root:
 
@@ -47,19 +48,19 @@ cancellation, or a guarantee that arbitrary user input is safe.
   Source and platform paths are manifest-relative, and requests use that same base.
   Run the CLI from a third, unrelated working directory, with no inherited
   environment variables and only `PATH=/nonexistent`. There is no `JAVA_HOME`.
-- Compare all 41 existing [query goldens](../real_source/queries.tsv) and every one
-  of their 86 ordered [target/candidate records](../real_source/targets.tsv).
+- Compare all 45 existing [query goldens](../real_source/queries.tsv) and every one
+  of their 70 ordered [target/candidate records](../real_source/targets.tsv).
   Source names/ranges are independently checked against the original archive
   bytes, including absolute UTF-16 endpoints. Query order, compilation context,
   invocation-local snapshot metadata and one prepared index for the batch are
   checked too.
-- Require 76 source candidates to expose exact source origins and ranges. Require
+- Require 60 source candidates to expose exact source origins and ranges. Require
   ten binary candidates to expose exact JMOD origins, binary names and loaded
   contexts, with `source_available: false` and no fabricated `0..0` source range.
   The CLI's unknown binary linking context and limited identity precision stay
   explicit. Loaded contexts are not a claim of exact linking provenance.
-- Retain all refusals and candidates. The current corpus has 27 resolved queries,
-  eleven overload refusals, two unsupported signature comparisons and one unbound
+- Retain all refusals and candidates. The current corpus has 35 resolved queries,
+  seven overload refusals, two unsupported signature comparisons and one unbound
   receiver. Name resolution is not argument applicability or generic inference.
 - Require parser reports for all 249 sources with the
   `parser_limit_or_invalid_syntax` label, valid byte/UTF-16 ranges, and internally
@@ -78,7 +79,8 @@ cancellation, or a guarantee that arbitrary user input is safe.
   search path is separate from the presence of explicitly supplied platform data.
 
 The source/test/dependent-project shape is covered separately by the
-[CLI example](../cli_project/) and native CLI integration tests. This fixed
+[CLI example](../cli_project/), native CLI integration tests, and the
+[second real-project acceptance plan](../second_project/PLAN.md). This fixed
 published-source workload does not run the upstream project build/tests and does
 not repeat the real-source library harness's 3,030-call namespace audit. Neither
 gate establishes full Java conformance, complete repository/build-model support,

@@ -13,13 +13,20 @@ on:
       - 'scripts/test_fetch_acceptance_inputs.py'
       - 'scripts/check-real-source.py'
       - 'scripts/check-cli-acceptance.py'
+      - 'scripts/second-project-inputs.json'
+      - 'scripts/fetch-second-project-inputs.py'
+      - 'scripts/test_second_project_inputs.py'
+      - 'scripts/check-second-project.py'
+      - 'scripts/test_second_project.py'
+      - 'examples/second_project/**'
       - 'scripts/check-cli-runtime.sh'
       - 'scripts/check-semantic-oracle.py'
       - 'examples/real_source/**'
       - 'examples/real_source.rs'
       - 'examples/oracle_bindings.rs'
       - 'dev-tools/oracle/**'
-      - 'src/bin/**'
+      - 'src/**'
+      - 'rust-toolchain.toml'
       - 'tests/cli.rs'
       - 'examples/cli_project/**'
       - 'examples/cli_acceptance/**'
@@ -56,6 +63,12 @@ jobs:
           --cache "$RUNNER_TEMP/acceptance-cache"
           --output "$RUNNER_TEMP/acceptance"
           --include-oracle-jdk
+      - name: Fetch second project data (no build scripts or Java execution)
+        run: >-
+          python3 scripts/fetch-second-project-inputs.py
+          --cache "$RUNNER_TEMP/acceptance-cache"
+          --platform-dir "$RUNNER_TEMP/acceptance/jdk/jmods"
+          --output "$RUNNER_TEMP/second-project"
       - name: Analyze real source corpus (Rust child has no Java environment)
         run: >-
           python3 scripts/check-real-source.py
@@ -68,6 +81,11 @@ jobs:
           "$RUNNER_TEMP/acceptance/sources.jar"
           "$RUNNER_TEMP/acceptance/java.base.jmod"
           --native target/debug/java-analyzer
+      - name: Query second real project through shipped CLI (no Java environment)
+        run: >-
+          python3 scripts/check-second-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
       - name: Independent javac oracle (only this step executes Java)
         run: >-
           python3 scripts/check-semantic-oracle.py
@@ -76,7 +94,7 @@ jobs:
           --sources-jar "$RUNNER_TEMP/acceptance/sources.jar"
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
-        run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/acceptance-cache"
+        run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"
 
 # Pins cover external acceptance archives, not the entire runner/dependency graph.
 # Network failure fails setup explicitly; skipped jobs do not constitute acceptance.

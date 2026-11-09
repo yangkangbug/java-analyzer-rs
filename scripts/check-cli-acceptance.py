@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Offline acceptance of the shipped native CLI, not an alternate Rust harness.
 
-Requires Python 3.11+ and POSIX. Verifies fixed external inputs, never fetches,
+Requires Python 3.11+ and POSIX waitid(WNOWAIT), tested on Linux. Verifies fixed
+external inputs, never fetches,
 builds, or invokes Java, and bounds each product subprocess's time and output.
 """
 
@@ -97,7 +98,8 @@ def run_bounded(command, cwd, timeout, max_output):
     A new process group allows timeout/output failures to kill descendants too.
     These are harness containment checks, not a production CLI timeout promise.
     """
-    require(os.name == "posix", "bounded CLI acceptance currently requires POSIX")
+    require(os.name == "posix" and hasattr(os, "waitid") and hasattr(os, "WNOWAIT"),
+            "bounded CLI acceptance requires POSIX waitid(WNOWAIT) for safe process-group cleanup")
     deadline = time.monotonic() + timeout
     output = {"stdout": bytearray(), "stderr": bytearray()}
     process = subprocess.Popen(
@@ -123,20 +125,22 @@ def run_bounded(command, cwd, timeout, max_output):
                     output[key.data].extend(block)
             remaining = deadline - time.monotonic()
             require(remaining > 0, f"CLI timeout after {timeout:g}s: {command[1]}")
-            try:
-                code = process.wait(timeout=remaining)
-            except subprocess.TimeoutExpired as error:
-                raise AcceptanceError(f"CLI timeout after {timeout:g}s: {command[1]}") from error
-        return code, bytes(output["stdout"]), bytes(output["stderr"])
+            # Observe exit without releasing the leader's PID/PGID. Reaping
+            # before killpg would allow reuse and could signal an unrelated group.
+            while os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is None:
+                remaining = deadline - time.monotonic()
+                require(remaining > 0, f"CLI timeout after {timeout:g}s: {command[1]}")
+                time.sleep(min(0.005, remaining))
     finally:
         # Also clean up a descendant retaining a pipe after its parent exits.
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        process.wait(timeout=5)
+        code = process.wait(timeout=5)
         process.stdout.close()
         process.stderr.close()
+    return code, bytes(output["stdout"]), bytes(output["stderr"])
 
 
 def run_cli(native, cwd, manifest, command, timeout, max_output, requests=None):

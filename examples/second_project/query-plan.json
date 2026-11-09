@@ -1,0 +1,185 @@
+{
+  "selected_before_first_cli_analysis": true,
+  "source_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+  "expected_source_count": 211,
+  "expected_source_bytes": 1484012,
+  "queries": [
+    {
+      "id": "cross_interface",
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "file": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+      "byte": 1082,
+      "spelling": "TypeAdapterFactory",
+      "goal": "source"
+    },
+    {
+      "id": "cross_core_type",
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "file": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+      "byte": 1241,
+      "spelling": "Gson",
+      "goal": "source"
+    },
+    {
+      "id": "test_extra_main",
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "file": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+      "byte": 1081,
+      "spelling": "PostConstructAdapterFactory",
+      "goal": "source"
+    },
+    {
+      "id": "test_core_main",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1139,
+      "spelling": "JsonArray",
+      "goal": "source"
+    },
+    {
+      "id": "test_only_helper",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1009,
+      "spelling": "MoreAsserts",
+      "goal": "source"
+    },
+    {
+      "id": "local_gson",
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "file": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+      "byte": 1147,
+      "spelling": "gson",
+      "goal": "local"
+    },
+    {
+      "id": "field_bread",
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "file": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+      "byte": 2498,
+      "spelling": "bread",
+      "goal": "field"
+    },
+    {
+      "id": "unique_method_size",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 2028,
+      "spelling": "size",
+      "goal": "source_name_only"
+    },
+    {
+      "id": "binary_junit",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/common/MoreAsserts.java",
+      "byte": 1386,
+      "spelling": "Assert",
+      "goal": "binary"
+    },
+    {
+      "id": "binary_annotation",
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "file": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+      "byte": 1491,
+      "spelling": "PostConstruct",
+      "goal": "binary"
+    },
+    {
+      "id": "binary_sql",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "file": "gson/src/main/java/com/google/gson/internal/sql/SqlTimeTypeAdapter.java",
+      "byte": 2219,
+      "spelling": "Time",
+      "goal": "binary"
+    },
+    {
+      "id": "overload_fromjson",
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "file": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+      "byte": 1152,
+      "spelling": "fromJson",
+      "goal": "refusal"
+    },
+    {
+      "id": "overload_add",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1237,
+      "spelling": "add",
+      "goal": "refusal"
+    },
+    {
+      "id": "chain_receiver",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1986,
+      "spelling": "getAsString",
+      "goal": "refusal"
+    },
+    {
+      "id": "missing_generated_type",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "file": "gson/src/main/java/com/google/gson/Gson.java",
+      "byte": 25372,
+      "spelling": "GsonBuildConfig",
+      "goal": "unresolved"
+    },
+    {
+      "id": "missing_generated_field",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "file": "gson/src/main/java/com/google/gson/Gson.java",
+      "byte": 25388,
+      "spelling": "VERSION",
+      "goal": "unresolved"
+    }
+  ],
+  "rule": "Preserve all chosen queries including failures; exact statuses/candidates are observations, source declarations must be independently verified. No ratio pass threshold, no semantic conformance claim."
+}

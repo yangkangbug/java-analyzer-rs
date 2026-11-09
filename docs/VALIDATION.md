@@ -732,3 +732,58 @@ One final Linux cloud release run recorded load/parse 493.92 ms, preparation
 including fresh loads. This expanded workload is not directly comparable to the
 previous 41-query percentiles. No speedup, memory bound or preview latency budget
 is claimed. CLI SHA-256: `784cd39cbf3629a7a462ad0dd505f7ff2f9535c70510ba9042bf69630ca19dcf`.
+
+## Two-project delivery evaluation tooling
+
+Baseline: `992b6edb3ad84463bbfbb9bb3351b3c2d2e3f987`. This slice changes preview
+setup, acceptance, packaging and measurement tooling; it does not broaden the
+Rust analyzer's Java semantics. The [evaluation protocol](CLI_PREVIEW.md) fixes
+samples, correctness rules and resource-measurement semantics before final runs.
+
+The second sample uses Gson 2.10.1 at a fixed upstream commit, with all 211
+selected original Java files across core/extras main/test contexts. Six exact
+source/dependency/platform artifact hashes and twenty retained notice files were
+checked independently. Setup uses pinned HTTPS/cache inputs and copies supplied
+JMOD data; no upstream script, build, test or Java application is executed.
+The source graph is manually configured, not Maven/Gradle or JPMS import.
+Generated GsonBuildConfig is not invented. Excluded roots and module-info
+limitations remain disclosed.
+
+All sixteen predeclared query sites are retained: eight source/local/field/method
+targets and three binary types resolve; five outcomes remain unsupported or
+unresolved. Exact candidate ranges and declarations were inspected in original
+source bytes. Fourteen visibility, missing-edge/dependency, load-error, source
+edit/rename/recovery and deliberate wrong-output controls pass. Parser reporting
+retains 1,513 nodes in 58 files: core/main 161 in 24 files, core/test 1,348 in 30,
+extras/main four in four and extras/test zero. These can cascade and are not
+1,513 independent Java defects. No full-project compiler equivalence is claimed.
+
+The documented source install, installed-binary smoke/uninstall, dirty developer
+archive build and detached archive checker were exercised. Packaging builds this
+repository with pinned Rust and a locked dependency graph; no project input code
+is executed. It includes an indexed allowlist of docs/sample/license files,
+source/build hashes, native ELF linkage and checksums. Dynamic Linux x86_64 GNU
+compatibility is explicit, with an observed glibc symbol requirement through
+2.39. Deterministic packaging does not certify bit-for-bit native rebuilds.
+A final clean-commit archive and repeated resource results are separate delivery
+evidence, not inferred from these developer packages or a green CI status.
+
+Independent review identified and verified fixes for process-group cleanup after
+reaping, partial output publication, unsafe report writes, private/untracked
+package leftovers, changing-input provenance, redirect scope and archive/path
+handling. The final offline suite has ninety Python tests: twenty-five package,
+twenty-seven second-input setup, eight second-project validator, eighteen
+measurement/cleanup and twelve existing input-security tests. The unchanged core
+also passes 233 default Rust tests, 265 all-feature tests, one doctest, formatting,
+Clippy, rustdoc, examples and source/JAR/JMOD/CLI no-Java-environment checks. The
+existing forty-five Commons queries and all candidate records remain unchanged.
+
+The measurement harness validates each result, includes the native worker in
+resource observation, records unavailability/races, holds the leader identity
+until group cleanup and writes output atomically without replacing existing
+files. It runs no builds/downloads, and serial measurements must follow setup and
+review work. Its wait4 high-water and sampled summed-RSS meanings remain distinct.
+Source-edit timing is a fresh full reload, not an incremental editor session.
+No final performance result, OS memory quota or cross-platform readiness is
+claimed merely because this tooling exists. Process tracing was not permitted;
+source inspection, native linkage and empty-environment runs are separate evidence.

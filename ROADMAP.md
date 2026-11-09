@@ -162,7 +162,11 @@ completed IDE preview. See [CLI contract](docs/CLI.md) and
 [preview acceptance gates](docs/PREVIEW_PLAN.md). Native worker supervision now
 adds execution deadlines and crash/cancellation reporting; see M3 below. Automatic
 reload, unsaved buffers, protocol positions, performance budgets and distribution
-remain needed, alongside the semantic work below.
+remain needed, alongside the semantic work below. A separate
+[delivery-evaluation protocol](docs/CLI_PREVIEW.md) now fixes a second real
+core/extras main/test project, local Linux packaging and honest resource
+measurements. It retains substantial parser gaps and does not mark the preview
+gates complete.
 
 ### Type-system direction
 
