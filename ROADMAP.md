@@ -161,7 +161,7 @@ This provides a narrow end-to-end entry point for real-project validation, not a
 completed IDE preview. See [CLI contract](docs/CLI.md) and
 [preview acceptance gates](docs/PREVIEW_PLAN.md). Native worker supervision now
 adds execution deadlines and crash/cancellation reporting; see M3 below. Automatic
-reload, persistent buffer lifecycle and editor protocol integration, performance budgets and distribution
+reload, broad editor capabilities, interactive performance budgets and distribution
 remain needed, alongside the semantic work below. A separate
 [delivery-evaluation protocol](docs/CLI_PREVIEW.md) now fixes a second real
 core/extras main/test project, local Linux packaging and honest resource
@@ -241,6 +241,22 @@ The [execution contract](docs/CLI_EXECUTION.md) excludes memory quotas, arbitrar
 descendant containment, caller-output backpressure and hard real-time guarantees.
 The next interactive gates still need snapshot/reload correctness and measurement,
 alongside method applicability and the semantic coverage described in M2.
+
+### Bounded editor navigation slice
+
+The definition-only stdio LSP adapter keeps protocol and full-text buffer state in
+a broker while native one-shot jobs load and analyze complete snapshots. Frozen
+configuration and source ownership, whole-workspace revisions, exact snapshot
+target positions and explicit cancellation prevent unsupported stale navigation.
+The Neovim companion also guards results already in transit, after flushing all
+attached buffers. See [the scope and acceptance contract](docs/LSP_PREVIEW.md).
+
+This is a usable adapter for the existing narrow resolver, not a persistent
+incremental engine. Every query still loads and prepares the project anew;
+configuration/source-inventory changes require restart. No general Java semantic
+coverage, automatic build import, UI latency budget or replacement of JDT LS is
+implied. Next gates must improve measured repeated-query behavior and practical
+semantic coverage without losing cross-buffer correctness or refusal boundaries.
 
 ## M4: usable analysis capabilities
 

@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "version": "0.11.5",
+  "source_commit": "9fa7c0a04638ee3d5fefbdcec347b1c07a5ce9ce",
+  "release": "https://github.com/neovim/neovim/releases/tag/v0.11.5",
+  "license": "Apache-2.0 AND Vim; bundled dependencies retain their own licenses",
+  "license_source": "https://github.com/neovim/neovim/blob/9fa7c0a04638ee3d5fefbdcec347b1c07a5ce9ce/LICENSE.txt",
+  "license_sha256": "e1ff044cabc90a87faf9356618a5c43078c020c3c5e98a4dee570dd098da043d",
+  "purpose": "Optional headless editor acceptance only; not an analyzer runtime or redistributed dependency",
+  "platforms": {
+    "linux-x86_64": {
+      "url": "https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-x86_64.tar.gz",
+      "sha256": "b2f91117be5b5ea39edd7297156dc2a4a8df4add6c95a90809a8df19e7ab6f52",
+      "size": 10973811,
+      "root": "nvim-linux-x86_64",
+      "max_entries": 10000,
+      "max_file": 33554432,
+      "max_expanded": 134217728
+    },
+    "macos-arm64": {
+      "url": "https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-macos-arm64.tar.gz",
+      "sha256": "79143d3b408f7034f90b7cf59af2276de09ef8a4c2f1a28e4c99581b249d3107",
+      "size": 9204217,
+      "root": "nvim-macos-arm64",
+      "max_entries": 10000,
+      "max_file": 33554432,
+      "max_expanded": 134217728
+    },
+    "macos-x86_64": {
+      "url": "https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-macos-x86_64.tar.gz",
+      "sha256": "6612760a7037ca2518e456908baf5e43101fa79819d18979fc4d4e8441d9dfa5",
+      "size": 9487191,
+      "root": "nvim-macos-x86_64",
+      "max_entries": 10000,
+      "max_file": 33554432,
+      "max_expanded": 134217728
+    }
+  }
+}

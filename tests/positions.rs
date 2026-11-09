@@ -107,3 +107,16 @@ fn short_unicode_and_newline_combinations_match_an_independent_character_walk() 
         }
     }
 }
+
+#[test]
+fn utf16_line_lengths_exclude_all_line_endings_without_changing_strict_conversion() {
+    let index = LineIndex::new("a😀中\r\nb\rc\n");
+    for (line, length) in [4, 1, 1, 0].into_iter().enumerate() {
+        assert_eq!(index.line_utf16_len(line as u32), Some(length));
+        assert!(index.position_to_byte(pos(line as u32, length)).is_some());
+        assert!(index.position_to_byte(pos(line as u32, length + 1)).is_none());
+    }
+    assert_eq!(index.line_utf16_len(4), None);
+    assert_eq!(index.line_utf16_len(u32::MAX), None);
+    assert_eq!(LineIndex::new("").line_utf16_len(0), Some(0));
+}

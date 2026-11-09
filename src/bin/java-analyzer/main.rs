@@ -1,7 +1,9 @@
-//! Experimental, one-shot native project CLI. No protocol or runtime integration
-//! is added to the library. See docs/CLI.md for the versioned wire contract.
+//! Experimental native CLI and bounded editor adapter. No protocol or runtime
+//! integration is added to the library. See docs/CLI.md and docs/LSP_PREVIEW.md.
 mod config;
+mod editor;
 mod execution;
+mod lsp;
 mod overlays;
 
 use config::{Id, Manifest, Position, Query, Requests};
@@ -55,19 +57,26 @@ fn version(value: u32) -> Result<(), Error> {
     }
 }
 fn read_document<T: DeserializeOwned>(path: &Path) -> Result<(T, PathBuf), Error> {
+    read_document_bounded(path, MAX_DOCUMENT_BYTES, "JSON document exceeds 1 MiB")
+}
+fn read_document_bounded<T: DeserializeOwned>(
+    path: &Path,
+    limit: u64,
+    limit_message: &str,
+) -> Result<(T, PathBuf), Error> {
     let meta = fs::symlink_metadata(path).map_err(|e| Error::new("io", e.to_string()).at(path))?;
     if !meta.is_file() || meta.file_type().is_symlink() {
         return Err(Error::new("invalid_path", "JSON document must be a regular file, not a symlink").at(path));
     }
-    if meta.len() > MAX_DOCUMENT_BYTES {
-        return Err(Error::new("document_limit", "JSON document exceeds 1 MiB").at(path));
+    if meta.len() > limit {
+        return Err(Error::new("document_limit", limit_message).at(path));
     }
     let mut bytes = Vec::new();
     File::open(path)
-        .and_then(|f| f.take(MAX_DOCUMENT_BYTES + 1).read_to_end(&mut bytes))
+        .and_then(|f| f.take(limit + 1).read_to_end(&mut bytes))
         .map_err(|e| Error::new("io", e.to_string()).at(path))?;
-    if bytes.len() as u64 > MAX_DOCUMENT_BYTES {
-        return Err(Error::new("document_limit", "JSON document exceeds 1 MiB").at(path));
+    if bytes.len() as u64 > limit {
+        return Err(Error::new("document_limit", limit_message).at(path));
     }
     let parsed = serde_json::from_slice(&bytes).map_err(|e| Error::new("invalid_json", e.to_string()).at(path))?;
     let canonical = path.canonicalize().map_err(|e| Error::new("io", e.to_string()).at(path))?;
@@ -520,6 +529,9 @@ fn parser_report(
         "report_count":report_count,"files":files}))
 }
 fn run(raw_args: &[String]) -> Result<Value, Error> {
+    if raw_args.first().is_some_and(|command| editor::is_command(command)) {
+        return editor::run(raw_args);
+    }
     let Some(args) = arguments(raw_args)? else {
         return Ok(help());
     };
@@ -576,6 +588,9 @@ fn main() {
         .map(|arg| arg.into_string().map_err(|_| Error::new("usage", "arguments must be UTF-8")))
         .collect::<Result<Vec<_>, _>>()
         .unwrap_or_else(|error| emit_error(error));
+    if args.first().is_some_and(|arg| arg == "lsp") {
+        std::process::exit(lsp::run(&args[1..]));
+    }
     if args.first().is_some_and(|arg| arg == execution::WORKER_ARGUMENT) {
         execution::watch_parent().unwrap_or_else(|error| emit_error(error));
         let bytes = run(&args[1..]).and_then(|value| encode(&value)).unwrap_or_else(|error| emit_error(error));

@@ -20,6 +20,9 @@ on:
       - 'scripts/test_second_project.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
+      - 'scripts/check-lsp-project.py'
+      - 'scripts/test_lsp_project.py'
+      - 'examples/lsp_preview/**'
       - 'examples/editor_buffers/**'
       - 'tests/cli_overlays.rs'
       - 'tests/overlays.rs'
@@ -95,6 +98,11 @@ jobs:
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
         run: >-
           python3 scripts/check-editor-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+      - name: Fixed Gson cross-owner unsaved navigation through LSP (no Java)
+        run: >-
+          python3 scripts/check-lsp-project.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
       - name: Independent javac oracle (only this step executes Java)

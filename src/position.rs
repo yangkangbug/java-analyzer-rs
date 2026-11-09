@@ -58,6 +58,13 @@ impl<'a> LineIndex<'a> {
         Self { text, lines }
     }
 
+    /// Return the UTF-16 content length of a line, excluding its line ending.
+    /// Missing lines or lengths outside `u32` return `None`; no position is clamped.
+    pub fn line_utf16_len(&self, line: u32) -> Option<u32> {
+        let line = self.lines.get(usize::try_from(line).ok()?)?;
+        u32::try_from(self.text[line.start..line.end].encode_utf16().count()).ok()
+    }
+
     /// Convert an exact UTF-16 position, rejecting missing lines, excess columns,
     /// surrogate-pair interiors and byte offsets that do not fit in `u32`.
     pub fn position_to_byte(&self, position: Utf16Position) -> Option<u32> {

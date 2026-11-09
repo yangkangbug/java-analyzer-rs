@@ -83,3 +83,13 @@ not Mac packaging or distribution. Its offline checker regressions are included
 in the Python discovery command above. Linux-only packaging, resource measurements
 and input-publication tests remain in Linux CI; do not silently relax their
 platform or no-replacement guarantees to make the Mac job green.
+
+The [definition-only editor adapter](docs/LSP_PREVIEW.md) has native broker and
+private-job tests in the feature-enabled Cargo suite. Keep its framing, queue,
+child cleanup and cross-buffer invalidation tests separate from semantic proofs.
+Real Neovim acceptance uses the checksum-pinned optional `editor-acceptance`
+workflow, not a network dependency of native Cargo tests. Its isolated headless
+client runs without user configuration or plugins; it must never use a user's
+computer. Input setup, offline analysis, real client navigation and optional javac
+comparison remain separately identified gates. A successful handwritten protocol
+test is not evidence that a real editor navigates correctly.

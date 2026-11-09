@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use super::Error;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Id {
     pub project: String,
@@ -34,7 +34,7 @@ impl From<&CompilationId> for Id {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
     pub schema_version: u32,

@@ -7,8 +7,10 @@ start Java, JNI, JDT LS, Maven, Gradle, or a network client. Explicit JAR/JMOD i
 are data, not executable tools. No JDK or dependency is discovered implicitly.
 
 This implements part of the [preview plan](PREVIEW_PLAN.md), **not all preview
-gates**. It has no persistent server, reload transaction, LSP,
-distribution certification, or measured project-scale performance budget. It now
+gates**. The one-shot commands have no persistent state or reload transaction;
+the separate [definition-only LSP entry point](LSP_PREVIEW.md) is documented
+independently. Neither has distribution certification or a measured interactive
+performance budget. The one-shot CLI
 supervises a separate native worker with a default 30-second wall-clock timeout,
 optional stdin-EOF cancellation and machine-readable crash/output failures. See
 [execution bounds and remaining limits](CLI_EXECUTION.md). Use trusted local
@@ -47,7 +49,7 @@ continues to build the library without the CLI serialization dependencies.
 
 `--help` and `--version` each return JSON containing version, command usage and
 capability boundaries. No text-output mode is provided in schema version 1. Every
-command accepts `--timeout-ms N` (ASCII decimal digits, 1..300000; default 30000)
+one-shot command accepts `--timeout-ms N` (ASCII decimal digits, 1..300000; default 30000)
 and optional `--cancel-on-stdin-close`. Duplicates and invalid values fail. No
 unlimited timeout is available. Read both output streams concurrently; final
 output delivery is outside the worker deadline. See [execution contract](CLI_EXECUTION.md).

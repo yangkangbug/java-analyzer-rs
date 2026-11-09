@@ -839,3 +839,62 @@ these mocked negative cases do not prove macOS compatibility: consult successful
 jobs for the exact source revision. No user Mac was accessed, no Mac package was
 uploaded or signed, and Linux-specific packaging/resource measurement remains
 separate. See [the explicit platform boundary](MACOS_NATIVE.md).
+
+## Definition-only editor protocol slice
+
+Baseline: `fef343e9ff0a9b562079a0565b838c8f66dd4084`. The acceptance contracts
+were written before implementation in `examples/lsp_preview/PLAN.md`,
+`docs/LSP_PREVIEW.md` and `editors/neovim/ACCEPTANCE.md`. This slice adds editor
+transport and lifecycle correctness, not new Java semantic coverage.
+
+Three evidence layers stay separate: native protocol/state/process tests; a
+handwritten wire test against the fixed Gson project; and actual pinned Neovim
+headless navigation using its built-in LSP client and real buffers/cursors.
+The Gson path retains its original reviewed extras-to-core interface target and
+computes expected UTF-16 line positions independently from original source bytes.
+An open query buffer containing original disk text is still an overlay. Separate
+CLI invocations, not closed-document LSP queries, check the no-overlay baseline.
+Complete source path/hash inventories and all pinned input hashes must be unchanged.
+
+The native adapter freezes configuration with its original canonical base and
+source ownership. Each job captures all open buffers, then loads and prepares a
+fresh native snapshot. Exact target coordinates come from that snapshot. Known
+desynchronization blocks navigation; valid full replacements or close/reopen
+recover it. No retained semantic snapshot, incremental query cache, automatic
+build import or external disk-change transaction is claimed.
+
+The Neovim companion flushes all attached buffers before sending a definition,
+not just the query buffer. Its local whole-workspace generation, buffer lifetime,
+cursor and session checks guard responses already in transit. Test-only delayed
+responses distinguish those client checks from actual native worker cancellation.
+Mutation controls remove the flush and invalidation guards to confirm that the
+acceptance detects real wrong-cursor navigation. Headless behavior is not GUI,
+other-client, signed-release or user-device validation.
+
+The separate optional `editor-acceptance` workflow downloads fixed official
+Neovim development inputs, verifies them, then runs local owned fixtures without
+user configuration, plugins or a Java executable search path. Linux, hosted Mac
+ARM and hosted Mac Intel require their own successful exact-commit runs. No
+external project program/build script is executed or distributed. The production
+Rust dependency graph is unchanged. Existing one-shot CLI measurements do not
+establish the new editor adapter's responsiveness, resource budget or full IDE
+readiness. See `editors/neovim/README.md` for the supported manual setup.
+
+Local Linux validation passed 247 default Rust tests, 332 all-feature Rust tests,
+two doctests and 132 offline Python tests, with the same two optional corpus tests
+ignored by ordinary Cargo runs. Formatting, strict Clippy/rustdoc, examples and
+native source/JAR/JMOD/CLI checks passed. Nineteen focused broker tests and seven
+real subprocess tests cover lifecycle, synchronization, cancellation, malformed
+input, queue/output limits and uncertain cleanup. An independent 30-cycle OS
+probe waited for both native child processes before each cancellation: all thirty
+requests settled, the sixty observed children exited, and broker threads returned
+to their baseline after every cycle. This is Linux process evidence, not a quota
+or arbitrary-descendant containment guarantee.
+
+The fixed Gson wire gate passed nine lifecycle stages, with both independent
+16-query CLI disk baselines unchanged. Real Neovim passed thirteen checks,
+including twenty rapid dependency edits, under its ordinary 150 ms debounce.
+All three deliberately weakened client variants failed with actual wrong-cursor
+navigation. The final real-client and Gson release executable's SHA-256 was
+`08e270a3f832a1cc865b7834b40ac40a778170695679742a657fcf0e9ad5deef`.
+Independent review reran both gates and found no remaining blocking findings.

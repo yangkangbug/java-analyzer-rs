@@ -1,0 +1,75 @@
+name: editor-acceptance
+
+# Optional official-client network gate, distinct from native offline tests.
+# Execute reviewed main only, never pull_request_target or arbitrary PR code.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/editor-acceptance.yml'
+      - 'src/**'
+      - 'editors/neovim/**'
+      - 'scripts/*neovim*'
+      - 'scripts/fetch-acceptance-inputs.py'
+      - 'examples/cli_project/**'
+      - 'tests/fixtures/classes/Lib.class'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editor-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  neovim:
+    if: github.ref == 'refs/heads/main'
+    name: Neovim 0.11.5 (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x86_64
+          - runner: macos-15
+            platform: macos-arm64
+          - runner: macos-15-intel
+            platform: macos-x86_64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: 1.96.0
+      - name: Offline client-input regressions
+        run: python3 -m unittest discover -s scripts -p 'test_neovim*.py' -v
+      - name: Build native analyzer (no Java)
+        run: cargo build --release --locked --features cli --bin java-analyzer
+      - name: Fetch exact official client archive (network setup only)
+        run: >-
+          python3 scripts/fetch-neovim-input.py
+          --cache "$RUNNER_TEMP/neovim-cache"
+          --output "$RUNNER_TEMP/neovim"
+          --platform '${{ matrix.platform }}'
+      - name: Real isolated headless editor navigation (native analysis has no Java PATH)
+        run: >-
+          python3 scripts/check-neovim-editor.py
+          --nvim "$RUNNER_TEMP/neovim/bin/nvim"
+          --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
+          --output "$RUNNER_TEMP/neovim-result"
+      - name: Remove temporary client and owned acceptance data (never uploaded)
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache" "$RUNNER_TEMP/neovim-result"
+
+# A failed download is a setup failure, not a passed or skipped editor test.
+# Headless navigation is not GUI, signed-distribution or user-device validation.

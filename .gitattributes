@@ -3,3 +3,4 @@ docs/patches/*.patch -whitespace
 # Preserve upstream license bytes, including their original whitespace.
 licenses/crc32fast-1.5.4/LICENSE-APACHE -whitespace
 licenses/zlib-rs-0.6.8/LICENSE -whitespace
+editors/neovim/licenses/Neovim-0.11.5-LICENSE.txt -whitespace

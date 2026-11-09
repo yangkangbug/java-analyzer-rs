@@ -113,3 +113,15 @@ are copied unchanged under `licenses/<crate>-<version>/`.
 `memchr` 2.8.3. Their licenses/source records are in the table above. JSON defaults
 are retained, including the recursion limit. No unbounded-depth, arbitrary-
 precision, preserve-order, network or JVM feature is enabled by this adapter.
+
+## Optional real-editor development input
+
+The separate editor acceptance workflow downloads official Neovim 0.11.5
+archives with exact hashes and source provenance in
+`scripts/neovim-inputs.json`. Neovim is not a Rust dependency or included in this
+repository, CLI archive or source distribution. Setup retains the archive's
+runtime documentation and notices. Neovim uses Apache-2.0 and Vim licenses;
+bundled libraries retain their respective terms. See the pinned upstream
+[LICENSE.txt](https://github.com/neovim/neovim/blob/9fa7c0a04638ee3d5fefbdcec347b1c07a5ce9ce/LICENSE.txt).
+The Lua companion and acceptance scripts in this repository are original
+Apache-2.0 project code, not copied Neovim implementation code.

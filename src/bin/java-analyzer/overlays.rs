@@ -1,6 +1,6 @@
 //! Bounded one-shot full-text overlays. Labels are caller correlation data only.
 use java_engine::{SourceOverlay, SourceOverlayErrorKind, WorkspaceConfig, WorkspaceSnapshot};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
     collections::BTreeSet,
@@ -14,22 +14,22 @@ use super::{
 
 const MAX_OVERLAYS: usize = 1024;
 // Every integer must round-trip through common JSON/editor number implementations.
-const MAX_LABEL: u64 = 9_007_199_254_740_991;
+pub(super) const MAX_LABEL: u64 = 9_007_199_254_740_991;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Overlays {
-    schema_version: u32,
-    revision: u64,
-    files: Vec<Overlay>,
+    pub(super) schema_version: u32,
+    pub(super) revision: u64,
+    pub(super) files: Vec<Overlay>,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Overlay {
-    compilation: Id,
-    file: String,
-    version: u64,
-    text: String,
+pub(super) struct Overlay {
+    pub(super) compilation: Id,
+    pub(super) file: String,
+    pub(super) version: u64,
+    pub(super) text: String,
 }
 impl Overlays {
     pub fn validate(&self) -> Result<(), Error> {

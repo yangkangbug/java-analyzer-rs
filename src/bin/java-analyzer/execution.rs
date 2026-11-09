@@ -2,7 +2,7 @@
 //! Reader threads are deliberately never joined: an inherited pipe must not hold
 //! the supervisor alive after its direct worker has exited. See CLI_EXECUTION.md.
 use super::{Error, MAX_RESPONSE_BYTES};
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use std::{
     io::{self, Read},
@@ -71,7 +71,7 @@ impl Options {
                 }
                 // Preserve option values verbatim, even when they look like a supervision option.
                 "--manifest" | "--requests" | "--project" | "--source-set" | "--file" | "--byte" | "--utf16"
-                | "--overlays" | "--line" | "--character" => {
+                | "--overlays" | "--line" | "--character" | "--job" => {
                     forwarded.push(arg);
                     if let Some(value) = iter.next() {
                         forwarded.push(value);
@@ -348,12 +348,12 @@ struct WorkerError {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct SuccessEnvelope {
+struct SuccessEnvelope<T = Value> {
     schema_version: u32,
     command: String,
     snapshot: Snapshot,
     capabilities: Value,
-    result: Value,
+    result: T,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -372,6 +372,17 @@ struct HelpEnvelope {
     execution_options: Vec<String>,
     documentation: String,
 }
+fn valid_success<T: DeserializeOwned>(bytes: &[u8], args: &[String], valid_result: fn(&T) -> bool) -> bool {
+    serde_json::from_slice::<SuccessEnvelope<T>>(bytes).is_ok_and(|envelope| {
+        envelope.schema_version == 1
+            && Some(&envelope.command) == args.first()
+            && !envelope.snapshot.id.is_empty()
+            && envelope.snapshot.identity == "invocation_local"
+            && !envelope.snapshot.manifest.is_empty()
+            && envelope.capabilities.is_object()
+            && valid_result(&envelope.result)
+    })
+}
 fn validate(captured: Captured, args: &[String]) -> Result<Response, Error> {
     let valid = if captured.status.success() {
         captured.stderr.is_empty()
@@ -386,15 +397,15 @@ fn validate(captured: Captured, args: &[String]) -> Result<Response, Error> {
                         && envelope.documentation == "docs/CLI.md"
                 })
             } else {
-                serde_json::from_slice::<SuccessEnvelope>(&captured.stdout).is_ok_and(|envelope| {
-                    envelope.schema_version == 1
-                        && Some(&envelope.command) == args.first()
-                        && !envelope.snapshot.id.is_empty()
-                        && envelope.snapshot.identity == "invocation_local"
-                        && !envelope.snapshot.manifest.is_empty()
-                        && envelope.capabilities.is_object()
-                        && envelope.result.is_object()
-                })
+                match args.first().map(String::as_str) {
+                    Some(super::editor::INSPECT_COMMAND) => {
+                        valid_success(&captured.stdout, args, super::editor::InspectResult::valid)
+                    }
+                    Some(super::editor::DEFINITION_COMMAND) => {
+                        valid_success(&captured.stdout, args, super::editor::DefinitionResult::valid)
+                    }
+                    _ => valid_success(&captured.stdout, args, Value::is_object),
+                }
             }
     } else {
         captured.status.code() == Some(2)
@@ -641,7 +652,7 @@ mod tests {
     }
     #[test]
     fn editor_option_values_are_not_consumed_as_supervision_flags() {
-        for option in ["--overlays", "--line", "--character"] {
+        for option in ["--overlays", "--line", "--character", "--job"] {
             for value in ["--timeout-ms", "--cancel-on-stdin-close"] {
                 let args = vec!["inspect".to_owned(), option.to_owned(), value.to_owned()];
                 let parsed = Options::parse(args.clone()).unwrap();
@@ -666,6 +677,71 @@ mod tests {
             assert!(!response.success);
             assert_eq!(response.bytes, bytes);
         }
+    }
+
+    #[cfg(any(unix, windows))]
+    #[test]
+    fn private_definition_envelopes_require_typed_exact_fields_and_sound_locations() {
+        let command = super::super::editor::DEFINITION_COMMAND;
+        let args = vec![command.to_owned()];
+        let success = json!({"schema_version":1,"command":command,"snapshot":{"id":"one","identity":"invocation_local","manifest":"/project.json"},"capabilities":{},"result":{"generation":1,"status":"Resolved","refusal":null,"location":{"path":"/A.java","range":{"start":{"line":1,"character":2},"end":{"line":1,"character":3}}}}});
+        for (pointer, value) in [
+            ("/result/generation", json!(-1)),
+            ("/result/generation", json!(9007199254740992_u64)),
+            ("/result/status", json!("invented")),
+            ("/result/status", json!("Ambiguous")),
+            ("/result/refusal", json!("binary_source_unavailable")),
+            ("/result/location/path", json!("relative")),
+            ("/result/location/range/start/character", json!(4)),
+            ("/result/location/range/end/line", json!(-1)),
+        ] {
+            let mut changed = success.clone();
+            *changed.pointer_mut(pointer).unwrap() = value;
+            let bytes = (changed.to_string() + "\n").into_bytes();
+            assert_eq!(
+                validate(Captured { status: status(0), stdout: bytes, stderr: vec![] }, &args).err().unwrap().code,
+                "worker_output"
+            );
+        }
+        for field in ["generation", "status", "refusal", "location"] {
+            let mut changed = success.clone();
+            changed["result"].as_object_mut().unwrap().remove(field);
+            let bytes = (changed.to_string() + "\n").into_bytes();
+            assert_eq!(
+                validate(Captured { status: status(0), stdout: bytes, stderr: vec![] }, &args).err().unwrap().code,
+                "worker_output"
+            );
+        }
+        let encoded = success.to_string() + "\n";
+        for bytes in [
+            encoded.replace("\"generation\":1", "\"generation\":1,\"generation\":1"),
+            encoded.replace("\"character\":2", "\"character\":2,\"extra\":0"),
+            encoded.replace("\"character\":2", "\"character\":2,\"character\":2"),
+        ] {
+            assert_eq!(
+                validate(Captured { status: status(0), stdout: bytes.into_bytes(), stderr: vec![] }, &args)
+                    .err()
+                    .unwrap()
+                    .code,
+                "worker_output"
+            );
+        }
+        assert!(
+            validate(Captured { status: status(0), stdout: encoded.into_bytes(), stderr: vec![] }, &args)
+                .unwrap()
+                .success
+        );
+        let mut refused = success;
+        refused["result"]["location"] = Value::Null;
+        refused["result"]["refusal"] = json!("binary_source_unavailable");
+        assert!(
+            validate(
+                Captured { status: status(0), stdout: (refused.to_string() + "\n").into_bytes(), stderr: vec![] },
+                &args
+            )
+            .unwrap()
+            .success
+        );
     }
 
     #[cfg(any(unix, windows))]

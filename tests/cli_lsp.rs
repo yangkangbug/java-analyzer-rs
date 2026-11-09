@@ -1,0 +1,351 @@
+#![cfg(feature = "cli")]
+
+use serde_json::{Value, json};
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    process::{Child, ChildStdin, Command, Stdio},
+    sync::mpsc::{self, Receiver},
+    thread,
+    time::Duration,
+};
+
+struct Session {
+    child: Child,
+    input: Option<ChildStdin>,
+    messages: Receiver<Value>,
+}
+impl Session {
+    fn start() -> Self {
+        Self::start_manifest(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/examples/cli_project/project.json"
+        )))
+    }
+    fn start_manifest(manifest: &std::path::Path) -> Self {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_java-analyzer"))
+            .args(["lsp", "--manifest"])
+            .arg(manifest)
+            .env_clear()
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let input = child.stdin.take().unwrap();
+        let output = child.stdout.take().unwrap();
+        let (send, messages) = mpsc::sync_channel(16);
+        thread::spawn(move || {
+            let mut output = BufReader::new(output);
+            loop {
+                let mut length = None;
+                loop {
+                    let mut line = String::new();
+                    if output.read_line(&mut line).unwrap_or(0) == 0 {
+                        return;
+                    }
+                    if line == "\r\n" {
+                        break;
+                    }
+                    if let Some(value) = line.strip_prefix("Content-Length: ") {
+                        length = value.trim().parse::<usize>().ok();
+                    }
+                }
+                let Some(length) = length.filter(|n| *n <= 16 * 1024 * 1024) else { return };
+                let mut bytes = vec![0; length];
+                if output.read_exact(&mut bytes).is_err() {
+                    return;
+                }
+                let Ok(value) = serde_json::from_slice(&bytes) else { return };
+                if send.send(value).is_err() {
+                    return;
+                }
+            }
+        });
+        Self { child, input: Some(input), messages }
+    }
+    fn send(&mut self, value: Value) {
+        let body = serde_json::to_vec(&value).unwrap();
+        let input = self.input.as_mut().unwrap();
+        write!(input, "Content-Length: {}\r\n\r\n", body.len()).unwrap();
+        input.write_all(&body).unwrap();
+        input.flush().unwrap();
+    }
+    fn initialize(&mut self) {
+        self.send(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}));
+        assert!(self.response(1).get("result").is_some());
+        self.send(json!({"jsonrpc":"2.0","method":"initialized","params":{}}));
+    }
+    fn wait_exit(&mut self) -> std::process::ExitStatus {
+        let deadline = std::time::Instant::now() + Duration::from_secs(8);
+        loop {
+            if let Some(status) = self.child.try_wait().unwrap() {
+                return status;
+            }
+            assert!(std::time::Instant::now() < deadline, "server failed to exit within bounded deadline");
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+    fn response(&self, id: i32) -> Value {
+        loop {
+            let value = self.messages.recv_timeout(Duration::from_secs(10)).expect("bounded LSP response");
+            if value.get("id") == Some(&json!(id)) {
+                return value;
+            }
+        }
+    }
+}
+impl Drop for Session {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+#[test]
+fn initialize_and_shutdown_real_native_server() {
+    let mut session = Session::start();
+    session.send(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+        "processId":null,"rootUri":null,"capabilities":{},"unknownFutureField":true
+    }}));
+    let reply = session.response(1);
+    assert_eq!(reply["result"]["capabilities"]["positionEncoding"], "utf-16");
+    assert_eq!(reply["result"]["capabilities"]["textDocumentSync"]["change"], 1);
+    assert_eq!(reply["result"]["capabilities"]["definitionProvider"], true);
+    assert!(reply["result"]["capabilities"].get("completionProvider").is_none());
+    session.send(json!({"jsonrpc":"2.0","method":"initialized","params":{}}));
+    session.send(json!({"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}));
+    assert_eq!(session.response(2)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+}
+
+#[test]
+fn native_session_eof_and_exit_are_bounded() {
+    let mut session = Session::start();
+    session.initialize();
+    session.input.take();
+    assert!(session.wait_exit().success());
+    let mut early = Session::start();
+    early.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert_eq!(early.wait_exit().code(), Some(1));
+}
+
+#[test]
+fn native_lifecycle_and_unknown_method_errors() {
+    let mut session = Session::start();
+    session.send(json!({"jsonrpc":"2.0","id":42,"method":"textDocument/definition","params":{}}));
+    assert_eq!(session.response(42)["error"]["code"], -32002);
+    session.initialize();
+    session.send(json!({"jsonrpc":"2.0","method":"$/setTrace","params":{"value":"off"}}));
+    session.send(json!({"jsonrpc":"2.0","id":43,"method":"textDocument/rename","params":{}}));
+    assert_eq!(session.response(43)["error"]["code"], -32601);
+    session.send(json!({"jsonrpc":"2.0","id":44,"method":"initialize","params":{"capabilities":{}}}));
+    assert_eq!(session.response(44)["error"]["code"], -32600);
+    session.input.take();
+    assert!(session.wait_exit().success());
+}
+
+#[test]
+fn malformed_sync_and_unrecoverable_framing_stop_native_session() {
+    let mut session = Session::start();
+    session.initialize();
+    session.send(json!({"jsonrpc":"1.0","method":"textDocument/didChange","params":{}}));
+    assert_eq!(session.wait_exit().code(), Some(2));
+    let mut session = Session::start();
+    session.input.as_mut().unwrap().write_all(b"Content-Length: 2097153\r\n\r\n").unwrap();
+    assert_eq!(session.wait_exit().code(), Some(2));
+    let mut session = Session::start();
+    session.input.as_mut().unwrap().write_all(b"Content-Length: 2\r\nContent-Length: 2\r\n\r\n{}").unwrap();
+    assert_eq!(session.wait_exit().code(), Some(2));
+}
+
+#[test]
+fn native_cancel_then_reuse_request_id_has_one_terminal_reply_per_request() {
+    let mut session = Session::start();
+    session.initialize();
+    let path =
+        std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/cli_project/app/main/app/App.java"))
+            .unwrap();
+    let uri = format!("file://{}", path.to_str().unwrap());
+    let text = std::fs::read_to_string(path).unwrap();
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"languageId":"java","version":-3,"text":text}}}));
+    for _ in 0..8 {
+        session.send(json!({"jsonrpc":"2.0","id":7,"method":"textDocument/definition","params":{"textDocument":{"uri":uri},"position":{"line":4,"character":8}}}));
+        session.send(json!({"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":7}}));
+        let result = session.response(7);
+        assert!(result["error"]["code"] == -32800 || result.get("result").is_some(), "{result}");
+    }
+    session.send(json!({"jsonrpc":"2.0","id":8,"method":"shutdown"}));
+    assert_eq!(session.response(8)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+}
+
+#[test]
+fn nonreading_client_cannot_hold_server_alive_with_unbounded_output() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_java-analyzer"))
+        .args(["lsp", "--manifest"])
+        .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/cli_project/project.json"))
+        .env_clear()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut input = child.stdin.take().unwrap();
+    // Deliberately retain but never read stdout. Even pre-initialize errors are
+    // terminal responses and therefore exercise the real bounded writer path.
+    let _output = child.stdout.take().unwrap();
+    let writer = thread::spawn(move || {
+        for id in 0..20_000 {
+            let body = serde_json::to_vec(&json!({"jsonrpc":"2.0","id":id,"method":"unknown"})).unwrap();
+            if write!(input, "Content-Length: {}\r\n\r\n", body.len()).and_then(|_| input.write_all(&body)).is_err() {
+                break;
+            }
+        }
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(8);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            assert_eq!(status.code(), Some(2));
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("nonreading client blocked server shutdown");
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
+    writer.join().unwrap();
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn native_cancel_cycles_and_eof_leave_no_running_observed_children_or_reader_growth() {
+    use std::{
+        collections::BTreeSet,
+        fs,
+        path::Path,
+        time::{Instant, SystemTime, UNIX_EPOCH},
+    };
+    fn children(pid: u32) -> Vec<u32> {
+        // Some Linux/container procfs implementations omit task/*/children.
+        // Read the ordinary PPid stat field instead; do not turn a missing
+        // observation interface into a false "no children" success.
+        fs::read_dir("/proc")
+            .expect("Linux process inventory")
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let child = entry.file_name().to_str()?.parse::<u32>().ok()?;
+                let stat = fs::read_to_string(entry.path().join("stat")).ok()?;
+                let (_, rest) = stat.rsplit_once(") ")?;
+                let parent = rest.split_whitespace().nth(1)?.parse::<u32>().ok()?;
+                (parent == pid).then_some(child)
+            })
+            .collect()
+    }
+    fn identity(pid: u32) -> Option<(char, String)> {
+        let stat = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+        let (_, rest) = stat.rsplit_once(") ")?;
+        let fields: Vec<_> = rest.split_whitespace().collect();
+        Some((fields.first()?.chars().next()?, fields.get(19)?.to_string()))
+    }
+    fn observe_chain(pid: u32, observed: &mut BTreeSet<(u32, String)>) -> bool {
+        let direct = children(pid);
+        let mut grandchild = false;
+        for child in direct {
+            if let Some((_, start)) = identity(child) {
+                observed.insert((child, start));
+            }
+            for worker in children(child) {
+                if let Some((_, start)) = identity(worker) {
+                    observed.insert((worker, start));
+                    grandchild = true;
+                }
+            }
+        }
+        grandchild
+    }
+    fn no_running(observed: &BTreeSet<(u32, String)>) -> bool {
+        observed
+            .iter()
+            .all(|(pid, start)| identity(*pid).is_none_or(|(state, current)| current != *start || state == 'Z'))
+    }
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    let root = std::env::temp_dir().join(format!(
+        "lsp-native-process-{}-{}",
+        std::process::id(),
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+    ));
+    fs::create_dir(&root).unwrap();
+    let root = root.canonicalize().unwrap();
+    let _cleanup = Cleanup(root.clone());
+    let sources = root.join("src");
+    fs::create_dir(&sources).unwrap();
+    let query = sources.join("A.java");
+    let text = "class A { int value; void run() { value++; } }";
+    fs::write(&query, text).unwrap();
+    // Native workload, not an injected sleeper: enough ordinary source input to
+    // observe the real supervisor/worker chain before requesting cancellation.
+    let fields: String = (0..1200).map(|n| format!("int field{n};\n")).collect();
+    for n in 0..80 {
+        fs::write(sources.join(format!("C{n}.java")), format!("class C{n} {{\n{fields}}}\n")).unwrap();
+    }
+    let manifest = root.join("project.json");
+    fs::write(&manifest, serde_json::to_vec(&json!({"schema_version":1,"compilations":[{"id":{"project":"p","source_set":"main"},"source_roots":["src"]}]})).unwrap()).unwrap();
+    let mut session = Session::start_manifest(Path::new(&manifest));
+    session.initialize();
+    let uri = format!("file://{}", query.to_str().unwrap());
+    session.send(json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"languageId":"java","version":1,"text":text}}}));
+    let pid = session.child.id();
+    let mut observed = BTreeSet::new();
+    thread::sleep(Duration::from_millis(20));
+    let baseline = fs::read_dir(format!("/proc/{pid}/task")).unwrap().count();
+    for id in 10..16 {
+        session.send(json!({"jsonrpc":"2.0","id":id,"method":"textDocument/definition","params":{"textDocument":{"uri":uri},"position":{"line":0,"character":34}}}));
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !observe_chain(pid, &mut observed) {
+            assert!(
+                Instant::now() < deadline,
+                "did not observe actual native worker at request {id}; children={:?}, observed={:?}, response={:?}",
+                children(pid),
+                observed,
+                session.messages.try_recv()
+            );
+            thread::sleep(Duration::from_millis(1));
+        }
+        session.send(json!({"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":id}}));
+        let response = session.response(id);
+        assert!(response["error"]["code"] == -32800 || response.get("result").is_some());
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !children(pid).is_empty() || !no_running(&observed) {
+            assert!(Instant::now() < deadline, "native cancellation left a running observed descendant");
+            thread::sleep(Duration::from_millis(5));
+        }
+        thread::sleep(Duration::from_millis(10));
+        assert!(
+            fs::read_dir(format!("/proc/{pid}/task")).unwrap().count() <= baseline,
+            "native capture reader threads accumulated"
+        );
+    }
+    session.send(json!({"jsonrpc":"2.0","id":30,"method":"textDocument/definition","params":{"textDocument":{"uri":uri},"position":{"line":0,"character":34}}}));
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !observe_chain(pid, &mut observed) {
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    session.input.take();
+    assert!(session.wait_exit().success());
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !no_running(&observed) {
+        assert!(Instant::now() < deadline, "EOF left a running observed descendant");
+        thread::sleep(Duration::from_millis(5));
+    }
+    assert!(observed.len() >= 14, "expected seven independently observed native supervisor/worker pairs");
+}

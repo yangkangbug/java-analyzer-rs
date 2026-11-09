@@ -2,7 +2,8 @@
 
 This is a proposed delivery gate, not a completion date or a claim that every
 item below is delivered. An [experimental CLI](CLI.md) now exercises the
-configuration/declaration/report path; the hardening and editor gates remain open.
+configuration/declaration/report path. A definition-only editor slice now adds
+full-text synchronization; the broader hardening and usability gates remain open.
 The first vertical path is: configure an ordinary project without writing Rust,
 query a source position, receive an exact source declaration or explicit limit,
 and inspect clearly labeled parser gaps. It does not replace all JDT LS features.
@@ -59,12 +60,14 @@ without closing any delivery gate by itself.
 9. Deliver a documented binary/install route and checksum for a declared platform,
    with clean-environment smoke checks. Validate that it runs without Java/JAVA_HOME
    and has no JVM process or library dependency. Optional compiler tests remain
-   development-only. Current CI coverage is Linux, not cross-platform certification.
+   development-only. Native hosted Linux and Mac checks are not cross-platform
+   distribution certification; consult exact successful runs and platform limits.
 
 ## Additional gate for an editor-connected preview
 
-Add a deliberately small protocol/adapter: initialize, open/change/close, definition
-and parser-report delivery. Unsaved overlays, snapshot revisions, stale-result
+The first [small LSP adapter](LSP_PREVIEW.md) supports initialize, open/change/close,
+definition, cancellation and shutdown. Parser reports remain in the CLI, not
+editor diagnostics. Unsaved overlays, snapshot revisions, stale-result
 rejection, off-UI execution and cancellation/restart are required. Whole-buffer
 UTF-16 helpers are not an LSP line/column implementation. Validate rapid edits,
 CRLF/astral characters, dependency changes, cancellation and reopen behavior.
@@ -82,8 +85,10 @@ exercise this CLI. Gson adds a real core/extras main/test shape, with all select
 files and predeclared refusal cases retained. Its substantial parser gaps remain
 a readiness limit, not a successful full-project compatibility claim.
 
-The one-shot executable is not a persistent editor session. Distribution checks
-cover Linux x86_64 GNU only; macOS/Windows and a broader glibc matrix are untested.
+The one-shot commands are not persistent editor sessions; `lsp` is a separate
+entry point with fresh supervised analysis per query. Distribution checks cover
+Linux x86_64 GNU only. Native hosted Mac source builds are tested separately;
+Mac/Windows distribution and a broader glibc matrix remain untested.
 Measured resource observations do not by themselves establish latency/memory
 budgets or certify arbitrary source inputs.
 
@@ -100,4 +105,7 @@ The immutable library update preserves old snapshots/prepared views and avoids
 binary I/O, but clones inputs and rebuilds prepared indexes. The one-shot CLI
 still reloads disk/binaries on every invocation. Native macOS architecture gates
 are defined separately; only exact successful CI runs prove their tested cases.
-No signed distribution, supported OS matrix or real editor application is implied.
+These foundation tests alone imply no signed distribution, supported OS matrix or
+real editor application. The [Neovim acceptance plan](../editors/neovim/ACCEPTANCE.md)
+defines the separate real-client navigation and late-response checks. Existing
+CLI resource measurements do not establish this new adapter's latency or memory.

@@ -31,7 +31,11 @@ The independent source repository is
 
 The [unsaved-buffer example](examples/editor_buffers/README.md) adds caller-tagged
 whole-text replacements and UTF-16 line/character queries to the one-shot CLI.
-It is not an LSP server. [Native macOS CI](docs/MACOS_NATIVE.md) is a separate
+A separate [definition-only LSP preview](docs/LSP_PREVIEW.md) connects those
+snapshots to an editor. The [Neovim companion](editors/neovim/README.md) guards
+navigation against edits in any attached buffer, including responses already in
+transit. It requires explicit project configuration and does not add completion,
+references, rename, hover or semantic diagnostics. [Native macOS CI](docs/MACOS_NATIVE.md) is a separate
 source-build/runtime gate, not a signed Mac distribution or user-device validation.
 
 ### Experimental project CLI
@@ -55,7 +59,7 @@ range. Refused or ambiguous results remain candidates, not a guessed first match
 Parser reports may indicate unsupported grammar rather than invalid Java.
 This is limited declaration navigation with a narrow checked primitive-call
 subset, not general applicability, semantic diagnostics, a build importer or an
-editor language server. Inputs are local and
+complete editor language server. Inputs are local and
 explicit; no Java executable is called or JDK discovered.
 
 For an explicitly supported installation/build path and Linux archive boundary,
@@ -68,8 +72,8 @@ running the same native executable, with a default 30-second execution deadline,
 structured crash/output errors and optional stdin-EOF cancellation. See
 [execution guarantees and limits](docs/CLI_EXECUTION.md). This is not a security
 sandbox, CPU quota or memory limit; use trusted local projects. Direct library
-callers do not receive this process boundary automatically. Unsaved buffers,
-automatic reload, cross-platform release certification and performance budgets
+callers do not receive this process boundary automatically. Automatic project
+reload, cross-platform release certification and interactive performance budgets
 remain unfinished.
 
 ## Project boundaries
