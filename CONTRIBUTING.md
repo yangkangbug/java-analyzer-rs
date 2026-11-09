@@ -76,3 +76,10 @@ external project build scripts or applications during input setup or runtime
 acceptance. Keep fixed network input setup separate from offline analysis and
 measurements; record unsupported outcomes, not a success-only sample. See
 [preview evaluation](docs/CLI_PREVIEW.md) and [installation](docs/CLI_INSTALL.md).
+
+The separate [native macOS gate](docs/MACOS_NATIVE.md) runs on standard hosted
+Apple Silicon and Intel machines. It tests native source builds and CLI behavior,
+not Mac packaging or distribution. Its offline checker regressions are included
+in the Python discovery command above. Linux-only packaging, resource measurements
+and input-publication tests remain in Linux CI; do not silently relax their
+platform or no-replacement guarantees to make the Mac job green.

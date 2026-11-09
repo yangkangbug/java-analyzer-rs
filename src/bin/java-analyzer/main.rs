@@ -2,9 +2,12 @@
 //! is added to the library. See docs/CLI.md for the versioned wire contract.
 mod config;
 mod execution;
+mod overlays;
 
-use config::{Encoding, Id, Manifest, Position, Query, Requests};
-use java_engine::{CompilationId, ParsedFile, ResolveStatus, Target, TargetKind, WorkspaceSnapshot};
+use config::{Id, Manifest, Position, Query, Requests};
+use java_engine::{
+    CompilationId, LineIndex, ParsedFile, ResolveStatus, Target, TargetKind, Utf16Position, WorkspaceSnapshot,
+};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use std::{
@@ -77,6 +80,7 @@ fn read_document<T: DeserializeOwned>(path: &Path) -> Result<(T, PathBuf), Error
 struct Arguments {
     command: String,
     manifest: String,
+    overlays: Option<overlays::Overlays>,
     queries: Option<Requests>,
     filter: Option<Id>,
     details: bool,
@@ -102,8 +106,19 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
             details = true;
             continue;
         }
-        if !["--manifest", "--project", "--source-set", "--file", "--byte", "--utf16", "--requests"]
-            .contains(&flag.as_str())
+        if ![
+            "--manifest",
+            "--project",
+            "--source-set",
+            "--file",
+            "--byte",
+            "--utf16",
+            "--requests",
+            "--overlays",
+            "--line",
+            "--character",
+        ]
+        .contains(&flag.as_str())
         {
             return Err(Error::new("usage", format!("unknown option {flag}")));
         }
@@ -116,6 +131,14 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
         return Err(Error::new("usage", "--details is supported only by inspect"));
     }
     let manifest = flags.remove("--manifest").ok_or_else(|| Error::new("usage", "--manifest is required"))?;
+    let overlays = flags
+        .remove("--overlays")
+        .map(|path| {
+            let (document, _): (overlays::Overlays, _) = read_document(Path::new(&path))?;
+            document.validate().map_err(|e| e.at(&path))?;
+            Ok::<_, Error>(document)
+        })
+        .transpose()?;
     let project = flags.remove("--project");
     let source_set = flags.remove("--source-set");
     let filter = match (project, source_set) {
@@ -141,19 +164,39 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
                 .take()
                 .ok_or_else(|| Error::new("usage", "declaration needs --project and --source-set or --requests"))?;
             let file = flags.remove("--file").ok_or_else(|| Error::new("usage", "--file is required"))?;
-            let position = match (flags.remove("--byte"), flags.remove("--utf16")) {
-                (Some(offset), None) => (Encoding::Utf8, offset),
-                (None, Some(offset)) => (Encoding::Utf16, offset),
-                _ => return Err(Error::new("usage", "supply exactly one of --byte or --utf16")),
+            let parse_position = |value: String| {
+                value
+                    .parse::<u32>()
+                    .map_err(|_| Error::new("invalid_position", "offset must be a nonnegative u32 integer"))
             };
-            let offset = position
-                .1
-                .parse::<u32>()
-                .map_err(|_| Error::new("invalid_position", "offset must be a nonnegative u32 integer"))?;
-            queries = Some(Requests {
-                schema_version: 1,
-                queries: vec![Query { compilation, file, position: Position { encoding: position.0, offset } }],
-            });
+            let parse_line_position = |value: String| {
+                value
+                    .parse::<u32>()
+                    .ok()
+                    .filter(|_| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+                    .ok_or_else(|| {
+                        Error::new("invalid_position", "line and character must be decimal digits in 0..4294967295")
+                    })
+            };
+            let position = match (
+                flags.remove("--byte"),
+                flags.remove("--utf16"),
+                flags.remove("--line"),
+                flags.remove("--character"),
+            ) {
+                (Some(offset), None, None, None) => Position::Utf8 { offset: parse_position(offset)? },
+                (None, Some(offset), None, None) => Position::Utf16 { offset: parse_position(offset)? },
+                (None, None, Some(line), Some(character)) => {
+                    Position::Utf16Line { line: parse_line_position(line)?, character: parse_line_position(character)? }
+                }
+                _ => {
+                    return Err(Error::new(
+                        "usage",
+                        "supply exactly one of --byte, --utf16, or --line with --character",
+                    ));
+                }
+            };
+            queries = Some(Requests { schema_version: 1, queries: vec![Query { compilation, file, position }] });
         }
     } else if command == "inspect" && filter.is_some() {
         return Err(Error::new("usage", "inspect does not accept a compilation filter"));
@@ -164,7 +207,7 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
     if let Some(queries) = &queries {
         queries.validate()?;
     }
-    Ok(Some(Arguments { command: command.clone(), manifest, queries, filter, details }))
+    Ok(Some(Arguments { command: command.clone(), manifest, overlays, queries, filter, details }))
 }
 
 /// Includes source files, class origins, shadowed records, visible-path references,
@@ -227,10 +270,10 @@ fn capabilities() -> Value {
 }
 fn help() -> Value {
     json!({"schema_version":1,"version":env!("CARGO_PKG_VERSION"),"capabilities":capabilities(),"usage":[
-        "java-analyzer inspect --manifest FILE [--details]",
-        "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N)",
-        "java-analyzer declaration --manifest FILE --requests FILE",
-        "java-analyzer parser-report --manifest FILE [--project ID --source-set ID]"
+        "java-analyzer inspect --manifest FILE [--details] [--overlays FILE]",
+        "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N|--line N --character N) [--overlays FILE]",
+        "java-analyzer declaration --manifest FILE --requests FILE [--overlays FILE]",
+        "java-analyzer parser-report --manifest FILE [--project ID --source-set ID] [--overlays FILE]"
     ],"execution_options":["--timeout-ms 1..300000 (default 30000)","--cancel-on-stdin-close"],"documentation":"docs/CLI.md"})
 }
 
@@ -397,9 +440,12 @@ fn declarations(
                 return Err(Error::new("invisible_source", "source is not visible in this compilation").at(path));
             }
             let source = sources.get(path).expect("visible source is loaded");
-            let byte = match query.position.encoding {
-                Encoding::Utf8 => source.file.byte_to_utf16(query.position.offset).map(|_| query.position.offset),
-                Encoding::Utf16 => source.file.utf16_to_byte(query.position.offset),
+            let byte = match query.position {
+                Position::Utf8 { offset } => source.file.byte_to_utf16(offset).map(|_| offset),
+                Position::Utf16 { offset } => source.file.utf16_to_byte(offset),
+                Position::Utf16Line { line, character } => {
+                    LineIndex::new(source.file.text()).position_to_byte(Utf16Position { line, character })
+                }
             }
             .filter(|byte| (*byte as usize) < source.file.text().len())
             .ok_or_else(|| {
@@ -493,13 +539,22 @@ fn run(raw_args: &[String]) -> Result<Value, Error> {
     {
         return Err(Error::new("unknown_compilation", "parser-report compilation is not configured"));
     }
+    if let Some(overlays) = &args.overlays {
+        overlays.validate_compilations(&config)?;
+    }
     let workspace = WorkspaceSnapshot::load(&config).map_err(|e| {
         let mut error = Error::new("load_failed", e.to_string());
         error.path = Some(e.input.map_or_else(|| path.to_string_lossy().into_owned(), |input| input.origin));
         error
     })?;
     let mut budget = OutputBudget(0);
-    let result = match args.command.as_str() {
+    let (workspace, overlay_state) = if let Some(overlays) = &args.overlays {
+        let (updated, state) = overlays.apply(&workspace, base, &mut budget)?;
+        (updated, Some(state))
+    } else {
+        (workspace, None)
+    };
+    let mut result = match args.command.as_str() {
         "inspect" => inspect(&workspace, &manifest, &mut budget, args.details)?,
         "declaration" => {
             declarations(&workspace, base, args.queries.as_ref().expect("validated queries"), &mut budget)?
@@ -507,6 +562,9 @@ fn run(raw_args: &[String]) -> Result<Value, Error> {
         "parser-report" => parser_report(&workspace, args.filter.as_ref(), &mut budget)?,
         _ => unreachable!("validated command"),
     };
+    if let Some(state) = overlay_state {
+        result["overlay_state"] = state;
+    }
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
     Ok(json!({"schema_version":1,"command":args.command,"snapshot":{
         "id":format!("{}-{now}",std::process::id()),"identity":"invocation_local","manifest":path.to_str()},

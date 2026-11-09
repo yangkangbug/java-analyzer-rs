@@ -787,3 +787,55 @@ Source-edit timing is a fresh full reload, not an incremental editor session.
 No final performance result, OS memory quota or cross-platform readiness is
 claimed merely because this tooling exists. Process tracing was not permitted;
 source inspection, native linkage and empty-environment runs are separate evidence.
+
+## Unsaved-buffer snapshot and editor-coordinate slice
+
+Baseline: `88ac50319df78915ae022ba3e8b4cd0daaa6b2c3`. This adds a bounded
+whole-buffer update path, not new Java semantics or a persistent language server.
+New native CLI tests first failed against the baseline's unknown `--overlays`
+option. The fixed Gson editor gate also failed with that exact baseline binary
+before the implementation and passed with the new release executable.
+
+Thirteen core tests cover exact Unicode/newline positions, source ownership,
+independent original compilation/workspace limits, order-independent batch byte
+accounting, immutable old prepared views and binary provenance. They include
+removing all staged source/JAR/JMOD inputs after loading and still deriving and
+querying replacements without filesystem I/O. Fourteen CLI editor tests cover
+full-text buffers, cross-source navigation/isolation, exact count/document/label
+limits, malformed/unknown/duplicate fields, original input budgets, error envelopes,
+timeout/EOF cancellation and old absolute-offset behavior. Two additional
+supervisor tests cover option-value forwarding and overlay error validation.
+
+The aggregate local checks pass 246 default Rust tests, 294 all-feature Rust tests
+and two doctests, with the two pre-existing optional corpus tests still ignored.
+The offline Python suite passes 103 tests: the previous ninety plus ten macOS
+checker regressions and three editor-checker controls. Formatting, strict Clippy
+and rustdoc also pass. These counts are Linux local evidence, not a claim that
+macOS has run or that unsupported language constructs are correct.
+
+Independent review additionally checked 55,987 mixed Unicode/newline strings
+against a separate position model, 2,500 chained overlay batches against separate
+byte-budget arithmetic, and five complete legacy CLI responses against the
+baseline binary (excluding invocation identity). This is targeted adversarial
+model evidence, not a formal proof or a compiler semantic oracle.
+
+The fixed Gson editor gate overlays its predeclared extras-to-core interface
+query and declaration files with an astral-character/CRLF comment prefix. It
+independently shifts the original reviewed target's byte and absolute-UTF-16
+ranges, checks the owner and caller labels, retains all 16 baseline disk queries,
+and verifies every source path/hash and pinned artifact hash is unchanged.
+Wrong-target mutation, wrong source owner and omitted-overlay disk restoration are
+explicit controls. The comment-only replacements retain the counts of 1,513 parser reports
+across 58 files; this does not reduce the known parser gaps. The analysis performs
+no Java execution, fetch or upstream build. It runs in the optional extended CI
+beside, not instead of, the existing independent development-only javac oracle.
+
+The separate `macos-native` workflow defines two native hosted build/runtime
+gates and first checks runner architecture and Rust target, then actual Mach-O
+architecture/linkage and release CLI behavior. Offline checker tests reject wrong
+architectures, non-executable/fat/ELF files, unknown/JVM/dyld/rpath dependencies and
+invalid host/toolchain facts before executing a candidate. A configured job or
+these mocked negative cases do not prove macOS compatibility: consult successful
+jobs for the exact source revision. No user Mac was accessed, no Mac package was
+uploaded or signed, and Linux-specific packaging/resource measurement remains
+separate. See [the explicit platform boundary](MACOS_NATIVE.md).

@@ -70,3 +70,12 @@ directly. They impose no timing threshold. Optional versioned real-source checks
 record loading, preparation, and repeated-query costs separately, with build mode,
 query corpus, and parser gaps. Single-machine measurements are observations, not
 an editor latency guarantee or a comparison with IntelliJ/JDT LS.
+
+## Source-only derived snapshots
+
+`WorkspaceSnapshot::with_source_overlays` returns a new immutable workspace for
+existing canonical, owner-matched source files. Old snapshots and their prepared
+handles stay valid. Prepare the derived workspace separately; an index cannot be
+moved across snapshots merely because paths still match. The update performs no
+filesystem or archive I/O, but clones the owned inputs and builds a fresh index
+when requested. See [source overlay validation and budgets](SOURCE_OVERLAYS.md).

@@ -161,7 +161,7 @@ This provides a narrow end-to-end entry point for real-project validation, not a
 completed IDE preview. See [CLI contract](docs/CLI.md) and
 [preview acceptance gates](docs/PREVIEW_PLAN.md). Native worker supervision now
 adds execution deadlines and crash/cancellation reporting; see M3 below. Automatic
-reload, unsaved buffers, protocol positions, performance budgets and distribution
+reload, persistent buffer lifecycle and editor protocol integration, performance budgets and distribution
 remain needed, alongside the semantic work below. A separate
 [delivery-evaluation protocol](docs/CLI_PREVIEW.md) now fixes a second real
 core/extras main/test project, local Linux packaging and honest resource
@@ -264,3 +264,17 @@ and java-debug responsibilities before removing any startup path.
 Gate: completion/navigation/references/diagnostics/refactoring acceptance suites,
 crash/cancellation tests, and measured latency pass for the supported project
 matrix. Removing JDT LS analysis does not promise JVM-free Java run/debug.
+
+### Unsaved-buffer and native Mac gate slice
+
+Immutable source-only replacements preserve ownership, visibility and original
+file/compilation/workspace byte budgets without rereading binary inputs. Strict
+UTF-16 line/character conversion and one-shot CLI overlays allow a caller to query
+unsaved source text. Caller revision labels are not stale-result enforcement; a
+persistent adapter, asynchronous lifecycle and transactional project reload remain
+open. Full input cloning and fresh prepared indexes are not incremental caching.
+See [the buffer contract](docs/CLI_OVERLAYS.md).
+
+A separate [macOS source-build/runtime gate](docs/MACOS_NATIVE.md) targets declared
+native ARM64 and Intel hosted runners. No user computer is used, no binary release
+is uploaded, and workflow configuration alone does not establish compatibility.

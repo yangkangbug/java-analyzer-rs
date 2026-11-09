@@ -29,6 +29,11 @@ JSON serialization at the executable boundary. See [third-party notices](THIRD_P
 The independent source repository is
 [yangkangbug/java-analyzer-rs](https://github.com/yangkangbug/java-analyzer-rs).
 
+The [unsaved-buffer example](examples/editor_buffers/README.md) adds caller-tagged
+whole-text replacements and UTF-16 line/character queries to the one-shot CLI.
+It is not an LSP server. [Native macOS CI](docs/MACOS_NATIVE.md) is a separate
+source-build/runtime gate, not a signed Mac distribution or user-device validation.
+
 ### Experimental project CLI
 
 Configure explicit compilations, source roots, local dependencies and platform

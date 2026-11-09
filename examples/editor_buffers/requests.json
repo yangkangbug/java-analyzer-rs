@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "queries": [
+    {
+      "compilation": {
+        "project": "app",
+        "source_set": "main"
+      },
+      "file": "app/main/app/App.java",
+      "position": {
+        "encoding": "utf16_line",
+        "line": 5,
+        "character": 8
+      }
+    }
+  ]
+}

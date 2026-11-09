@@ -130,6 +130,8 @@ pub struct ProjectSnapshot {
     class_origins: Vec<String>,
     shadowed_classes: Vec<ShadowedClass>,
     pub(crate) usage: (usize, u64, u64),
+    // Original compilation limits, not a workspace loader's temporary allowance.
+    pub(crate) limits: ProjectLimits,
 }
 
 impl ProjectSnapshot {
@@ -279,6 +281,7 @@ impl ProjectSnapshot {
             class_origins,
             shadowed_classes,
             usage: (budget.entries, budget.bytes, expanded_bytes),
+            limits: config.limits.clone(),
         })
     }
 
@@ -297,6 +300,11 @@ impl ProjectSnapshot {
     }
     pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
         self.project.resolve_at(path, byte)
+    }
+
+    /// The workspace validates ownership and the entire replacement budget first.
+    pub(crate) fn replace_source_text(&mut self, path: &str, text: &str) {
+        self.project.insert(path, text);
     }
 }
 

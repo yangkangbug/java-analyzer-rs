@@ -7,7 +7,7 @@ start Java, JNI, JDT LS, Maven, Gradle, or a network client. Explicit JAR/JMOD i
 are data, not executable tools. No JDK or dependency is discovered implicitly.
 
 This implements part of the [preview plan](PREVIEW_PLAN.md), **not all preview
-gates**. It has no persistent server, reload transaction, unsaved overlay, LSP,
+gates**. It has no persistent server, reload transaction, LSP,
 distribution certification, or measured project-scale performance budget. It now
 supervises a separate native worker with a default 30-second wall-clock timeout,
 optional stdin-EOF cancellation and machine-readable crash/output failures. See
@@ -51,6 +51,15 @@ command accepts `--timeout-ms N` (ASCII decimal digits, 1..300000; default 30000
 and optional `--cancel-on-stdin-close`. Duplicates and invalid values fail. No
 unlimited timeout is available. Read both output streams concurrently; final
 output delivery is outside the worker deadline. See [execution contract](CLI_EXECUTION.md).
+
+## Unsaved buffers and editor positions
+
+The optional [full-text overlay protocol](CLI_OVERLAYS.md) supplies existing,
+owned source buffers for one invocation, with strict UTF-16 line/character query
+positions. It returns caller revision/version labels, not automatic stale-result
+rejection. Old offset commands and results are unchanged without overlays. Try
+[the two-buffer example](../examples/editor_buffers/README.md). Each command still
+loads a disk snapshot; this is not a persistent editor server or incremental cache.
 
 ## Commands and path rules
 
@@ -247,7 +256,7 @@ Successful commands emit one JSON object on stdout, ending with a newline:
 This is a shortened envelope example, not an actual zero-query response.
 `capabilities` explicitly reports limited binding, absent general method applicability,
 absent semantic diagnostics, parser classification, native runtime, missing
-server/reload/overlay facilities, native worker execution bounds, and adapter
+persistent server/reload lifecycle, native worker execution bounds, and adapter
 limits. Snapshot ID is an **invocation-local label** only, not a content hash, persistent symbol ID,
 filesystem revision or cross-process equality test. Every batch query belongs to
 that one loaded snapshot. A new invocation reloads disk inputs and prepares anew;

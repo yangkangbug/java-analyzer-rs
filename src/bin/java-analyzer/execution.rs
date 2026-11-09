@@ -70,7 +70,8 @@ impl Options {
                     cancel_on_stdin_close = true;
                 }
                 // Preserve option values verbatim, even when they look like a supervision option.
-                "--manifest" | "--requests" | "--project" | "--source-set" | "--file" | "--byte" | "--utf16" => {
+                "--manifest" | "--requests" | "--project" | "--source-set" | "--file" | "--byte" | "--utf16"
+                | "--overlays" | "--line" | "--character" => {
                     forwarded.push(arg);
                     if let Some(value) = iter.next() {
                         forwarded.push(value);
@@ -419,6 +420,8 @@ fn validate(captured: Captured, args: &[String]) -> Result<Response, Error> {
                         "invisible_source",
                         "invalid_position",
                         "invalid_target",
+                        "invalid_overlay",
+                        "overlay_limit",
                         "output_limit",
                         "output_io",
                         "execution_io",
@@ -442,12 +445,7 @@ fn validate(captured: Captured, args: &[String]) -> Result<Response, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        fs,
-        io::Write,
-        path::PathBuf,
-        sync::atomic::{AtomicUsize, Ordering},
-    };
+    use std::{fs, io::Write};
 
     const FIXTURE: &str = "JAVA_ANALYZER_SUPERVISION_TEST";
     fn fixture(mode: &str) -> Command {
@@ -579,6 +577,11 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn killing_supervisor_closes_lease_and_stops_worker() {
+        use std::{
+            path::PathBuf,
+            sync::atomic::{AtomicUsize, Ordering},
+        };
+
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
             "java-analyzer-lease-{}-{}",
@@ -636,6 +639,35 @@ mod tests {
         use std::os::windows::process::ExitStatusExt;
         ExitStatus::from_raw(code as u32)
     }
+    #[test]
+    fn editor_option_values_are_not_consumed_as_supervision_flags() {
+        for option in ["--overlays", "--line", "--character"] {
+            for value in ["--timeout-ms", "--cancel-on-stdin-close"] {
+                let args = vec!["inspect".to_owned(), option.to_owned(), value.to_owned()];
+                let parsed = Options::parse(args.clone()).unwrap();
+                assert_eq!(parsed.args, args);
+                assert_eq!(parsed.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
+                assert!(!parsed.cancel_on_stdin_close);
+            }
+        }
+    }
+
+    #[cfg(any(unix, windows))]
+    #[test]
+    fn overlay_error_codes_survive_the_supervisor_protocol_validator() {
+        for code in ["invalid_overlay", "overlay_limit"] {
+            let bytes = (json!({"schema_version":1,"error":{"code":code,"message":"invalid buffer","path":"/A.java"}})
+                .to_string()
+                + "\n")
+                .into_bytes();
+            let response =
+                validate(Captured { status: status(2), stdout: vec![], stderr: bytes.clone() }, &["inspect".into()])
+                    .unwrap();
+            assert!(!response.success);
+            assert_eq!(response.bytes, bytes);
+        }
+    }
+
     #[cfg(any(unix, windows))]
     #[test]
     fn protocol_rejects_missing_multiple_duplicate_wrong_and_contradictory_envelopes() {

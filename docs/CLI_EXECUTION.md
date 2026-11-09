@@ -105,8 +105,10 @@ worker. Holding a copy of an input pipe's writer open delays EOF cancellation.
 - Capturing a bounded JSON response and validating its envelope can allocate
   additional memory. Input byte/archive limits, tree allocations and indexes
   remain the core loader's existing limits, not total memory limits.
-- Disk input loading is not atomic. There is no unsaved-buffer overlay, automatic
-  reload transaction, persistent snapshot service, or editor cancellation protocol.
+- Disk input loading is not atomic. Optional full-text overlays are applied to
+  one loaded snapshot under the same worker deadline; they do not implement an
+  automatic reload transaction, persistent snapshot service or editor cancellation
+  protocol. Overlay JSON uses a file, never the stdin cancellation channel.
 - The internal `__java_analyzer_worker_v1` entry point and lease transport are
   private implementation details, not supported public commands or a security
   barrier. Invoke documented commands only. No environment variable selects an

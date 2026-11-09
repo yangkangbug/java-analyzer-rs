@@ -300,16 +300,11 @@ pub struct Query {
     pub position: Position,
 }
 #[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Position {
-    pub encoding: Encoding,
-    pub offset: u32,
-}
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Encoding {
-    Utf8,
-    Utf16,
+#[serde(tag = "encoding", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Position {
+    Utf8 { offset: u32 },
+    Utf16 { offset: u32 },
+    Utf16Line { line: u32, character: u32 },
 }
 impl Requests {
     pub fn validate(&self) -> Result<(), Error> {

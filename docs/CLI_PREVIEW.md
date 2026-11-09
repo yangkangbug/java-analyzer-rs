@@ -111,7 +111,8 @@ protocol before results; retain failures and limitations alongside measurements.
 
 Automatic project import, broad Java expression/generic/overload correctness,
 semantic diagnostics, completion, references and refactoring remain incomplete.
-Editor integration additionally needs unsaved buffers, line/column positions,
-revision-safe results, asynchronous delivery and cancellation/restart. The
+Editor integration additionally needs a persistent buffer lifecycle, revision-safe
+results, asynchronous delivery and cancellation/restart. One-shot full-text
+overlays and strict line/character queries are a foundation, not that lifecycle. The
 [current preview gate list](PREVIEW_PLAN.md) remains authoritative; this delivery
 slice does not silently mark every gate complete.

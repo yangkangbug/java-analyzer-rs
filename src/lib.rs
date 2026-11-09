@@ -36,13 +36,17 @@ mod jar;
 mod kind;
 mod lex;
 mod parse;
+mod position;
 mod project;
 mod reparse;
 mod workspace;
 pub use workspace::{
-    CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope, PreparedWorkspace, WorkspaceConfig,
-    WorkspaceLoadError, WorkspaceLoadErrorKind, WorkspaceSnapshot,
+    CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope, PreparedWorkspace, SourceOverlay,
+    SourceOverlayError, SourceOverlayErrorKind, WorkspaceConfig, WorkspaceLoadError, WorkspaceLoadErrorKind,
+    WorkspaceSnapshot,
 };
+
+pub use position::{LineIndex, Utf16Position};
 
 pub use jar::{JarError, JarErrorKind, JarOptions, JmodOptions, read_jar, read_jmod};
 

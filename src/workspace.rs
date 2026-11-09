@@ -85,6 +85,49 @@ fn error(kind: WorkspaceLoadErrorKind, detail: impl Into<String>) -> WorkspaceLo
     WorkspaceLoadError { kind, detail: detail.into(), input: None }
 }
 
+/// A whole-buffer replacement for an existing, exactly identified source file.
+///
+/// `path` must be its loaded canonical source path, not an alias or a new file.
+/// `owner` is its owning compilation, not a consumer that can see the source.
+/// Revisions and open/close state belong to the caller, not this value.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceOverlay {
+    pub owner: CompilationId,
+    pub path: String,
+    pub text: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SourceOverlayErrorKind {
+    UnknownCompilation,
+    UnknownSource,
+    OwnerMismatch,
+    DuplicateSource,
+    LimitExceeded,
+}
+
+/// Rejected overlays leave the source snapshot and every prepared view unchanged.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceOverlayError {
+    pub kind: SourceOverlayErrorKind,
+    /// Offending source when the failure can be assigned to one file.
+    pub path: Option<String>,
+    pub detail: String,
+}
+impl fmt::Display for SourceOverlayError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(path) = &self.path {
+            write!(f, "{path}: ")?;
+        }
+        write!(f, "{:?}: {}", self.kind, self.detail)
+    }
+}
+impl std::error::Error for SourceOverlayError {}
+
+fn overlay_error(kind: SourceOverlayErrorKind, path: Option<&str>, detail: impl Into<String>) -> SourceOverlayError {
+    SourceOverlayError { kind, path: path.map(str::to_owned), detail: detail.into() }
+}
+
 /// Owned, immutable compilation inputs and visibility closures. Fresh loads replace
 /// edges/inputs; old snapshots retain their exact contexts. This is neither an
 /// atomic filesystem snapshot nor incremental invalidation/caching.
@@ -93,6 +136,7 @@ pub struct WorkspaceSnapshot {
     ids: Vec<CompilationId>,
     inputs: Vec<ProjectSnapshot>,
     visibility: Vec<BTreeSet<usize>>,
+    max_input_bytes: u64,
 }
 impl WorkspaceSnapshot {
     /// Validate the complete graph before I/O, then load in lexicographic ID order.
@@ -165,11 +209,14 @@ impl WorkspaceSnapshot {
             bounded.limits.max_input_bytes = bounded.limits.max_input_bytes.min(config.max_input_bytes - bytes);
             bounded.limits.max_archive_expanded_bytes =
                 bounded.limits.max_archive_expanded_bytes.min(config.max_archive_expanded_bytes - expanded);
-            let loaded = ProjectSnapshot::load(&bounded).map_err(|input| WorkspaceLoadError {
+            let mut loaded = ProjectSnapshot::load(&bounded).map_err(|input| WorkspaceLoadError {
                 kind: K::Input,
                 detail: format!("{:?}: {input}", compilation.id),
                 input: Some(input),
             })?;
+            // The remaining workspace allowance constrains this load, but is not
+            // the compilation's limit for a later whole-batch source replacement.
+            loaded.limits = compilation.inputs.limits.clone();
             entries += loaded.usage.0;
             bytes += loaded.usage.1;
             expanded += loaded.usage.2;
@@ -180,7 +227,98 @@ impl WorkspaceSnapshot {
             }
             inputs.push(loaded);
         }
-        Ok(Self { ids, inputs, visibility })
+        Ok(Self { ids, inputs, visibility, max_input_bytes: config.max_input_bytes })
+    }
+
+    /// Derive an immutable snapshot by replacing complete, already loaded sources.
+    ///
+    /// All identities, owners and final source/input byte budgets are validated
+    /// before cloning or parsing. The complete batch is atomic: an error returns
+    /// no new snapshot. Omitted files retain this snapshot's text, so an empty
+    /// batch is a clone, not a close/reset operation. To discard overlays, derive
+    /// again from the retained disk-loaded base, or explicitly load a fresh base.
+    ///
+    /// No filesystem reads, path canonicalization, archive decoding or Java
+    /// execution occur. Sources cannot be added/removed and the compilation graph
+    /// and binary contexts cannot be changed. Parsed binary signatures are cloned,
+    /// not reread; this is not zero-copy storage or an incremental semantic index.
+    /// A new prepared view still indexes the derived snapshot independently. Old
+    /// snapshots and their prepared views remain valid. Revisions, cancellation
+    /// and stale-result rejection remain the caller's responsibility.
+    pub fn with_source_overlays(&self, overlays: &[SourceOverlay]) -> Result<Self, SourceOverlayError> {
+        use SourceOverlayErrorKind as K;
+        let mut seen = BTreeSet::new();
+        let mut replacements = Vec::with_capacity(overlays.len());
+        for overlay in overlays {
+            let owner = self.ids.binary_search(&overlay.owner).map_err(|_| {
+                overlay_error(K::UnknownCompilation, Some(&overlay.path), "overlay owner is not configured")
+            })?;
+            let actual_owner = self
+                .inputs
+                .iter()
+                .position(|input| input.project().file(&overlay.path).is_some())
+                .ok_or_else(|| {
+                    overlay_error(K::UnknownSource, Some(&overlay.path), "overlay path is not a loaded source identity")
+                })?;
+            if owner != actual_owner {
+                return Err(overlay_error(
+                    K::OwnerMismatch,
+                    Some(&overlay.path),
+                    "overlay compilation does not own this source",
+                ));
+            }
+            if !seen.insert(overlay.path.as_str()) {
+                return Err(overlay_error(K::DuplicateSource, Some(&overlay.path), "duplicate overlay source"));
+            }
+            let new_bytes = u64::try_from(overlay.text.len()).map_err(|_| {
+                overlay_error(K::LimitExceeded, Some(&overlay.path), "source byte length is not representable")
+            })?;
+            if new_bytes > u64::from(u32::MAX) || new_bytes > self.inputs[owner].limits.max_file_bytes {
+                return Err(overlay_error(
+                    K::LimitExceeded,
+                    Some(&overlay.path),
+                    "replacement exceeds the source file byte limit or u32 source range",
+                ));
+            }
+            let old_bytes = self.inputs[owner].project().file(&overlay.path).expect("validated source").text().len();
+            replacements.push((owner, old_bytes as u64, new_bytes, overlay));
+        }
+
+        let mut bytes: Vec<_> = self.inputs.iter().map(|input| input.usage.1).collect();
+        // Subtract every old source first. A grow-before-shrink batch must have
+        // the same final allowance as the reversed order, without transient caps.
+        for (owner, old_bytes, _, overlay) in &replacements {
+            bytes[*owner] = bytes[*owner].checked_sub(*old_bytes).ok_or_else(|| {
+                overlay_error(K::LimitExceeded, Some(&overlay.path), "source byte accounting underflow")
+            })?;
+        }
+        for (owner, _, new_bytes, overlay) in &replacements {
+            bytes[*owner] = bytes[*owner].checked_add(*new_bytes).ok_or_else(|| {
+                overlay_error(K::LimitExceeded, Some(&overlay.path), "source byte accounting overflow")
+            })?;
+        }
+        for (owner, &total) in bytes.iter().enumerate() {
+            if total > self.inputs[owner].limits.max_input_bytes {
+                return Err(overlay_error(
+                    K::LimitExceeded,
+                    None,
+                    format!("replacement inputs exceed compilation {:?} byte limit", self.ids[owner]),
+                ));
+            }
+        }
+        let total = bytes.iter().try_fold(0_u64, |sum, value| sum.checked_add(*value));
+        if total.is_none_or(|total| total > self.max_input_bytes) {
+            return Err(overlay_error(K::LimitExceeded, None, "replacement inputs exceed workspace byte limit"));
+        }
+
+        let mut next = self.clone();
+        for (owner, _, _, overlay) in replacements {
+            next.inputs[owner].replace_source_text(&overlay.path, &overlay.text);
+        }
+        for (input, total) in next.inputs.iter_mut().zip(bytes) {
+            input.usage.1 = total;
+        }
+        Ok(next)
     }
     /// Build one reusable index shared by all prepared compilation views.
     /// This borrows this exact immutable snapshot; reloads require preparing the

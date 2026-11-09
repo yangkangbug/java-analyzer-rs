@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "revision": 41,
+  "files": [
+    {
+      "compilation": {
+        "project": "lib",
+        "source_set": "main"
+      },
+      "file": "lib/main/lib/Library.java",
+      "version": 12,
+      "text": "// 未保存 buffer 😀\r\npackage lib;\n\npublic class Library {\n    public int editedValue;\n    public void choose() {}\n    public void choose(int n) {}\n}\n"
+    },
+    {
+      "compilation": {
+        "project": "app",
+        "source_set": "main"
+      },
+      "file": "app/main/app/App.java",
+      "version": 7,
+      "text": "// 未保存 buffer 😀\r\npackage app;\n\npublic class App extends lib.Library {\n    public void run() {\n        editedValue++;\n        choose(1);\n    }\n}\n"
+    }
+  ]
+}

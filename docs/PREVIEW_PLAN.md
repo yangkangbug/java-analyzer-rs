@@ -86,3 +86,18 @@ The one-shot executable is not a persistent editor session. Distribution checks
 cover Linux x86_64 GNU only; macOS/Windows and a broader glibc matrix are untested.
 Measured resource observations do not by themselves establish latency/memory
 budgets or certify arbitrary source inputs.
+
+## Unsaved-buffer foundation
+
+[Whole-text overlays](CLI_OVERLAYS.md) and strict UTF-16 line/character queries
+provide the first unsaved declaration/parser-report path. The supplied overlay
+set is complete for one invocation; omitting a closed document on the next
+invocation reads disk again. It is not a persistent open/change/close protocol.
+Caller versions label results but do not implement stale-result rejection; an
+adapter must compare its current whole workspace generation before accepting them.
+
+The immutable library update preserves old snapshots/prepared views and avoids
+binary I/O, but clones inputs and rebuilds prepared indexes. The one-shot CLI
+still reloads disk/binaries on every invocation. Native macOS architecture gates
+are defined separately; only exact successful CI runs prove their tested cases.
+No signed distribution, supported OS matrix or real editor application is implied.

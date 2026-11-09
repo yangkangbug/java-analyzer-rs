@@ -18,6 +18,12 @@ on:
       - 'scripts/test_second_project_inputs.py'
       - 'scripts/check-second-project.py'
       - 'scripts/test_second_project.py'
+      - 'scripts/check-editor-project.py'
+      - 'scripts/test_editor_project.py'
+      - 'examples/editor_buffers/**'
+      - 'tests/cli_overlays.rs'
+      - 'tests/overlays.rs'
+      - 'tests/positions.rs'
       - 'examples/second_project/**'
       - 'scripts/check-cli-runtime.sh'
       - 'scripts/check-semantic-oracle.py'
@@ -84,6 +90,11 @@ jobs:
       - name: Query second real project through shipped CLI (no Java environment)
         run: >-
           python3 scripts/check-second-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+      - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
+        run: >-
+          python3 scripts/check-editor-project.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
       - name: Independent javac oracle (only this step executes Java)
