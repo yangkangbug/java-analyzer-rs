@@ -117,6 +117,13 @@ counts recovery cascades, not independent semantic features. The exact inventory
 and query-target changes are versioned. Throwable legality, union least-upper-
 bound semantics, remaining parser gaps and general project support are still open.
 
+The next source-grounded slice implements basic-for expression lists and prevents
+partial incremental fragments from losing source coverage. The complete corpus
+now reports 85 diagnostics, with every cause retained and the unrelated contextual-
+`var` recovery increase disclosed. [Validation plans](docs/ACCEPTANCE_PLAN.md)
+separate current local corpus checks from future CI and independent compiler
+oracles. Neither prepared/rebuild agreement nor error counts prove Java semantics.
+
 ## M2: semantic types and method applicability
 
 Introduce types separate from spelling: primitives, arrays, declared types,

@@ -46,3 +46,6 @@ Prepared-handle compile-fail documentation is part of `cargo test --doc`. The
 optional [real-source acceptance harness](examples/real_source/README.md) uses
 checksum-pinned local artifacts and records parser gaps and timings without
 performance thresholds. It must not fetch inputs or invoke Java.
+
+The full external real-source harness is not currently part of default CI. Keep
+its results separate from CI status. See [acceptance boundaries and next work](docs/ACCEPTANCE_PLAN.md).

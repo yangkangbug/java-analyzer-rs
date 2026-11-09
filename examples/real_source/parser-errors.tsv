@@ -1,7 +1,5 @@
 # Relative Java path	baseline parser error count (zero-count files omitted)
-org/apache/commons/lang3/ArrayUtils.java	54
 org/apache/commons/lang3/BooleanUtils.java	1
-org/apache/commons/lang3/CharSequenceUtils.java	4
 org/apache/commons/lang3/CharSet.java	2
 org/apache/commons/lang3/Conversion.java	4
 org/apache/commons/lang3/JavaVersion.java	1
@@ -18,10 +16,8 @@ org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	4
 org/apache/commons/lang3/exception/ExceptionUtils.java	6
 org/apache/commons/lang3/math/NumberUtils.java	1
 org/apache/commons/lang3/reflect/MethodUtils.java	2
-org/apache/commons/lang3/reflect/TypeUtils.java	26
+org/apache/commons/lang3/reflect/TypeUtils.java	32
 org/apache/commons/lang3/text/ExtendedMessageFormat.java	3
-org/apache/commons/lang3/text/StrBuilder.java	8
-org/apache/commons/lang3/text/StrMatcher.java	4
 org/apache/commons/lang3/time/DateUtils.java	4
 org/apache/commons/lang3/time/DurationFormatUtils.java	1
 org/apache/commons/lang3/time/DurationUtils.java	1

@@ -783,27 +783,79 @@ impl<'a> Parser<'a> {
         if !self.at(SyntaxKind::Semi) && !self.at(SyntaxKind::RParen) {
             if self.looks_like_decl() {
                 self.parse_local(false);
-            } else if self.can_start_expr() {
-                self.parse_expr();
             } else {
-                self.error_one("expected for initializer");
+                self.parse_for_expression_list();
             }
         }
         if self.eat(SyntaxKind::Colon) {
             self.parse_expr();
         } else {
             self.expect(SyntaxKind::Semi, "expected ';'");
-            if !self.at(SyntaxKind::Semi) && self.can_start_expr() {
+            if !self.at(SyntaxKind::Semi) && !self.at(SyntaxKind::LBrace) && self.can_start_expr() {
                 self.parse_expr();
             }
             self.expect(SyntaxKind::Semi, "expected ';'");
-            if !self.at(SyntaxKind::RParen) && self.can_start_expr() {
-                self.parse_expr();
+            if !self.at(SyntaxKind::RParen) {
+                self.parse_for_expression_list();
             }
         }
         self.expect(SyntaxKind::RParen, "expected ')'");
         self.parse_stmt();
         self.finish();
+    }
+
+    /// JLS StatementExpressionList, confined to basic-for initialization/update.
+    /// Nested argument/initializer commas belong to parse_expr; comma is never
+    /// an expression operator. Empty items leave header delimiters untouched.
+    fn parse_for_expression_list(&mut self) {
+        loop {
+            if self.can_start_expr() && !self.at(SyntaxKind::LBrace) {
+                self.parse_expr();
+                let expression = self.pop();
+                let valid = expression.as_node().is_some_and(|node| match node.kind() {
+                    SyntaxKind::CallExpr => true,
+                    SyntaxKind::NewExpr => node.child_nodes().any(|n| n.kind() == SyntaxKind::ArgList),
+                    SyntaxKind::UnaryExpr => node
+                        .children()
+                        .iter()
+                        .filter_map(GreenElement::as_token)
+                        .any(|t| matches!(t.kind(), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus)),
+                    SyntaxKind::BinaryExpr => node.children().iter().filter_map(GreenElement::as_token).any(|t| {
+                        matches!(
+                            t.kind(),
+                            SyntaxKind::Eq
+                                | SyntaxKind::PlusEq
+                                | SyntaxKind::MinusEq
+                                | SyntaxKind::StarEq
+                                | SyntaxKind::SlashEq
+                                | SyntaxKind::PercentEq
+                                | SyntaxKind::AmpEq
+                                | SyntaxKind::PipeEq
+                                | SyntaxKind::CaretEq
+                                | SyntaxKind::LtLtEq
+                                | SyntaxKind::GtGtEq
+                                | SyntaxKind::GtGtGtEq
+                        )
+                    }),
+                    _ => false,
+                });
+                if valid {
+                    self.push(expression);
+                } else {
+                    self.start(SyntaxKind::Error);
+                    self.set_message("expected statement expression");
+                    self.push(expression);
+                    self.finish();
+                }
+            } else {
+                self.open(SyntaxKind::Error);
+                self.set_message("expected statement expression");
+                self.finish();
+            }
+            if !self.eat(SyntaxKind::Comma) {
+                break;
+            }
+        }
     }
 
     fn parse_jump(&mut self, kind: SyntaxKind, expr: bool) {

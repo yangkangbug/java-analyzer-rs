@@ -1,0 +1,237 @@
+# Every diagnostic before/after the for-header slice, manually grouped by source construct
+# before=690eaa9; source SHA256=5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18
+# phase	path	start	end	message	cause
+before	org/apache/commons/lang3/ArrayUtils.java	332504	332504	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	332504	332505	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	332515	332515	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	332515	332516	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	332526	332526	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	332526	332527	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335269	335269	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335269	335270	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335280	335280	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335280	335281	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335291	335291	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	335291	335292	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338031	338031	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338031	338032	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338042	338042	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338042	338043	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338053	338053	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	338053	338054	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340802	340802	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340802	340803	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340813	340813	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340813	340814	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340824	340824	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	340824	340825	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343570	343570	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343570	343571	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343581	343581	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343581	343582	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343592	343592	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	343592	343593	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346331	346331	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346331	346332	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346342	346342	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346342	346343	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346353	346353	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	346353	346354	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349193	349193	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349193	349194	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349204	349204	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349204	349205	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349215	349215	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	349215	349216	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352089	352089	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352089	352090	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352100	352100	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352100	352101	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352111	352111	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	352111	352112	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354921	354921	expected ')'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354921	354922	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354932	354932	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354932	354933	unexpected token	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354943	354943	expected ';'	for_expression_list
+before	org/apache/commons/lang3/ArrayUtils.java	354943	354944	unexpected token	for_expression_list
+before	org/apache/commons/lang3/BooleanUtils.java	28996	31772	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/CharSequenceUtils.java	1259	1259	expected ')'	for_expression_list
+before	org/apache/commons/lang3/CharSequenceUtils.java	1259	1260	unexpected token	for_expression_list
+before	org/apache/commons/lang3/CharSequenceUtils.java	1264	1264	expected ';'	for_expression_list
+before	org/apache/commons/lang3/CharSequenceUtils.java	1264	1265	unexpected token	for_expression_list
+before	org/apache/commons/lang3/CharSet.java	7626	7638	unexpected token	synchronized_statement
+before	org/apache/commons/lang3/CharSet.java	7645	7645	expected ';'	synchronized_statement
+before	org/apache/commons/lang3/Conversion.java	25300	26470	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/Conversion.java	26900	27926	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/Conversion.java	28461	29631	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/Conversion.java	42482	43294	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/JavaVersion.java	3856	5581	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/RandomStringUtils.java	16270	16515	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/StringUtils.java	59918	61952	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/StringUtils.java	125269	125269	expected ';'	labeled_statement
+before	org/apache/commons/lang3/StringUtils.java	125269	125270	unexpected token	labeled_statement
+before	org/apache/commons/lang3/StringUtils.java	257710	258446	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/builder/DiffExclude.java	1182	1182	expected name	annotation_declaration
+before	org/apache/commons/lang3/builder/EqualsExclude.java	1223	1223	expected name	annotation_declaration
+before	org/apache/commons/lang3/builder/HashCodeExclude.java	1226	1226	expected name	annotation_declaration
+before	org/apache/commons/lang3/builder/ReflectionDiffBuilder.java	5979	5979	expected name	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/builder/ToStringExclude.java	1183	1183	expected name	annotation_declaration
+before	org/apache/commons/lang3/builder/ToStringSummary.java	1362	1362	expected name	annotation_declaration
+before	org/apache/commons/lang3/concurrent/LazyInitializer.java	5639	5651	unexpected token	synchronized_statement
+before	org/apache/commons/lang3/concurrent/LazyInitializer.java	5659	5659	expected ';'	synchronized_statement
+before	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	12111	12123	unexpected token	synchronized_statement
+before	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	12131	12131	expected ';'	synchronized_statement
+before	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	14828	14840	unexpected token	synchronized_statement
+before	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	14848	14848	expected ';'	synchronized_statement
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	5388	5388	expected name	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	5390	5390	expected ';'	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	5390	5391	unexpected token	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	36093	36093	expected name	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	36095	36095	expected ';'	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/exception/ExceptionUtils.java	36095	36096	unexpected token	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/math/NumberUtils.java	15784	17965	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/reflect/MethodUtils.java	24832	24832	expected ';'	labeled_statement
+before	org/apache/commons/lang3/reflect/MethodUtils.java	24832	24833	unexpected token	labeled_statement
+before	org/apache/commons/lang3/reflect/TypeUtils.java	7995	7995	expected name	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/reflect/TypeUtils.java	8331	8331	expected name	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/reflect/TypeUtils.java	8351	8352	expected expression	explicit_invocation_type_arguments
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18847	expected for initializer	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18848	18848	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18861	18862	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18864	18867	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18868	18868	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18868	18868	expected ')'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18868	18869	unexpected token	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18879	18879	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18879	18880	unexpected token	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18932	18935	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	18982	18985	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	19032	19035	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45385	expected for initializer	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45386	45386	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45399	45400	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45402	45405	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45406	45406	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45406	45406	expected ')'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45406	45407	unexpected token	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45433	45433	expected ';'	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45433	45434	unexpected token	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45498	45501	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/reflect/TypeUtils.java	45585	45588	expected expression	contextual_var_identifier
+before	org/apache/commons/lang3/text/ExtendedMessageFormat.java	7689	9237	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/text/ExtendedMessageFormat.java	13016	13844	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/text/ExtendedMessageFormat.java	14661	15122	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/text/StrBuilder.java	60190	60190	expected ')'	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	60190	60191	unexpected token	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	60197	60197	expected ';'	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	60197	60198	unexpected token	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	92834	92834	expected ')'	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	92834	92835	unexpected token	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	92846	92846	expected ';'	for_expression_list
+before	org/apache/commons/lang3/text/StrBuilder.java	92846	92847	unexpected token	for_expression_list
+before	org/apache/commons/lang3/text/StrMatcher.java	6034	6034	expected ')'	for_expression_list
+before	org/apache/commons/lang3/text/StrMatcher.java	6034	6035	unexpected token	for_expression_list
+before	org/apache/commons/lang3/text/StrMatcher.java	6041	6041	expected ';'	for_expression_list
+before	org/apache/commons/lang3/text/StrMatcher.java	6041	6042	unexpected token	for_expression_list
+before	org/apache/commons/lang3/time/DateUtils.java	14367	14752	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/DateUtils.java	14762	15806	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/DateUtils.java	42129	44121	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/DateUtils.java	51433	52926	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/DurationFormatUtils.java	27579	29271	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/DurationUtils.java	5858	6424	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDateParser.java	7655	7976	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDateParser.java	17974	18471	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDateParser.java	25599	25611	unexpected token	synchronized_statement
+before	org/apache/commons/lang3/time/FastDateParser.java	25621	25621	expected ';'	synchronized_statement
+before	org/apache/commons/lang3/time/FastDateParser.java	26113	26488	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDateParser.java	31468	33419	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDatePrinter.java	6769	7094	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDatePrinter.java	28727	29412	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDatePrinter.java	41555	46715	switch is not parsed in this subset	switch
+before	org/apache/commons/lang3/time/FastDatePrinter.java	49319	49556	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/BooleanUtils.java	28996	31772	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/CharSet.java	7626	7638	unexpected token	synchronized_statement
+after	org/apache/commons/lang3/CharSet.java	7645	7645	expected ';'	synchronized_statement
+after	org/apache/commons/lang3/Conversion.java	25300	26470	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/Conversion.java	26900	27926	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/Conversion.java	28461	29631	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/Conversion.java	42482	43294	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/JavaVersion.java	3856	5581	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/RandomStringUtils.java	16270	16515	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/StringUtils.java	59918	61952	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/StringUtils.java	125269	125269	expected ';'	labeled_statement
+after	org/apache/commons/lang3/StringUtils.java	125269	125270	unexpected token	labeled_statement
+after	org/apache/commons/lang3/StringUtils.java	257710	258446	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/builder/DiffExclude.java	1182	1182	expected name	annotation_declaration
+after	org/apache/commons/lang3/builder/EqualsExclude.java	1223	1223	expected name	annotation_declaration
+after	org/apache/commons/lang3/builder/HashCodeExclude.java	1226	1226	expected name	annotation_declaration
+after	org/apache/commons/lang3/builder/ReflectionDiffBuilder.java	5979	5979	expected name	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/builder/ToStringExclude.java	1183	1183	expected name	annotation_declaration
+after	org/apache/commons/lang3/builder/ToStringSummary.java	1362	1362	expected name	annotation_declaration
+after	org/apache/commons/lang3/concurrent/LazyInitializer.java	5639	5651	unexpected token	synchronized_statement
+after	org/apache/commons/lang3/concurrent/LazyInitializer.java	5659	5659	expected ';'	synchronized_statement
+after	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	12111	12123	unexpected token	synchronized_statement
+after	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	12131	12131	expected ';'	synchronized_statement
+after	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	14828	14840	unexpected token	synchronized_statement
+after	org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java	14848	14848	expected ';'	synchronized_statement
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	5388	5388	expected name	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	5390	5390	expected ';'	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	5390	5391	unexpected token	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	36093	36093	expected name	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	36095	36095	expected ';'	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/exception/ExceptionUtils.java	36095	36096	unexpected token	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/math/NumberUtils.java	15784	17965	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/reflect/MethodUtils.java	24832	24832	expected ';'	labeled_statement
+after	org/apache/commons/lang3/reflect/MethodUtils.java	24832	24833	unexpected token	labeled_statement
+after	org/apache/commons/lang3/reflect/TypeUtils.java	7995	7995	expected name	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/reflect/TypeUtils.java	8331	8331	expected name	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/reflect/TypeUtils.java	8351	8352	expected expression	explicit_invocation_type_arguments
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18842	expected statement expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18842	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18842	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18842	expected statement expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18842	expected ')'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18842	18847	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18861	18862	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18864	18867	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18868	18868	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18868	18869	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18879	18879	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18879	18880	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18932	18935	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	18982	18985	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	19032	19035	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45380	expected statement expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45380	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45380	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45380	expected statement expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45380	expected ')'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45380	45385	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45399	45400	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45402	45405	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45406	45406	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45406	45407	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45433	45433	expected ';'	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45433	45434	unexpected token	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45498	45501	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/reflect/TypeUtils.java	45585	45588	expected expression	contextual_var_identifier
+after	org/apache/commons/lang3/text/ExtendedMessageFormat.java	7689	9237	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/text/ExtendedMessageFormat.java	13016	13844	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/text/ExtendedMessageFormat.java	14661	15122	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DateUtils.java	14367	14752	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DateUtils.java	14762	15806	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DateUtils.java	42129	44121	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DateUtils.java	51433	52926	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DurationFormatUtils.java	27579	29271	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/DurationUtils.java	5858	6424	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDateParser.java	7655	7976	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDateParser.java	17974	18471	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDateParser.java	25599	25611	unexpected token	synchronized_statement
+after	org/apache/commons/lang3/time/FastDateParser.java	25621	25621	expected ';'	synchronized_statement
+after	org/apache/commons/lang3/time/FastDateParser.java	26113	26488	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDateParser.java	31468	33419	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDatePrinter.java	6769	7094	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDatePrinter.java	28727	29412	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDatePrinter.java	41555	46715	switch is not parsed in this subset	switch
+after	org/apache/commons/lang3/time/FastDatePrinter.java	49319	49556	switch is not parsed in this subset	switch

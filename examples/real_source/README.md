@@ -51,12 +51,12 @@ are covered by its official Temurin distribution; it remains an external input.
 
 ## Fixed query corpus and evidence boundary
 
-`queries.tsv` pins 13 real source positions, the queried spelling, status, and
+`queries.tsv` pins 15 real source positions, the queried spelling, status, and
 target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are nine resolved queries, three explicit overload refusals, and one
+There are eleven resolved queries, three explicit overload refusals, and one
 unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
@@ -68,9 +68,13 @@ unbound receiver:
   reported `Unresolved`. Each candidate range was checked against its unmodified
   declaration, rather than selecting one candidate to make the query pass.
 - `ImmutablePair`'s `Map.Entry` receiver remains `ReceiverNotBound`.
+- Two CharSequenceUtils loop-variable uses (`j--` and the body argument) now
+  resolve to the exact `j` declaration at bytes 1234..1235. These expectations
+  were checked independently against the original source and lexical scope,
+  not generated from prepared/rebuild agreement.
 
-The current baseline inventory is 249 losslessly represented files, 221 without
-reported parser errors and 28 with a total of 149 error nodes. Zero errors is not proof
+The current baseline inventory is 249 losslessly represented files, 225 without
+reported parser errors and 24 with a total of 85 error nodes. Zero errors is not proof
 of Java conformance. Error nodes can cascade and are not independent defects.
 `parser-errors.tsv` records this baseline; changes are reported, **not rejected**
 by a fixed count gate. The example prints all affected file names, counts, and
@@ -84,15 +88,22 @@ This identified the catch-parameter parsing/recovery fix now implemented; it did
 not represent thousands of unrelated defects. The full unmodified corpus improved
 from 8,187 to 149 error nodes, and 63 to 28 affected files. All 44 changed file
 counts decreased; no file count increased. `catch-parser-comparison.tsv` retains
-the exact before/after inventory for every source file. Other remaining errors
-include unsupported `switch` and multiple initializer/update expressions in a
+the exact before/after inventory for every source file. Other remaining errors at that stage
+included unsupported `switch` and multiple initializer/update expressions in a
 `for` header. The acceptance run always uses the **unmodified** archive bytes.
 See [catch parsing boundaries](../../docs/CATCH_PARAMETERS.md).
+
+The following for-header slice removes all 70 diagnostics from four files with
+multiple update expressions, while the unrelated contextual-`var` recovery group
+increases by six diagnostics. The total is now 85, not 79. The complete per-file
+comparison and all source-grounded diagnostic groups are retained in
+`for-parser-comparison.tsv` and `for-diagnostic-causes.tsv`. See
+[for grammar and recovery](../../docs/FOR_LOOPS.md).
 
 ## Measurements
 
 Load/parse/platform decoding and one index preparation are separately timed.
-The 13-query corpus is first checked, then repeated five times by default (65
+The 15-query corpus is first checked, then repeated five times by default (75
 samples per mode). Prepared/rebuild order alternates between rounds. Latencies
 include result construction but exclude equality checks and output. p50/p95 use
 nearest rank over individual query samples, with total/min/max also reported.
@@ -105,3 +116,11 @@ promise, comparison against an IDE, stable budget, or general project benchmark.
 The harness reports current measurements; it has no timing assertions. No peak
 memory, cold filesystem-cache, edit-to-result, cancellation, incremental
 invalidation, or medium/large project measurements have been made here.
+
+## CI and independent correctness evidence
+
+This external corpus harness is currently optional/local, not a default CI step.
+Prepared/rebuild equality alone is not a Java semantic oracle. The repository
+contains a small hand-authored lexical-scope oracle; a pinned real-corpus CI job
+and optional independent compiler oracle remain [planned work](../../docs/ACCEPTANCE_PLAN.md),
+not completed checks.

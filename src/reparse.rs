@@ -80,7 +80,9 @@ pub fn reparse_root(
             continue;
         }
         let replacement = parse_fragment(hit.kind, slice);
-        if replacement.kind() != hit.kind {
+        // Recovery can stop at a nested closing brace. A balanced token slice
+        // alone does not prove the fragment parser consumed it completely.
+        if replacement.kind() != hit.kind || replacement.utf8_len() as usize != slice.len() {
             continue;
         }
         return Some((splice(root, &hit.path, replacement), hit.kind));

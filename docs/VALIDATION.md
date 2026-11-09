@@ -257,3 +257,57 @@ measurements, one compile-fail doctest, formatting, strict Clippy/rustdoc,
 examples and empty-environment native-runtime checks, and Cargo package verification.
 No dependencies or JVM requirements were added. The real-source harness's final
 inventory matches its updated baseline exactly.
+
+
+## Basic-for lists and incremental-fragment follow-up
+
+Baseline: `690eaa91751e75cd8cfc1a759dc5c7fc7bd9f4b0`. Retained baseline binaries
+and a separately retained Rust library produced the original diagnostics/query
+results; the source archive and all 249 extracted Java byte strings are unchanged.
+No Java tool was used for classification, parsing, querying, or edit checks.
+
+Every one of the remaining 149 baseline error nodes was inspected and grouped
+against its source construct: for expression lists 70, switch 27, contextual
+`var` identifier 23, synchronized statements 10, explicit invocation type
+arguments 10, annotation declarations 5, and labels 4. Group sizes count parser
+recovery diagnostics, not independent defects or language features.
+
+All 70 for-list diagnostics disappear after the fix. The contextual-`var` group
+changes from 23 to 29 because new missing-item recovery retains tokens that the
+previous invalid-initializer path consumed. TypeUtils therefore increases from
+26 to 32 diagnostics. Every other group's count is unchanged. The final corpus
+has 85 diagnostics across 24 files: four files improve, one increases, 244 stay
+unchanged, and all 249 retain lossless coverage. Exact full-file counts and every
+diagnostic/range/group are versioned alongside the source acceptance harness.
+
+The original thirteen query contracts remain unchanged. Two new real-source
+queries independently reviewed against Java lexical scope point from byte 1261
+(`j--` update) and byte 1376 (body argument) to the local `j` declaration at
+1234..1235 in CharSequenceUtils. Both were Unresolved in the frozen baseline.
+The optional harness now checks fifteen query positions. A mandatory six-case
+lexical-binding golden test separately checks each resolver against manually
+specified complete targets, distinguishing loop locals, fields, and enclosing
+locals. It does not derive expected targets from another resolver.
+
+Three initial for tests failed before implementation. A separate regression
+proved an inherited incremental text-loss defect: parsing could stop before the
+end of a balanced fragment and still splice it. A full-consumption length guard
+now falls back through the existing larger-node/full-parse path. Independent
+review passed 25 adversarial grammar forms, 4,212 insertion edits, 134 deletion
+edits and UTF-16 emoji edits with ordinary/verified/full parse equivalence and
+lossless coverage. The two focused text-loss reproductions are retained in tests.
+
+Evidence boundaries: default CI does not run the external 249-file corpus. That
+harness was run locally under an empty environment and no Java PATH. The fixed
+lexical goldens and independently reviewed source positions are narrow evidence;
+prepared/rebuild equality alone does not prove Java correctness. A hash-verified
+real-corpus CI job and optional compiler differential remain planned, as detailed
+in [ACCEPTANCE_PLAN.md](ACCEPTANCE_PLAN.md). No broader semantic or performance
+claim follows from this parser slice.
+
+Final checks pass: **148 tests**, two intentionally ignored manual measurements,
+one compile-fail doctest, strict formatting/lint/docs, examples, native-runtime
+checks, and Cargo package verification. The local real-source run has fifteen
+queries repeated five times (75 samples per query mode), and its diagnostic
+inventory matches the updated baseline. No dependency or Java-runtime requirement
+was added.

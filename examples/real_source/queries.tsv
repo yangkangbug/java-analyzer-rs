@@ -12,3 +12,5 @@ q10	org/apache/commons/lang3/tuple/ImmutablePair.java	5207	Objects	Resolved	1
 q11	org/apache/commons/lang3/tuple/ImmutablePair.java	5215	requireNonNull	OverloadNotResolved	3
 q12	org/apache/commons/lang3/tuple/ImmutablePair.java	4497	getKey	ReceiverNotBound	0
 q13	org/apache/commons/lang3/tuple/ImmutablePair.java	3328	NULL	Resolved	1
+q14	org/apache/commons/lang3/CharSequenceUtils.java	1261	j	Resolved	1
+q15	org/apache/commons/lang3/CharSequenceUtils.java	1376	j	Resolved	1

@@ -22,3 +22,5 @@ q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	
 q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
 q11	!/classes/java/util/Objects.class	Method	java.util.Objects	requireNonNull	0	0
 q13	org/apache/commons/lang3/tuple/ImmutablePair.java	Field	org.apache.commons.lang3.tuple.ImmutablePair	NULL	1815	1819
+q14	org/apache/commons/lang3/CharSequenceUtils.java	Local	-	j	1234	1235
+q15	org/apache/commons/lang3/CharSequenceUtils.java	Local	-	j	1234	1235

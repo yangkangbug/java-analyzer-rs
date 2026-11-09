@@ -59,6 +59,8 @@ are not.
   listed in `src/lib.rs`, including lambdas, method references, and
   try-with-resources (`Resource` nodes).
 - Names, literals, `this`, and `super` used as expressions are nodes. Tokens stay leaves.
+- Basic-for initialization/update support statement-expression lists without a
+  general comma operator. See [for-loop boundaries](docs/FOR_LOOPS.md).
 - Catch parameters support annotations and `final`, with bounded malformed-header
   recovery. See [catch parsing](docs/CATCH_PARAMETERS.md) for syntax versus type
   legality, union-typing limits, and recovery boundaries.
@@ -333,10 +335,12 @@ model, or incremental query cache.
 
 An optional [offline acceptance harness](examples/real_source/README.md) loads all
 249 published Commons Lang 3.17.0 Java sources plus explicitly supplied platform
-data. It checks 13 fixed query positions, reports parser gaps, and measures
+data. It checks 15 fixed query positions, reports parser gaps, and measures
 preparation separately from repeated queries. It currently exposes substantial
 parser/semantic limitations; it is not a claim of complete project support.
 No upstream source archive or JDK data is bundled, and no Java process runs.
+This external corpus is not currently a default CI step. See
+[validation boundaries and next gates](docs/ACCEPTANCE_PLAN.md).
 
 ## Later stages
 
