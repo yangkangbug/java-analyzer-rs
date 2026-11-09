@@ -480,7 +480,7 @@ fn source_and_document_symlinks_are_rejected_but_query_aliases_are_canonical() {
     symlink(&source, f.0.join("alias.java")).unwrap();
     assert_eq!(
         f.declaration("alias.java", text.rfind("n++").unwrap())["result"]["queries"][0]["file"],
-        source.to_str().unwrap()
+        source.canonicalize().unwrap().to_str().unwrap()
     );
     symlink(&manifest, f.0.join("alias.json")).unwrap();
     assert_eq!(
