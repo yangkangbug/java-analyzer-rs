@@ -1,6 +1,7 @@
 //! Experimental native CLI and bounded editor adapter. No protocol or runtime
 //! integration is added to the library. See docs/CLI.md and docs/LSP_PREVIEW.md.
 mod config;
+mod configure;
 mod editor;
 mod execution;
 mod lsp;
@@ -99,7 +100,10 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
         return Ok(None);
     }
     let Some(command) = args.first() else {
-        return Err(Error::new("usage", "expected inspect, declaration, parser-report, --help or --version"));
+        return Err(Error::new(
+            "usage",
+            "expected configure, inspect, declaration, parser-report, --help or --version",
+        ));
     };
     if !["inspect", "declaration", "parser-report"].contains(&command.as_str()) {
         return Err(Error::new("usage", format!("unknown command {command}")));
@@ -269,6 +273,8 @@ fn capabilities() -> Value {
         "parser_reports": "parser_limit_or_invalid_syntax",
         "runtime": "native_rust_no_jvm",
         "build_tool_import": false,
+        "configuration_generation": {"mode":"explicit_inputs", "manifest_schema_version":1,
+            "output":"stdout", "validates_inputs":true, "discovers_dependencies":false, "generates_sources":false},
         "implicit_platform": false,
         "persistent_server_reload_overlays": false,
         "process_timeout_isolation": true,
@@ -281,6 +287,7 @@ fn capabilities() -> Value {
 }
 fn help() -> Value {
     json!({"schema_version":1,"version":env!("CARGO_PKG_VERSION"),"capabilities":capabilities(),"usage":[
+        "java-analyzer configure --compilation PROJECT SOURCE_SET (--source-root PATH ...|--binary-only) (--platform-jmod PATH|--platform-jar PATH|--no-platform) [--depends-on PROJECT SOURCE_SET ...] [--classpath-jar PATH|--classpath-dir PATH ...] [--target-release N] [--compilation ...] (explicit inputs only; stdout schema-v1 manifest; no build import)",
         "java-analyzer inspect --manifest FILE [--details] [--overlays FILE]",
         "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N|--line N --character N) [--overlays FILE]",
         "java-analyzer declaration --manifest FILE --requests FILE [--overlays FILE]",
@@ -595,7 +602,12 @@ fn main() {
     }
     if args.first().is_some_and(|arg| arg == execution::WORKER_ARGUMENT) {
         execution::watch_parent().unwrap_or_else(|error| emit_error(error));
-        let bytes = run(&args[1..]).and_then(|value| encode(&value)).unwrap_or_else(|error| emit_error(error));
+        let bytes = if args.get(1).is_some_and(|command| command == configure::COMMAND) {
+            configure::run(&args[2..])
+        } else {
+            run(&args[1..]).and_then(|value| encode(&value))
+        }
+        .unwrap_or_else(|error| emit_error(error));
         if let Err(error) = io::stdout().lock().write_all(&bytes) {
             emit_error(Error::new("output_io", error.to_string()));
         }

@@ -44,6 +44,7 @@ struct Options {
 }
 impl Options {
     fn parse(args: Vec<String>) -> Result<Self, Error> {
+        let argument_budget = super::configure::check_argument_bytes(&args);
         let mut forwarded = Vec::new();
         let mut timeout = None;
         let mut cancel_on_stdin_close = false;
@@ -70,8 +71,17 @@ impl Options {
                     cancel_on_stdin_close = true;
                 }
                 // Preserve option values verbatim, even when they look like a supervision option.
-                "--manifest" | "--requests" | "--project" | "--source-set" | "--file" | "--byte" | "--utf16"
-                | "--overlays" | "--line" | "--character" | "--job" => {
+                "--compilation" | "--depends-on" => {
+                    forwarded.push(arg);
+                    for _ in 0..2 {
+                        if let Some(value) = iter.next() {
+                            forwarded.push(value);
+                        }
+                    }
+                }
+                "--source-root" | "--classpath-jar" | "--classpath-dir" | "--platform-jmod" | "--platform-jar"
+                | "--target-release" | "--manifest" | "--requests" | "--project" | "--source-set" | "--file"
+                | "--byte" | "--utf16" | "--overlays" | "--line" | "--character" | "--job" => {
                     forwarded.push(arg);
                     if let Some(value) = iter.next() {
                         forwarded.push(value);
@@ -79,6 +89,9 @@ impl Options {
                 }
                 _ => forwarded.push(arg),
             }
+        }
+        if forwarded.first().is_some_and(|arg| arg == super::configure::COMMAND) {
+            argument_budget?;
         }
         if forwarded.first().is_some_and(|arg| arg == WORKER_ARGUMENT) {
             return Err(Error::new("usage", "reserved internal worker argument"));
@@ -398,6 +411,7 @@ fn validate(captured: Captured, args: &[String]) -> Result<Response, Error> {
                 })
             } else {
                 match args.first().map(String::as_str) {
+                    Some(super::configure::COMMAND) => super::configure::valid_output(&captured.stdout),
                     Some(super::editor::INSPECT_COMMAND) => {
                         valid_success(&captured.stdout, args, super::editor::InspectResult::valid)
                     }
@@ -660,6 +674,128 @@ mod tests {
                 assert_eq!(parsed.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
                 assert!(!parsed.cancel_on_stdin_close);
             }
+        }
+    }
+
+    #[test]
+    fn configure_option_values_are_forwarded_atomically() {
+        for (option, arity) in [
+            ("--compilation", 2),
+            ("--depends-on", 2),
+            ("--source-root", 1),
+            ("--classpath-jar", 1),
+            ("--classpath-dir", 1),
+            ("--platform-jmod", 1),
+            ("--platform-jar", 1),
+            ("--target-release", 1),
+        ] {
+            for value in ["--timeout-ms", "--cancel-on-stdin-close"] {
+                let mut args = vec!["configure".to_owned(), option.to_owned()];
+                args.extend(std::iter::repeat_n(value.to_owned(), arity));
+                let parsed = Options::parse(args.clone()).unwrap();
+                assert_eq!(parsed.args, args);
+                assert_eq!(parsed.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
+                assert!(!parsed.cancel_on_stdin_close);
+                args.extend(["--timeout-ms".into(), "17".into(), "--cancel-on-stdin-close".into()]);
+                let parsed = Options::parse(args).unwrap();
+                assert_eq!(parsed.timeout, Duration::from_millis(17));
+                assert!(parsed.cancel_on_stdin_close);
+            }
+        }
+    }
+
+    #[cfg(any(unix, windows))]
+    #[test]
+    fn configure_success_requires_a_strict_bounded_manifest_without_rereading_inputs() {
+        let args = vec!["configure".to_owned()];
+        let path = std::env::current_dir().unwrap().join("does-not-exist-configure-input");
+        assert!(!path.exists());
+        let success = json!({"schema_version":1,"compilations":[{
+            "id":{"project":"app","source_set":"main"},"source_roots":[path],
+            "classpath":[{"kind":"directory","path":path},{"kind":"jar","path":path}],
+            "platform":[{"kind":"jmod","path":path},{"kind":"jar","path":path}],
+            "target_release":17}]});
+        let encoded = success.to_string() + "\n";
+        assert!(
+            validate(Captured { status: status(0), stdout: encoded.as_bytes().to_vec(), stderr: vec![] }, &args)
+                .unwrap()
+                .success
+        );
+        for (pointer, value) in [
+            ("/schema_version", json!(2)),
+            ("/compilations", json!([])),
+            ("/compilations/0/id/project", json!("bad id")),
+            ("/compilations/0/source_roots/0", json!("relative")),
+            ("/compilations/0/classpath/0/path", json!("relative")),
+            ("/compilations/0/classpath/1/path", json!("relative")),
+            ("/compilations/0/platform/0/path", json!("relative")),
+            ("/compilations/0/platform/1/path", json!("relative")),
+            ("/compilations/0/target_release", json!(0)),
+            ("/compilations/0/target_release", json!(65536)),
+            ("/compilations/0/classpath/0/kind", json!("invented")),
+        ] {
+            let mut changed = success.clone();
+            *changed.pointer_mut(pointer).unwrap() = value;
+            assert_eq!(
+                validate(
+                    Captured { status: status(0), stdout: (changed.to_string() + "\n").into_bytes(), stderr: vec![] },
+                    &args
+                )
+                .err()
+                .unwrap()
+                .code,
+                "worker_output"
+            );
+        }
+        for bytes in [
+            encoded.replace("\"schema_version\":1", "\"schema_version\":1,\"schema_version\":1"),
+            encoded.replace("\"target_release\":17", "\"target_release\":17,\"extra\":true"),
+            encoded.replace("\"target_release\":17", "\"target_release\":17,\"target_release\":17"),
+            encoded.replace("\"source_set\":\"main\"", "\"source_set\":\"main\",\"source_set\":\"main\""),
+            encoded.replace("\"kind\":\"jar\"", "\"kind\":\"jar\",\"kind\":\"jar\""),
+            encoded.clone() + &encoded,
+            encoded.trim_end().to_string(),
+            encoded.clone() + &" ".repeat(super::super::MAX_DOCUMENT_BYTES as usize) + "\n",
+        ] {
+            assert_eq!(
+                validate(Captured { status: status(0), stdout: bytes.into_bytes(), stderr: vec![] }, &args)
+                    .err()
+                    .unwrap()
+                    .code,
+                "worker_output"
+            );
+        }
+        for change in
+            [json!({"max_compilations":0}), json!({"max_compilations":129}), json!({"max_dependency_edges":1025})]
+        {
+            let mut changed = success.clone();
+            changed["limits"] = change;
+            assert!(!super::super::configure::valid_output((changed.to_string() + "\n").as_bytes()));
+        }
+        for deps in [json!([{"project":"missing","source_set":"main"}]), json!([{"project":"app","source_set":"main"}])]
+        {
+            let mut changed = success.clone();
+            changed["compilations"][0]["dependencies"] = deps;
+            assert!(!super::super::configure::valid_output((changed.to_string() + "\n").as_bytes()));
+        }
+        assert_eq!(
+            validate(
+                Captured { status: status(0), stdout: encoded.as_bytes().to_vec(), stderr: vec![] },
+                &["inspect".into()]
+            )
+            .err()
+            .unwrap()
+            .code,
+            "worker_output"
+        );
+        for (code, stderr) in [(0, b"noise".to_vec()), (2, vec![])] {
+            assert_eq!(
+                validate(Captured { status: status(code), stdout: encoded.as_bytes().to_vec(), stderr }, &args)
+                    .err()
+                    .unwrap()
+                    .code,
+                "worker_output"
+            );
         }
     }
 

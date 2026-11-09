@@ -17,7 +17,7 @@ def require(condition, message):
         raise RuntimeError(message)
 
 with tempfile.TemporaryDirectory(prefix="java-native-cli-") as directory:
-    work = Path(directory)
+    work = Path(directory).resolve()
     (work / "src").mkdir()
     (work / "classes/lib").mkdir(parents=True)
     (work / "classes/lib/Lib.class").write_bytes((root / "tests/fixtures/classes/Lib.class").read_bytes())
@@ -51,6 +51,21 @@ with tempfile.TemporaryDirectory(prefix="java-native-cli-") as directory:
     require(len(inventory) == 1 and len(inventory[0]["source_paths"]) == 1, "source inventory differs")
     require(inventory[0]["class_count"] == 1 and "class_origins" not in inventory[0],
             "summary binary count or detail contract differs")
+    configured = subprocess.run([str(native), "configure", "--compilation", "smoke", "main",
+                                 "--source-root", "src", "--classpath-dir", "classes", "--no-platform"],
+                                cwd=work, env={"PATH": "/nonexistent"},
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15, check=False)
+    require(configured.returncode == 0 and not configured.stderr,
+            "native explicit configuration failed: " + configured.stderr.decode("utf-8", errors="replace"))
+    configuration = json.loads(configured.stdout)
+    require(configuration["schema_version"] == 1 and
+            configuration["compilations"][0]["source_roots"] == [str(work / "src")],
+            "configuration did not preserve absolute source roots")
+    manifest = work / "generated-project.json"
+    manifest.write_bytes(configured.stdout)
+    inventory[0]["configuration"]["source_roots"] = [str(work / "src")]
+    inventory[0]["configuration"]["classpath"] = [{"kind": "directory", "path": str(work / "classes")}]
+    require(run("inspect")["compilations"] == inventory, "generated configuration changed inventory")
     declaration = run("declaration", "--requests", str(requests))
     require(declaration["index_builds"] == 1, "batch did not use one prepared snapshot")
     queries = declaration["queries"]
@@ -72,5 +87,5 @@ with tempfile.TemporaryDirectory(prefix="java-native-cli-") as directory:
             not reports["java_semantic_diagnostics"], "parser report advertised semantic diagnostics")
     require(reports["source_count"] == 1 and reports["report_count"] == 0, "unexpected parser inventory")
 
-print("PASS: native CLI inventory, prepared source/binary declaration batch and parser report with no Java environment")
+print("PASS: native configuration, inventory, prepared source/binary declaration batch and parser report with no Java environment")
 PY

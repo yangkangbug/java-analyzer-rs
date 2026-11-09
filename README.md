@@ -65,6 +65,9 @@ target/release/java-analyzer parser-report --manifest examples/cli_project/proje
 The CLI emits versioned JSON. `inspect` summarizes binary counts; add `--details`
 for the complete origin inventory under explicit output limits. A declaration
 batch shares one prepared snapshot.
+The native [configuration bootstrap](docs/CLI_CONFIGURE.md) emits a validated
+manifest from explicit compilation groups, roots and ordered dependency inputs,
+without hand-writing JSON. It does not infer build configuration or generate Java.
 Source targets retain exact byte ranges; binary targets explicitly have no source
 range. Refused or ambiguous results remain candidates, not a guessed first match.
 Parser reports may indicate unsupported grammar rather than invalid Java.

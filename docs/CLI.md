@@ -54,6 +54,16 @@ and optional `--cancel-on-stdin-close`. Duplicates and invalid values fail. No
 unlimited timeout is available. Read both output streams concurrently; final
 output delivery is outside the worker deadline. See [execution contract](CLI_EXECUTION.md).
 
+## Generate a configuration from explicit inputs
+
+`configure` emits the existing manifest schema from explicitly supplied source
+roots, typed ordered binary/platform inputs and directed compilation dependencies.
+It fully validates and loads those inputs before writing JSON to stdout, without
+creating files or discovering a build model. Relative input paths become absolute
+against the invocation directory. See the [bootstrap command and safe saving
+examples](CLI_CONFIGURE.md). This does not generate Java sources or change the
+resolver's supported semantics.
+
 ## Unsaved buffers and editor positions
 
 The optional [full-text overlay protocol](CLI_OVERLAYS.md) supplies existing,
@@ -65,6 +75,9 @@ loads a disk snapshot; this is not a persistent editor server or incremental cac
 
 ## Commands and path rules
 
+- `configure --compilation PROJECT SOURCE_SET ...`: validated schema-v1 manifest
+  to stdout; see [explicit input options](CLI_CONFIGURE.md). Unlike analysis
+  commands, successful output is the manifest itself, not a result envelope.
 - `inspect --manifest FILE [--details]`: loaded inputs, visibility, shadowed binaries
   and effective configuration, sorted by compilation ID. By default, binary inputs
   are summarized by `class_count`; `--details` requests the full `class_origins`

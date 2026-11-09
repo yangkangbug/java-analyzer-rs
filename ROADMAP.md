@@ -96,6 +96,14 @@ main/test + library fixture. This is an explicit native project model, not a
 build-system importer or JPMS graph. Public targets still use path/range provenance;
 persistent symbol identity and incremental scoped queries remain unimplemented.
 
+### Explicit configuration bootstrap implemented
+
+The native [configuration bootstrap](docs/CLI_CONFIGURE.md) now emits the same
+manifest model from explicit multi-compilation command-line inputs after bounded
+loading. This removes manual JSON construction, not explicit configuration:
+build discovery, source exclusions, generated-source production and semantic
+completeness are still separate gates.
+
 ### Prepared analysis lifetime implemented
 
 Flat projects and compilation workspaces can explicitly prepare a reusable index.

@@ -32,6 +32,9 @@ project support or OpenIDEA client integration.
    dependencies, explicit platform data, target JAR release and resource limits.
    Paths are relative to the manifest; invalid inputs name the offending path.
    Manual configuration is explicit. No hidden Maven/Gradle/JVM import fallback.
+   The [native configuration bootstrap](CLI_CONFIGURE.md) can generate this
+   manifest from explicit multi-compilation options and validate it before output;
+   build import and generated-source production remain open.
 2. A product executable provides project inspection, declaration lookup and parser
    reporting, with machine-readable results and documented exit/error statuses.
    Repeated queries reuse a prepared snapshot. The existing inspect_project

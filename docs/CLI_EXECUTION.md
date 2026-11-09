@@ -39,6 +39,9 @@ exit 0 and the existing schema-1 response are unchanged. The supervisor forwards
 original worker response bytes, including snapshot identity, ranges, provenance,
 query ordering, refusal statuses and parser classifications. Each invocation
 still loads one snapshot and each declaration batch prepares one index.
+The [configuration bootstrap](CLI_CONFIGURE.md) instead returns the validated
+manifest itself, with no snapshot/result envelope. Its encoded document is
+additionally limited to 1 MiB so it can be read by the existing manifest adapter.
 
 A timeout or cancellation discards the whole worker response. It does not return
 a successful query prefix, expose a partial snapshot, or make an old snapshot

@@ -13,6 +13,8 @@ on:
       - 'scripts/test_fetch_acceptance_inputs.py'
       - 'scripts/check-real-source.py'
       - 'scripts/check-cli-acceptance.py'
+      - 'scripts/check-configure-acceptance.py'
+      - 'scripts/test_configure_acceptance.py'
       - 'scripts/second-project-inputs.json'
       - 'scripts/fetch-second-project-inputs.py'
       - 'scripts/test_second_project_inputs.py'
@@ -47,6 +49,7 @@ on:
       - 'src/**'
       - 'rust-toolchain.toml'
       - 'tests/cli.rs'
+      - 'tests/cli_configure.rs'
       - 'tests/reference_calls.rs'
       - 'tests/cli_lsp.rs'
       - 'examples/cli_project/**'
@@ -128,6 +131,13 @@ jobs:
       - name: Additive Gson string-call identities and preserved refusals (no Java)
         run: >-
           python3 scripts/check-string-call-acceptance.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+      - name: Generate Commons and four-scope Gson configurations and preserve results (no Java)
+        run: >-
+          python3 scripts/check-configure-acceptance.py
+          "$RUNNER_TEMP/acceptance/sources.jar"
+          "$RUNNER_TEMP/acceptance/java.base.jmod"
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
