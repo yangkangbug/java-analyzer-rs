@@ -21,7 +21,7 @@ All fixture and helper sources are handwritten for this Apache-2.0 project.
 state the queried use, expected native status, and intended source declaration.
 `D` comments label declarations and `Q` comments label queried identifiers.
 
-The seven-file project checks single imports, cross-file inheritance, parameters,
+The initial seven-file project checks single imports, cross-file inheritance, parameters,
 local uses, a block local shadowing a field, return to field lookup after the
 block, source-field receiver provenance, and a uniquely named method. The
 compiler independently resolves each query with `Trees.getElement`, then obtains
@@ -49,7 +49,7 @@ retain the declaration's import context, including later declarators. Array
 variable queries prove declaration identity; they do not independently prove
 native array-type dimensions. Native regression tests cover that representation.
 
-Three explicitly unsupported cases have separate expectations: javac selects the
+The original three explicitly unsupported cases have separate expectations: javac selects the
 `pick(int)` overload while native reports `OverloadNotResolved`, and javac binds
 `super.inherited` while native reports `ReceiverNotBound`; indexed-array
 `vector[0].count` binds a source field in javac while native reports `Unresolved`
@@ -72,7 +72,7 @@ the narrow syntax-receiver guard restores that boundary. Merely testing an unsha
 have accidentally concealed this defect. This case must not be removed or
 reclassified as a successful match to accommodate native output.
 
-The tool has a fixed seven-file inventory, validates marker/golden/output
+The tool has a fixed nine-file inventory, validates marker/golden/output
 completeness, and rejects compiler errors. It calls only explicitly supplied
 compiler/runtime paths with argument arrays and a minimal environment. Both
 compiler stages use `-proc:none`, `-implicit:none`, UTF-8, `--release 21`, and an
@@ -95,3 +95,31 @@ array declarators and imported source-field chains. The existing named-marker
 association handles javac's overlapping comma-declaration tree ranges without
 weakening checks: the actual compiler-selected element name and unique matching
 marker inside that tree are still required. The Java helper was unchanged.
+
+## Method-invocation namespace baseline
+
+`app.Calls` and `lib.CallBase` add 23 hand-authored probes separating method
+invocation names from same-spelled fields, parameters and block locals. The same
+names in arguments, values and receiver positions must still bind as values.
+Inherited methods and calls from a nested class into the enclosing class and its
+superclass are checked across source files. `choose(int)` is independently
+selected by javac but remains an explicit native `OverloadNotResolved` boundary.
+Before the native change, all nine files compiled and javac selected all 63
+queries. The comparator failed at `parameter_name_call`: native selected the
+parameter `m` at bytes 504–505 instead of the method declaration. That baseline
+used a preserved native binary built from c8e47a99, not generated expectations.
+
+The separate invalid `NoCallable.java` fixture proves that field, parameter,
+local and class names, and methods found only in an unrelated class, do not
+supply an unqualified callable target. Javac must reject that compilation; the
+five native probes must independently report `Unresolved` with zero targets.
+These invalid probes are not counted as successful compiler binding matches.
+Additional wrong-target controls substitute same-spelled local, parameter and
+field declarations for actual method targets, including a nested-class field.
+The compiler element mapping and range checks are unchanged.
+
+After the native fix the comparator passes 59 supported declaration bindings
+and four explicit unsupported boundaries (63 valid-source probes in total),
+plus all three rejected compiler fixtures and the five no-callable refusals.
+This does not establish overload selection, binary method resolution, or general
+Java invocation legality. Binary method namespace regressions remain native tests.

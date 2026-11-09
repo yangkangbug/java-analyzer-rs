@@ -52,6 +52,7 @@ This slice does not implement expression typing, inferred `var`, array indexing,
 array `length`/`clone`, definite assignment or illegal-forward-reference diagnostics.
 Recovery tests can intentionally use invalid Java and do not prove its legality.
 Postfix type annotations, full Java scope/access rules, stable symbol identities,
-method-call namespace fixes, generic inference and overload selection remain
-separate work. No parser-error count or prepared/rebuild agreement establishes
+method-reference semantics, generic inference and overload selection remain
+separate work. Unqualified invocation namespaces are covered by the subsequent
+[call-namespace slice](CALL_NAMESPACES.md). No parser-error count or prepared/rebuild agreement establishes
 complete Java correctness.

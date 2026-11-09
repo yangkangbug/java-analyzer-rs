@@ -414,3 +414,46 @@ behavior, not newly successful upstream navigation. The complete corpus retains
 baselines**. The release run uses five rounds, 105 samples per mode, with no timing
 threshold or general performance claim. No production dependencies changed and
 only the explicit development comparator executes Java.
+
+## Method-invocation namespace follow-up
+
+Baseline: `c8e47a99f1609940865b5619ddac2c9370916db4`. Failing native regressions and
+an actual pinned-javac run showed an unqualified method invocation incorrectly
+selecting a same-spelled parameter/resource/local. The production fix only moves
+the existing call-specific method lookup before lexical value lookup; syntax and
+call-position propagation are unchanged. Arguments and receiver prefixes retain
+value lookup. See [invocation boundaries](CALL_NAMESPACES.md).
+
+The complete fixed Commons Lang corpus has 3,030 direct unqualified invocation
+names. Twenty formerly returned local/parameter targets. With the pinned platform
+data, all twenty now return only method targets: **3 uniquely resolved**, **9
+OverloadNotResolved**, and **8 SignatureNotCompared**. The last two are refusals,
+not successful call selection. ObjectUtils.clone retains source/Object candidates;
+seven StrBuilder.length sites retain source/CharSequence candidates. This exposes
+source/binary method identity as the next project-navigation dependency.
+
+Twenty new query baselines record every exact method candidate. Original source
+signatures/name ranges were checked separately, including excluding the nested
+FailableStream.stream from outer Streams candidates; standard-library candidates
+retain JMOD provenance. The full-call negative invariant also asserts its fixed
+3,030-site inventory to avoid a vacuous pass. All **41 exact queries** pass over
+five release rounds (205 samples per mode), with no timing guarantee. The 249
+unmodified files retain lossless bytes and **85 parser diagnostics in 24 files**.
+
+The independent handwritten oracle has nine valid Java files and 63 queries:
+**59 supported declaration bindings** agree with javac, while **4 unsupported
+boundaries** stay explicit. A preserved baseline binary first failed at a parameter
+named m capturing m(). Seven deliberate wrong-target checks, corrupted ranges,
+optimized-Python rejection and three invalid compiler fixtures pass. Five invalid
+no-callable names independently return no native target; their compiler failures
+are not counted as binding matches. Production and default tests remain JVM-free.
+
+Final local checks pass: **173 Rust tests**, two intentionally ignored manual
+measurements, one compile-fail doctest, formatting, strict Clippy/docs, examples,
+real JAR/JMOD checks without Java on PATH, twelve offline fetch-security tests and
+Cargo package verification. Eight new native regressions cover lexical/value
+collisions, source/binary methods, refusal boundaries and prepared/workspace
+visibility. Independent review checked nested call/index positions, all twenty
+source queries and their 62 candidate records. No new dependencies were added.
+This is navigation soundness work, not overload selection, method-reference
+conformance, semantic diagnostics or completion/refactoring readiness.

@@ -113,8 +113,8 @@ the raw `Signature` attribute. `$` in a binary name is treated as javac's
 nesting separator. Constructors (`<init>`) are parsed and are not selected.
 `<clinit>` is dropped. Generic signatures are stored and not instantiated.
 
-A simple name is searched in this order, which is the JLS 6.5 order restricted
-to what this index stores:
+An ordinary value/name reference is searched in this order, which is the JLS
+6.5 order restricted to what this index stores:
 
 1. Local, parameter, or resource in the innermost recorded scope. A resource's
    scope runs from the `try` through the try block, and not into `catch` or
@@ -132,7 +132,11 @@ to what this index stores:
 6. On-demand imports, plus `java.lang` only when that type was actually added
    as source or as a class file. The JDK is not assumed to exist.
 
-A call does not fall through to a class of the same name. `extends` and
+An unqualified invocation such as `m()` searches methods instead of the value
+namespace. A local, parameter or field called `m` does not become its target.
+Arguments and receiver prefixes still use value lookup (`m(m)` and `m.read()`).
+A call does not fall through to a class of the same name. See
+[invocation namespace boundaries](docs/CALL_NAMESPACES.md). `extends` and
 `implements` are resolved in the compilation unit that wrote them, so `Lib` in
 package `lib` finds `lib.Lib`. A class or interface with no written superclass
 records `java.lang.Object` as that name; `enum` records `java.lang.Enum` and

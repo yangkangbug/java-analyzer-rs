@@ -22,8 +22,9 @@ plus bounded native JAR/JMOD and immutable project-loading acceptance tests. It 
 Missing foundations include build-tool/JDK discovery, JPMS rules, stable symbol
 IDs, type inference,
 overload applicability/selection, generic substitution, references, rename,
-completion, semantic diagnostics, and an editor/LSP adapter. A local variable
-sharing a method's name can still capture an unqualified call. The parser also
+completion, semantic diagnostics, and an editor/LSP adapter. Unqualified invocation
+names now use the method namespace independently of
+same-spelled local/parameter/field values. The parser still
 omits switch/pattern/module support and some parameter/type-annotation syntax.
 
 ## M0: reproducible independent project
@@ -128,7 +129,7 @@ independent compiler oracle. Neither prepared/rebuild agreement nor error counts
 
 A separate trusted-main/manual workflow verifies pinned upstream artifacts and
 runs the native real-source workload, then a development-only javac declaration
-oracle. Thirty-seven supported bindings and three explicit refusal boundaries are checked
+oracle. Fifty-nine supported bindings and four explicit refusal boundaries are checked
 independently; the oracle exposed a shadowed-super field error now conservatively
 refused. This does not implement full super semantics or close project/type gates.
 The default native test path and production library remain JVM-free. Broader
@@ -159,6 +160,23 @@ Gate: positive/negative fixtures cover each rule and incomplete editor input.
 Optional javac/JDT LS differential checks can validate development fixtures,
 but neither becomes a runtime dependency. Fix known small soundness defects
 as part of these capabilities, not as a substitute for the project model.
+
+### Next semantic milestone: source/binary method identity
+
+The real-source invocation audit eliminates twenty wrong variable targets, but
+only three become unique method targets with the supplied platform. Nine remain
+unselected overloads and eight remain source/binary signature refusals. This
+locates a concrete project-navigation barrier, rather than suggesting that fewer
+parser diagnostics imply usable IDE analysis.
+
+Next normalize source and class-file method signatures against resolved primitive,
+array and declared-type identities in their owning compilation context. Prove
+same-signature override behavior for real `StrBuilder.length` / `CharSequence.length`
+and preserve distinct signatures such as `ObjectUtils.clone(T)` / `Object.clone()`.
+Ambiguous/unresolved types must stay explicit. This establishes a reusable semantic
+foundation before applicability/generic inference, stable query identities and
+end-to-end definition/hover integration. Do not turn this into unrelated syntax
+cleanup or claim completion/refactoring readiness from navigation tests alone.
 
 ## M3: incremental query engine and cancellation
 

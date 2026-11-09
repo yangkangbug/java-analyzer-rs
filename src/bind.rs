@@ -364,9 +364,8 @@ impl Index {
     }
 
     fn simple_name(&self, file: &FileRec, byte: u32, name: &str, call: bool) -> ResolveResult {
-        if let Some(result) = self.locals_named(file, byte, name) {
-            return result;
-        }
+        // An invocation name occupies the method namespace. Lexical values
+        // still win for ordinary references and qualified receiver prefixes.
         if call {
             let methods = self.methods_here(file, byte, name);
             if methods.status != ResolveStatus::Unresolved {
@@ -376,7 +375,11 @@ impl Index {
                 return ResolveResult::none(ResolveStatus::StaticImportNotApplied);
             }
             return ResolveResult::none(ResolveStatus::Unresolved);
-        } else if let Some(result) = self.fields_named(file, byte, name) {
+        }
+        if let Some(result) = self.locals_named(file, byte, name) {
+            return result;
+        }
+        if let Some(result) = self.fields_named(file, byte, name) {
             return result;
         }
         match self.simple_type(file, name, byte) {

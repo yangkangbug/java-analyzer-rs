@@ -68,7 +68,7 @@ flow rather than an arbitrary ambient JDK.
 
 ## Independent compiler evidence
 
-The seven-file handwritten fixture and expectations are versioned under
+The nine-file handwritten fixture and expectations are versioned under
 `dev-tools/oracle`. javac `Trees.getElement` selects each referenced declaration,
 then `Trees.getPath` supplies its actual declaration tree and range. Compiler
 UTF-16 positions are converted to UTF-8 bytes, including an astral-character
@@ -76,11 +76,12 @@ case. The wrapper associates the actual compiler tree with a unique declaration
 marker and checks the native target's path, kind, name, owner convention and exact
 name-token range. Expectations are not generated from native output.
 
-Thirty-seven supported bindings are checked against this independent evidence. Three
-separate cases verify explicit refusal boundaries: javac selects an overload,
+Fifty-nine supported bindings are checked against this independent evidence. Four
+separate cases verify explicit refusal boundaries: javac selects an overload at two query sites,
 resolves `super.inherited`, and binds an indexed-array source-field receiver,
 while the native engine respectively reports `OverloadNotResolved`,
-`ReceiverNotBound`, and `Unresolved` with no target. These are not semantic-equivalence
+`ReceiverNotBound`, and `Unresolved`. The last two statuses have no target;
+overload refusals retain candidates. These are not semantic-equivalence
 passes. Missing-name/incomplete compiler failures, native missing-name behavior,
 wrong-golden and corrupted-compiler evidence, and optimized-Python rejection are
 negative controls. Both compiler stages disable annotation processing and
@@ -101,10 +102,17 @@ The compiler helper is unchanged. Wrong-sibling and same-name/wrong-package
 perturbations must fail even when comma-declaration tree ranges overlap. This is
 still binding evidence, not a type-inference or definite-assignment checker.
 
+Invocation namespace cases distinguish identical names at callee, argument,
+value and receiver positions, including inherited methods and nested enclosing
+classes. Separate invalid sources require five no-callable native refusals and
+compiler rejection. The real-source harness also audits all direct unqualified
+invocation names for accidental variable/type targets; zero wrong-namespace
+results is a negative invariant, not proof that every call resolves correctly.
+
 ## Remaining coverage limits
 
 The full real-source workload still has known parser/semantic gaps. Its default
-twenty-one fixed queries and error-node inventory are not whole-project semantic
+forty-one fixed queries and error-node inventory are not whole-project semantic
 coverage. Prepared/rebuild agreement proves consistency, not Java correctness.
 The small independent oracle does not cover generic inference, overload selection,
 platform bindings, JPMS, complete access control, malformed-buffer equivalence,

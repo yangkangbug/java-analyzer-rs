@@ -42,3 +42,27 @@ scope_first_local	Resolved	scope_before
 scope_second_local	Resolved	scope_shadow
 after_shadow_scope	Resolved	field_shadow
 array_receiver	Unresolved	payload_count
+# Invocation namespace is independent of same-spelled value names.
+field_name_call	Resolved	call_method
+field_name_value	Resolved	call_field
+parameter_name_call	Resolved	call_method
+parameter_name_value	Resolved	call_parameter
+argument_consumer	Resolved	call_consumer
+parameter_name_argument	Resolved	call_parameter
+local_name_call	Resolved	call_method
+local_name_value	Resolved	call_local
+inherited_name_call	Resolved	call_inherited_method
+inherited_name_value	Resolved	call_inherited_parameter
+receiver_name_call	Resolved	call_method
+receiver_name_value	Resolved	call_receiver_parameter
+receiver_read_call	Resolved	read_method
+block_name_call	Resolved	call_method
+block_name_value	Resolved	call_block_local
+after_block_call	Resolved	call_method
+after_block_value	Resolved	call_field
+nested_outer_call	Resolved	call_method
+nested_field_value	Resolved	call_nested_field
+nested_inherited_call	Resolved	call_inherited_method
+nested_parameter_value	Resolved	call_nested_parameter
+overload_name_call	OverloadNotResolved	call_choose_int
+overload_name_argument	Resolved	call_overload_parameter

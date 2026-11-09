@@ -1,6 +1,6 @@
 //! Optional, checksum-gated upstream-source acceptance and repeated-query baseline.
 //! Use scripts/check-real-source.py with the pinned external artifacts.
-use java_engine::{PlatformEntry, ProjectConfig, ProjectSnapshot, ResolveResult};
+use java_engine::{GreenNode, PlatformEntry, ProjectConfig, ProjectSnapshot, ResolveResult, SyntaxKind, TargetKind};
 use std::collections::BTreeMap;
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -12,6 +12,38 @@ struct Query {
     offset: u32,
     fields: Vec<String>,
     targets: Vec<Vec<String>>,
+}
+
+// Audit only direct unqualified invocation names, not arguments, value receivers,
+// or method references. Refused/ambiguous methods are not semantic successes.
+fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>) {
+    if node.kind() == SyntaxKind::CallExpr {
+        let mut offset = start;
+        for child in node.children() {
+            if let Some(callee) = child.as_node() {
+                if callee.kind() == SyntaxKind::ReferenceExpr {
+                    for part in callee.children() {
+                        if let Some(token) = part.as_token()
+                            && token.kind() == SyntaxKind::Ident
+                        {
+                            out.push(offset);
+                            break;
+                        }
+                        offset += part.utf8_len();
+                    }
+                }
+                break;
+            }
+            offset += child.utf8_len();
+        }
+    }
+    let mut offset = start;
+    for child in node.children() {
+        if let Some(child) = child.as_node() {
+            unqualified_callees(child, offset, out);
+        }
+        offset += child.utf8_len();
+    }
 }
 
 fn check(query: &Query, result: &ResolveResult) {
@@ -129,6 +161,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
     let prepared = snapshot.project().prepare();
     let prepare_ns = started.elapsed().as_nanos();
+    let mut calls = 0;
+    let mut wrong_namespace = 0;
+    for path in snapshot.source_paths() {
+        let file = snapshot.project().file(path).ok_or("missing parsed source")?;
+        let mut callees = Vec::new();
+        unqualified_callees(file.root(), 0, &mut callees);
+        for byte in callees {
+            calls += 1;
+            let result = prepared.resolve_at(path, byte);
+            if result.targets.iter().any(|target| target.kind != TargetKind::Method) {
+                wrong_namespace += 1;
+                println!("wrong_call_namespace\t{path}\t{byte}\t{result:?}");
+            }
+        }
+    }
+    println!("unqualified_call_namespace_audit: calls={calls} wrong_namespace={wrong_namespace}");
+    assert_eq!(calls, 3030, "review pinned call inventory when parser/walker coverage changes");
+    assert_eq!(wrong_namespace, 0, "method invocations must never resolve to variable/type declarations");
     let mut expected = Vec::new();
     for query in &queries {
         let file = snapshot.project().file(&query.path).ok_or("missing query source")?;

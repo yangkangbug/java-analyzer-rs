@@ -51,13 +51,13 @@ are covered by its official Temurin distribution; it remains an external input.
 
 ## Fixed query corpus and evidence boundary
 
-`queries.tsv` pins 21 real source positions, the queried spelling, status, and
+`queries.tsv` pins 41 real source positions, the queried spelling, status, and
 target count. `targets.tsv` records each ordered candidate separately, including
 kind, owner, name, source range and source path or JMOD suffix.
 The example verifies every target field and checks exact equality between
 prepared and rebuild-per-query results on every timed query, outside the timer.
-There are seventeen resolved queries, three explicit overload refusals, and one
-unbound receiver:
+There are twenty resolved queries, twelve explicit overload refusals, eight
+source/binary signature refusals, and one unbound receiver:
 
 - Same-package source class/field, source superclass, local parameter and field.
 - Explicit `Objects` import, implicit `java.lang` classes, binary `String.length`.
@@ -108,10 +108,29 @@ comparison and all source-grounded diagnostic groups are retained in
 `for-parser-comparison.tsv` and `for-diagnostic-causes.tsv`. See
 [for grammar and recovery](../../docs/FOR_LOOPS.md).
 
+## Invocation namespace evidence
+
+`call-namespace-comparison.tsv` records twenty real calls that previously resolved
+to same-spelled locals/parameters. With the pinned platform data, three now resolve
+to unique source methods, nine explicitly retain overload candidates, and eight
+refuse source/binary signature comparison. For example, `StrBuilder.length()` is
+no longer a parameter target, but still has both the source method and binary
+`CharSequence.length` until signature normalization can justify the override.
+These refusal outcomes are not successful semantic resolution.
+
+The harness additionally scans every direct unqualified `CallExpr` name, excluding
+argument/receiver prefixes and method references. The pinned tree contains 3,030
+such sites: wrong value/type targets fall from twenty to zero. This audit is a
+negative invariant outside the timed query loop, not compiler conformance or full
+call coverage. The fixed call count is also asserted so a broken walker cannot
+pass vacuously; parser coverage changes require reviewing that inventory. The twenty added exact target/candidate queries were checked
+against original source method signatures (including excluding a same-named
+nested-class method) and supplied platform declarations.
+
 ## Measurements
 
 Load/parse/platform decoding and one index preparation are separately timed.
-The 21-query corpus is first checked, then repeated five times by default (105
+The 41-query corpus is first checked, then repeated five times by default (205
 samples per mode). Prepared/rebuild order alternates between rounds. Latencies
 include result construction but exclude equality checks and output. p50/p95 use
 nearest rank over individual query samples, with total/min/max also reported.

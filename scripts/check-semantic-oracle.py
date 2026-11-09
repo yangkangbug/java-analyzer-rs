@@ -10,7 +10,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 ORACLE = ROOT / "dev-tools/oracle"
 FILES = ("app/Use.java", "app/Declarations.java", "app/Payload.java",
-         "lib/Base.java", "lib/Value.java", "lib/Holder.java", "model/Payload.java")
+         "lib/Base.java", "lib/Value.java", "lib/Holder.java", "model/Payload.java",
+         "app/Calls.java", "lib/CallBase.java")
 MARKER = re.compile(rb"/\*([DQ]):([a-z_]+)\*/([A-Za-z_$][A-Za-z0-9_$]*)")
 
 
@@ -113,9 +114,14 @@ def main():
         compare(expected, queries, declarations, javac, native)
         # Reject both a sibling inside overlapping javac ranges and a same-name
         # field in the caller package instead of the declaration's imported type.
+        # Invocation controls also reject same-spelled value declarations.
         for query, wrong_target in (("parameter", "shadow_field"),
                                     ("second_field", "field_first"),
-                                    ("imported_scalar_member", "decoy_count")):
+                                    ("imported_scalar_member", "decoy_count"),
+                                    ("parameter_name_call", "call_parameter"),
+                                    ("local_name_call", "call_local"),
+                                    ("field_name_call", "call_field"),
+                                    ("nested_outer_call", "call_nested_field")):
             perturbed = dict(expected)
             perturbed[query] = ("Resolved", wrong_target)
             try:
@@ -134,7 +140,7 @@ def main():
         else:
             raise AssertionError("oracle accepted corrupted compiler declaration range")
         # Compiler failures must never become a green empty comparison.
-        for invalid in ("Broken.java", "Missing.java"):
+        for invalid in ("Broken.java", "Missing.java", "NoCallable.java"):
             request.write_text(f"F\t{invalid}\n")
             bad = run([jdk / "bin/java", "-cp", classes, "BindingOracle", ORACLE / "invalid", request, empty], env, False)
             assert bad.returncode == 2 and "compiler.err." in bad.stderr, f"invalid fixture accepted: {invalid}"
@@ -143,9 +149,24 @@ def main():
         request.write_text(f"F\tMissing.java\nQ\tmissing\tMissing.java\t{missing_offset}\n")
         negative = records(run([args.native.resolve(), ORACLE / "invalid", request], env).stdout)
         assert negative == {"missing": ["Unresolved", "0"]}, "missing name produced a native target"
+        no_callable_source = (ORACLE / "invalid/NoCallable.java").read_bytes()
+        no_callable_queries = [(match.group(2).decode(), match.start(3))
+                               for match in MARKER.finditer(no_callable_source)]
+        assert no_callable_source.count(b"/*Q:") == len(no_callable_queries) == 5, \
+            "no-callable marker inventory changed"
+        assert {identity for identity, _ in no_callable_queries} == {
+            "field_only_call", "parameter_only_call", "local_only_call",
+            "class_only_call", "unrelated_method_call"}, "no-callable query inventory changed"
+        request.write_text("F\tNoCallable.java\n" + "".join(
+            f"Q\t{identity}\tNoCallable.java\t{offset}\n"
+            for identity, offset in no_callable_queries))
+        no_callable = records(run([args.native.resolve(), ORACLE / "invalid", request], env).stdout)
+        assert no_callable == {identity: ["Unresolved", "0"] for identity, _ in no_callable_queries}, \
+            f"non-method names produced invocation targets: {no_callable}"
         print(f"PASS: {sum(s == 'Resolved' for s, _ in expected.values())} supported declaration bindings; "
               f"{sum(s != 'Resolved' for s, _ in expected.values())} explicit unsupported boundaries; "
-              "wrong-target detection and 2 invalid/incomplete compiler failures verified")
+              "wrong-target detection, 3 invalid/incomplete compiler failures, "
+              "and 5 no-callable refusals verified")
         for query in expected:
             print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
 
