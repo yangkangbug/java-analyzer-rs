@@ -79,6 +79,12 @@ rejection, off-UI execution and cancellation/restart are required. Whole-buffer
 UTF-16 helpers are not an LSP line/column implementation. Validate rapid edits,
 CRLF/astral characters, dependency changes, cancellation and reopen behavior.
 
+The [explicit client refresh lifecycle](EDITOR_REFRESH.md) adds a safe replacement
+path for source/configuration changes: await old-session retirement, initialize,
+replay loaded unsaved buffers, then enable navigation. It preserves the server's
+restart-only boundary; transactional reload and a persistent semantic snapshot
+remain open.
+
 Persistent symbol IDs are not a prerequisite for a one-shot CLI, but results that
 outlive a request must belong to a known revision/context. Reference search, rename,
 completion, semantic diagnostics, generic inference and full overload selection

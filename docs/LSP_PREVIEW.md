@@ -34,6 +34,12 @@ manifest. Changing configuration or the loaded source inventory requires a new
 client/server session. There is no automatic import, watcher or transactional
 reload, and no cached semantic snapshot survives a failed one-shot disk load.
 
+The shipped Neovim client provides [serialized explicit restart](EDITOR_REFRESH.md):
+retire the old session safely, initialize a replacement, then replay all supported
+loaded buffers before enabling navigation. This does not change the server's
+frozen-ownership contract or introduce a reload request. Forced or uncertain
+retirement fails closed rather than accumulating replacement sessions.
+
 Definition queries require an open, synchronized document: didOpen captures its
 complete text, even when it equals disk. A closed owned query receives an explicit
 error; reopen it to query again. Closed target declarations remain navigable, and

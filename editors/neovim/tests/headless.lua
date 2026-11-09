@@ -42,7 +42,7 @@ local function run()
     local out
     local id, cancel = adapter.definition({ on_result = function(result) out = result end })
     check(id, 'request was not sent')
-    return function() return out end, cancel
+    return function() return out end, cancel, vim.lsp.get_client_by_id(adapter.status().client_id), id
   end
   local function jump(word)
     local result = request(word)
@@ -125,16 +125,24 @@ local function run()
   end
   local function late(label, mutate, expected)
     hold()
-    local response, cancel = request('valueB')
+    local response, cancel, client, request_id = request('valueB')
     wait_for(function() return held() ~= nil end, 'response in transit')
     local data = held()
     check(data.message.result ~= vim.NIL and data.message.result ~= nil,
       'held response must be a real resolved definition')
-    mutate(cancel)
+    local after_release = mutate(cancel)
     local before_buf, before_cursor = api.nvim_get_current_buf(), api.nvim_win_get_cursor(0)
     release(data)
+    -- Local cancellation/retirement may settle before the transport response.
+    -- Wait for Neovim's public request bookkeeping to observe the real reply,
+    -- then drain its scheduled handler before checking navigation.
+    wait_for(function() return client.requests[request_id] == nil end, 'real held response received')
+    local drained = false
+    vim.schedule(function() drained = true end)
+    wait_for(function() return drained end, 'held response handler drained')
     wait_for(function() return response() ~= nil end, 'late callback')
     check(response().status == expected, vim.inspect(response()))
+    if after_release then after_release() end
     check(api.nvim_get_current_buf() == before_buf
       and vim.deep_equal(api.nvim_win_get_cursor(0), before_cursor), label .. ' jumped')
     record(label)
@@ -162,9 +170,15 @@ local function run()
   late('in_transit_old_session_after_restart', function()
     local old = adapter.status().client_id
     adapter.restart()
-    wait_for(function() return adapter.status().ready end, 'new session initialized')
-    check(adapter.status().client_id ~= old, 'restart reused old client')
+    -- Serial restart cannot initialize a successor while this proxy holds the
+    -- old real response ahead of its shutdown reply. Release first, then prove
+    -- old callback stays stale and the replacement has a different identity.
+    check(not adapter.status().ready, 'replacement ready before old response release')
     place('valueB')
+    return function()
+      wait_for(function() return adapter.status().ready end, 'new session initialized')
+      check(adapter.status().client_id ~= old, 'restart reused old client')
+    end
   end, 'stale')
   jump('valueB')
   late('explicit_cancel_discards_already_computed_result', function(cancel) cancel() end, 'cancelled')

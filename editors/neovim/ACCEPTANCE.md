@@ -72,3 +72,18 @@ Native server tests own malformed framing, request IDs, signed/nonconsecutive
 versions and invalid lifecycle notifications. Keep these distinct from real
 Neovim buffer events. Preserve the existing CLI and strict core coordinates.
 Do not misuse `ContentModified` or `ServerCancelled` for ordinary queued edits.
+
+## Explicit refresh extension
+
+The later [refresh lifecycle contract](../../docs/EDITOR_REFRESH.md) fixes its
+resource, ordering and failure boundaries before implementation. A separate real
+client checker adds source creation/deletion/rename, configuration and ownership
+changes, dirty-buffer replay, readiness and interrupted/reentrant lifecycle tests.
+It supplements this original suite rather than replacing its navigation checks.
+
+Serialized retirement changes the old held-response restart test's ordering:
+the obsolete callback settles immediately, then the test releases the real old
+response before awaiting the successor. The response must never navigate or
+settle twice, and the new session must still navigate exactly. Waiting for a new
+session while withholding the old session's shutdown response would contradict
+the new no-overlap contract.

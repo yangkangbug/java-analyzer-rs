@@ -40,6 +40,9 @@ source-build/runtime gate, not a signed Mac distribution or user-device validati
 The [archive-reuse acceptance plan](docs/ARCHIVE_REUSE.md) addresses repeated
 dependency decoding within a project load without adding a cross-request cache
 or changing the requirement for explicit project configuration.
+The [explicit editor refresh contract](docs/EDITOR_REFRESH.md) serializes session
+replacement after source/configuration changes and replays unsaved buffers before
+navigation becomes ready. It does not add automatic reload or source generation.
 The [local-type containment boundary](docs/LOCAL_TYPES.md) repairs surrounding
 variable navigation after unsupported method-local type declarations without
 publishing those types as ordinary class members.

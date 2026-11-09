@@ -320,6 +320,13 @@ coverage, automatic build import, UI latency budget or replacement of JDT LS is
 implied. Next gates must improve measured repeated-query behavior and practical
 semantic coverage without losing cross-buffer correctness or refusal boundaries.
 
+The client-side [explicit refresh lifecycle](docs/EDITOR_REFRESH.md) serializes
+retirement, replacement initialization and full unsaved-buffer replay. It settles
+obsolete callbacks promptly, avoids restart-storm process overlap, and exposes
+initialization/cleanup failures. This improves the existing restart boundary;
+it is not transactional in-process reload, an automatic file watcher, or an
+incremental semantic snapshot engine.
+
 The measured [single-load archive reuse](docs/ARCHIVE_REUSE.md) prerequisite is implemented:
 sharing immutable parsed signatures across compilation scopes after freshly reading
 and exactly comparing their archive bytes. Per-scope contexts and logical input

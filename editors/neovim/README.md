@@ -26,6 +26,7 @@ java.setup({
 })
 java.start()
 vim.keymap.set('n', '<leader>jd', java.definition, { desc = 'Safe Java definition' })
+vim.keymap.set('n', '<leader>jr', java.restart, { desc = 'Restart Java analysis and replay buffers' })
 ```
 
 `examples/cli_project/project.json` is a small manual-manifest starting point.
@@ -34,17 +35,37 @@ buffers, including dependency roots outside the manifest directory. The native
 server validates actual ownership and supported inventory. Opening another
 existing `.java` buffer under those roots attaches it automatically.
 
-- `setup(opts)` validates paths without starting software. Stop before changing
-  setup. Paths are passed as arguments, not shell commands.
-- `start([opts])` starts one session and returns its client ID. Initialization is
-  asynchronous. `status().ready` becomes true after the required capabilities.
+- `setup(opts)` validates paths without starting software. It requires no owned
+  client or queued start; `stop()` is asynchronous. Paths are arguments, not shell
+  commands.
+- `start([opts])` schedules a session. Without options an active session stays
+  unchanged; explicit options request replacement. `restart([opts])` always
+  requests replacement, coalescing repeated calls to the latest configuration.
+  Both can return nil while retirement/start is queued. Wait for `status().ready`,
+  then read `status().client_id`; restart does not return a new ID synchronously.
 - `definition([opts])` uses the current window/cursor and returns a request ID
   and cancel function. No result means no navigation. The optional
   `on_result` callback receives `{status, result, error}`; status is `jumped`,
   `empty`, `stale`, `cancelled`, or `error`.
-- `stop()` immediately invalidates pending navigation and requests LSP shutdown.
-- `restart([opts])` creates a new independent client session. The optional setup
-  `on_exit(code, signal)` callback observes each session's actual process exit.
+- `stop()` immediately invalidates and settles pending navigation, cancels a queued
+  start, and retires the owned session. The optional setup `on_exit(code, signal)`
+  callback observes each session's actual process exit.
+
+Restart waits for safe exit of the old session, initializes a new one, attaches
+all supported loaded source buffers with their current full text, and flushes
+changes before advertising ready. Dirty buffers are not saved, reloaded or
+recreated. This includes dependency buffers, not just the current file. The
+client owns at most one running/retiring session and one queued latest start.
+See [the explicit refresh contract](../../docs/EDITOR_REFRESH.md) for lifecycle
+states, bounded timeout options, exact callback settlement and failure recovery.
+
+`status().phase` and `status().error` distinguish initialization, replay, retirement
+and failure. A known native initialization refusal permits a corrected explicit
+retry after safe exit. Forced, abnormal or uncertain cleanup sets
+`status().restart_blocked`; no replacement is launched. This sticky failure cannot
+be bypassed through `start` or `restart`. Check and end remaining analyzer processes
+using the OS, preserve dirty buffers, then open a fresh Neovim session. This is not
+an OS process-tree containment guarantee.
 
 Do not use `vim.lsp.buf.definition()` when you want this adapter's stale-result
 protection. The safe mapping must call the supplied `definition` function.
@@ -126,6 +147,10 @@ python3 scripts/check-neovim-editor.py \
   --nvim /absolute/local/neovim-0.11.5/bin/nvim \
   --native /absolute/path/target/release/java-analyzer \
   --output /absolute/local/new-editor-results
+python3 scripts/check-neovim-refresh.py \
+  --nvim /absolute/local/neovim-0.11.5/bin/nvim \
+  --native /absolute/path/target/release/java-analyzer \
+  --output /absolute/local/new-refresh-results
 ```
 
 The checker creates isolated HOME/XDG/log directories, fixture files and a local
@@ -181,6 +206,15 @@ hashes, script hashes, input hashes and Git revision/tree/dirty state.
 `protocol.jsonl` records only the generated public fixture session, not user data.
 The CI build step, not package `--version` alone, establishes which source built
 the tested native binary. Keep reports tied to that build.
+
+The refresh checker adds actual source/configuration changes, dirty dependency
+replay, first-attachment readiness, initialization refusal and retry, repeated
+and reentrant lifecycle calls, callback settlement and bounded failure paths.
+Intentional fixture mutations are recorded and restored; product operations must
+not save dirty buffers. Protocol and process evidence distinguish safe exit from
+`is_stopped()`, and failed/forced scenarios must not start replacement sessions.
+Offline mutation tests reject inconsistent outcomes rather than trusting an
+editor's success flag alone. Every run uses a new output directory.
 
 See the [frozen acceptance plan](ACCEPTANCE.md). Coverage includes simultaneous
 unsaved app/dependency edits, same-position symbols, Unicode/CRLF/escaped URIs,

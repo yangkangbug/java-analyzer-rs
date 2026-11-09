@@ -67,6 +67,12 @@ jobs:
           --nvim "$RUNNER_TEMP/neovim/bin/nvim"
           --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
           --output "$RUNNER_TEMP/neovim-result"
+      - name: Real explicit restart and unsaved-buffer replay (no Java)
+        run: >-
+          python3 scripts/check-neovim-refresh.py
+          --nvim "$RUNNER_TEMP/neovim/bin/nvim"
+          --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
+          --output "$RUNNER_TEMP/neovim-refresh-result"
       - name: Record bounded verification summary (no source text or private paths)
         run: |
           python3 - <<'PY'
@@ -85,10 +91,12 @@ jobs:
               'unchanged_executables': report['unchanged_executables'],
               'process': report['process'],
           }, indent=2))
+          refresh = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'neovim-refresh-result/result.json').read_text())
+          print(json.dumps(refresh['summary'], indent=2))
           PY
       - name: Remove temporary client and owned acceptance data (never uploaded)
         if: always()
-        run: rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache" "$RUNNER_TEMP/neovim-result"
+        run: rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache" "$RUNNER_TEMP/neovim-result" "$RUNNER_TEMP/neovim-refresh-result"
 
 # A failed download is a setup failure, not a passed or skipped editor test.
 # Headless navigation is not GUI, signed-distribution or user-device validation.

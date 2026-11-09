@@ -94,6 +94,12 @@ computer. Input setup, offline analysis, real client navigation and optional jav
 comparison remain separately identified gates. A successful handwritten protocol
 test is not evidence that a real editor navigates correctly.
 
+The explicit refresh checker uses the same pinned client and bounded test runner.
+It verifies session retirement and full unsaved-buffer replay separately from
+native resolver semantics. Keep initialization/cleanup failures, reentrant client
+events and process-overlap controls in the real editor suite, and keep adversarial
+report mutations in offline Python discovery. See [the refresh contract](docs/EDITOR_REFRESH.md).
+
 The supplemental Linux [LSP reload measurement](docs/ARCHIVE_REUSE.md) compares
 two already-built release binaries using pinned local inputs. Its offline tests
 are included in Python discovery. Run actual timings serially without builds or
