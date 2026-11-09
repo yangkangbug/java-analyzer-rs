@@ -305,7 +305,7 @@ def check_parser(result, fixture):
     same(result['report_count'], count, 'parser total count')
 
 
-def check_response(command, response, fixture):
+def check_response(command, response, fixture, historical_constructor=False):
     """Validate full actual response, not just an exit code or a resolution ratio."""
     check_envelope(command, response, fixture)
     result = response['result']
@@ -324,7 +324,9 @@ def check_response(command, response, fixture):
     elif command == 'declaration':
         same(result['index_builds'], 1, 'batch reuses one index')
         same(len(result['queries']), QUERY_COUNT, 'returned query count')
-        for i, (row, query, expected) in enumerate(zip(result['queries'], fixture.plan, fixture.expected)):
+        expectations = (fixture.expected if historical_constructor else
+                        constructor_expectations(fixture))
+        for i, (row, query, expected) in enumerate(zip(result['queries'], fixture.plan, expectations)):
             check_query_row(row, query, expected, fixture, i)
     elif command == 'parser-report':
         check_parser(result, fixture)
@@ -692,7 +694,7 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False):
     stage = 'baseline' if capture_baseline else 'expected'
     check_reference_call_response(response, probes, fixture, stage)
     original = successful(native, fixture, 'declaration')
-    check_response('declaration', original, fixture)
+    check_response('declaration', original, fixture, historical_constructor=capture_baseline)
     local_probes = local_type_probes(fixture)
     local_request = document(fixture, 'reference-local-type-requests.json', {
         'schema_version': 1, 'queries': [
@@ -720,6 +722,87 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False):
     }
 
 
+def constructor_expectations(fixture):
+    """One fixed correction, gated on the exact old plan/row and pinned inputs.
+
+    Never mutate historical goldens or derive an expected target from CLI output.
+    """
+    spec = json.loads((CORPUS / 'constructor-call-probe.json').read_text(),
+                      object_pairs_hook=unique_json_object)
+    same(spec['format_version'], 1, 'constructor plan version')
+    for name, checksum in spec['historical_artifact_sha256'].items():
+        same(digest(CORPUS / name), checksum, 'constructor unchanged historical artifact: ' + name)
+    same(fixture.metadata['inputs']['sources']['sha256'], spec['source_archive_sha256'],
+         'constructor source archive pin')
+    index = spec['query_index']
+    same(index, 12, 'only original overload_add correction index')
+    same(fixture.plan[index], spec['query'], 'exact historical constructor query')
+    same(fixture.expected[index], spec['baseline'], 'exact historical constructor refusal')
+    # Assert the independently inspected signature identity, not just membership in
+    # the old candidate set. Its original name range alone is insufficient.
+    target = spec['expected']['targets'][0]
+    same(spec['expected'], {'status': 'Resolved', 'targets': [{
+        'origin': 'source', 'path': 'gson/src/main/java/com/google/gson/JsonArray.java',
+        'kind': 'Method', 'owner': 'com.google.gson.JsonArray', 'name': 'add',
+        'start': 3703, 'end': 3706}]}, 'fixed JsonArray.add(JsonElement) target')
+    data = fixture.sources[target['path']]
+    same(data[target['start']:target['start'] + len(b'add(JsonElement element)')],
+         b'add(JsonElement element)', 'independent JsonElement formal spelling')
+    data = fixture.sources[spec['query']['file']]
+    same(data[1237:1237 + len(b'add(new JsonObject())')], b'add(new JsonObject())',
+         'independent constructor argument expression')
+    historical = json.loads((CORPUS / 'local-type-comparison.json').read_text())
+    same(all_source_hashes(fixture), historical['all_226_source_sha256'],
+         'constructor all original source bytes')
+    expected = copy.deepcopy(fixture.expected)
+    expected[index] = copy.deepcopy(spec['expected'])
+    return expected
+
+
+def run_constructor_call_acceptance(native, fixture, capture_baseline=False):
+    # Validate the correction and all source inputs even when checking a baseline.
+    expectations = constructor_expectations(fixture)
+    reference_probes, historical, parser_digest = reference_call_probes(fixture)
+    before = all_source_hashes(fixture)
+    response = successful(native, fixture, 'declaration', strict_json=True)
+    probes = [{**query, 'expected': expected, 'baseline': old}
+              for query, expected, old in zip(fixture.plan, expectations, fixture.expected)]
+    check_reference_call_response(response, probes, fixture,
+                                  'baseline' if capture_baseline else 'expected')
+    reference_request = document(fixture, 'constructor-reference-requests.json', {
+        'schema_version': 1, 'queries': [
+            {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
+             'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in reference_probes]})
+    reference = successful(native, fixture, 'declaration', requests=reference_request, strict_json=True)
+    check_reference_call_response(reference, reference_probes, fixture)
+    local_probes = local_type_probes(fixture)
+    local_request = document(fixture, 'constructor-local-requests.json', {
+        'schema_version': 1, 'queries': [
+            {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
+             'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in local_probes]})
+    local = successful(native, fixture, 'declaration', requests=local_request, strict_json=True)
+    # Reuse strict full-row checking for the five preserved local declarations.
+    check_reference_call_response(local, local_probes, fixture)
+    parser = successful(native, fixture, 'parser-report', strict_json=True)['result']
+    inventory = check_reference_parser(parser, fixture, historical, parser_digest)
+    after = all_source_hashes(fixture)
+    same(after, before, 'constructor source inventory unchanged after analysis')
+    return {
+        'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
+        'comparison_stage': 'baseline' if capture_baseline else 'expected',
+        'original_16_queries': portable_queries(response, fixture),
+        'reference_call_3_queries': portable_queries(reference, fixture),
+        'local_type_5_queries': portable_queries(local, fixture),
+        'metadata': fixture.metadata, 'source_sha256_before': before, 'source_sha256_after': after,
+        'selected_source_count': len(fixture.sources), 'extracted_source_count': len(before),
+        'parser_inventory': inventory, 'parser_report_count': parser['report_count'],
+        'parser_files_with_reports': parser['files_with_reports'],
+        'parser_result_canonical_sha256': parser_result_digest(parser, fixture),
+        'javac_real_gson_equivalence': False, 'upstream_code_executed': False,
+        'analysis_environment': {'PATH': '/nonexistent', 'java_executed': False},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('inputs_dir', type=Path)
@@ -728,15 +811,18 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--local-types', action='store_true', help='run independent additive local-type probes')
     mode.add_argument('--reference-calls', action='store_true', help='run frozen additive reference-call proof and preservation gates')
+    mode.add_argument('--constructor-calls', action='store_true', help='check the fixed original overload_add correction and all preservation gates')
     parser.add_argument('--capture-baseline', action='store_true', help='capture historical local-type failures or strictly verify the reference-call baseline, never candidate acceptance')
     args = parser.parse_args()
     native = args.native.resolve()
     require(native.is_file(), f'build the CLI first: {native}')
     with tempfile.TemporaryDirectory(prefix='second-project-') as tmp:
         fixture = prepare_fixture(args.inputs_dir, Path(tmp) / 'fixture')
-        require(not args.capture_baseline or args.local_types or args.reference_calls,
-                'baseline capture requires --local-types or --reference-calls')
-        result = (run_reference_call_acceptance(native, fixture, args.capture_baseline)
+        require(not args.capture_baseline or args.local_types or args.reference_calls or args.constructor_calls,
+                'baseline capture requires an additive probe mode')
+        result = (run_constructor_call_acceptance(native, fixture, args.capture_baseline)
+                  if args.constructor_calls else
+                  run_reference_call_acceptance(native, fixture, args.capture_baseline)
                   if args.reference_calls else
                   run_local_type_acceptance(native, fixture, args.capture_baseline)
                   if args.local_types else run_acceptance(native, fixture))

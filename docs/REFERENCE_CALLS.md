@@ -14,6 +14,15 @@ of the following are proved:
 - The receiver is a local or parameter with an explicit, nongeneric, non-array,
   top-level source class type. Parentheses around a supported receiver or argument
   are allowed. Types come from declarations, not initializers or legacy navigation.
+- Arguments additionally support plain `new Type()` for an accessible nongeneric
+  top-level concrete source class. Its complete declaration inventory must contain
+  exactly one correctly named, public, nongeneric, zero-parameter constructor with
+  a valid header, real body, no parser errors and no throws clause. Constructor
+  annotations are permitted. A same-named method is not constructor evidence.
+  This checks construction headers and argument identity, not constructor-body
+  semantics, implicit super calls or whole-program instantiation validity.
+  Implicit defaults, additional constructors and throws clauses are conservative
+  exclusions for this slice, not claims that those Java constructs are invalid.
 - The call belongs to a supported direct, nongeneric source method. Unsupported
   scopes, local-type declarations and parser errors in that caller cannot provide
   the proof. This is not general expression typing or complete Java scope analysis.
@@ -42,6 +51,8 @@ The private proof has a shared 32-level/4,096-work-unit budget for lookup,
 hierarchy/member discovery, arguments and selection. Exceeding it refuses rather
 than using unique-name success. These are conservative analysis limits, not Java
 language limits, latency guarantees or bounds on parsing/index construction.
+Constructor inventory and retained constructor source bytes also charge this same
+work budget; even a large otherwise-valid constructor may be refused.
 Private name-location indexes avoid repeatedly scanning every platform class;
 they are not persistent symbol IDs or incremental query caches.
 
@@ -58,7 +69,7 @@ Qualified source guards also refuse a known wrong fixed arity and an instance
 method invoked through a modeled type qualifier, without requiring Object data.
 They do not infer a literal's type merely to count arguments. Parenthesized
 receivers cannot turn the selector into an unrelated field name. These guards do
-not cover arbitrary field receivers, binary calls, new expressions or call chains.
+not cover arbitrary field receivers, binary calls, new-expression receivers or call chains.
 Known type-variable and inherited member-type shadows also refuse rather than
 choosing an unrelated top-level type. A surviving static-qualified Resolved
 result is still legacy name navigation, not static-call applicability proof;
@@ -106,10 +117,16 @@ equivalence or compatibility certification.
 
 Native LSP subprocess tests independently exercise exact overload switching across
 two dirty files, CRLF/astral UTF-16 ranges, missing-parent refusal, old/equal
-versions and repair. They are protocol evidence, not OpenIDEA compatibility.
+versions and repair. A construction-argument regression additionally changes an unsaved
+constructor from public to private and its class from concrete to abstract,
+verifies refusal and repair, and preserves dirty-target UTF-16 ranges.
+They are protocol evidence, not OpenIDEA compatibility.
 The separate real Neovim gate remains a client regression check.
 
-Null/literal/new-expression typing, field arguments, generic inference, general
+Beyond the explicit zero-argument construction boundary above, new-expression
+typing remains unsupported: no new receivers, enclosing-instance construction,
+arrays, anonymous classes, diamond or constructor type/argument inference.
+Null/literal typing, field arguments, generic inference, general
 call results, boxing/unboxing, expanded varargs, nested-class types and inherited
 or binary overload selection remain unsupported. Real generic fromJson and
 chained-call cases are not solved. The next integration milestone is safe

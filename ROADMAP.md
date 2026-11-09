@@ -177,9 +177,15 @@ Direct calls on explicitly typed local/parameter source receivers now have a
 separate proof for scalar reference arguments, strict reference widening and a
 unique most-specific direct public source method. Declaration-context identity,
 complete bounded hierarchy/member inventories and access checks are prerequisites.
-Generic/inherited competitors and unknown evidence remain refused. Two fixed
-Gson add(a) sites improve while the original queries, source bytes and parser
-reports remain unchanged; see [the exact boundary](docs/REFERENCE_CALLS.md).
+A narrow extension admits plain `new Type()` arguments only with an explicit
+public zero-argument constructor and complete concrete source-class evidence;
+implicit defaults, additional constructors, throws and general construction stay
+unsupported. Generic/inherited competitors and unknown evidence remain refused.
+The two earlier Gson `add(a)` selections remain fixed. An additive gate now
+corrects original `a.add(new JsonObject())` to `add(JsonElement)`, preserving the
+other 15 original rows, historical golden files, source bytes and parser records.
+See [the exact boundary](docs/REFERENCE_CALLS.md) and
+[real-Gson construction acceptance](examples/second_project/CONSTRUCTOR_CALLS.md).
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one

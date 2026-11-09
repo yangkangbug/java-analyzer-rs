@@ -249,6 +249,8 @@ struct ClassRec {
     reference_inventory: bool,
     reference_generic: bool,
     reference_final: bool,
+    // Syntax-only eligibility, never inferred from a same-named method.
+    reference_constructor_work: Option<usize>,
     reference_edges: Option<Vec<(Vec<String>, bool)>>,
     binary_root: bool,
     fields: Vec<Member>,
@@ -1980,6 +1982,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         reference_generic: child_kind(node, start, SyntaxKind::TypeParamList).is_some(),
         reference_final: child_kind(node, start, SyntaxKind::ModifierList)
             .is_some_and(|(n, _)| tokens(n, 0).iter().any(|t| t.0 == SyntaxKind::Final)),
+        reference_constructor_work: reference_constructor_work(node, start),
         reference_edges: reference_source_edges(node, start),
         binary_root: false,
         fields: Vec::new(),
@@ -2454,6 +2457,7 @@ fn class_from_signature(sig: &ClassSignature) -> ClassRec {
         reference_inventory: sig.methods.iter().all(|m| descriptor_parameters(&m.descriptor).is_some()),
         reference_generic: sig.signature.as_ref().is_some_and(|signature| signature.starts_with('<')),
         reference_final: sig.is_final,
+        reference_constructor_work: None,
         reference_edges: Some(
             sig.super_class
                 .iter()
@@ -3144,6 +3148,51 @@ fn reference_class_inventory(node: &GreenNode, start: u32) -> bool {
     true
 }
 
+// A deliberately narrow construction-header proof. This does not validate
+// constructor bodies, implicit super calls or checked exceptions. No implicit
+// default or constructor-overload inference is made from missing declarations.
+fn reference_constructor_work(node: &GreenNode, start: u32) -> Option<usize> {
+    if node.kind() != SyntaxKind::Class
+        || child_kind(node, start, SyntaxKind::TypeParamList).is_some()
+        || child_kind(node, start, SyntaxKind::ModifierList)
+            .is_some_and(|(n, _)| tokens(n, 0).iter().any(|t| t.0 == SyntaxKind::Abstract))
+    {
+        return None;
+    }
+    let (body, body_at) = child_kind(node, start, SyntaxKind::ClassBody)?;
+    let mut constructor = None;
+    let mut at = body_at;
+    for child in body.children() {
+        if let Some(n) = child.as_node()
+            && n.kind() == SyntaxKind::Constructor
+        {
+            if constructor.is_some() {
+                return None;
+            }
+            constructor = Some((n, at));
+        }
+        at += child.utf8_len();
+    }
+    let (constructor, at) = constructor?;
+    if direct_ident(constructor, at)?.0 != direct_ident(node, start)?.0
+        || read_access(constructor, at) != Access::Public
+        || child_kind(constructor, at, SyntaxKind::TypeParamList).is_some()
+        || !reference_method_header(constructor, at)
+        || tokens(constructor, at).iter().any(|t| t.0 == SyntaxKind::Throws)
+        || !crate::green::collect_errors(constructor).is_empty()
+    {
+        return None;
+    }
+    let (params, params_at) = child_kind(constructor, at, SyntaxKind::ParamList)?;
+    if !delimited_nodes(params, params_at)?.is_empty() {
+        return None;
+    }
+    child_kind(constructor, at, SyntaxKind::Block)?;
+    // Account for the retained constructor syntax and complete direct inventory
+    // in each query, even though validation itself is snapshot-indexing work.
+    Some(body.children().len().saturating_add(constructor.utf8_len() as usize))
+}
+
 fn reference_method_header(node: &GreenNode, start: u32) -> bool {
     if source_call(node, start).is_none() {
         return false;
@@ -3718,6 +3767,38 @@ impl<'a> ReferenceCallProof<'a> {
             let expressions = delimited_nodes(node, at)?;
             let [(node, at)] = expressions.as_slice() else { return None };
             return self.expression(node, *at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::NewExpr {
+            let mut state = 0;
+            let mut ty = None;
+            let mut offset = at;
+            for child in node.children() {
+                if let Some(token) = child.as_token() {
+                    if !token.kind().is_trivia() {
+                        state = match (state, token.kind()) {
+                            (0, SyntaxKind::New) => 1,
+                            _ => return None,
+                        };
+                    }
+                } else if let Some(n) = child.as_node() {
+                    self.charge(n.children().len().max(1))?;
+                    state = match (state, n.kind()) {
+                        (1, SyntaxKind::Type) if plain_reference_type(n) => {
+                            ty = Some(type_parts(n, offset)?);
+                            2
+                        }
+                        (2, SyntaxKind::ArgList) if delimited_nodes(n, offset)?.is_empty() => 3,
+                        _ => return None,
+                    };
+                }
+                offset += child.utf8_len();
+            }
+            if state != 3 {
+                return None;
+            }
+            let class = self.reference_type(self.file, &ty?, at)?;
+            self.charge(class.reference_constructor_work?)?;
+            return Some(class);
         }
         if node.kind() != SyntaxKind::ReferenceExpr {
             return None;

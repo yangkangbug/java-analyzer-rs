@@ -393,3 +393,158 @@ fn exhausted_static_namespace_search_cannot_hide_a_known_nested_type() {
         assert_ne!(query(&project(&source), "Calls.java", "m(a)").status, ResolveStatus::Resolved);
     }
 }
+
+#[test]
+fn explicit_zero_argument_construction_proves_reference_arguments() {
+    for methods in [
+        "public void m(Base x) {} public void m(Other x) {} public void m(java.lang.Object x) {}",
+        "public void m(java.lang.Object x) {} public void m(Other x) {} public void m(Base x) {}",
+    ] {
+        let source = format!(
+            "class Base {{}} class Other {{}} final class Leaf extends Base {{ @SuppressWarnings(\"unused\") public Leaf() {{}} }} class C {{ {methods} }} class Calls {{ void run(C c) {{ c.m((new Leaf())); }} }}"
+        );
+        selected(&project(&source), "m((new Leaf()))", "Calls.java", "m(Base x)");
+    }
+}
+
+#[test]
+fn construction_arguments_require_explicit_supported_constructor_inventory() {
+    for declaration in [
+        "class Leaf extends Base {}",
+        "class Leaf extends Base { public void Leaf() {} }",
+        "class Leaf extends Base { public Wrong() {} }",
+        "class Leaf extends Base { private Leaf() {} }",
+        "class Leaf extends Base { protected Leaf() {} }",
+        "class Leaf extends Base { Leaf() {} }",
+        "abstract class Leaf extends Base { public Leaf() {} }",
+        "interface Leaf {}",
+        "enum Leaf { ONE }",
+        "record Leaf() {}",
+        "class Leaf<T> extends Base { public Leaf() {} }",
+        "class Leaf extends Base { public <T> Leaf() {} }",
+        "class Leaf extends Base { public Leaf(int x) {} }",
+        "class Leaf extends Base { public Leaf(Base... x) {} }",
+        "class Leaf extends Base { public Leaf() {} public Leaf(int x) {} }",
+        "class Leaf extends Base { public Leaf() {} public Leaf() {} }",
+        "class Leaf extends Base { public Leaf() throws Missing {} }",
+        "class Leaf extends Base { public Leaf(); }",
+        "class Leaf extends Base { public Leaf() { int =; } }",
+    ] {
+        let source = format!(
+            "class Base {{}} {declaration} class C {{ public void m(Base x) {{}} }} class Calls {{ void run(C c) {{ c.m(new Leaf()); }} }}"
+        );
+        refused(&project(&source), "m(new Leaf())", &[("Calls.java", "m(Base x)")]);
+    }
+}
+
+#[test]
+fn construction_argument_syntax_is_exact_and_missing_evidence_refuses() {
+    for actual in [
+        "new Leaf(1)",
+        "new Leaf() {}",
+        "new Leaf[1]",
+        "new Leaf[] {}",
+        "new Leaf<>()",
+        "new <Base> Leaf()",
+        "missing",
+        "new Missing()",
+    ] {
+        let source = format!(
+            "class Base {{}} class Leaf extends Base {{ public Leaf() {{}} }} class C {{ public void m(Base x) {{}} }} class Calls {{ void run(C c) {{ c.m({actual}); }} }}"
+        );
+        refused(&project(&source), &format!("m({actual})"), &[("Calls.java", "m(Base x)")]);
+    }
+    let source = "class Base {} class Leaf extends Base { public Leaf() {} } class C { public void m(Base x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }";
+    let mut p = project(source);
+    p.remove_class("Object.class");
+    refused(&p, "m(new Leaf())", &[("Calls.java", "m(Base x)")]);
+}
+
+#[test]
+fn construction_arguments_preserve_identity_access_and_complete_hierarchies() {
+    let call = "class C { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }";
+    for declaration in [
+        "class Leaf extends Missing { public Leaf() {} }",
+        "class Leaf extends Leaf { public Leaf() {} }",
+        "final class Base {} class Leaf extends Base { public Leaf() {} }",
+        "class Leaf { public Leaf() {} public void broken(; }",
+        "class Leaf { public Leaf() {} } class Leaf { public Leaf() {} }",
+    ] {
+        let p = project(&format!("{declaration} {call}"));
+        assert_ne!(query(&p, "Calls.java", "m(new Leaf())").status, ResolveStatus::Resolved, "{declaration}");
+    }
+    let mut p = project(&format!("import model.Leaf; {call}"));
+    p.insert("Leaf.java", "package model; class Leaf { public Leaf() {} }");
+    refused(&p, "m(new Leaf())", &[("Calls.java", "m(java.lang.Object x)")]);
+    p.insert("Leaf.java", "package model; public class Leaf { public Leaf() {} }");
+    selected(&p, "m(new Leaf())", "Calls.java", "m(java.lang.Object x)");
+    p.insert("Duplicate.java", "package model; public class Leaf { public Leaf() {} }");
+    assert_ne!(query(&p, "Calls.java", "m(new Leaf())").status, ResolveStatus::Resolved);
+    for caller in [
+        "class Calls<Leaf> { void run(C c) { c.m(new Leaf()); } }",
+        "class Calls { <Leaf> void run(C c) { c.m(new Leaf()); } }",
+        "class Calls { void run(C c) { class Leaf {} c.m(new Leaf()); } }",
+        "class Calls { void run(C c) { int =; c.m(new Leaf()); } }",
+        "class Calls extends Missing { void run(C c) { c.m(new Leaf()); } }",
+        "class Calls { static class Leaf { public Leaf() {} } void run(C c) { c.m(new Leaf()); } }",
+    ] {
+        let p = project(&format!(
+            "class Leaf {{ public Leaf() {{}} }} class C {{ public void m(java.lang.Object x) {{}} }} {caller}"
+        ));
+        refused(&p, "m(new Leaf())", &[("Calls.java", "m(java.lang.Object x)")]);
+    }
+}
+
+#[test]
+fn construction_arguments_keep_all_method_competitors_and_shared_limits() {
+    for competitor in [
+        "public <T> void m(T x) {}",
+        "private void m(Leaf x) {}",
+        "public static void m(Leaf x) {}",
+        "public void m(Leaf... x) {}",
+    ] {
+        let p = project(&format!(
+            "class Leaf {{ public Leaf() {{}} }} class C {{ public void m(java.lang.Object x) {{}} {competitor} }} class Calls {{ void run(C c) {{ c.m(new Leaf()); }} }}"
+        ));
+        assert_ne!(query(&p, "Calls.java", "m(new Leaf())").status, ResolveStatus::Resolved);
+    }
+    let p = project(
+        "class Leaf { public Leaf() {} } class Parent { public void m(Leaf x) {} } class C extends Parent { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }",
+    );
+    refused(&p, "m(new Leaf())", &[("Calls.java", "m(java.lang.Object x)"), ("Calls.java", "m(Leaf x)")]);
+    for (body, argument) in [
+        (format!("/*{}*/", "x".repeat(5000)), "new Leaf()".to_string()),
+        (String::new(), format!("{}new Leaf(){}", "(".repeat(40), ")".repeat(40))),
+    ] {
+        let p = project(&format!(
+            "class Leaf {{ public Leaf() {{ {body} }} }} class C {{ public void m(java.lang.Object x) {{}} }} class Calls {{ void run(C c) {{ c.m({argument}); }} }}"
+        ));
+        refused(&p, "m(", &[("Calls.java", "m(java.lang.Object x)")]);
+    }
+}
+
+#[test]
+fn construction_argument_support_does_not_enable_new_receivers_or_call_results() {
+    for statement in ["new C().m(new Leaf());", "(new C()).m(new Leaf());", "c.m(new Leaf().self());"] {
+        let p = project(&format!(
+            "class Leaf {{ public Leaf() {{}} public Leaf self() {{ return this; }} }} class C {{ public C() {{}} public void m(Leaf x) {{}} public void m(java.lang.Object x) {{}} }} class Calls {{ void run(C c) {{ {statement} }} }}"
+        ));
+        assert_ne!(query(&p, "Calls.java", "m(new Leaf()").status, ResolveStatus::Resolved, "{statement}");
+    }
+}
+
+#[test]
+fn construction_type_annotations_and_binary_classes_remain_unsupported() {
+    let mut p =
+        project("class C { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }");
+    p.add_class_bytes("Leaf.class", &binary("Leaf", Some("java/lang/Object"), &[("<init>", "()V")], true)).unwrap();
+    refused(&p, "m(new Leaf())", &[("Calls.java", "m(java.lang.Object x)")]);
+    p.remove_class("Leaf.class");
+    p.insert("Leaf.java", "class Leaf { public Leaf() {} public void Leaf() {} }");
+    selected(&p, "m(new Leaf())", "Calls.java", "m(java.lang.Object x)");
+    p.insert(
+        "Calls.java",
+        "class C { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new @Marker Leaf()); } }",
+    );
+    refused(&p, "m(new @Marker Leaf())", &[("Calls.java", "m(java.lang.Object x)")]);
+}

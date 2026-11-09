@@ -626,3 +626,49 @@ fn native_cancel_cycles_and_eof_leave_no_running_observed_children_or_reader_gro
     }
     assert!(observed.len() >= 14, "expected seven independently observed native supervisor/worker pairs");
 }
+
+#[test]
+fn native_construction_arguments_follow_unsaved_constructor_access_and_abstractness() {
+    let fixture = ReferenceCallFixture::new();
+    let mut session = fixture.session();
+    let use_uri = fixture.uri("Use");
+    let derived_uri = fixture.uri("Derived");
+    let receiver_uri = fixture.uri("Receiver");
+    let consumer =
+        "package p;\r\npublic class Use { void run(Receiver receiver) { /* 😀 */ receiver.m(new Derived()); } }\r\n";
+    let constructor = "package p;\r\npublic class Derived extends Base { /* 😀 */ public Derived() {} }\r\n";
+    let receiver = format!(
+        "// 😀 dirty target\r\n{}",
+        ReferenceCallFixture::RECEIVER.replace('\n', "\r\n").replace("public void m(", "/* 😀 */ public void m(")
+    );
+    open_source(&mut session, &use_uri, consumer);
+    open_source(&mut session, &derived_uri, constructor);
+    open_source(&mut session, &receiver_uri, &receiver);
+    let location = method_location(&receiver_uri, &receiver, "m(Derived value)", "m");
+    let initial = source_definition(&mut session, 30, &use_uri, consumer, "m(new Derived())");
+    assert_eq!(initial.get("result"), Some(&location), "{initial}");
+
+    for (version, changed) in [
+        (2, constructor.replace("public Derived()", "private Derived()")),
+        (4, constructor.replace("public class Derived", "public abstract class Derived")),
+    ] {
+        replace_source(&mut session, &derived_uri, version, &changed);
+        let refused = source_definition(&mut session, 30 + version, &use_uri, consumer, "m(new Derived())");
+        assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+        replace_source(&mut session, &derived_uri, version + 1, constructor);
+        let repaired = source_definition(&mut session, 31 + version, &use_uri, consumer, "m(new Derived())");
+        assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    }
+    replace_source(&mut session, &derived_uri, 5, constructor);
+    let stale = source_definition(&mut session, 40, &use_uri, consumer, "m(new Derived())");
+    assert_eq!(stale["error"]["code"], -32602, "{stale}");
+    assert!(stale.get("result").is_none());
+    replace_source(&mut session, &derived_uri, 6, constructor);
+    let repaired = source_definition(&mut session, 41, &use_uri, consumer, "m(new Derived())");
+    assert_eq!(repaired.get("result"), Some(&location), "{repaired}");
+    session.send(json!({"jsonrpc":"2.0","id":42,"method":"shutdown","params":null}));
+    assert_eq!(session.response(42)["result"], Value::Null);
+    session.send(json!({"jsonrpc":"2.0","method":"exit"}));
+    assert!(session.wait_exit().success());
+    fixture.assert_sources_unchanged();
+}

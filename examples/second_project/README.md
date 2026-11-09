@@ -153,3 +153,11 @@ The caller owns temporary-directory lifetime. Preparation does not fetch, build,
 run project code or execute external plugins. Full acceptance additionally runs
 mutation/isolation controls; those are not part of benchmark timing. No throughput,
 latency or memory budget is inferred from this functional baseline.
+
+## Additive constructor-argument correction
+
+The historical 16-query files above remain unchanged. The current gate applies
+one explicitly validated correction for `a.add(new JsonObject())`; the other
+15 outcomes, earlier local/reference probes and parser/source records remain fixed.
+See [construction-argument acceptance](CONSTRUCTOR_CALLS.md) for the exact old/new
+rows, inventory provenance, baseline RED and candidate checks, and limitations.

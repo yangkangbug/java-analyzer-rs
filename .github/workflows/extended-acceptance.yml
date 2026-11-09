@@ -21,6 +21,9 @@ on:
       - 'scripts/test_local_type_acceptance.py'
       - 'scripts/test_reference_call_acceptance.py'
       - 'scripts/test_reference_oracle.py'
+      - 'scripts/check-constructor-oracle.py'
+      - 'scripts/test_constructor_oracle.py'
+      - 'scripts/test_constructor_call_acceptance.py'
       - 'scripts/check-editor-project.py'
       - 'scripts/test_editor_project.py'
       - 'scripts/check-lsp-project.py'
@@ -40,6 +43,8 @@ on:
       - 'src/**'
       - 'rust-toolchain.toml'
       - 'tests/cli.rs'
+      - 'tests/reference_calls.rs'
+      - 'tests/cli_lsp.rs'
       - 'examples/cli_project/**'
       - 'examples/cli_acceptance/**'
       - 'Cargo.toml'
@@ -110,6 +115,12 @@ jobs:
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
           --reference-calls
+      - name: Exact Gson constructor-call correction and preservation (no Java)
+        run: >-
+          python3 scripts/check-second-project.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+          --constructor-calls
       - name: Unsaved buffers through shipped CLI on fixed Gson (no Java)
         run: >-
           python3 scripts/check-editor-project.py
@@ -126,6 +137,11 @@ jobs:
           --jdk "$RUNNER_TEMP/acceptance/jdk"
           --native target/debug/examples/oracle_bindings
           --sources-jar "$RUNNER_TEMP/acceptance/sources.jar"
+      - name: Independent handwritten constructor oracle (optional Java)
+        run: >-
+          python3 scripts/check-constructor-oracle.py
+          --jdk "$RUNNER_TEMP/acceptance/jdk"
+          --native target/debug/examples/oracle_bindings
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

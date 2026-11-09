@@ -1,0 +1,6 @@
+# case	query	status	candidates	files
+private	constructor_invalid_private	OverloadNotResolved	invalid_root@bad.Target,invalid_string@bad.Target	Use.java
+abstract	constructor_invalid_abstract	OverloadNotResolved	invalid_root@bad.Target,invalid_string@bad.Target	Use.java
+missing_zero	constructor_invalid_missing_zero	OverloadNotResolved	invalid_root@bad.Target,invalid_string@bad.Target	Use.java
+duplicate	constructor_invalid_duplicate	OverloadNotResolved	invalid_root@bad.Target,invalid_string@bad.Target	Use.java
+throws	constructor_invalid_throws	OverloadNotResolved	invalid_root@bad.Target,invalid_string@bad.Target	Use.java

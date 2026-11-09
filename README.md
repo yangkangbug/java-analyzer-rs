@@ -44,7 +44,7 @@ The [local-type containment boundary](docs/LOCAL_TYPES.md) repairs surrounding
 variable navigation after unsupported method-local type declarations without
 publishing those types as ordinary class members.
 The [reference instance-call proof](docs/REFERENCE_CALLS.md) handles a bounded
-set of explicit local/parameter reference arguments with complete inheritance
+set of explicit local/parameter and proved zero-argument construction arguments with complete inheritance
 and access evidence. Missing evidence stays refused, even for a unique candidate.
 
 ### Experimental project CLI
@@ -332,7 +332,11 @@ unsupported cases. Signature comparison alone does not select overloads or subst
 `tests/primitive_calls.rs` checks the separate narrow call proof and conservative
 single-candidate refusal. `tests/reference_calls.rs` checks explicit reference
 conversion, access and complete hierarchy evidence, compilation identities,
-candidate preservation and bounded refusal. Type-use annotations on array dimensions
+candidate preservation and bounded refusal. The
+[real-Gson construction gate](examples/second_project/CONSTRUCTOR_CALLS.md) checks
+one explicit historical query correction while preserving the other 15 queries,
+previous probes and all source/parser records. It does not claim whole-Gson javac
+equivalence. Type-use annotations on array dimensions
 and typed-lambda postfix dimensions are outside this parser subset.
 `tests/receivers.rs` checks cross-file field chains, conflicting caller imports,
 same-name/offset collisions, inherited and nested field types, method calls,

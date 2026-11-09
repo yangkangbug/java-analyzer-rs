@@ -1,0 +1,91 @@
+{
+  "format_version": 1,
+  "base_commit": "6ae7947",
+  "query_index": 12,
+  "query": {
+    "id": "overload_add",
+    "compilation": {
+      "project": "gson",
+      "source_set": "test"
+    },
+    "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+    "byte": 1237,
+    "spelling": "add",
+    "goal": "refusal"
+  },
+  "baseline": {
+    "status": "OverloadNotResolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 2652,
+        "end": 2655
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 2918,
+        "end": 2921
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3192,
+        "end": 3195
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3454,
+        "end": 3457
+      },
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3703,
+        "end": 3706
+      }
+    ]
+  },
+  "expected": {
+    "status": "Resolved",
+    "targets": [
+      {
+        "origin": "source",
+        "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+        "kind": "Method",
+        "owner": "com.google.gson.JsonArray",
+        "name": "add",
+        "start": 3703,
+        "end": 3706
+      }
+    ]
+  },
+  "historical_artifact_sha256": {
+    "query-plan.json": "2d23e0d0ae4ad4da7407c42a915b39e52663c3ead2bd41784b59c626cc14d953",
+    "expected.json": "2eb227e75dc02dda469b5fbec55e3ac6012f3a8a3b0eeb6f14d3daca58bfd306",
+    "local-type-probes.json": "901f8d4de2b33f9cb05f03a48df92f0c227beada747e35e679204f2a4e484eb8",
+    "local-type-comparison.json": "498368e819022271af4f10e7146b0b4318353a57f50f505e7f379f536a780d05",
+    "parser-errors.tsv": "6720cc483747d618c412ea8c4d49032a1734e21f17f819c236338312b5da3fed",
+    "reference-call-probes.json": "b57afcbad6c8335d47ba20dcbc45a7266ed3e0bf9b87f88284f59a1645d2182a",
+    "reference-call-comparison.json": "d6e57a89f1b23131494f986588e4cdfa914dd87a2f7992800559cc0720d35f7d"
+  },
+  "source_archive_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+  "parser_result_canonical_sha256": "751c68b759848ec1d2fef620a323d54a67771817f0e727ef3f630f8da660e7df"
+}

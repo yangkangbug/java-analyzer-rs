@@ -97,3 +97,11 @@ gates, and the separate 249-file Commons source/45-query CLI preservation gates.
 See `reference-call-comparison.json` for the observed portable before/after
 records, exact source inventories and single-run timing observations. Those timings
 are not an isolated benchmark or a performance-improvement claim.
+
+## Later additive correction
+
+The preservation statements above describe this frozen reference-call milestone.
+The later [construction-argument gate](CONSTRUCTOR_CALLS.md) explicitly corrects
+only original `overload_add` at byte 1237. Historical query/probe/report files stay
+unchanged; current default/reference checks apply that validated correction, while
+historical reference baseline capture continues to require the old original rows.
