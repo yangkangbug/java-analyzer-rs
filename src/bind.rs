@@ -232,6 +232,19 @@ struct Member {
 #[derive(Clone, Debug)]
 struct ClassRec {
     scope: usize,
+    data: ClassData,
+}
+
+#[derive(Clone, Debug)]
+enum ClassData {
+    Source(Box<ClassPayload>),
+    Binary(Arc<ClassPayload>),
+}
+
+// Only scope-independent syntax/signature data lives here. Resolved parents,
+// parameter identities, access decisions and ClassIdentity remain contextual.
+#[derive(Clone, Debug)]
+struct ClassPayload {
     path: String,
     package: String,
     nesting: Vec<String>,
@@ -258,7 +271,25 @@ struct ClassRec {
     methods: Vec<Member>,
 }
 
+impl std::ops::Deref for ClassRec {
+    type Target = ClassPayload;
+
+    fn deref(&self) -> &Self::Target {
+        match &self.data {
+            ClassData::Source(data) => data,
+            ClassData::Binary(data) => data,
+        }
+    }
+}
+
 impl ClassRec {
+    fn source_data_mut(&mut self) -> &mut ClassPayload {
+        match &mut self.data {
+            ClassData::Source(data) => data,
+            ClassData::Binary(_) => unreachable!("binary payloads are immutable"),
+        }
+    }
+
     fn dotted(&self) -> String {
         let nested = self.nesting.join(".");
         if self.package.is_empty() { nested } else { format!("{}.{}", self.package, nested) }
@@ -326,6 +357,10 @@ struct FileRec {
 #[cfg(test)]
 thread_local! {
     static INDEX_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static BINARY_PAYLOAD_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static BINARY_MEMBER_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static BINARY_PAYLOAD_CACHE_LOOKUPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static BINARY_PAYLOAD_CACHE_MAX_ENTRIES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 struct Index {
@@ -340,7 +375,10 @@ impl Index {
         #[cfg(test)]
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
-        let binaries = binaries.values().map(class_from_signature).collect();
+        let binaries = binaries
+            .values()
+            .map(|signature| ClassRec { scope: 0, data: ClassData::Binary(Arc::new(class_from_signature(signature))) })
+            .collect();
         Self::with_reference_names(files, binaries, vec![BTreeSet::from([0])])
     }
 
@@ -349,6 +387,10 @@ impl Index {
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let mut files = Vec::new();
         let mut binaries = Vec::new();
+        // One preparation only, bounded by its distinct input signature allocations.
+        // Each value retains binary_signature, a strong Arc owning its pointer key.
+        // Equal names/origins (or even equal bytes) never substitute for identity.
+        let mut payloads: BTreeMap<*const ClassSignature, Arc<ClassPayload>> = BTreeMap::new();
         for (scope, project) in projects.iter().enumerate() {
             for (path, parsed) in &project.files {
                 let mut file = index_file(path, parsed);
@@ -359,9 +401,22 @@ impl Index {
                 files.push(file);
             }
             for signature in project.binaries.values() {
-                let mut class = class_from_signature(signature);
-                class.scope = scope;
-                binaries.push(class);
+                let payload = if projects.len() == 1 {
+                    // Each project's origin-keyed map can contain a signature
+                    // allocation only once, so a single scope cannot reuse it.
+                    Arc::new(class_from_signature(signature))
+                } else {
+                    #[cfg(test)]
+                    BINARY_PAYLOAD_CACHE_LOOKUPS.with(|count| count.set(count.get() + 1));
+                    let payload = payloads
+                        .entry(Arc::as_ptr(signature))
+                        .or_insert_with(|| Arc::new(class_from_signature(signature)));
+                    let payload = Arc::clone(payload);
+                    #[cfg(test)]
+                    BINARY_PAYLOAD_CACHE_MAX_ENTRIES.with(|count| count.set(count.get().max(payloads.len())));
+                    payload
+                };
+                binaries.push(ClassRec { scope, data: ClassData::Binary(payload) });
             }
         }
         Self::with_reference_names(files, binaries, visibility.to_vec())
@@ -1959,8 +2014,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let mut nesting =
         ctx.class_stack.iter().map(|index| ctx.file.classes[*index].simple().to_string()).collect::<Vec<_>>();
     nesting.push(name);
-    let mut class = ClassRec {
-        scope: 0,
+    let mut data = ClassPayload {
         path: ctx.file.path.clone(),
         package: ctx.file.package.clone(),
         nesting,
@@ -1991,10 +2045,10 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         methods: Vec::new(),
     };
     let (super_parts, interface_parts) = declared_supers(node, start);
-    class.super_parts = super_parts;
-    class.interface_parts = interface_parts;
+    data.super_parts = super_parts;
+    data.interface_parts = interface_parts;
     let index = ctx.file.classes.len();
-    ctx.file.classes.push(class);
+    ctx.file.classes.push(ClassRec { scope: 0, data: ClassData::Source(Box::new(data)) });
     ctx.class_stack.push(index);
     if node.kind() == SyntaxKind::Record
         && let Some((params, params_at)) = child_kind(node, start, SyntaxKind::ParamList)
@@ -2018,7 +2072,7 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
             && child.kind() == SyntaxKind::Parameter
             && let Some((name, name_start, name_end)) = direct_ident(child, offset)
         {
-            ctx.file.classes[class_index].fields.push(Member {
+            ctx.file.classes[class_index].source_data_mut().fields.push(Member {
                 name,
                 kind: TargetKind::Field,
                 start: name_start,
@@ -2055,9 +2109,9 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
             source_call: (node.kind() == SyntaxKind::Method).then(|| source_call(node, start)).flatten(),
         };
         if kind == TargetKind::Field {
-            ctx.file.classes[class_index].fields.push(member);
+            ctx.file.classes[class_index].source_data_mut().fields.push(member);
         } else {
-            ctx.file.classes[class_index].methods.push(member);
+            ctx.file.classes[class_index].source_data_mut().methods.push(member);
         }
     }
     let scope = (start, start + node.utf8_len(), ScopeKind::Method);
@@ -2439,9 +2493,10 @@ fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
     (at == bytes.len()).then_some(parameters)
 }
 
-fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassRec {
-    ClassRec {
-        scope: 0,
+fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
+    #[cfg(test)]
+    BINARY_PAYLOAD_BUILDS.with(|count| count.set(count.get() + 1));
+    ClassPayload {
         path: sig.origin.clone(),
         package: sig.package.clone(),
         nesting: sig.nesting.clone(),
@@ -2484,6 +2539,8 @@ fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassRec {
 }
 
 fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
+    #[cfg(test)]
+    BINARY_MEMBER_BUILDS.with(|count| count.set(count.get() + 1));
     Member {
         name: member.name.clone(),
         kind,
@@ -4318,3 +4375,6 @@ mod method_descriptor_tests {
         assert!(descriptor_parameters("()V").unwrap().is_empty());
     }
 }
+
+#[cfg(test)]
+mod binary_payload_tests;

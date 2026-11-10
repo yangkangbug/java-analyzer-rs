@@ -36,6 +36,9 @@ impl Drop for Fixture {
 }
 // Minimal JVMS class signatures, assembled here without a Java compiler.
 fn class(name: &str, method: &str) -> Vec<u8> {
+    class_with_descriptor(name, method, "()Ljava/lang/String;")
+}
+fn class_with_descriptor(name: &str, method: &str, descriptor: &str) -> Vec<u8> {
     let mut b = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61];
     fn u(b: &mut Vec<u8>, n: u16) {
         b.extend(n.to_be_bytes());
@@ -53,7 +56,7 @@ fn class(name: &str, method: &str) -> Vec<u8> {
     b.push(7);
     u(&mut b, 3);
     utf(&mut b, method);
-    utf(&mut b, "()Ljava/lang/String;");
+    utf(&mut b, descriptor);
     u(&mut b, 0x21);
     u(&mut b, 2);
     u(&mut b, if name == "java/lang/Object" { 0 } else { 4 });
@@ -296,7 +299,7 @@ fn shared_jar_superclasses_use_scope_specific_platform_versions() {
     let f = Fixture::new();
     let a = f.write(
         "a/A.java",
-        "class A extends shared.Shared { public shared.Shared field; void call() { oldObject(); newObject(); sharedMethod(); } }",
+        "class A extends shared.Shared { public shared.Shared field; void call() { oldObject(); newObject(); sharedMethod(); changedMethod(); } }",
     );
     let b = f.write(
         "b/B.java",
@@ -313,7 +316,7 @@ fn shared_jar_superclasses_use_scope_specific_platform_versions() {
     first.inputs.classpath = vec![ClasspathEntry::Jar(jar.clone())];
     first.inputs.platform = vec![PlatformEntry::Jmod(old)];
     let mut second = compilation("b", "main", vec![f.0.join("b")], vec![id("a", "main")]);
-    second.inputs.classpath = vec![ClasspathEntry::Jar(jar)];
+    second.inputs.classpath = vec![ClasspathEntry::Jar(jar.clone())];
     second.inputs.platform = vec![PlatformEntry::Jmod(new)];
     let config = WorkspaceConfig { compilations: vec![first, second], ..Default::default() };
     let s = WorkspaceSnapshot::load(&config).unwrap();
@@ -328,6 +331,83 @@ fn shared_jar_superclasses_use_scope_specific_platform_versions() {
     assert_eq!(inherited.status, ResolveStatus::Resolved);
     assert!(inherited.targets[0].path.contains("old.jmod!"));
     assert_eq!(query(&s, &id("b", "main"), &c, "newObject").status, ResolveStatus::Unresolved);
+
+    let origin = format!("{}!/shared/Shared.class", key(&jar));
+    assert!(std::ptr::eq(
+        s.scope(&id("a", "main")).unwrap().inputs().project().class_signature(&origin).unwrap(),
+        s.scope(&id("b", "main")).unwrap().inputs().project().class_signature(&origin).unwrap(),
+    ));
+    let prepared = s.prepare();
+    for scope in [id("a", "main"), id("b", "main")] {
+        for path in [&a, &b, &c] {
+            for byte in 0..=fs::read_to_string(path).unwrap().len() as u32 + 1 {
+                assert_eq!(
+                    prepared.scope(&scope).unwrap().resolve_at(&key(path), byte),
+                    s.scope(&scope).unwrap().resolve_at(&key(path), byte),
+                );
+            }
+        }
+    }
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("shared/Shared.class", SimpleFileOptions::default()).unwrap();
+    zip.write_all(&class("shared/Shared", "changedMethod")).unwrap();
+    fs::write(&jar, zip.finish().unwrap().into_inner()).unwrap();
+    let next = WorkspaceSnapshot::load(&config).unwrap();
+    for (snapshot, present, absent) in [(&s, "sharedMethod", "changedMethod"), (&next, "changedMethod", "sharedMethod")]
+    {
+        assert_eq!(query(snapshot, &id("a", "main"), &a, present).status, ResolveStatus::Resolved);
+        assert_eq!(query(snapshot, &id("a", "main"), &a, absent).status, ResolveStatus::Unresolved);
+    }
+    let byte = fs::read_to_string(&a).unwrap().rfind("sharedMethod").unwrap() as u32;
+    assert_eq!(prepared.scope(&id("a", "main")).unwrap().resolve_at(&key(&a), byte).status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn shared_jar_descriptors_resolve_only_in_their_declaring_compilation() {
+    let f = Fixture::new();
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, method, descriptor) in
+        [("shared/Shared", "choose", "(Ldep/Arg;)V"), ("java/lang/Object", "choose", "(Ldep/Arg;)V")]
+    {
+        zip.start_file(format!("{name}.class"), SimpleFileOptions::default()).unwrap();
+        zip.write_all(&class_with_descriptor(name, method, descriptor)).unwrap();
+    }
+    let shared = f.write("shared.jar", zip.finish().unwrap().into_inner());
+    let mut compilations = Vec::new();
+    let mut paths = Vec::new();
+    for scope in ["a", "b", "c"] {
+        paths.push(
+            f.write(&format!("{scope}/Use.java"), "class Use extends shared.Shared { void run() { choose(null); } }"),
+        );
+        let mut input = compilation(scope, "main", vec![f.0.join(scope)], vec![]);
+        input.inputs.classpath.push(ClasspathEntry::Jar(shared.clone()));
+        if scope != "b" {
+            let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+            zip.start_file("dep/Arg.class", SimpleFileOptions::default()).unwrap();
+            zip.write_all(&class("dep/Arg", "value")).unwrap();
+            let arg = f.write(&format!("{scope}-arg.jar"), zip.finish().unwrap().into_inner());
+            input.inputs.classpath.push(ClasspathEntry::Jar(arg));
+        }
+        compilations.push(input);
+    }
+    let snapshot = WorkspaceSnapshot::load(&WorkspaceConfig { compilations, ..Default::default() }).unwrap();
+    let origin = format!("{}!/shared/Shared.class", key(&shared));
+    let mut signatures = Vec::new();
+    for (scope, path) in ["a", "b", "c"].into_iter().zip(paths) {
+        let result = query(&snapshot, &id(scope, "main"), &path, "choose");
+        assert_eq!(
+            result.status,
+            if scope == "b" { ResolveStatus::SignatureNotCompared } else { ResolveStatus::Resolved },
+        );
+        if scope != "b" {
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].path, origin);
+        }
+        signatures
+            .push(snapshot.scope(&id(scope, "main")).unwrap().inputs().project().class_signature(&origin).unwrap());
+    }
+    assert!(std::ptr::eq(signatures[0], signatures[1]));
+    assert!(std::ptr::eq(signatures[0], signatures[2]));
 }
 #[test]
 fn workspace_budgets_apply_across_compilations() {

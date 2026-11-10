@@ -36,10 +36,14 @@ inputs: the latter would intentionally omit dependency sources.
 - Legacy `resolve_at` APIs still rebuild from current inputs on every call. They
   remain available for one-off queries and differential validation.
 
-This retains index records and cloned names/member metadata for the handle's
-lifetime. It trades repeated construction for retained memory. It is not a result
+This retains contextual index records and names/member metadata for the handle's
+lifetime. Repeated uses of the same binary signature allocation within a workspace
+preparation share immutable payloads while retaining distinct compilation contexts. Sources
+remain independently owned. See [payload reuse and its acceptance contract](BINARY_PAYLOAD_REUSE.md).
+It trades repeated construction for retained memory. It is not a result
 cache, incremental invalidation engine, content-addressed store, or cancellation
-mechanism. Input loading still repeats physical archives in different contexts.
+mechanism. Input loading is separate; [single-load archive reuse](ARCHIVE_REUSE.md)
+does not retain a cache between requests.
 Lookup still scans collections and walks syntax/hierarchies; retaining the index
 does not make every query constant-time.
 
