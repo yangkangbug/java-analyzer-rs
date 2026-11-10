@@ -272,6 +272,79 @@ class EvidenceTests(unittest.TestCase):
     def test_legacy_malformed_reports_fail_closed(self):
         for report in (None, [], {}, 1, {'scenario': 'excluded_buffers'}):
             self.assertEqual(MOD.validate_negative_control(report), ['EVIDENCE_SCHEMA'])
+    def test_fixture_uri_matches_actual_pinned_client_encoding(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            _, _, oracle = MOD.fixture(Path(temporary), 'excluded_buffers')
+            expected = MOD.nvim_file_uri(temporary) + '/fixture%20%e4%b8%ad%20%23%20%25/src/One.java'
+            self.assertEqual(oracle['excluded_witness_uri'], expected)
+    def test_legacy_wire_client_uri_is_accepted_as_exact_witness(self):
+        report = legacy_report()
+        witness = report['oracle']['excluded_witness_uri']
+        actual = witness.replace('%E4%B8%AD', '%e4%b8%ad')
+        for event in report['events']:
+            doc = event.get('message', {}).get('params', {}).get('textDocument', {})
+            if doc.get('uri') == witness: doc['uri'] = actual
+        self.assertEqual(MOD.validate_negative_control(report), [])
+    def test_pinned_uri_literal_and_escaping_vector(self):
+        self.assertEqual(MOD.nvim_file_uri("/tmp/A ! $ & ' ( ) * + , ; = : @ /中😀?#%[].java"),
+            "file:///tmp/A%20!%20$%20&%20'%20(%20)%20*%20+%20,%20;%20=%20:%20@%20/%e4%b8%ad%f0%9f%98%80%3f%23%25%5b%5d.java")
+        with self.assertRaises(ValueError): MOD.nvim_file_uri('relative.java')
+    def test_all_oracle_documents_and_targets_use_pinned_uri(self):
+        for scenario in MOD.SCENARIOS:
+            with tempfile.TemporaryDirectory() as temporary:
+                _, cfg, oracle = MOD.fixture(Path(temporary), scenario)
+                uris = {MOD.nvim_file_uri(path) for path in cfg['paths'].values()}
+                for session in oracle['sessions']:
+                    self.assertTrue(set(session['documents']) <= uris)
+                self.assertTrue(set(oracle['cursors']) <= uris)
+                self.assertTrue(all(location['uri'] in uris for location in oracle['navigation']))
+                self.assertIn(oracle['excluded_witness_uri'], uris)
+    def test_uppercase_wire_uri_still_rejected_not_normalized(self):
+        report = legacy_report(); witness = report['oracle']['excluded_witness_uri']
+        for event in report['events']:
+            doc = event.get('message', {}).get('params', {}).get('textDocument', {})
+            if doc.get('uri') == witness: doc['uri'] = witness.replace('%e4%b8%ad', '%E4%B8%AD')
+        self.assertEqual(MOD.validate_negative_control(report), ['NEGATIVE_CONTROL', 'PROTOCOL_ORDER'])
+        diagnostics = MOD.negative_diagnostics(report)
+        self.assertEqual(diagnostics['wire_counts']['exact_witness_uri'], 0)
+        self.assertEqual(diagnostics['wire_counts']['escape_case_only_witness_uri'], 1)
+    def test_noncanonical_literal_wire_uri_still_rejected(self):
+        report = legacy_report(); witness = report['oracle']['excluded_witness_uri']
+        for event in report['events']:
+            doc = event.get('message', {}).get('params', {}).get('textDocument', {})
+            if doc.get('uri') == witness: doc['uri'] = witness.replace('/One.java', '/%4fne.java')
+        self.assertTrue(MOD.validate_negative_control(report))
+    def test_negative_diagnostics_are_observations_not_acceptance(self):
+        report = legacy_report(); before = copy.deepcopy(report)
+        value = MOD.negative_diagnostics(report)
+        self.assertEqual(report, before)
+        self.assertTrue(value['expected_attachment_failure'])
+        self.assertTrue(value['safe_idle_after_failure'])
+        self.assertEqual(value['wire_counts']['exact_witness_uri'], 1)
+        self.assertEqual(value['wire_counts']['exact_witness_text'], 1)
+        self.assertIn('client_shutdown_request', value['protocol_trace'])
+        self.assertIn('server_shutdown_result', value['protocol_trace'])
+        self.assertIn('proxy_exit_clean', value['protocol_trace'])
+        report['negative_control'] = True
+        report['failure_codes'] = MOD.validate_negative_control(report); report['ok'] = not report['failure_codes']
+        self.assertEqual(MOD.public_summary(report)['diagnostics'], value)
+    def test_negative_diagnostics_bound_and_redact_hostile_values(self):
+        hostile = {'negative_control': True, 'events': [{
+            'direction': 'client_to_server', 'message': {'method': 'SECRET/private/path',
+                'params': {'textDocument': {'uri': 'SECRET', 'text': 'SECRET'}}},
+            'proxy_pid': 'SECRET'}] * 10000,
+            'editor': {'ok': 'SECRET', 'observed': {'failure_code': 'SECRET', 'failure': 'SECRET',
+                'failure_cleanup_status': {'phase': 'SECRET', 'cleanup': 'SECRET'}}},
+            'oracle': {'excluded_witness_uri': 'SECRET'}, 'failure_codes': ['SECRET']}
+        value = MOD.negative_diagnostics(hostile); text = json.dumps(value)
+        self.assertNotIn('SECRET', text)
+        self.assertNotIn('private', text)
+        self.assertLess(len(text), 5000)
+        self.assertFalse(value['events_within_bound'])
+        self.assertEqual(len(value['protocol_trace']), 96)
+        self.assertEqual(value['wire_counts']['other_client_method'], 8192)
+        for bad in (None, [], 42, {'events': [None, 2, [], {'message': []}]}):
+            self.assertLess(len(json.dumps(MOD.negative_diagnostics(bad))), 5000)
     def test_public_summary_contains_no_raw_data(self):
         hostile = {'scenario': 'private/path', 'failure_codes': ['secret'] * 10000, 'ok': 'secret', 'error': 'private/path'}
         result = json.dumps(MOD.public_summary(hostile)); self.assertLess(len(result), 200)

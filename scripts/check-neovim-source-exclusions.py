@@ -8,6 +8,7 @@ import argparse
 import copy
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -283,16 +284,97 @@ def validate_negative_control(report):
     try: return _negative_control(report)
     except (KeyError, TypeError, ValueError, IndexError, AttributeError): return ['EVIDENCE_SCHEMA']
 
+
+def negative_diagnostics(report):
+    """Bounded public witnesses only; never raw methods, text, paths or errors.
+
+    This observation does not affect either validator. Escape-case comparison
+    diagnoses an oracle mismatch; exact URI equality remains mandatory.
+    """
+    def mapping(value): return value if type(value) is dict else {}
+    report = mapping(report)
+    observed = mapping(mapping(report.get('editor')).get('observed'))
+    oracle = mapping(report.get('oracle'))
+    witness = oracle.get('excluded_witness_uri')
+    witness = witness if type(witness) is str and len(witness) <= 16384 else ''
+    initial = mapping(mapping(oracle.get('initial_buffers')).get('one'))
+    lines = initial.get('lines')
+    expected_text = ('\n'.join(lines) + '\n') if (type(lines) is list and len(lines) <= 1024
+        and all(type(line) is str and len(line) <= 16384 for line in lines)) else None
+    method_labels = {
+        'initialize': 'initialize', 'initialized': 'initialized',
+        'textDocument/didOpen': 'did_open', 'textDocument/didChange': 'did_change',
+        'textDocument/didClose': 'did_close', 'textDocument/definition': 'definition',
+        '$/setTrace': 'set_trace', '$/cancelRequest': 'cancel',
+        'workspace/didChangeConfiguration': 'configuration_change',
+        'workspace/didChangeWorkspaceFolders': 'workspace_change',
+        'workspace/configuration': 'configuration_request',
+        'client/registerCapability': 'register_capability',
+        'client/unregisterCapability': 'unregister_capability',
+        'shutdown': 'shutdown', 'exit': 'exit',
+    }
+    events = report.get('events')
+    events = events if type(events) is list else []
+    trace, counts = [], {'exact_witness_uri': 0, 'escape_case_only_witness_uri': 0,
+        'exact_witness_text': 0, 'other_client_method': 0}
+    terminal = mapping(observed.get('failure_cleanup_status'))
+    def label(value): return method_labels.get(value, 'other') if type(value) is str else 'other'
+    def append(value):
+        if len(trace) < 96: trace.append(value)
+    def escape_case(uri): return re.sub(r'%[0-9a-fA-F]{2}', lambda match: match[0].lower(), uri)
+    for raw in events[:8192]:
+        event = mapping(raw); msg = mapping(event.get('message'))
+        if event.get('direction') == 'client_to_server':
+            method = label(msg.get('method'))
+            append('client_' + method + ('_request' if 'id' in msg else '_notification'))
+            if method == 'other': counts['other_client_method'] += 1
+            if method == 'did_open':
+                doc = mapping(mapping(msg.get('params')).get('textDocument'))
+                uri = doc.get('uri')
+                if type(uri) is str and len(uri) <= 16384 and witness:
+                    if uri == witness:
+                        counts['exact_witness_uri'] += 1
+                        if expected_text is not None and doc.get('text') == expected_text:
+                            counts['exact_witness_text'] += 1
+                    elif escape_case(uri) == escape_case(witness):
+                        counts['escape_case_only_witness_uri'] += 1
+        elif event.get('direction') == 'server_to_client':
+            method = label(event.get('method'))
+            append('server_' + method + ('_error' if 'error' in msg else '_result')
+                if 'id' in msg else 'server_notification')
+        else:
+            kind = event.get('event')
+            if kind == 'spawn': append('spawn')
+            elif kind in ('native_exit', 'proxy_exit'):
+                clean_exit = type(event.get('code')) is int and event['code'] == 0 and event.get('fault') is None
+                if kind == 'proxy_exit': clean_exit = clean_exit and event.get('errors') == []
+                append(kind + ('_clean' if clean_exit else '_not_clean'))
+    failure = observed.get('failure_code')
+    return {'failure': failure if type(failure) is str and failure in (
+        'EXCLUDED_BUFFER_ATTACHED', 'INCLUDED_BUFFER_DETACHED') else 'other',
+        'expected_attachment_failure': observed.get('attachment_failure') == {
+            'key': 'one', 'expected': False, 'actual': True},
+        'editor_failed': mapping(report.get('editor')).get('ok') is False,
+        'safe_idle_after_failure': terminal.get('phase') == 'idle' and terminal.get('cleanup') == 'safe'
+            and all(terminal.get(key) is False for key in ('active', 'ready', 'pending_start', 'restart_blocked')),
+        'initial_buffers_preserved': type(observed.get('initial_buffers')) is dict
+            and observed['initial_buffers'] == observed.get('failure_buffers'),
+        'events_within_bound': len(events) <= 8192, 'trace_truncated': len(trace) == 96,
+        'wire_counts': counts, 'protocol_trace': trace}
+
 def public_summary(report):
-    """Bounded enum-only summary, never diagnostics, text, paths or process IDs."""
+    """Bounded allowlisted summary, never raw text, paths, errors or process IDs."""
     if type(report) is not dict: report = {}
     codes = report.get('failure_codes')
     if type(codes) is not list: codes = ['EVIDENCE_SCHEMA']
     safe = {c if type(c) is str and c in CODES else 'EVIDENCE_SCHEMA' for c in codes[:128]}
     if len(codes) > 128: safe.add('EVIDENCE_SCHEMA')
     scenario = report.get('scenario')
-    return {'scenario': scenario if type(scenario) is str and scenario in SCENARIOS else 'unknown',
+    result = {'scenario': scenario if type(scenario) is str and scenario in SCENARIOS else 'unknown',
         'ok': report.get('ok') is True, 'failure_codes': sorted(safe)}
+    if report.get('negative_control') is True:
+        result['diagnostics'] = negative_diagnostics(report)
+    return result
 
 
 def validation_cases(base):
@@ -340,6 +422,20 @@ def validation_cases(base):
         result.append({'name': name, 'accepted': False, 'path': str(path)})
     return result
 
+
+
+def nvim_file_uri(path):
+    """Exact pinned Neovim 0.11.5 Unix URI spelling, not URI normalization.
+
+    runtime/lua/vim/uri.lua at 9fa7c0a04638ee3d5fefbdcec347b1c07a5ce9ce
+    uses RFC3986 literal characters and bit.tohex(byte, 2), hence lowercase
+    escapes. Path.as_uri() uses different literals and uppercase escapes.
+    The native broker preserves the sole opened client URI for source targets.
+    """
+    path = str(path)
+    if not path.startswith('/'): raise ValueError('fixture URI requires an absolute Unix path')
+    literal = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=:@/"
+    return 'file://' + ''.join(chr(byte) if byte in literal else f'%{byte:02x}' for byte in path.encode('utf-8'))
 
 def fixture(folder, scenario):
     base = folder / 'fixture 中 # %'; base.mkdir()
@@ -389,7 +485,7 @@ def fixture(folder, scenario):
         ending = '\r\n' if key == 'app' else '\n'
         return text.replace('\n', ending) + ('' if key == 'target' else ending)
     def session(keys, edited=False):
-        return {'refused': False, 'documents': {Path(paths[k]).as_uri(): document(k, edited) for k in keys}}
+        return {'refused': False, 'documents': {nvim_file_uri(paths[k]): document(k, edited) for k in keys}}
     def attached(keys, late=True): return {k: k in keys for k in paths if late or k != 'late'}
     sessions = [session(initial)]
     attachment = [attached(initial, False), attached(initial)]
@@ -402,7 +498,7 @@ def fixture(folder, scenario):
     cursors, locations = {}, {}
     for key, word in [('target', 'valueB'), ('nested', 'Nested')]:
         lines = dirty[key].splitlines(); row = next(i for i, line in enumerate(lines) if word in line)
-        col = lines[row].index(word); uri = Path(paths[key]).as_uri()
+        col = lines[row].index(word); uri = nvim_file_uri(paths[key])
         start = len(lines[row][:col].encode('utf-16-le')) // 2
         locations[key] = {'uri': uri, 'range': {'start': {'line': row, 'character': start},
             'end': {'line': row, 'character': start + len(word)}}}
@@ -419,7 +515,7 @@ def fixture(folder, scenario):
         for key, value in buffers.items() if key != 'late'}
     oracle = {'sessions': sessions if scenario != 'validation' else [], 'navigation': navigation if scenario != 'validation' else [],
         'cursors': cursors, 'attachments': attachment if scenario != 'validation' else [], 'buffers': buffers,
-        'initial_buffers': initial_buffers, 'excluded_witness_uri': Path(paths['one']).as_uri(),
+        'initial_buffers': initial_buffers, 'excluded_witness_uri': nvim_file_uri(paths['one']),
         'validations': [{'name': c['name'], 'accepted': c['accepted']} for c in cfg['validation_cases']]}
     return base, cfg, oracle
 

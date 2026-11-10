@@ -275,6 +275,13 @@ the exact excluded `didOpen` text, successful real native initialize, preserved
 dirty buffers, unchanged inputs/executables, and safe native/proxy exit.
 A generic nonzero exit, timeout, crash or unrelated assertion does not count.
 
+Expected wire URIs use the pinned client's exact RFC3986 literal set and
+lowercase percent escapes, preserving pathname letter case. The native broker
+preserves its sole opened client URI for a source target. Exact URI equality
+remains required for replay, navigation and the legacy witness. Bounded public
+diagnostics expose only fixed event labels, booleans and counts before temporary
+evidence cleanup; arbitrary paths, source text and error strings are never printed.
+
 The candidate adapter must then pass every scenario against that same native
 binary and pinned client. Only bounded summaries and public hashes are printed;
 owned client, adapter and fixture outputs are removed on every workflow outcome.

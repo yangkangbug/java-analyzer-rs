@@ -288,11 +288,28 @@ fn source_exclusions_prune_without_visiting_symlinks_or_invalid_path_descendants
     let f = Fixture::new();
     f.write("src/skip/deep/A.java", [0xff]);
     symlink(f.0.join("missing"), f.0.join("src/skip/link")).unwrap();
-    fs::write(f.0.join("src/skip").join(OsString::from_vec(b"bad\xff.java".to_vec())), b"class Bad {}").unwrap();
+    let invalid_path = f.0.join("src/skip").join(OsString::from_vec(b"bad\xff.java".to_vec()));
+    let has_invalid_path = match fs::write(&invalid_path, b"class Bad {}") {
+        Ok(()) => true,
+        // Darwin EILSEQ: APFS refuses invalid UTF-8 names before the loader runs.
+        // Only this known capability limit is tolerated; all other I/O errors fail.
+        Err(error) if cfg!(target_os = "macos") && error.raw_os_error() == Some(92) => {
+            eprintln!("filesystem rejects invalid UTF-8 names; still checking symlink/content pruning");
+            false
+        }
+        Err(error) => panic!("creating invalid-byte path fixture: {error}"),
+    };
     let mut config = f.config(&["skip"]);
     config.limits.max_entries = 1;
     config.limits.max_directory_depth = 0;
     assert!(ProjectSnapshot::load(&config).unwrap().source_paths().is_empty());
+    if has_invalid_path {
+        // Supporting filesystems must also prove the path fails when not pruned.
+        fs::remove_file(f.0.join("src/skip/link")).unwrap();
+        config.source_exclusions.clear();
+        config.limits = Default::default();
+        assert_eq!(ProjectSnapshot::load(&config).unwrap_err().kind, K::InvalidPath);
+    }
 }
 
 #[cfg(unix)]
