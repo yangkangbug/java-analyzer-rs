@@ -54,6 +54,81 @@ Non-file schemes, remote authorities, query/fragment components and invalid path
 are unsupported. Initial execution evidence is Linux; hosted platform checks are
 reported separately.
 
+## Acknowledged document admission (experimental version 1)
+
+Standard clients may continue using ordinary didOpen notifications. A client that
+needs to admit only files selected by the initialized snapshot can instead use one
+bounded request per candidate. Initialization advertises:
+
+```json
+{"experimental":{"javaAnalyzer":{"documentAdmission":{
+  "version":1,"method":"javaAnalyzer/admitDocument"
+}}}}
+```
+
+The request is `javaAnalyzer/admitDocument`, with these parameters:
+
+```json
+{"expectedCanonicalPath":"/project/src/A.java","textDocument":{
+  "uri":"file:///project/src/A.java","languageId":"java","version":-1,
+  "text":"class A {}"
+}}
+```
+
+The result is an exact receipt, with no inventory export or inferred owner:
+
+```json
+{"status":"admitted","uri":"file:///project/src/A.java",
+ "canonicalPath":"/project/src/A.java","version":-1}
+```
+
+`status` is either `admitted` or `not-selected`. An admitted receipt means the
+shared open transition enrolled that exact URI and signed-i32 version. A valid
+candidate absent from the frozen canonical path-to-owner inventory returns
+`not-selected`, with the same receipt fields and no state mutation or enrollment.
+Excluded, outside-root and new-since-initialization paths all use that same
+negative outcome. Candidate full text has already been transmitted to the local
+engine when it rejects selection; this is **not** a zero-transmission boundary.
+Clients must not subsequently synchronize or query rejected candidates.
+
+The request requires initialization and the initialized notification. URI and
+expectedCanonicalPath are each bounded to 8,192 UTF-8 bytes; the expected path
+must be absolute and contain no control characters. Java languageId, full text
+and signed-i32 version are validated even for a negative outcome. The broker
+resolves the URI once, verifies the exact expected canonical path before any
+mutation, and passes that resolved identity to the shared open transition. Only
+open resolves filesystem paths; later changes and closes retain exact registered
+URI identity even if the path is deleted or a symlink retargeted. Canonicalization
+performs filesystem I/O and provides no hard latency bound. This does not detect
+same-path inode/content replacement or create an atomic disk snapshot.
+
+Malformed parameters, unresolved/vanished paths, identity mismatches, duplicate
+URI/alias conflicts and overlay/document limits return JSON-RPC error -32602,
+never `not-selected`. Lifecycle errors retain -32002/-32600. Some open failures
+change/desynchronize state; this is an acknowledged transition, **not** a promise
+of rollback on all errors. Such mutations publish the new workspace generation
+and obsolete queued/active definitions exactly like ordinary sync notifications.
+No additional analysis, traversal, subprocess, ownership rule or reload is added
+by the admission request. Definition workers still reload the frozen manifest and
+reject a changed source inventory. Source/configuration changes require restart.
+
+Admission is handled synchronously by the bounded broker, not by its definition
+queue. Once dispatched it cannot be cancelled or rolled back by a later
+$/cancelRequest. A cancellation received before dispatch does not reserve a future
+request ID. Exactly one terminal response is sent unless the transport/session
+fails; cancellation after the response adds no second response. A timeout, lost
+response or uncertain connection does not establish whether enrollment occurred.
+An admission-dependent client must fail closed/retire the session on uncertainty,
+errors or invalid receipts, rather than assume rejection or blindly retry. It must
+check this exact capability version and method and never silently fall back to
+bulk didOpen enrollment. Correlation and readiness still require client-local
+session/document-incarnation checks and exact URI/path/version receipt checks.
+
+The method is request-only; its notification form is ignored and cannot enroll a
+document. Sending standard didOpen as a request remains invalid and stops the
+session. Existing body/header/overlay/output, queue and writer-stall bounds apply
+unchanged. Extra standard extension fields remain allowed.
+
 ## Buffers and revisions
 
 Every accepted state transition has a monotonic whole-workspace generation.
@@ -166,5 +241,7 @@ arbitrary worker paths or environment-selected test commands.
 loaded. An excluded file is not an owned source; an overlay or didOpen cannot add
 it back. Frozen LSP manifests and source inventories do not change when the
 configuration file changes. Restart the session after changing exclusions.
+Clients that need selection acknowledgments can use the versioned per-document
+admission request above instead of sending candidate didOpen notifications.
 Unknown-document didChange still desynchronizes the session and blocks navigation;
 it must not silently accept dirty text from outside the selected inventory.

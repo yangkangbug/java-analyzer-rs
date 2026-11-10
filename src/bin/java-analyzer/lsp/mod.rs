@@ -19,6 +19,8 @@ use std::{
 };
 
 const MAX_QUEUED: usize = 8;
+const ADMIT_DOCUMENT: &str = "javaAnalyzer/admitDocument";
+const ADMISSION_VERSION: u32 = 1;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Id {
     Integer(i32),
@@ -243,6 +245,21 @@ impl Server {
                 self.shutdown = Some(id);
                 self.phase = Phase::ShuttingDown;
             }
+            ADMIT_DOCUMENT => {
+                if self.phase != Phase::Ready {
+                    return self.error(&id, -32002, "Send initialized before admitting documents");
+                }
+                let workspace = self.workspace.as_mut().expect("ready workspace");
+                let before = workspace.generation;
+                let result = workspace.admit(params);
+                // Errors from the shared open transition can desynchronize state.
+                // Publish and obsolete exactly as for synchronization notifications.
+                self.publish_generation(before)?;
+                match result {
+                    Ok(admission) => self.result(&id, admission.response())?,
+                    Err(message) => self.error(&id, -32602, &message)?,
+                }
+            }
             "textDocument/definition" => {
                 if self.phase != Phase::Ready {
                     return self.error(&id, -32002, "Send initialized before requesting definitions");
@@ -285,17 +302,21 @@ impl Server {
             let workspace = self.workspace.as_mut().expect("ready workspace");
             let before = workspace.generation;
             let result = workspace.notify(method, params);
-            let generation = workspace.generation;
-            self.generation.store(generation, Ordering::SeqCst);
-            if generation != before {
-                self.obsolete()?;
-            }
+            self.publish_generation(before)?;
             if let Err(message) = result {
                 self.log(&message)?;
             }
         }
         // Includes $/setTrace. The Neovim adapter uses this harmless notification
         // to flush all client buffers before its definition request.
+        Ok(())
+    }
+    fn publish_generation(&mut self, before: u64) -> Result<(), String> {
+        let generation = self.workspace.as_ref().expect("ready workspace").generation;
+        self.generation.store(generation, Ordering::SeqCst);
+        if generation != before {
+            self.obsolete()?;
+        }
         Ok(())
     }
     fn cancel(&mut self, id: &Id) -> Result<(), String> {
@@ -393,7 +414,7 @@ impl Server {
                 self.phase = Phase::AwaitInitialized;
                 self.result(id, json!({"serverInfo":{"name":"java-analyzer-rs","version":env!("CARGO_PKG_VERSION")},
                     "capabilities":{"positionEncoding":"utf-16","textDocumentSync":{"openClose":true,"change":1,"save":{"includeText":false}},"definitionProvider":true,
-                    "experimental":{"javaAnalyzer":{"definitionOnly":true,"fullTextOnly":true,"frozenConfiguration":true,"semanticDiagnostics":false,"jvm":false,"maxOverlayBytes":state::MAX_OVERLAY_BYTES,"maxOpenDocuments":state::MAX_OVERLAYS}}}}))
+                    "experimental":{"javaAnalyzer":{"definitionOnly":true,"fullTextOnly":true,"frozenConfiguration":true,"semanticDiagnostics":false,"jvm":false,"maxOverlayBytes":state::MAX_OVERLAY_BYTES,"maxOpenDocuments":state::MAX_OVERLAYS,"documentAdmission":{"version":ADMISSION_VERSION,"method":ADMIT_DOCUMENT}}}}}))
             }
             Kind::Definition(request) => {
                 if result["generation"].as_u64() != Some(request.generation) {
@@ -533,6 +554,72 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.root);
         }
+    }
+    fn admission(f: &mut Fixture, id: i32, uri: &str, path: &str) {
+        f.server.message(json!({"jsonrpc":"2.0","id":id,"method":"javaAnalyzer/admitDocument","params":{
+            "expectedCanonicalPath":path,"textDocument":{"uri":uri,"languageId":"java","version":-4,"text":"class B {}"}}})).unwrap();
+    }
+    #[test]
+    fn admission_success_and_mutating_error_obsolete_active_and_queued_definitions() {
+        for duplicate in [false, true] {
+            let mut f = Fixture::new();
+            let uri = f.dependency_uri.clone();
+            let path = f.root.join("B.java");
+            if !duplicate {
+                f.server.notification("textDocument/didClose", &json!({"textDocument":{"uri":uri}})).unwrap();
+            }
+            f.request(1);
+            f.server.poll().unwrap();
+            f.request(2);
+            let before = f.server.generation.load(Ordering::SeqCst);
+            // Cancellation before dispatch does not reserve an ID or undo a later mutation.
+            f.server.cancel(&Id::Integer(3)).unwrap();
+            admission(&mut f, 3, &uri, path.to_str().unwrap());
+            assert!(f.server.generation.load(Ordering::SeqCst) > before);
+            assert!(f.barrier.lock().unwrap().cancelled);
+            assert!(f.server.pending.is_empty());
+            f.server.cancel(&Id::Integer(3)).unwrap();
+            f.release();
+            f.server.poll().unwrap();
+            let messages = f.messages();
+            for id in [1, 2, 3] {
+                let responses: Vec<_> = messages.iter().filter(|m| m["id"] == id).collect();
+                assert_eq!(responses.len(), 1, "one terminal response per request");
+                if id != 3 {
+                    assert_eq!(responses[0]["result"], Value::Null);
+                    assert!(responses[0].get("error").is_none());
+                } else if duplicate {
+                    assert_eq!(responses[0]["error"]["code"], -32602);
+                } else {
+                    assert_eq!(responses[0]["result"]["status"], "admitted");
+                }
+            }
+            assert_eq!(f.barrier.lock().unwrap().maximum_active, 1);
+        }
+    }
+    #[test]
+    fn admission_not_selected_or_identity_error_does_not_obsolete_definitions() {
+        let mut f = Fixture::new();
+        f.request(1);
+        f.server.poll().unwrap();
+        f.request(2);
+        let before = f.server.generation.load(Ordering::SeqCst);
+        let outside = f.root.join("Outside.java");
+        fs::write(&outside, "class Outside {}").unwrap();
+        let uri = format!("file://{}", outside.to_str().unwrap());
+        admission(&mut f, 3, &uri, outside.to_str().unwrap());
+        let mismatch = f.root.join("A.java");
+        admission(&mut f, 4, &uri, mismatch.to_str().unwrap());
+        assert_eq!(f.server.generation.load(Ordering::SeqCst), before);
+        assert!(!f.barrier.lock().unwrap().cancelled);
+        assert_eq!(f.server.pending.len(), 1);
+        let messages = f.messages();
+        assert_eq!(messages.iter().find(|m| m["id"] == 3).unwrap()["result"]["status"], "not-selected");
+        assert_eq!(messages.iter().find(|m| m["id"] == 4).unwrap()["error"]["code"], -32602);
+        f.server.cancel(&Id::Integer(1)).unwrap();
+        f.server.cancel(&Id::Integer(2)).unwrap();
+        f.release();
+        f.server.poll().unwrap();
     }
     #[test]
     fn cancelled_id_reuse_remains_reserved_for_new_request_after_old_cleanup() {

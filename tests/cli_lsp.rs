@@ -829,3 +829,109 @@ fn source_exclusions_stay_frozen_until_restart_and_unknown_changes_fail_closed()
         Some(&Value::Null)
     );
 }
+
+fn admit_source(session: &mut Session, id: i32, uri: &str, path: &std::path::Path, version: i32, text: &str) -> Value {
+    session.send(json!({"jsonrpc":"2.0","id":id,"method":"javaAnalyzer/admitDocument","params":{
+        "expectedCanonicalPath":path.to_str().unwrap(),
+        "textDocument":{"uri":uri,"languageId":"java","version":version,"text":text}}}));
+    session.response(id)
+}
+
+#[test]
+fn acknowledged_admission_advertises_version_and_enrolls_exact_receipt() {
+    let fixture = ReferenceCallFixture::new();
+    let mut session = Session::start_manifest(&fixture.root.join("project.json"));
+    session.send(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}));
+    assert_eq!(
+        session.response(1)["result"]["capabilities"]["experimental"]["javaAnalyzer"]["documentAdmission"],
+        json!({"version":1,"method":"javaAnalyzer/admitDocument"})
+    );
+    session.send(json!({"jsonrpc":"2.0","method":"initialized","params":{}}));
+    let uri = fixture.uri("Use");
+    let path = fixture.source_path("Use");
+    let receipt = admit_source(&mut session, 2, &uri, &path, -11, ReferenceCallFixture::USE);
+    assert_eq!(receipt["result"], json!({"status":"admitted","uri":uri,"canonicalPath":path,"version":-11}));
+    let result = source_definition(&mut session, 3, &uri, ReferenceCallFixture::USE, "m(value)");
+    assert_eq!(
+        result["result"],
+        method_location(&fixture.uri("Receiver"), ReferenceCallFixture::RECEIVER, "m(Derived value)", "m")
+    );
+    // Late cancellation cannot retract the synchronous enrollment or emit a second terminal response.
+    session.send(json!({"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":2}}));
+    replace_source(&mut session, &uri, -10, ReferenceCallFixture::USE);
+    let result = source_definition(&mut session, 4, &uri, ReferenceCallFixture::USE, "m(value)");
+    assert!(result["result"].is_object(), "{result}");
+    fixture.assert_sources_unchanged();
+}
+
+#[test]
+fn acknowledged_admission_not_selected_does_not_poison_owned_documents() {
+    let fixture = ReferenceCallFixture::new();
+    let mut manifest: Value =
+        serde_json::from_slice(&std::fs::read(fixture.root.join("project.json")).unwrap()).unwrap();
+    manifest["compilations"][0]["source_exclusions"] = json!(["p/Excluded.java"]);
+    std::fs::write(fixture.root.join("project.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let excluded = fixture.source_path("Excluded");
+    std::fs::write(&excluded, "class Excluded {}").unwrap();
+    let outside = fixture.root.join("Outside.java");
+    std::fs::write(&outside, "class Outside {}").unwrap();
+    let mut session = fixture.session();
+    let new_file = fixture.source_path("NewSinceStart");
+    std::fs::write(&new_file, "class NewSinceStart {}").unwrap();
+    for (offset, path) in [&excluded, &outside, &new_file].into_iter().enumerate() {
+        let uri = format!("file://{}", path.to_str().unwrap());
+        let receipt = admit_source(&mut session, 10 + offset as i32, &uri, path, -2, "class DirtyCandidate {}");
+        assert_eq!(receipt["result"], json!({"status":"not-selected","uri":uri,"canonicalPath":path,"version":-2}));
+    }
+    std::fs::remove_file(&new_file).unwrap(); // Restore inventory before definition worker reload.
+    let uri = fixture.uri("Use");
+    assert_eq!(
+        admit_source(&mut session, 20, &uri, &fixture.source_path("Use"), 1, ReferenceCallFixture::USE)["result"]["status"],
+        "admitted"
+    );
+    let result = source_definition(&mut session, 21, &uri, ReferenceCallFixture::USE, "m(value)");
+    assert!(result["result"].is_object(), "{result}");
+    // Admission never weakens the worker's frozen-inventory reload check.
+    std::fs::write(&new_file, "class NewSinceStart {}").unwrap();
+    assert_eq!(
+        source_definition(&mut session, 23, &uri, ReferenceCallFixture::USE, "m(value)")["error"]["code"],
+        -32803
+    );
+    std::fs::remove_file(&new_file).unwrap();
+    assert!(source_definition(&mut session, 24, &uri, ReferenceCallFixture::USE, "m(value)")["result"].is_object());
+    // A rejected candidate still must not receive didChange; the legacy unknown-change rule stays fail-closed.
+    replace_source(&mut session, &format!("file://{}", excluded.to_str().unwrap()), 2, "class Excluded {}");
+    assert_eq!(
+        source_definition(&mut session, 22, &uri, ReferenceCallFixture::USE, "m(value)")["error"]["code"],
+        -32602
+    );
+}
+
+#[test]
+fn acknowledged_admission_requires_ready_request_and_preserves_standard_sync_contract() {
+    let fixture = ReferenceCallFixture::new();
+    let mut session = Session::start_manifest(&fixture.root.join("project.json"));
+    let uri = fixture.uri("Use");
+    assert_eq!(
+        admit_source(&mut session, 10, &uri, &fixture.source_path("Use"), 1, ReferenceCallFixture::USE)["error"]["code"],
+        -32002
+    );
+    session.send(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}));
+    assert!(session.response(1)["result"].is_object());
+    assert_eq!(
+        admit_source(&mut session, 11, &uri, &fixture.source_path("Use"), 1, ReferenceCallFixture::USE)["error"]["code"],
+        -32002
+    );
+    session.send(json!({"jsonrpc":"2.0","method":"initialized","params":{}}));
+    session.send(json!({"jsonrpc":"2.0","method":"javaAnalyzer/admitDocument","params":{
+        "expectedCanonicalPath":fixture.source_path("Use"),"textDocument":{"uri":uri,"languageId":"java","version":1,"text":ReferenceCallFixture::USE}}}));
+    assert_eq!(
+        source_definition(&mut session, 12, &uri, ReferenceCallFixture::USE, "m(value)")["error"]["code"],
+        -32602
+    );
+    // Standard didOpen is still a notification, never an enrollment request.
+    session.send(json!({"jsonrpc":"2.0","id":13,"method":"textDocument/didOpen","params":{
+        "textDocument":{"uri":uri,"languageId":"java","version":1,"text":ReferenceCallFixture::USE}}}));
+    assert_eq!(session.response(13)["error"]["code"], -32600);
+    assert_eq!(session.wait_exit().code(), Some(2));
+}

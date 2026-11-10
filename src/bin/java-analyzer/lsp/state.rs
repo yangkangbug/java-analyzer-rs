@@ -10,6 +10,27 @@ pub(super) const MAX_OVERLAY_BYTES: usize = 1024 * 1024;
 const MAX_LABEL: u64 = 9_007_199_254_740_991;
 const MAX_URI: usize = 8192;
 
+#[derive(Debug, PartialEq, Eq)]
+enum OpenOutcome {
+    Admitted,
+    NotSelected,
+}
+pub(super) struct Admission {
+    outcome: OpenOutcome,
+    uri: String,
+    canonical_path: String,
+    version: i32,
+}
+impl Admission {
+    pub fn response(self) -> Value {
+        let status = match self.outcome {
+            OpenOutcome::Admitted => "admitted",
+            OpenOutcome::NotSelected => "not-selected",
+        };
+        json!({"status":status,"uri":self.uri,"canonicalPath":self.canonical_path,"version":self.version})
+    }
+}
+
 #[derive(Clone)]
 struct Document {
     compilation: Value,
@@ -56,7 +77,7 @@ impl Workspace {
             .ok_or("workspace revision exhausted; restart required")?;
         Ok(())
     }
-    fn poison(&mut self, uri: Option<&str>, reason: &str) -> Result<(), String> {
+    fn poison<T>(&mut self, uri: Option<&str>, reason: &str) -> Result<T, String> {
         self.advance()?;
         if let Some(path) = uri.and_then(|uri| self.uris.get(uri)) {
             if let Some(document) = self.documents.get_mut(path) {
@@ -100,7 +121,39 @@ impl Workspace {
             _ => Ok(()),
         }
     }
-    fn open(&mut self, uri: &str, params: &Value) -> Result<(), String> {
+    /// Acknowledge one candidate against the initialized inventory. This is a
+    /// synchronous state transition, not a transactional or cancellable probe.
+    pub fn admit(&mut self, params: &Value) -> Result<Admission, String> {
+        let value = &params["textDocument"];
+        let uri = value.get("uri").and_then(Value::as_str).ok_or("admission requires a document URI")?;
+        if uri.len() > MAX_URI {
+            return Err("document URI limit exceeded".into());
+        }
+        let expected = params
+            .get("expectedCanonicalPath")
+            .and_then(Value::as_str)
+            .filter(|p| p.len() <= MAX_URI && PathBuf::from(p).is_absolute() && !p.chars().any(char::is_control))
+            .ok_or("admission requires a bounded absolute expectedCanonicalPath")?;
+        let version = value
+            .get("version")
+            .and_then(Value::as_i64)
+            .and_then(|n| i32::try_from(n).ok())
+            .ok_or("admission version must be signed i32")?;
+        if value.get("text").and_then(Value::as_str).is_none()
+            || value.get("languageId").and_then(Value::as_str) != Some("java")
+        {
+            return Err("admission requires Java full text".into());
+        }
+        // Canonicalize exactly once, then verify identity before ANY mutation,
+        // including duplicate-URI poisoning. Never preflight and recanonicalize.
+        let path = resolve_uri(uri)?;
+        if path != expected {
+            return Err("document canonical identity differs from expectedCanonicalPath".into());
+        }
+        let outcome = self.open_resolved(uri, path.clone(), params)?;
+        Ok(Admission { outcome, uri: uri.to_owned(), canonical_path: path, version })
+    }
+    fn reject_duplicate_uri(&mut self, uri: &str) -> Result<(), String> {
         if let Some(path) = self.uris.get(uri).cloned() {
             self.advance()?;
             let document = self.documents.get_mut(&path).expect("registered URI");
@@ -108,13 +161,27 @@ impl Workspace {
             document.conflicted = true;
             return Err("duplicate active URI; close it and reopen before using a changed path".into());
         }
-        let path = uri_path(uri)?.canonicalize().map_err(|_| "document path cannot be resolved")?;
-        let path = path.to_str().ok_or("document path must be UTF-8")?.to_owned();
-        let compilation = self
-            .sources
-            .get(&path)
-            .ok_or("document is outside the frozen source inventory; restart after configuration/source changes")?
-            .clone();
+        Ok(())
+    }
+    fn open(&mut self, uri: &str, params: &Value) -> Result<(), String> {
+        // Preserve didOpen's duplicate ordering even if the path has vanished.
+        self.reject_duplicate_uri(uri)?;
+        let path = resolve_uri(uri)?;
+        match self.open_resolved(uri, path, params)? {
+            OpenOutcome::Admitted => Ok(()),
+            OpenOutcome::NotSelected => {
+                Err("document is outside the frozen source inventory; restart after configuration/source changes"
+                    .into())
+            }
+        }
+    }
+    fn open_resolved(&mut self, uri: &str, path: String, params: &Value) -> Result<OpenOutcome, String> {
+        self.reject_duplicate_uri(uri)?;
+        let Some(compilation) = self.sources.get(&path).cloned() else {
+            // The only benign negative, reached before mutation. A retargeted
+            // already-registered URI above must remain a conflict, not a skip.
+            return Ok(OpenOutcome::NotSelected);
+        };
         if self.uris.len() >= MAX_OVERLAYS && !self.uris.contains_key(uri) {
             return self.poison(None, "open-document limit exceeded; restart required");
         }
@@ -154,7 +221,7 @@ impl Workspace {
             document.desynchronized = true;
             return Err("serialized overlays exceed 1 MiB; source is desynchronized".into());
         }
-        Ok(())
+        Ok(OpenOutcome::Admitted)
     }
     fn change(&mut self, uri: &str, params: &Value) -> Result<(), String> {
         let Some(path) = self.uris.get(uri).cloned() else {
@@ -235,6 +302,11 @@ impl Workspace {
         }
         file_uri(path)
     }
+}
+
+fn resolve_uri(uri: &str) -> Result<String, String> {
+    let path = uri_path(uri)?.canonicalize().map_err(|_| "document path cannot be resolved")?;
+    path.to_str().map(str::to_owned).ok_or_else(|| "document path must be UTF-8".into())
 }
 
 pub(super) fn uri_path(uri: &str) -> Result<PathBuf, String> {
@@ -360,6 +432,151 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.root);
         }
+    }
+    fn admission_params(uri: &str, expected: &str, version: i32) -> Value {
+        json!({"expectedCanonicalPath":expected,"textDocument":{"uri":uri,"languageId":"java","version":version,"text":"class Dirty {}"}})
+    }
+    #[test]
+    fn admission_checks_identity_and_fields_before_not_selected_or_mutation() {
+        let mut f = Fixture::new();
+        let outside = f.root.join("Outside.java");
+        std::fs::write(&outside, "class Outside {}").unwrap();
+        let uri = file_uri(outside.to_str().unwrap()).unwrap();
+        let params = admission_params(&uri, outside.to_str().unwrap(), -4);
+        for (field, value) in
+            [("version", json!(2147483648_i64)), ("text", json!(false)), ("languageId", json!("other"))]
+        {
+            let mut invalid = params.clone();
+            invalid["textDocument"][field] = value;
+            assert!(f.workspace.admit(&invalid).is_err());
+        }
+        let mut invalid = params.clone();
+        invalid["expectedCanonicalPath"] = json!("x".repeat(MAX_URI + 1));
+        assert!(f.workspace.admit(&invalid).is_err());
+        invalid["expectedCanonicalPath"] = json!(outside);
+        invalid["textDocument"]["uri"] = json!("x".repeat(MAX_URI + 1));
+        assert!(f.workspace.admit(&invalid).is_err());
+        assert!(f.workspace.admit(&admission_params(&f.one, f.root.join("B.java").to_str().unwrap(), 1)).is_err());
+        assert_eq!(f.workspace.generation, 0);
+        assert!(f.workspace.uris.is_empty());
+        assert_eq!(f.workspace.admit(&params).unwrap().response()["status"], "not-selected");
+        assert_eq!(f.workspace.generation, 0);
+        assert!(f.workspace.documents.is_empty());
+        std::fs::remove_file(outside).unwrap();
+        assert!(f.workspace.admit(&params).is_err(), "vanished path is an error, not not-selected");
+        assert_eq!(f.workspace.generation, 0);
+    }
+    #[test]
+    fn admission_uses_exact_frozen_owner_for_nested_paths() {
+        let mut f = Fixture::new();
+        let nested = f.root.join("nested");
+        std::fs::create_dir(&nested).unwrap();
+        let path = nested.join("N.java");
+        std::fs::write(&path, "class N {}").unwrap();
+        let owner = json!({"project":"nested","source_set":"test"});
+        f.workspace.sources.insert(path.to_str().unwrap().to_owned(), owner.clone());
+        let uri = file_uri(path.to_str().unwrap()).unwrap();
+        let receipt = f.workspace.admit(&admission_params(&uri, path.to_str().unwrap(), i32::MIN)).unwrap().response();
+        assert_eq!(receipt, json!({"status":"admitted","uri":uri,"canonicalPath":path,"version":i32::MIN}));
+        assert_eq!(f.query(&uri).unwrap()["query"]["compilation"], owner);
+        let unknown = nested.join("New.java");
+        std::fs::write(&unknown, "class New {}").unwrap();
+        let unknown_uri = file_uri(unknown.to_str().unwrap()).unwrap();
+        assert_eq!(
+            f.workspace.admit(&admission_params(&unknown_uri, unknown.to_str().unwrap(), 1)).unwrap().response()["status"],
+            "not-selected"
+        );
+    }
+    #[cfg(unix)]
+    #[test]
+    fn admission_canonicalizes_once_and_later_sync_keeps_registered_identity() {
+        let mut f = Fixture::new();
+        let link = f.root.join("alias.java");
+        let original = f.root.join("A.java");
+        std::os::unix::fs::symlink(&original, &link).unwrap();
+        let uri = file_uri(link.to_str().unwrap()).unwrap();
+        let params = admission_params(&uri, original.to_str().unwrap(), -2);
+        f.workspace.admit(&params).unwrap();
+        std::fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink(f.root.join("B.java"), &link).unwrap();
+        let before = f.workspace.generation;
+        assert!(f.workspace.admit(&params).is_err(), "mismatched expected identity is rejected before mutation");
+        assert_eq!(f.workspace.generation, before);
+        f.change(&uri, -1, json!([{"text":"class Updated {}"}])).unwrap();
+        assert_eq!(f.query(&uri).unwrap()["query"]["file"], json!(original));
+        std::fs::remove_file(&link).unwrap();
+        f.change(&uri, 0, json!([{"text":"class DeletedPath {}"}])).unwrap();
+        f.workspace.notify("textDocument/didClose", &json!({"textDocument":{"uri":uri}})).unwrap();
+        assert!(f.workspace.documents.is_empty());
+        // The shared transition must use its verified identity, not resolve the URI a second time.
+        std::os::unix::fs::symlink(&original, &link).unwrap();
+        let resolved = resolve_uri(&uri).unwrap();
+        std::fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink(f.root.join("B.java"), &link).unwrap();
+        assert_eq!(f.workspace.open_resolved(&uri, resolved, &params).unwrap(), OpenOutcome::Admitted);
+        assert_eq!(f.query(&uri).unwrap()["query"]["file"], json!(original));
+    }
+    #[cfg(unix)]
+    #[test]
+    fn admission_duplicate_registered_retarget_to_unselected_is_error_not_false() {
+        let mut f = Fixture::new();
+        let link = f.root.join("alias.java");
+        let original = f.root.join("A.java");
+        std::os::unix::fs::symlink(&original, &link).unwrap();
+        let uri = file_uri(link.to_str().unwrap()).unwrap();
+        f.workspace.admit(&admission_params(&uri, original.to_str().unwrap(), 1)).unwrap();
+        let outside = f.root.join("Outside.java");
+        std::fs::write(&outside, "class Outside {}").unwrap();
+        std::fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let before = f.workspace.generation;
+        assert!(f.workspace.admit(&admission_params(&uri, outside.to_str().unwrap(), 2)).is_err());
+        assert!(f.workspace.generation > before);
+        assert_eq!(f.workspace.uris[&uri], original.to_str().unwrap());
+        assert!(f.query(&uri).is_err());
+    }
+    #[test]
+    fn admission_duplicate_alias_and_overlay_errors_remain_fail_closed() {
+        let mut f = Fixture::new();
+        let path = f.root.join("A.java");
+        let uri = f.one.clone();
+        let params = admission_params(&uri, path.to_str().unwrap(), 1);
+        f.workspace.admit(&params).unwrap();
+        let before = f.workspace.generation;
+        assert!(f.workspace.admit(&params).is_err());
+        assert!(f.workspace.generation > before);
+        assert!(f.query(&uri).is_err());
+        f.workspace.notify("textDocument/didClose", &json!({"textDocument":{"uri":uri}})).unwrap();
+        f.workspace.admit(&params).unwrap();
+        let alias = uri.replacen("file://", "file://localhost", 1);
+        assert!(f.workspace.admit(&admission_params(&alias, path.to_str().unwrap(), 1)).is_err());
+        assert!(f.workspace.uris.contains_key(&alias));
+        assert!(f.query(&uri).is_err());
+        for close_uri in [&uri, &alias] {
+            f.workspace.notify("textDocument/didClose", &json!({"textDocument":{"uri":close_uri}})).unwrap();
+        }
+        let mut oversize = params.clone();
+        oversize["textDocument"]["text"] = json!("x".repeat(MAX_OVERLAY_BYTES));
+        assert!(f.workspace.admit(&oversize).is_err());
+        assert!(f.workspace.uris.contains_key(&uri));
+        assert!(f.workspace.overlay_bytes().unwrap() < MAX_OVERLAY_BYTES);
+        assert!(f.query(&uri).is_err());
+    }
+    #[test]
+    fn admission_retains_document_and_safe_generation_limits() {
+        let mut f = Fixture::new();
+        for n in 0..MAX_OVERLAYS {
+            f.workspace.uris.insert(format!("file:///fake/{n}"), String::new());
+        }
+        let path = f.root.join("A.java");
+        assert!(f.workspace.admit(&admission_params(&f.one, path.to_str().unwrap(), 1)).is_err());
+        assert!(f.workspace.broken);
+        let mut f = Fixture::new();
+        f.workspace.generation = MAX_LABEL;
+        let path = f.root.join("A.java");
+        assert!(f.workspace.admit(&admission_params(&f.one, path.to_str().unwrap(), 1)).is_err());
+        assert_eq!(f.workspace.generation, MAX_LABEL);
+        assert!(f.workspace.documents.is_empty());
     }
     #[test]
     fn empty_changes_cannot_repair_poisoned_dependency() {
