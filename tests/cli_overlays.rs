@@ -467,3 +467,20 @@ fn legacy_absolute_offsets_still_accept_crlf_interior_and_surrogate_pairs_are_st
         );
     }
 }
+
+#[test]
+fn source_exclusions_cannot_be_reintroduced_by_unsaved_overlays() {
+    let f = Fixture::new();
+    f.write(
+        "project.json",
+        json!({"schema_version":1,"compilations":[{
+            "id":{"project":"app","source_set":"main"},"source_roots":["src"],"source_exclusions":["A.java"]
+        }]})
+        .to_string(),
+    );
+    let inspected = f.run("inspect", &["--details"], true);
+    assert_eq!(inspected["result"]["compilations"][0]["source_paths"], json!([]));
+    let overlay = f.overlay("class A { int fresh; }");
+    let result = f.run("inspect", &["--overlays", overlay.to_str().unwrap()], false);
+    assert_eq!(result["error"]["code"], "invalid_overlay");
+}

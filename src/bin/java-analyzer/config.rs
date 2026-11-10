@@ -47,6 +47,8 @@ pub struct Manifest {
 pub struct Compilation {
     pub id: Id,
     pub source_roots: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_exclusions: Vec<String>,
     #[serde(default)]
     pub dependencies: Vec<Id>,
     #[serde(default)]
@@ -249,6 +251,7 @@ impl Manifest {
                 dependencies: c.dependencies.iter().map(Id::core).collect(),
                 inputs: ProjectConfig {
                     source_roots,
+                    source_exclusions: c.source_exclusions.clone(),
                     classpath,
                     platform,
                     limits: ProjectLimits {
@@ -274,6 +277,12 @@ impl Manifest {
                     },
                 },
             });
+        }
+        for compilation in &compilations {
+            compilation
+                .inputs
+                .validate_source_exclusions()
+                .map_err(|e| Error::new("invalid_configuration", e.to_string()))?;
         }
         Ok(WorkspaceConfig {
             compilations,
@@ -320,5 +329,67 @@ impl Requests {
             local_path(Path::new(""), &q.file).map_err(|e| e.query(index))?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod source_exclusion_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn source_exclusions_schema_rejects_wrong_types_and_duplicate_fields() {
+        let base = json!({"schema_version":1,"compilations":[{
+            "id":{"project":"app","source_set":"main"},"source_roots":["missing"]
+        }]});
+        for rules in [json!(null), json!("file.java"), json!([null]), json!([1]), json!([{}])] {
+            let mut input = base.clone();
+            input["compilations"][0]["source_exclusions"] = rules;
+            assert!(serde_json::from_value::<Manifest>(input).is_err());
+        }
+        let duplicate = base.to_string().replace(
+            "\"source_roots\":[\"missing\"]",
+            "\"source_roots\":[\"missing\"],\"source_exclusions\":[],\"source_exclusions\":[]",
+        );
+        assert!(serde_json::from_str::<Manifest>(&duplicate).is_err());
+        for rules in
+            [vec!["a".to_owned(), "a".to_owned()], vec!["a".repeat(4097)], (0..1025).map(|i| i.to_string()).collect()]
+        {
+            let mut input = base.clone();
+            input["compilations"][0]["source_exclusions"] = json!(rules);
+            let manifest: Manifest = serde_json::from_value(input).unwrap();
+            assert!(manifest.core(Path::new("")).is_err());
+        }
+    }
+
+    #[test]
+    fn source_exclusions_optional_shape_and_no_io_validation() {
+        let base = json!({"schema_version":1,"compilations":[{
+            "id":{"project":"app","source_set":"main"},"source_roots":["missing-source-root"]
+        }]});
+        for rules in [None, Some(json!([])), Some(json!(["module-info.java", "中文 !", "--cancel-on-stdin-close"]))] {
+            let mut input = base.clone();
+            if let Some(rules) = rules {
+                input["compilations"][0]["source_exclusions"] = rules;
+            }
+            let manifest: Manifest = serde_json::from_value(input.clone()).unwrap();
+            assert!(manifest.core(Path::new("")).is_ok(), "validation must not read source roots");
+            let output = serde_json::to_value(manifest).unwrap();
+            if input["compilations"][0]["source_exclusions"].as_array().is_some_and(|v| !v.is_empty()) {
+                assert_eq!(
+                    output["compilations"][0]["source_exclusions"],
+                    input["compilations"][0]["source_exclusions"]
+                );
+            } else {
+                assert!(output["compilations"][0].get("source_exclusions").is_none());
+            }
+        }
+        for rule in ["", "/", "a//b", "./a", "a/..", "/a", "a/", "a\\b", "C:a", "*.java", "a?", "[a]", "{a}", "a\u{85}"]
+        {
+            let mut input = base.clone();
+            input["compilations"][0]["source_exclusions"] = json!([rule]);
+            let manifest: Manifest = serde_json::from_value(input).unwrap();
+            assert!(manifest.core(Path::new("")).is_err(), "{rule:?}");
+        }
     }
 }

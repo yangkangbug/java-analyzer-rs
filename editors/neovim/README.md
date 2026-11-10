@@ -30,10 +30,35 @@ vim.keymap.set('n', '<leader>jr', java.restart, { desc = 'Restart Java analysis 
 ```
 
 `examples/cli_project/project.json` is a small manual-manifest starting point.
-The module reads the manifest's source-root paths to attach existing loaded Java
-buffers, including dependency roots outside the manifest directory. The native
-server validates actual ownership and supported inventory. Opening another
-existing `.java` buffer under those roots attaches it automatically.
+The module reads each compilation's source roots and optional
+`source_exclusions` list to attach eligible existing loaded Java files, including
+dependency roots outside the manifest directory. Opening another eligible
+`.java` buffer attaches it automatically. Directories named `*.java` are not
+source files. The native server alone validates actual ownership and inventory.
+
+An exclusion is an exact relative file path or directory subtree, applied
+independently to every root in its compilation. Matching is literal,
+component-boundary and case-sensitive, without globbing, negation or Unicode
+normalization. A path eligible through any configured root may attach: excluding
+`nested` from a parent root does not veto a separately configured nested root.
+If two compilations actually own the same included canonical source, native
+initialization still refuses; this filter does not pick an owner.
+
+Before starting software, the adapter rejects malformed manifest/list/entry
+types, duplicate or empty rules, more than 1024 rules, rules exceeding 4096 UTF-8
+bytes, absolute paths, dot/dotdot or empty components, backslashes, colons,
+`* ? [ ] { }`, and Unicode Cc controls (C0, DEL, C1). Nonempty exclusions require
+source roots. Ordinary Unicode, spaces, leading `!` and `--` are literal.
+Excluded buffers remain loaded and dirty but are not attached, synchronized or
+used as navigation origins. Edits to them cannot send unknown-document changes
+that invalidate an otherwise valid native session.
+
+Selection is frozen for each session. After changing exclusions, explicitly call
+`restart()`: safe retirement detaches old buffers, then newly eligible buffers
+replay their full unsaved text before ready. Newly excluded buffers keep their
+text, modified state and buffer options. A failed native initialization likewise
+preserves dirty buffers, and a corrected manifest can be explicitly restarted
+after safe refusal cleanup.
 
 - `setup(opts)` validates paths without starting software. It requires no owned
   client or queued start; `stop()` is asynchronous. Paths are arguments, not shell
@@ -227,3 +252,35 @@ Passing means this pinned **headless editor integration** passed on the reported
 host. It does not validate GUI behavior, other Neovim versions, signed Mac
 distribution, full Java semantics, editor latency, or the user's Mac. Linux and
 hosted macOS runs are separate evidence. No user computer is needed or accessed.
+
+## Independent source-selection gate
+
+The trusted-main `editor-acceptance` workflow retains the existing 13-definition
+and 28-refresh gates and adds `check-neovim-source-exclusions.py`. Its four
+independent scenarios cover excluded file/subtree buffers (including later opens
+and edits), changed selection across explicit restarts, nested-root reinclusion
+plus duplicate-ownership refusal/corrected restart, and 62 native/client manifest
+validation cases. Exact native target ranges, per-session full-text replay,
+nonattachment/nonsynchronization, dirty-buffer preservation, process ownership
+and clean exit are checked independently of the editor's success flag.
+
+A bounded CI-only negative control runs the same built native candidate with the
+exact old adapter from public commit
+`d30ff6ba4ff67dae4a9862c67507bda4c0bb40ee`. The setup fetches only that immutable
+file into a new owned temporary adapter directory, requires 26,196 bytes and
+SHA-256 `a8be5c2bd9f85c2428ccc65492bccc31592f2131125412892736639c48e78ab6`,
+and permits no redirects, arbitrary revisions or checkout changes. The negative
+gate requires the specific `EXCLUDED_BUFFER_ATTACHED` witness for `One.java`,
+the exact excluded `didOpen` text, successful real native initialize, preserved
+dirty buffers, unchanged inputs/executables, and safe native/proxy exit.
+A generic nonzero exit, timeout, crash or unrelated assertion does not count.
+
+The candidate adapter must then pass every scenario against that same native
+binary and pinned client. Only bounded summaries and public hashes are printed;
+owned client, adapter and fixture outputs are removed on every workflow outcome.
+Linux, hosted macOS ARM and hosted macOS Intel remain separate evidence. This
+reconstruction was reviewed and tested with offline Python mutations before
+publication; it was not executed in a real local Neovim and does not establish
+chronological real-editor fail-first evidence. Actual CI results, rather than
+historical or reconstructed reports, establish RED/GREEN for the tested revision.
+No user computer is used for real-editor acceptance.

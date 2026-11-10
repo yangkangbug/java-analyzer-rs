@@ -45,6 +45,10 @@ whitespace-free arguments; punctuation is not a hierarchy separator.
 
 - `--source-root PATH`: repeat for explicit recursive source directories, or use
   `--binary-only` to explicitly choose no source roots. These choices conflict.
+- `--exclude-source PATH`: repeat literal file/directory exclusions for the current
+  compilation. Each rule is relative to every source root, regardless of option
+  order. Nonempty exclusions require roots and cannot be used with binary-only
+  groups. No globbing or negation is supported. See [source selection](SOURCE_SELECTION.md).
 - `--depends-on PROJECT SOURCE_SET`: repeat for directed **source** visibility.
   This does not export another compilation's binary or platform dependencies.
 - `--classpath-jar PATH` and `--classpath-dir PATH`: repeat in precedence order.
@@ -74,8 +78,9 @@ graph identities/edges, source ownership, source and archive inputs, and path
 types through the normal manifest adapter and native loader. It cannot certify
 that a caller chose the complete or correct build configuration. Successful load
 is not proof that Java source compiles, that parser gaps are absent, or that every
-declaration query can resolve. `module-info.java` remains unsupported as a source
-input; exclusions and generated-source production are not added here.
+declaration query can resolve. Included `module-info.java` remains unsupported:
+use an explicit `--exclude-source module-info.java` only when deliberately choosing
+a flat source subset. This does not add JPMS or generated-source production.
 
 Output is deterministic for unchanged arguments and inputs, with no snapshot ID
 or timestamp. Its complete encoded document, including the newline, must fit the
@@ -97,8 +102,10 @@ Changing a saved manifest or adding/removing sources still requires restarting
 the [LSP session](LSP_PREVIEW.md); bootstrap is not a reload mechanism.
 
 The new entry point removes manual JSON construction for explicit inputs. General
-build import, source exclusions, generated inputs, project discovery and semantic
-completeness remain separate work.
+build import, generated inputs, project discovery and semantic completeness
+remain separate work. Empty exclusions are omitted from generated manifests;
+nonempty values are preserved literally, including values resembling execution
+flags such as `--timeout-ms` or `--cancel-on-stdin-close`.
 
 ## Acceptance
 

@@ -287,7 +287,7 @@ fn capabilities() -> Value {
 }
 fn help() -> Value {
     json!({"schema_version":1,"version":env!("CARGO_PKG_VERSION"),"capabilities":capabilities(),"usage":[
-        "java-analyzer configure --compilation PROJECT SOURCE_SET (--source-root PATH ...|--binary-only) (--platform-jmod PATH|--platform-jar PATH|--no-platform) [--depends-on PROJECT SOURCE_SET ...] [--classpath-jar PATH|--classpath-dir PATH ...] [--target-release N] [--compilation ...] (explicit inputs only; stdout schema-v1 manifest; no build import)",
+        "java-analyzer configure --compilation PROJECT SOURCE_SET (--source-root PATH ...|--binary-only) [--exclude-source PATH ...] (--platform-jmod PATH|--platform-jar PATH|--no-platform) [--depends-on PROJECT SOURCE_SET ...] [--classpath-jar PATH|--classpath-dir PATH ...] [--target-release N] [--compilation ...] (explicit inputs only; stdout schema-v1 manifest; no build import)",
         "java-analyzer inspect --manifest FILE [--details] [--overlays FILE]",
         "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N|--line N --character N) [--overlays FILE]",
         "java-analyzer declaration --manifest FILE --requests FILE [--overlays FILE]",

@@ -73,7 +73,9 @@ for the complete origin inventory under explicit output limits. A declaration
 batch shares one prepared snapshot.
 The native [configuration bootstrap](docs/CLI_CONFIGURE.md) emits a validated
 manifest from explicit compilation groups, roots and ordered dependency inputs,
-without hand-writing JSON. It does not infer build configuration or generate Java.
+without hand-writing JSON. Optional [literal source exclusions](docs/SOURCE_SELECTION.md)
+omit explicit files or prune directories relative to each source root. They do not
+infer build configuration, generate Java, or enable JPMS.
 Source targets retain exact byte ranges; binary targets explicitly have no source
 range. Refused or ambiguous results remain candidates, not a guessed first match.
 Parser reports may indicate unsupported grammar rather than invalid Java.

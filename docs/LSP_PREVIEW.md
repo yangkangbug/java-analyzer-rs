@@ -158,3 +158,13 @@ request-ID reuse while old cleanup is pending. Writer barriers check the final
 queued-response generation guard and bounded backpressure. Those in-memory
 fixtures do not prove OS descendant cleanup. There are no production fault hooks,
 arbitrary worker paths or environment-selected test commands.
+
+
+## Explicit source selection
+
+[Source exclusions](SOURCE_SELECTION.md) are applied when the disk snapshot is
+loaded. An excluded file is not an owned source; an overlay or didOpen cannot add
+it back. Frozen LSP manifests and source inventories do not change when the
+configuration file changes. Restart the session after changing exclusions.
+Unknown-document didChange still desynchronizes the session and blocks navigation;
+it must not silently accept dirty text from outside the selected inventory.

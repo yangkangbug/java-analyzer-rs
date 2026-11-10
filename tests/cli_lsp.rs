@@ -783,3 +783,49 @@ fn native_string_arguments_follow_unsaved_literal_and_formal_edits() {
     assert!(session.wait_exit().success());
     fixture.assert_sources_unchanged();
 }
+
+#[test]
+fn source_exclusions_stay_frozen_until_restart_and_unknown_changes_fail_closed() {
+    let fixture = ReferenceCallFixture::new();
+    let manifest = fixture.root.join("project.json");
+    let original: Value = serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+    let mut excluded = original.clone();
+    excluded["compilations"][0]["source_exclusions"] = json!(["p/Receiver.java"]);
+    std::fs::write(&manifest, excluded.to_string()).unwrap();
+    let receiver_uri = fixture.uri("Receiver");
+    let use_uri = fixture.uri("Use");
+    let mut old = fixture.session();
+    open_source(&mut old, &use_uri, ReferenceCallFixture::USE);
+    open_source(&mut old, &receiver_uri, ReferenceCallFixture::RECEIVER);
+    assert_eq!(
+        source_definition(&mut old, 10, &use_uri, ReferenceCallFixture::USE, "m(value)").get("result"),
+        Some(&Value::Null)
+    );
+    std::fs::write(&manifest, original.to_string()).unwrap();
+    old.send(json!({"jsonrpc":"2.0","method":"workspace/didChangeConfiguration","params":{"settings":{}}}));
+    assert_eq!(
+        source_definition(&mut old, 11, &use_uri, ReferenceCallFixture::USE, "m(value)").get("result"),
+        Some(&Value::Null)
+    );
+    let mut fresh = fixture.session();
+    open_source(&mut fresh, &use_uri, ReferenceCallFixture::USE);
+    let expected = method_location(&receiver_uri, ReferenceCallFixture::RECEIVER, "m(Derived value)", "m");
+    assert_eq!(source_definition(&mut fresh, 12, &use_uri, ReferenceCallFixture::USE, "m(value)")["result"], expected);
+    // A new disk exclusion must likewise not remove a source from a live session.
+    std::fs::write(&manifest, excluded.to_string()).unwrap();
+    assert_eq!(source_definition(&mut fresh, 13, &use_uri, ReferenceCallFixture::USE, "m(value)")["result"], expected);
+    // The refused open did not enroll Receiver. Its didChange must poison the
+    // old session globally, rather than silently ignoring unknown dirty text.
+    replace_source(&mut old, &receiver_uri, 2, ReferenceCallFixture::RECEIVER);
+    let self_query = "package p; class Use { int value; int run() { return value; } }";
+    replace_source(&mut old, &use_uri, 2, self_query);
+    let poisoned = source_definition(&mut old, 14, &use_uri, self_query, "return value");
+    assert_eq!(poisoned["error"]["code"], -32602);
+    assert!(poisoned["error"]["message"].as_str().unwrap().contains("desynchronized"));
+    let mut restarted = fixture.session();
+    open_source(&mut restarted, &use_uri, ReferenceCallFixture::USE);
+    assert_eq!(
+        source_definition(&mut restarted, 15, &use_uri, ReferenceCallFixture::USE, "m(value)").get("result"),
+        Some(&Value::Null)
+    );
+}

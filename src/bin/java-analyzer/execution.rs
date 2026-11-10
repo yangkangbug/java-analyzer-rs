@@ -79,9 +79,10 @@ impl Options {
                         }
                     }
                 }
-                "--source-root" | "--classpath-jar" | "--classpath-dir" | "--platform-jmod" | "--platform-jar"
-                | "--target-release" | "--manifest" | "--requests" | "--project" | "--source-set" | "--file"
-                | "--byte" | "--utf16" | "--overlays" | "--line" | "--character" | "--job" => {
+                "--source-root" | "--exclude-source" | "--classpath-jar" | "--classpath-dir" | "--platform-jmod"
+                | "--platform-jar" | "--target-release" | "--manifest" | "--requests" | "--project"
+                | "--source-set" | "--file" | "--byte" | "--utf16" | "--overlays" | "--line" | "--character"
+                | "--job" => {
                     forwarded.push(arg);
                     if let Some(value) = iter.next() {
                         forwarded.push(value);
@@ -683,6 +684,7 @@ mod tests {
             ("--compilation", 2),
             ("--depends-on", 2),
             ("--source-root", 1),
+            ("--exclude-source", 1),
             ("--classpath-jar", 1),
             ("--classpath-dir", 1),
             ("--platform-jmod", 1),

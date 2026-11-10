@@ -61,6 +61,11 @@ jobs:
           --cache "$RUNNER_TEMP/neovim-cache"
           --output "$RUNNER_TEMP/neovim"
           --platform '${{ matrix.platform }}'
+      - name: Fetch pinned legacy adapter (public network setup only, never execute here)
+        timeout-minutes: 2
+        run: >-
+          python3 scripts/fetch-neovim-legacy-adapter.py
+          --output "$RUNNER_TEMP/neovim-legacy-adapter"
       - name: Real isolated headless editor navigation (native analysis has no Java PATH)
         run: >-
           python3 scripts/check-neovim-editor.py
@@ -73,6 +78,21 @@ jobs:
           --nvim "$RUNNER_TEMP/neovim/bin/nvim"
           --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
           --output "$RUNNER_TEMP/neovim-refresh-result"
+      - name: Require exact legacy excluded-buffer failure (CI-only negative control)
+        run: >-
+          python3 scripts/check-neovim-source-exclusions.py
+          --nvim "$RUNNER_TEMP/neovim/bin/nvim"
+          --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
+          --adapter "$RUNNER_TEMP/neovim-legacy-adapter"
+          --scenario excluded_buffers
+          --expect-legacy-exclusion-failure
+          --output "$RUNNER_TEMP/neovim-exclusions-legacy-result"
+      - name: Real source exclusions and explicit selection restart (same native candidate, no Java)
+        run: >-
+          python3 scripts/check-neovim-source-exclusions.py
+          --nvim "$RUNNER_TEMP/neovim/bin/nvim"
+          --native "$GITHUB_WORKSPACE/target/release/java-analyzer"
+          --output "$RUNNER_TEMP/neovim-exclusions-result"
       - name: Record bounded verification summary (no source text or private paths)
         run: |
           python3 - <<'PY'
@@ -93,10 +113,29 @@ jobs:
           }, indent=2))
           refresh = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'neovim-refresh-result/result.json').read_text())
           print(json.dumps(refresh['summary'], indent=2))
+          base = pathlib.Path(os.environ['RUNNER_TEMP'])
+          legacy = json.loads((base / 'neovim-exclusions-legacy-result/result.json').read_text())
+          exclusions = json.loads((base / 'neovim-exclusions-result/result.json').read_text())
+          for checked in (refresh, legacy, exclusions):
+              for key in ('native_sha256', 'neovim_sha256', 'source_revision', 'source_tree', 'source_dirty'):
+                  assert checked['identity'][key] == identity[key], 'gates used different candidate/client sources'
+          assert exclusions['identity']['adapter_sha256'] == identity['adapter_sha256']
+          assert exclusions['identity']['adapter_override'] is False
+          assert legacy['identity']['adapter_sha256'] == 'a8be5c2bd9f85c2428ccc65492bccc31592f2131125412892736639c48e78ab6'
+          assert legacy['summary']['negative_control'] is True
+          assert legacy['summary']['expected_failure'] == 'EXCLUDED_BUFFER_ATTACHED'
+          assert legacy['summary']['ok'] and legacy['summary']['passed'] == legacy['summary']['total'] == 1
+          assert exclusions['summary']['ok'] and exclusions['summary']['passed'] == exclusions['summary']['total'] == 4
+          print(json.dumps(legacy['summary'], indent=2))
+          print(json.dumps(exclusions['summary'], indent=2))
           PY
       - name: Remove temporary client and owned acceptance data (never uploaded)
         if: always()
-        run: rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache" "$RUNNER_TEMP/neovim-result" "$RUNNER_TEMP/neovim-refresh-result"
+        run: >-
+          rm -rf -- "$RUNNER_TEMP/neovim" "$RUNNER_TEMP/neovim-cache"
+          "$RUNNER_TEMP/neovim-result" "$RUNNER_TEMP/neovim-refresh-result"
+          "$RUNNER_TEMP/neovim-legacy-adapter" "$RUNNER_TEMP/neovim-exclusions-legacy-result"
+          "$RUNNER_TEMP/neovim-exclusions-result"
 
 # A failed download is a setup failure, not a passed or skipped editor test.
 # Headless navigation is not GUI, signed-distribution or user-device validation.

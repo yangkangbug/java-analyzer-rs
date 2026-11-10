@@ -143,16 +143,21 @@ checked-in sample above for an immediately runnable configuration.
 
 Required: `schema_version`, nonempty `compilations`, each compilation's `id` and
 `source_roots`. An explicitly empty `source_roots` array is allowed for a binary-only
-compilation. Optional `dependencies`, `classpath` and `platform` default to empty
-arrays; `target_release` defaults to 17. Platform entries accept `jmod` or `jar`;
+compilation. Optional `source_exclusions`, `dependencies`, `classpath` and
+`platform` default to empty arrays; `target_release` defaults to 17. Platform entries accept `jmod` or `jar`;
 classpath entries accept `directory` or `jar`. Platform entries precede application
 binaries, in configured order. First binary definition wins; shadowed origins are
 reported. Source collisions remain ambiguous.
 
+`source_exclusions` is an optional schema-v1 string array. Empty arrays are
+omitted when serialized. Each literal rule is relative to every source root of
+that compilation, not to the manifest directory. Nonempty rules require source
+roots. See [exact syntax, bounds and pruning behavior](SOURCE_SELECTION.md).
+
 Dependencies export reachable **source** declarations transitively. Each
 compilation owns its binary/platform context; dependencies do not export binaries.
 Duplicate IDs/edges, unknown dependencies, cycles and canonical source ownership
-by multiple compilations fail the load. Source `module-info.java` fails explicitly:
+by multiple compilations fail the load. Included source `module-info.java` fails explicitly:
 this is a project/source-set graph, not JPMS. For loading semantics see
 [project inputs](PROJECT_LOADING.md) and [prepared analysis](PREPARED_ANALYSIS.md).
 

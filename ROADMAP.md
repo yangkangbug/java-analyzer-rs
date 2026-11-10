@@ -101,8 +101,19 @@ persistent symbol identity and incremental scoped queries remain unimplemented.
 The native [configuration bootstrap](docs/CLI_CONFIGURE.md) now emits the same
 manifest model from explicit multi-compilation command-line inputs after bounded
 loading. This removes manual JSON construction, not explicit configuration:
-build discovery, source exclusions, generated-source production and semantic
-completeness are still separate gates.
+build discovery, generated-source production and semantic completeness are still
+separate gates.
+
+### Explicit source selection implemented
+
+Each compilation can provide literal root-relative source exclusions, through
+the core API, schema-v1 manifests or repeatable configure options. Exact files
+are omitted and real directories pruned independently beneath each source root.
+Shared no-I/O validation precedes loading, while encountered symlinks, entry
+budgets, canonical ownership and immutable snapshots retain their boundaries.
+See [source selection](docs/SOURCE_SELECTION.md) for syntax, limits and restart
+requirements. Explicitly omitting a module descriptor does not implement JPMS,
+automatic build import, generated sources or a new flat-classpath mode.
 
 ### Prepared analysis lifetime implemented
 
@@ -338,8 +349,9 @@ sharing immutable parsed signatures across compilation scopes after freshly read
 and exactly comparing their archive bytes. Per-scope contexts and logical input
 budgets remain separate. This targets duplicated decoding and snapshot cloning,
 not persistent snapshots or incremental semantic invalidation. A true importer
-also needs a model for source exclusions, generated inputs and build conditions;
-guessing these from Maven/Gradle directory names would not close M1.
+still needs generated inputs and build conditions beyond the explicit source
+exclusions above; guessing these from Maven/Gradle directory names would not
+close M1.
 
 ## M4: usable analysis capabilities
 

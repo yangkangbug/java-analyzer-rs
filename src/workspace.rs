@@ -210,6 +210,14 @@ impl WorkspaceSnapshot {
             }
             edges.insert(index);
         }
+        // Validate every selection before any compilation can touch its inputs.
+        for compilation in &configs {
+            compilation.inputs.validate_source_exclusions().map_err(|input| WorkspaceLoadError {
+                kind: K::Input,
+                detail: format!("{:?}: {input}", compilation.id),
+                input: Some(input),
+            })?;
+        }
         let mut inputs = Vec::new();
         let mut archives = crate::jar::ArchiveReads::default();
         let mut owners = BTreeSet::new();

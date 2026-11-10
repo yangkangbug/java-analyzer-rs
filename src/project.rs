@@ -71,6 +71,10 @@ impl Default for ProjectLimits {
 #[derive(Clone, Debug, Default)]
 pub struct ProjectConfig {
     pub source_roots: Vec<PathBuf>,
+    /// Literal slash-separated paths relative to every source root independently.
+    /// An exact regular file is omitted; an exact real directory is pruned.
+    /// Empty by default. See [Self::validate_source_exclusions] for syntax and bounds.
+    pub source_exclusions: Vec<String>,
     /// First entry wins for duplicate binary names. Discarded origins are reported.
     /// Duplicate source types, including source/binary collisions, remain ambiguous.
     pub classpath: Vec<ClasspathEntry>,
@@ -79,6 +83,49 @@ pub struct ProjectConfig {
     pub jmod_options: JmodOptions,
     pub jar_options: JarOptions,
     pub limits: ProjectLimits,
+}
+
+impl ProjectConfig {
+    /// Validate source-selection syntax and bounds without filesystem I/O.
+    ///
+    /// At most 1,024 distinct rules of at most 4,096 UTF-8 bytes each are accepted.
+    /// Rules use literal, case-sensitive components separated by single slashes.
+    /// Empty, dot and dot-dot components, backslashes, colons, glob metacharacters
+    /// and Unicode Cc controls are rejected. No normalization, globbing or negation
+    /// is performed. Missing matches and redundant ancestor/descendant rules are
+    /// allowed. Nonempty exclusions require at least one configured source root.
+    pub fn validate_source_exclusions(&self) -> Result<(), ProjectLoadError> {
+        let invalid = |detail| error("source_exclusions", ProjectLoadErrorKind::InvalidPath, detail);
+        if self.source_exclusions.len() > 1024 {
+            return Err(error(
+                "source_exclusions",
+                ProjectLoadErrorKind::LimitExceeded,
+                "at most 1024 source exclusion rules are allowed",
+            ));
+        }
+        if !self.source_exclusions.is_empty() && self.source_roots.is_empty() {
+            return Err(invalid("source exclusions require a source root"));
+        }
+        let mut seen = BTreeSet::new();
+        for rule in &self.source_exclusions {
+            if rule.len() > 4096 {
+                return Err(error(
+                    "source_exclusions",
+                    ProjectLoadErrorKind::LimitExceeded,
+                    "source exclusion rules must not exceed 4096 UTF-8 bytes",
+                ));
+            }
+            if rule.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+                || rule.chars().any(|c| c.is_control() || matches!(c, '\\' | ':' | '*' | '?' | '[' | ']' | '{' | '}'))
+            {
+                return Err(invalid("source exclusions must be literal root-relative slash-separated paths"));
+            }
+            if !seen.insert(rule) {
+                return Err(invalid("duplicate source exclusion rule"));
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -151,6 +198,7 @@ impl ProjectSnapshot {
         config: &ProjectConfig,
         mut archives: Option<&mut ArchiveReads>,
     ) -> Result<Self, ProjectLoadError> {
+        config.validate_source_exclusions()?;
         if config.platform.len().saturating_add(config.classpath.len()) > config.limits.max_classpath_entries {
             return Err(error(
                 "classpath",
@@ -164,7 +212,10 @@ impl ProjectSnapshot {
         let mut source_paths = BTreeSet::new();
         for root in &config.source_roots {
             let root = checked_path(root, true)?;
-            let files = walk(&root, "java", 0, &mut budget)?;
+            // Rebase independently for each root: a nested root may select a file
+            // pruned from an outer root. This does not relax duplicate ownership.
+            let exclusions = config.source_exclusions.iter().map(|rule| root.join(rule)).collect();
+            let files = walk(&root, "java", 0, &mut budget, Some(&exclusions))?;
             for path in files {
                 let origin = path_string(&path)?;
                 if !source_paths.insert(origin.clone()) {
@@ -203,7 +254,7 @@ impl ProjectSnapshot {
                 BinaryInput::Directory(root) => {
                     let root = checked_path(root, true)?;
                     let mut signatures = Vec::new();
-                    for path in walk(&root, "class", 0, &mut budget)? {
+                    for path in walk(&root, "class", 0, &mut budget, None)? {
                         // On a flat classpath a module descriptor does not create a module.
                         if path == root.join("module-info.class") {
                             continue;
@@ -386,7 +437,13 @@ fn checked_path(path: &Path, directory: bool) -> Result<PathBuf, ProjectLoadErro
     Ok(canonical)
 }
 
-fn walk(dir: &Path, extension: &str, depth: usize, budget: &mut Budget<'_>) -> Result<Vec<PathBuf>, ProjectLoadError> {
+fn walk(
+    dir: &Path,
+    extension: &str,
+    depth: usize,
+    budget: &mut Budget<'_>,
+    exclusions: Option<&BTreeSet<PathBuf>>,
+) -> Result<Vec<PathBuf>, ProjectLoadError> {
     if depth > budget.limits.max_directory_depth {
         return Err(error_path(dir, ProjectLoadErrorKind::LimitExceeded, "directory nesting limit exceeded"));
     }
@@ -404,14 +461,32 @@ fn walk(dir: &Path, extension: &str, depth: usize, budget: &mut Budget<'_>) -> R
         if kind.is_symlink() {
             return Err(error_path(&path, ProjectLoadErrorKind::InvalidPath, "symlink entries are not followed"));
         }
+        // Encountered entries are already charged and symlinks already refused.
+        // Pruned descendants are never visited, typechecked or read.
+        if exclusions.is_some_and(|paths| paths.contains(&path)) {
+            validate_excluded_entry(&path, kind)?;
+            continue;
+        }
         if kind.is_dir() {
-            files.extend(walk(&path, extension, depth + 1, budget)?);
+            files.extend(walk(&path, extension, depth + 1, budget, exclusions)?);
         } else if kind.is_file() && path.extension().is_some_and(|value| value == extension) {
             path_string(&path)?;
             files.push(path);
         }
     }
     Ok(files)
+}
+
+fn validate_excluded_entry(path: &Path, kind: fs::FileType) -> Result<(), ProjectLoadError> {
+    path_string(path)?;
+    if !kind.is_file() && !kind.is_dir() {
+        return Err(error_path(
+            path,
+            ProjectLoadErrorKind::InvalidPath,
+            "excluded entries must be regular files or real directories",
+        ));
+    }
+    Ok(())
 }
 
 fn read_bounded(path: &Path, budget: &mut Budget<'_>) -> Result<Vec<u8>, ProjectLoadError> {
@@ -442,4 +517,27 @@ fn error_path(path: &Path, kind: ProjectLoadErrorKind, detail: &str) -> ProjectL
 }
 fn error(origin: &str, kind: ProjectLoadErrorKind, detail: &str) -> ProjectLoadError {
     ProjectLoadError { origin: origin.to_owned(), kind, detail: detail.to_owned() }
+}
+
+#[cfg(all(test, unix))]
+mod source_exclusion_metadata_tests {
+    use super::*;
+
+    #[test]
+    fn source_exclusions_reject_matched_special_file_metadata() {
+        // Metadata-only regression for the shared matched-entry check, not a
+        // whole-walker socket fixture. No special file or permissions are created.
+        let kind = fs::symlink_metadata("/dev/null").unwrap().file_type();
+        assert!(!kind.is_file() && !kind.is_dir() && !kind.is_symlink());
+        let error = validate_excluded_entry(Path::new("/dev/null"), kind).unwrap_err();
+        assert_eq!(error.kind, ProjectLoadErrorKind::InvalidPath);
+    }
+
+    #[test]
+    fn source_exclusions_matched_entry_check_rejects_non_utf8_paths() {
+        use std::{ffi::OsString, os::unix::ffi::OsStringExt};
+        let kind = fs::symlink_metadata(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap().file_type();
+        let path = PathBuf::from(OsString::from_vec(b"invalid\xff.java".to_vec()));
+        assert_eq!(validate_excluded_entry(&path, kind).unwrap_err().kind, ProjectLoadErrorKind::InvalidPath);
+    }
 }

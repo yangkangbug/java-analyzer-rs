@@ -612,3 +612,73 @@ fn generated_manifest_initializes_the_native_lsp_without_java() {
         thread::sleep(Duration::from_millis(5));
     }
 }
+
+#[test]
+fn source_exclusions_apply_to_every_root_independently_of_option_order() {
+    let f = Fixture::new();
+    for root in ["one", "two"] {
+        f.write(&format!("{root}/Keep.java"), "class Keep {}");
+        f.write(&format!("{root}/module-info.java"), "module unsupported {}");
+        f.write(&format!("{root}/--cancel-on-stdin-close/Bad.java"), [0xff]);
+        f.write(&format!("{root}/中文 !/Bad.java"), [0xff]);
+    }
+    for before in [true, false] {
+        let roots = ["--source-root", "one", "--source-root", "two"];
+        let rules = [
+            "--exclude-source",
+            "module-info.java",
+            "--exclude-source",
+            "--cancel-on-stdin-close",
+            "--exclude-source",
+            "中文 !",
+        ];
+        let mut args = vec!["--compilation", "app", "main", "--no-platform"];
+        args.extend(if before { &rules[..] } else { &roots[..] });
+        args.extend(if before { &roots[..] } else { &rules[..] });
+        let output = f.configure(&args);
+        let bytes = output.stdout.clone();
+        let manifest = checked(output, true);
+        assert_eq!(
+            manifest["compilations"][0]["source_exclusions"],
+            json!(["module-info.java", "--cancel-on-stdin-close", "中文 !"])
+        );
+        let saved = f.write("selected.json", bytes);
+        let inspection = f.run(&["inspect", "--manifest", saved.to_str().unwrap(), "--details"], true);
+        assert_eq!(
+            inspection["result"]["compilations"][0]["source_paths"],
+            json!([f.0.join("one/Keep.java"), f.0.join("two/Keep.java")])
+        );
+    }
+}
+
+#[test]
+fn source_exclusions_are_optional_and_scoped_to_the_current_compilation() {
+    let f = Fixture::new();
+    f.write("one/Keep.java", "class Keep {}");
+    f.write("two/Keep.java", "class Keep {}");
+    let manifest = checked(
+        f.configure(&[
+            "--compilation",
+            "app",
+            "one",
+            "--exclude-source",
+            "Keep.java",
+            "--source-root",
+            "one",
+            "--no-platform",
+            "--compilation",
+            "app",
+            "two",
+            "--source-root",
+            "two",
+            "--no-platform",
+        ]),
+        true,
+    );
+    assert_eq!(manifest["compilations"][0]["source_exclusions"], json!(["Keep.java"]));
+    assert!(manifest["compilations"][1].get("source_exclusions").is_none());
+    let saved = f.write("selected.json", manifest.to_string());
+    let inspection = f.run(&["inspect", "--manifest", saved.to_str().unwrap(), "--details"], true);
+    assert_eq!(inspection["result"]["compilations"][0]["source_paths"], json!([]));
+    assert_eq!(inspection["result"]["compilations"][1]["source_paths"], json!([f.0.join("two/Keep.java")]));
+}

@@ -38,6 +38,7 @@ impl Group {
             compilation: Compilation {
                 id,
                 source_roots: vec![],
+                source_exclusions: vec![],
                 dependencies: vec![],
                 classpath: vec![],
                 platform: vec![],
@@ -101,6 +102,7 @@ fn parse(args: &[String], base: &Path) -> Result<Manifest, Error> {
                 }
                 group.compilation.source_roots.push(path(base, value(&mut iter, flag)?)?);
             }
+            "--exclude-source" => group.compilation.source_exclusions.push(value(&mut iter, flag)?.into()),
             "--binary-only" => {
                 if group.binary_only || !group.compilation.source_roots.is_empty() {
                     return Err(Error::new("usage", "duplicate --binary-only or conflict with --source-root"));
@@ -273,5 +275,40 @@ mod tests {
         assert_eq!(encode(&manifest).unwrap().len(), limit);
         manifest.compilations[0].id.project.push('a');
         assert_eq!(encode(&manifest).unwrap_err().code, "output_limit");
+    }
+}
+
+#[cfg(test)]
+mod source_exclusion_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn source_exclusions_worker_success_validates_rules_without_io() {
+        let root = std::env::temp_dir().join("absent-source-selection-worker-root");
+        let base = json!({"schema_version":1,"compilations":[{
+            "id":{"project":"app","source_set":"main"},"source_roots":[root],
+            "source_exclusions":["module-info.java", "中文 !", "--cancel-on-stdin-close"]
+        }]});
+        assert!(valid_output((base.to_string() + "\n").as_bytes()));
+        for rules in [
+            json!([""]),
+            json!(["same", "same"]),
+            json!(["a/../b"]),
+            json!(["*.java"]),
+            json!(["a\u{7f}"]),
+            json!(["a\u{85}"]),
+            json!(["a".repeat(4097)]),
+            json!(vec!["a"; 1025]),
+            json!(null),
+            json!("a"),
+        ] {
+            let mut changed = base.clone();
+            changed["compilations"][0]["source_exclusions"] = rules;
+            assert!(!valid_output((changed.to_string() + "\n").as_bytes()), "{changed}");
+        }
+        let mut no_roots = base;
+        no_roots["compilations"][0]["source_roots"] = json!([]);
+        assert!(!valid_output((no_roots.to_string() + "\n").as_bytes()));
     }
 }

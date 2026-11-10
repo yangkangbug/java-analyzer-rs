@@ -152,3 +152,13 @@ positions, parser gaps, source ownership, aliases, labels, limits, all-or-nothin
 batches and unchanged disk bytes. See the frozen
 [editor-buffer acceptance plan](../examples/editor_buffers/PLAN.md) for the
 separate real-project check and remaining platform gates.
+
+
+## Explicit source selection
+
+[Source exclusions](SOURCE_SELECTION.md) are applied when the disk snapshot is
+loaded. An excluded file is not an owned source; an overlay or didOpen cannot add
+it back. Frozen LSP manifests and source inventories do not change when the
+configuration file changes. Restart the session after changing exclusions.
+Unknown-document didChange still desynchronizes the session and blocks navigation;
+it must not silently accept dirty text from outside the selected inventory.

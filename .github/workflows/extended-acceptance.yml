@@ -14,6 +14,8 @@ on:
       - 'scripts/check-real-source.py'
       - 'scripts/check-cli-acceptance.py'
       - 'scripts/check-configure-acceptance.py'
+      - 'scripts/check-source-exclusions-acceptance.py'
+      - 'scripts/test_source_exclusions_acceptance.py'
       - 'scripts/test_configure_acceptance.py'
       - 'scripts/second-project-inputs.json'
       - 'scripts/fetch-second-project-inputs.py'
@@ -54,6 +56,7 @@ on:
       - 'rust-toolchain.toml'
       - 'tests/cli.rs'
       - 'tests/cli_configure.rs'
+      - 'tests/source_exclusions.rs'
       - 'tests/reference_calls.rs'
       - 'tests/cli_lsp.rs'
       - 'examples/cli_project/**'
@@ -83,6 +86,8 @@ jobs:
           toolchain: 1.96.0
       - name: Offline fetch-security unit tests (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
+      - name: Offline source-selection checker mutations (no Java)
+        run: python3 -m unittest discover -s scripts -p 'test_source_exclusions_acceptance.py' -v
       - name: Build native acceptance executables (no Java)
         run: cargo build --locked --features cli --bin java-analyzer --example real_source --example oracle_bindings
       - name: Fetch exact external inputs (network gate, no Java execution)
@@ -159,6 +164,12 @@ jobs:
           python3 scripts/check-lsp-project.py
           "$RUNNER_TEMP/second-project"
           --native target/debug/java-analyzer
+      - name: Whole-root Gson source exclusions and historical preservation (no Java)
+        run: >-
+          python3 scripts/check-source-exclusions-acceptance.py
+          "$RUNNER_TEMP/second-project"
+          --native target/debug/java-analyzer
+          --evidence-dir "$RUNNER_TEMP/source-exclusions-evidence"
       - name: Independent javac oracle (optional Java)
         run: >-
           python3 scripts/check-semantic-oracle.py

@@ -75,8 +75,22 @@ local function source_path(session, bufnr)
   if not api.nvim_buf_is_loaded(bufnr) or vim.bo[bufnr].buftype ~= '' then return nil end
   local path = canonical(api.nvim_buf_get_name(bufnr))
   if not path or path:sub(-5) ~= '.java' then return nil end
-  for _, root in ipairs(session.roots) do
-    if path:sub(1, #root + 1) == root .. '/' then return path end
+  local stat = uv.fs_stat(path)
+  if not stat or stat.type ~= 'file' then return nil end
+  -- Each configured root has its own relative rule scope. A parent exclusion
+  -- must not globally veto a path included by a separately configured root.
+  for _, source in ipairs(session.roots) do
+    local prefix = source.path == '/' and '/' or source.path .. '/'
+    if path:sub(1, #prefix) == prefix then
+      local relative, excluded = path:sub(#prefix + 1), false
+      for _, rule in ipairs(source.exclusions) do
+        if relative == rule or relative:sub(1, #rule + 1) == rule .. '/' then
+          excluded = true
+          break
+        end
+      end
+      if not excluded then return path end
+    end
   end
 end
 
@@ -165,14 +179,46 @@ local function options(opts)
   local data = file:read('*a')
   file:close()
   local manifest = vim.json.decode(data)
-  assert(manifest.schema_version == 1 and type(manifest.compilations) == 'table', 'invalid manifest')
+  assert(type(manifest) == 'table' and not vim.islist(manifest)
+    and manifest.schema_version == 1 and type(manifest.compilations) == 'table'
+    and vim.islist(manifest.compilations), 'invalid manifest')
   opts.root = vim.fs.dirname(opts.manifest)
   opts.roots = {}
   for _, compilation in ipairs(manifest.compilations) do
-    for _, root in ipairs(compilation.source_roots or {}) do
+    assert(type(compilation) == 'table' and not vim.islist(compilation), 'compilation must be an object')
+    local roots, exclusions = compilation.source_roots, compilation.source_exclusions
+    if roots == nil then roots = {} end
+    if exclusions == nil then exclusions = {} end
+    assert(type(roots) == 'table' and vim.islist(roots), 'source_roots must be a list')
+    assert(type(exclusions) == 'table' and vim.islist(exclusions), 'source_exclusions must be a list')
+    assert(#exclusions <= 1024, 'source_exclusions permits at most 1024 rules')
+    assert(#exclusions == 0 or #roots > 0, 'source_exclusions requires source roots')
+    local seen = {}
+    for _, rule in ipairs(exclusions) do
+      assert(type(rule) == 'string' and #rule > 0 and #rule <= 4096,
+        'source exclusion must contain 1 to 4096 UTF-8 bytes')
+      assert(not seen[rule], 'duplicate source exclusion')
+      seen[rule] = true
+      assert(rule:sub(1, 1) ~= '/' and rule:sub(-1) ~= '/' and not rule:find('//', 1, true),
+        'source exclusion must have nonempty relative components')
+      -- Cc is exactly C0/DEL plus UTF-8 C1 (U+0080..U+009F), not all
+      -- non-ASCII bytes. Ordinary Unicode, spaces, ! and -- stay literal.
+      assert(not rule:find('[%z\1-\31\127]') and not rule:find('\194[\128-\159]'),
+        'source exclusion must not contain control characters')
+      for _, forbidden in ipairs({ '\\', ':', '*', '?', '[', ']', '{', '}' }) do
+        assert(not rule:find(forbidden, 1, true), 'source exclusion contains an unsupported character')
+      end
+      for component in rule:gmatch('[^/]+') do
+        assert(component ~= '.' and component ~= '..', 'source exclusion must not contain dot components')
+      end
+    end
+    for _, root in ipairs(roots) do
+      assert(type(root) == 'string', 'source root must be a string')
       local absolute = root:sub(1, 1) == '/' and root or opts.root .. '/' .. root
       local resolved = assert(canonical(absolute), 'source root does not exist: ' .. root)
-      opts.roots[#opts.roots + 1] = resolved
+      local root_stat = uv.fs_stat(resolved)
+      assert(root_stat and root_stat.type == 'directory', 'source root must be a directory: ' .. root)
+      opts.roots[#opts.roots + 1] = { path = resolved, exclusions = exclusions }
     end
   end
   local deadlines = opts.lifecycle_timeouts

@@ -37,6 +37,10 @@ range; this is not decompilation or source attachment support.
 ## Snapshot and precedence contract
 
 - Source roots are explicit, including any test/generated roots. No JDK is assumed.
+  Optional `ProjectConfig.source_exclusions: Vec<String>` selects literal paths
+  beneath every root. Empty defaults preserve existing traversal. See
+  [source-selection rules and bounds](SOURCE_SELECTION.md).
+  Public struct literals without `..Default::default()` must supply the new field.
 - Each load owns parsed inputs. Later edits/deletions cannot change an old snapshot.
   Load again and swap only after success. A failed load cannot partly mutate an
   earlier snapshot. No file watcher or automatic reload is included.
@@ -53,8 +57,11 @@ range; this is not decompilation or source attachment support.
   JAR origins use `archive!/actual-entry`; JMOD origins retain
   `archive!/classes/actual-entry`. Conflicting distinct classes that would share
   this textual identity fail explicitly, even if an earlier binary shadows one.
-- Traversal is deterministic. Overlapping source roots, symlink roots/entries,
-  non-UTF-8 paths/source, missing inputs, and invalid classes/JARs/JMODs fail the load.
+- Traversal is deterministic. Duplicate included canonical source paths,
+  encountered symlink roots/entries, selected non-UTF-8 paths/source, missing
+  configured inputs, and invalid classes/JARs/JMODs fail the load.
+  Excluded contents are not read; descendants of pruned directories are not visited.
+  Independently configured nested roots can select files pruned from outer roots.
   Incomplete Java syntax is retained and available as parse errors for editor use.
 - Loading is not an atomic filesystem transaction. Avoid concurrent file changes
   during a load. The implementation does not harden against hostile filesystem
@@ -115,7 +122,8 @@ These are configurable safety ceilings, not measured latency or memory budgets.
 
 - JDK discovery, jimage/ct.sym inputs, JPMS graphs and visibility, automatic
   module semantics, nested application JARs, dependency downloads, Maven/Gradle import.
-  `module-info.java` fails explicitly. Binary module descriptors are ignored on
+  Included `module-info.java` fails explicitly; an explicit exclusion may omit it
+  without enabling module semantics. Binary module descriptors are ignored on
   this flat classpath, as opposed to being interpreted as a module path.
 - `target_release` selects archive variants only. It does not enforce Java syntax
   level, class-file compatibility with that release, or `--release` platform APIs.
@@ -206,7 +214,8 @@ by path alone.
 - IDs, loading, and visible source paths use lexicographic ordering. Compilation
   declaration order and dependency edge order do not choose a winning source type.
   Local binary input order still matters, as documented above.
-- Graph validation precedes filesystem reads. Duplicate/invalid IDs, unknown
+- Graph validation and every compilation's no-I/O source-selection validation
+  precede all compilation filesystem reads. Duplicate/invalid IDs, unknown
   dependencies, duplicate edges, self-edges, and longer cycles fail the load.
   Empty workspaces and empty compilations are valid. `scope` returns `None` for an
   unknown ID. Resolving an invisible source path returns `Unresolved`.

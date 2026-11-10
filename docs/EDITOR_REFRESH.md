@@ -102,10 +102,19 @@ all currently supported loaded existing Java sources, including dirty dependenci
 A public client:notify('$/setTrace', {value='off'}) flushes pending changes across
 all attached buffers in the pinned client. This orders outbound messages, not a
 server acknowledgement or an LSP barrier. Ready stays false through initial
-LspAttach callbacks and the entire replay. Removed/outside-root buffers stay
-loaded and dirty but are not attached or accepted as navigation origins.
-Native ownership validation remains authoritative; source-root membership alone
-cannot establish ownership or successful Java resolution.
+LspAttach callbacks and the entire replay. Removed, excluded and outside-root buffers stay
+loaded and dirty but are not attached, synchronized or accepted as navigation
+origins. A compilation's literal `source_exclusions` rules apply independently
+relative to each of its roots; any eligible root can include the file. A parent
+exclusion therefore cannot globally ban a separately configured nested root.
+Rule/list validation occurs before starting software. The selection is frozen
+until explicit restart; newly eligible buffers then replay current full unsaved
+text, and newly excluded buffers safely detach without changing editor state.
+Native ownership validation remains authoritative; eligibility alone cannot
+establish ownership or successful Java resolution. Duplicate ownership remains
+a native initialize refusal, with dirty buffers preserved through a corrected
+explicit restart after safe cleanup. Unknown-document native `didChange` still
+fails closed; the client avoids sending changes for excluded documents.
 
 Stop/restart advance the local session generation and settle every pending
 on_result **exactly once**, without waiting for an old response: stale by default,
@@ -131,3 +140,23 @@ Linux headless evidence does not establish hosted macOS, GUI, other editor versi
 latency budgets or the user's computer. Full existing CONTRIBUTING checks remain
 separate required gates, including the existing editor acceptance unchanged in
 semantic strength.
+
+## Source-selection acceptance boundary
+
+The additive source-exclusion gate in `editor-acceptance` does not replace the
+13-definition or 28-refresh gates. It checks excluded file/directory buffers,
+later excluded edits without session poisoning, explicit selection-change replay,
+nested-root reinclusion, duplicate-ownership refusal and corrected restart, and
+the bounded native/client manifest-validation corpus. Each session must produce
+its own expected navigation results; a later session cannot borrow earlier
+results. Source files, dirty buffers and their options are checked after normal
+flows and after initialization refusal.
+
+The reconstructed harness was first checked offline, not with a real editor on
+the user's computer. Trusted-main CI uses a hash-pinned historical adapter as a
+negative control followed by the candidate adapter against the same native build.
+Only a specific excluded-file attachment and real wire witness, alongside
+successful initialize and safe cleanup, counts as the expected old defect.
+Unrelated failure is a failed gate. This is differential CI evidence, not a claim
+that the reconstructed real-client test ran chronologically before product edits.
+See [the adapter gate details](../editors/neovim/README.md#independent-source-selection-gate).
