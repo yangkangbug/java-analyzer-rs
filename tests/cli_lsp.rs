@@ -101,6 +101,50 @@ impl Drop for Session {
     }
 }
 
+fn allocate_fixture_root(parent: &std::path::Path, seed: &str) -> std::io::Result<std::path::PathBuf> {
+    // Claim an exclusive directory. Clock precision and recycled PIDs are not uniqueness proofs.
+    for counter in 0..4096 {
+        let root = parent.join(format!("{seed}-{counter}"));
+        match std::fs::create_dir(&root) {
+            Ok(()) => return Ok(root),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "fixture allocation exhausted"))
+}
+
+#[test]
+fn fixture_roots_are_exclusive_even_with_identical_clock_seed() {
+    let parent = ReferenceCallFixture::new();
+    let a = allocate_fixture_root(&parent.root, "fixed-clock").unwrap();
+    std::fs::write(a.join("sentinel"), "first owner").unwrap();
+    let b = allocate_fixture_root(&parent.root, "fixed-clock").unwrap();
+    assert_ne!(a, b, "identical clock values must not alias live fixtures");
+    std::fs::remove_dir_all(b).unwrap();
+    assert_eq!(std::fs::read_to_string(a.join("sentinel")).unwrap(), "first owner");
+}
+
+#[test]
+fn concurrent_fixture_allocations_keep_existing_owners_and_propagate_io_errors() {
+    let parent = ReferenceCallFixture::new();
+    let occupied = parent.root.join("same-seed-0");
+    std::fs::create_dir(&occupied).unwrap();
+    std::fs::write(occupied.join("sentinel"), "do not touch").unwrap();
+    let roots = thread::scope(|scope| {
+        let jobs: Vec<_> =
+            (0..16).map(|_| scope.spawn(|| allocate_fixture_root(&parent.root, "same-seed").unwrap())).collect();
+        jobs.into_iter().map(|job| job.join().unwrap()).collect::<std::collections::BTreeSet<_>>()
+    });
+    assert_eq!(roots.len(), 16);
+    assert!(!roots.contains(&occupied));
+    assert_eq!(std::fs::read_to_string(occupied.join("sentinel")).unwrap(), "do not touch");
+    let file_parent = parent.root.join("not-directory");
+    std::fs::write(&file_parent, "file").unwrap();
+    let error = allocate_fixture_root(&file_parent, "seed").unwrap_err();
+    assert_ne!(error.kind(), std::io::ErrorKind::AlreadyExists);
+}
+
 // Keep these fixtures entirely native: the class bytes describe only Object's
 // signature, as in tests/cli.rs, and the broker/worker inherit an empty environment.
 struct ReferenceCallFixture {
@@ -114,11 +158,12 @@ impl ReferenceCallFixture {
 
     fn new() -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
-        let root = std::env::temp_dir().join(format!(
+        let seed = format!(
             "lsp-reference-calls-{}-{}",
             std::process::id(),
             SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
-        ));
+        );
+        let root = allocate_fixture_root(&std::env::temp_dir(), &seed).unwrap();
         std::fs::create_dir_all(root.join("src/p")).unwrap();
         std::fs::create_dir_all(root.join("platform/java/lang")).unwrap();
         let fixture = Self { root: root.canonicalize().unwrap() };
