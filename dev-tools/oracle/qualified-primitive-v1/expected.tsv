@@ -1,0 +1,15 @@
+# query	native status	javac selected	exact native candidates
+primitive_literal	Resolved	pick_int@qualified.Target	pick_int@qualified.Target
+primitive_int	Resolved	pick_int@qualified.Target	pick_int@qualified.Target
+primitive_byte	Resolved	pick_int@qualified.Target	pick_int@qualified.Target
+primitive_reverse	Resolved	reverse_int@qualified.Target	reverse_int@qualified.Target
+primitive_widen	Resolved	widen_short@qualified.Target	widen_short@qualified.Target
+primitive_char	Resolved	chars_char@qualified.Target	chars_char@qualified.Target
+primitive_boolean	Resolved	bool_boolean@qualified.Target	bool_boolean@qualified.Target
+primitive_unknown	OverloadNotResolved	pick_int@qualified.Target	pick_int@qualified.Target,pick_long@qualified.Target
+primitive_long_suffix	OverloadNotResolved	pick_long@qualified.Target	pick_int@qualified.Target,pick_long@qualified.Target
+primitive_boxed	CallNotResolved	boxed@qualified.Target	boxed@qualified.Target
+primitive_varargs	CallNotResolved	varargs@qualified.Target	varargs@qualified.Target
+primitive_generic	SignatureNotCompared	generic_int@qualified.Target	generic_ref@qualified.Target,generic_int@qualified.Target
+primitive_inherited	OverloadNotResolved	inherited_int@qualified.Base	inherited_int@qualified.Base,inherited_long@qualified.Derived
+primitive_mixed	OverloadNotResolved	mixed_int@qualified.Target	mixed_int@qualified.Target,mixed_long@qualified.Target

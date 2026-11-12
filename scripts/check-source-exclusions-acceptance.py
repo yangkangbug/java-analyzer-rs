@@ -324,9 +324,10 @@ def probe_groups(fixture):
     originals = [{**query, 'expected': expected} for query, expected in
                  zip(fixture.plan, second.constructor_expectations(fixture))]
     reference, historical, parser_digest = second.reference_call_probes(fixture)
+    reference = second.qualified_reference_probes(fixture, reference)
     groups = [('original_16', originals), ('reference_3', reference),
               ('local_5', second.local_type_probes(fixture)),
-              ('string_8', strict.string.probes(fixture)), ('strict_reference_4', strict.probes(fixture))]
+              ('string_8', strict.string.probes(fixture)), ('strict_reference_4', strict.current_probes(fixture))]
     same(sum(len(probes) for _, probes in groups), 36, '36 frozen navigation/refusal records')
     return groups, historical, parser_digest
 

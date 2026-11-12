@@ -59,7 +59,8 @@ def check_response(response, queries, fixture, capture_baseline=False):
                                          'baseline' if capture_baseline else 'expected')
 
 
-def run(native, fixture, capture_baseline=False):
+def run(native, fixture, capture_baseline=False, *, primitive_current=None, parser_stage=None):
+    primitive_current, parser_stage = second.proof_stages(capture_baseline, primitive_current, parser_stage)
     queries = probes(fixture)
     before = second.all_source_hashes(fixture)
     request = second.document(fixture, 'string-call-requests.json', {
@@ -71,7 +72,7 @@ def run(native, fixture, capture_baseline=False):
     # aa3 already includes the constructor correction. Baseline capture here must
     # therefore use CURRENT preservation expectations, never the constructor-era
     # baseline mode that deliberately expects its earlier refusal.
-    preservation = second.run_constructor_call_acceptance(native, fixture)
+    preservation = second.run_constructor_call_acceptance(native, fixture, primitive_current=primitive_current, parser_stage=parser_stage)
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged throughout string gate')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')

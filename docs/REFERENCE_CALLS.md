@@ -56,7 +56,10 @@ proved reference actuals, they are inapplicable in the strict invocation phase
 [JLS 15.12.2.2](https://docs.oracle.com/javase/specs/jls/se25/html/jls-15.html#jls-15.12.2.2)).
 A unique strict reference winner is selected before loose invocation/unboxing
 could participate. This does not claim reference values never unbox, implement
-unboxing, or type primitive arguments. If no unique strict winner is proved,
+unboxing, or type primitive arguments on this reference-actual path. The separate
+[single-primitive-argument extension](QUALIFIED_PRIMITIVE_CALLS.md) now handles
+explicit scalar locals/parameters and a bounded decimal `int` literal subset;
+mixed primitive/reference argument lists remain unsupported. If no unique strict winner is proved,
 the original refusal and candidate inventory remain. Primitive arrays are
 reference types, still unsupported here, and are never skipped as scalars.
 Mixed formal vectors are checked in full, including reference evidence on a

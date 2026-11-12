@@ -976,11 +976,13 @@ fn strict_reference_competitors_preserve_hierarchy_and_argument_guards() {
     p.insert("Duplicate.java", "class A {}");
     refused(&p, "m(a)", &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
     for expression in
-        ["null".to_owned(), "give()".to_owned(), "1".to_owned(), format!("{}a{}", "(".repeat(40), ")".repeat(40))]
+        ["null".to_owned(), "give()".to_owned(), "1L".to_owned(), format!("{}a{}", "(".repeat(40), ")".repeat(40))]
     {
         let text = source.replace("c.m(a)", &format!("c.m({expression})"));
         refused(&project(&text), &format!("m({expression})"), &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
     }
+    // The additive scalar-primitive slice now proves a decimal int argument.
+    selected(&project(&source.replace("c.m(a)", "c.m(1)")), "m(1)", "Calls.java", "m(int x)");
     // Formal evidence must be complete even for a primitive-inapplicable vector.
     for extra in ["class B extends Missing {}", "class B {} class B {}"] {
         let source = format!(

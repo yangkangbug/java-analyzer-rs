@@ -54,6 +54,9 @@ navigation while retaining unsupported overloads. Missing evidence stays refused
 The [strict reference-phase gate](examples/second_project/STRICT_REFERENCE_PHASE.md)
 additionally proves Gson `remove(a)` despite its scalar `int` competitor, without
 adding unboxing, integer-argument typing or chained-call inference.
+A later [single-primitive-argument instance-call proof](docs/QUALIFIED_PRIMITIVE_CALLS.md)
+adds explicit scalar locals/parameters and bounded decimal `int` literals, without
+boxing, mixed-argument or call-result receiver inference.
 
 ### Experimental project CLI
 

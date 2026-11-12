@@ -225,6 +225,12 @@ winner: reference actuals cannot unbox in that first phase. The
 `remove(JsonElement)` for an explicit `JsonPrimitive` argument while retaining
 integer/mixed-argument and chained-call refusals. Complete candidate validation,
 primitive signature identity and all existing evidence limits remain required.
+A later [single-primitive-argument instance-call slice](docs/QUALIFIED_PRIMITIVE_CALLS.md)
+adds identity/widening selection for explicit scalar locals/parameters and bounded
+nonnegative decimal `int` literals. The additive frozen Gson plan changes only
+`remove(1)` to its exact `remove(int)` declaration, while mixed-argument and
+chained-result controls remain refused. IDEA Community mechanisms inform the
+independent Rust design, not a PSI dependency or full overload-resolution claim.
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one
@@ -232,11 +238,10 @@ no-platform singleton tightening. Missing Object is not silently treated as an
 empty ancestor. Generic inference, arbitrary expression typing, inherited/binary
 selection and the common semantic type model remain open foundations.
 
-The next preview integration priority is a guarded OpenIDEA definition workflow:
-explicit native-server configuration, whole-workspace stale-result rejection,
-cancellation and actual end-to-end verification. Existing custom-server settings
-alone do not prove compatibility. Keep client work separate from the core and
-from JDT-backed build/classpath/debug replacement.
+The current priority is the standalone JVM-free Java engine: accurate supported
+call selection, explicit refusal boundaries and real-source regression evidence.
+Editor integration is separate future adapter work, not the current development
+objective. It must not bring IDE, JDT, build or debug dependencies into the core.
 
 ### Cross-cutting experimental CLI entry
 

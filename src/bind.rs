@@ -4017,6 +4017,63 @@ impl<'a> ReferenceCallProof<'a> {
         let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
         Some(ReferenceValue { class, string_literal: false })
     }
+    // A fallback only after reference typing fails: explicit scalar declarations
+    // or a range-checked decimal int token, never fields or general expressions.
+    fn scalar_primitive_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let children = delimited_nodes(node, at)?;
+            let [(inner, at)] = children.as_slice() else { return None };
+            return self.scalar_primitive_argument(inner, *at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::LiteralExpr {
+            let mut literal = None;
+            for child in node.children() {
+                let token = child.as_token()?;
+                if token.kind().is_trivia() {
+                    continue;
+                }
+                if token.kind() != SyntaxKind::IntLiteral || literal.is_some() {
+                    return None;
+                }
+                let text = token.text();
+                self.charge(text.len())?;
+                if text.is_empty()
+                    || !text.bytes().all(|b| b.is_ascii_digit())
+                    || (text.len() > 1 && text.starts_with('0'))
+                    || text.parse::<u32>().ok()? > i32::MAX as u32
+                {
+                    return None;
+                }
+                literal = Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
+            }
+            return literal;
+        }
+        if node.kind() != SyntaxKind::ReferenceExpr {
+            return None;
+        }
+        let name = token_name(node);
+        self.charge(self.file.locals.len())?;
+        let mut locals = self.file.locals.iter().filter(|local| {
+            local.name == name
+                && local.start >= self.caller_start
+                && local.end <= self.caller_end
+                && local.scope_start <= at
+                && at < local.scope_end
+                && local.visible_from <= at
+        });
+        let local = locals.next()?;
+        if locals.next().is_some() || !matches!(local.kind, TargetKind::Local | TargetKind::Parameter) {
+            return None;
+        }
+        local.primitive.filter(|value| value.rank == 0)
+    }
+
     // A literal's platform identity can cross compilation scopes only when
     // both complete binary closures carry identical supplied evidence. This is
     // not a general relaxation of snapshot-local declaration identity.
@@ -4105,7 +4162,14 @@ impl<'a> ReferenceCallProof<'a> {
         }
         self.charge(args.children().len())?;
         let args = delimited_nodes(args, at)?;
-        let actuals = args.iter().map(|(n, at)| self.expression(n, *at, 0)).collect::<Option<Vec<_>>>()?;
+        let actuals = args.iter().map(|(n, at)| self.expression(n, *at, 0)).collect::<Option<Vec<_>>>();
+        let primitive_actual = if actuals.is_none() {
+            let [(node, at)] = args.as_slice() else { return None };
+            Some(self.scalar_primitive_argument(node, *at, 0)?)
+        } else {
+            None
+        };
+        let actuals = actuals.unwrap_or_default();
         let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
         let members: Vec<_> = owner.methods.iter().filter(|m| m.name == name).collect();
         let mut formals = Vec::new();
@@ -4136,6 +4200,33 @@ impl<'a> ReferenceCallProof<'a> {
                     return None;
                 }
             }
+        }
+        if let Some(actual) = primitive_actual {
+            let mut applicable = Vec::new();
+            for (i, parameters) in formals.iter().enumerate() {
+                self.charge(1)?;
+                if let [ReferenceFormal::Primitive(primitive)] = parameters.as_slice() {
+                    let formal = PrimitiveValue { primitive: *primitive, rank: 0 };
+                    if actual.converts_to(formal) {
+                        applicable.push((i, formal));
+                    }
+                }
+            }
+            let mut winner = None;
+            for &(i, left) in &applicable {
+                let mut specific = true;
+                for &(_, right) in &applicable {
+                    self.charge(1)?;
+                    specific &= left.converts_to(right);
+                }
+                if specific {
+                    if winner.is_some() {
+                        return None;
+                    }
+                    winner = Some(members[i]);
+                }
+            }
+            return winner;
         }
         let mut applicable = Vec::new();
         for (i, parameters) in formals.iter().enumerate() {

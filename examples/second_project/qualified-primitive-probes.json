@@ -1,0 +1,198 @@
+{
+  "format_version": 1,
+  "base_commit": "a9353caf5b1e7e1c34b47fb0e9b1c1afc913c798",
+  "selected_before_implementation": true,
+  "scope": "One scalar primitive actual in a direct qualified source instance call; no boxing, generic inference, varargs or inherited competitors.",
+  "baseline_native_sha256": "97696fbd347579246744164877353cfb6f5d64b9507f13b2ee7c56c0e0c744a4",
+  "source_archive_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+  "source_sha256": {
+    "gson/src/test/java/com/google/gson/JsonArrayTest.java": "752c62615e37af19fa07f582be385f8b2441f9f051a69cdad465cc2880517cf5",
+    "gson/src/main/java/com/google/gson/JsonArray.java": "bce87e669dd59d4ecada99f1db0d53ad46276aa9455ad718fdd460f7c77535d3",
+    "gson/src/main/java/com/google/gson/JsonPrimitive.java": "1a9930736f4d87c0c5ae48338063e5509f409010836f04c3d8fcfb99183b4e68"
+  },
+  "historical_artifact_sha256": {
+    "strict-reference-probes.json": "8a5e58f8ac87a206f3c61fa5459f24e3e0f62f25cfe4ac2470945d484d16d0df",
+    "reference-call-probes.json": "b57afcbad6c8335d47ba20dcbc45a7266ed3e0bf9b87f88284f59a1645d2182a",
+    "constructor-call-probe.json": "a8dcca8d0a49a9d7e08dcdb1f845d9c967b512357bd43a97833022353d4a43f7",
+    "string-call-probes.json": "730dc287eda7cac024c0a32cf9f4251b40e091fbb6c29b60803a26894d52ac8e",
+    "query-plan.json": "2d23e0d0ae4ad4da7407c42a915b39e52663c3ead2bd41784b59c626cc14d953",
+    "expected.json": "2eb227e75dc02dda469b5fbec55e3ac6012f3a8a3b0eeb6f14d3daca58bfd306",
+    "local-type-comparison.json": "498368e819022271af4f10e7146b0b4318353a57f50f505e7f379f536a780d05",
+    "class-literal-parser-contract.json": "d1a3d241d6f2aa03fa7de0b4cf4a6b1b700204e2f0b8eaa74dcf6be6bed05349",
+    "class-literal-parser-comparison.tsv": "d1b44a3a354e2f45a9cc40475a3ad4de8b0256be56195d966e625b034ababfd9"
+  },
+  "source_spellings": [
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 4945,
+      "spelling": "remove(JsonElement element)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 5494,
+      "spelling": "remove(int index)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 4463,
+      "spelling": "set(int index, JsonElement element)"
+    },
+    {
+      "path": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1762,
+      "spelling": "JsonPrimitive a = new JsonPrimitive(\"a\");"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonPrimitive.java",
+      "byte": 964,
+      "spelling": "public final class JsonPrimitive extends JsonElement {"
+    }
+  ],
+  "queries": [
+    {
+      "id": "remove_reference",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1843,
+      "spelling": "remove",
+      "expression": "remove(a)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 4945,
+            "end": 4951
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 4945,
+            "end": 4951
+          }
+        ]
+      }
+    },
+    {
+      "id": "remove_integer_winner",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1976,
+      "spelling": "remove",
+      "expression": "remove(1)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 4945,
+            "end": 4951
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 5494,
+            "end": 5500
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 5494,
+            "end": 5500
+          }
+        ]
+      }
+    },
+    {
+      "id": "set_mixed_refusal",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 2412,
+      "spelling": "set",
+      "expression": "set(0, b)",
+      "baseline": {
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      },
+      "expected": {
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      }
+    },
+    {
+      "id": "outer_chain_refusal",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1986,
+      "spelling": "getAsString",
+      "expression": "getAsString()",
+      "baseline": {
+        "status": "Unresolved",
+        "targets": []
+      },
+      "expected": {
+        "status": "Unresolved",
+        "targets": []
+      }
+    }
+  ]
+}

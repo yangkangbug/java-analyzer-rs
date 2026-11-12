@@ -193,7 +193,8 @@ class StringControls(unittest.TestCase):
                     mock.patch.object(second, 'portable_queries', return_value=[]), \
                     mock.patch.object(second, 'digest', return_value='binary'):
                 report = gate.run(Path('native'), self.fixture, baseline)
-                keep.assert_called_once_with(Path('native'), self.fixture)
+                keep.assert_called_once_with(Path('native'), self.fixture, primitive_current=not baseline,
+                                             parser_stage='baseline' if baseline else 'current')
                 self.assertEqual('baseline_verified_not_acceptance' if baseline else 'passed', report['validation'])
                 with mock.patch.object(second, 'all_source_hashes', side_effect=[inventory, {'extra.java': 'changed'}]):
                     with self.assertRaises(second.AcceptanceError):

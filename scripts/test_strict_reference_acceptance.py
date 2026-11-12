@@ -187,6 +187,7 @@ class StrictReferenceControls(unittest.TestCase):
             response = self.response_for('baseline' if baseline else 'expected')
             preservation = {'source_sha256_after': inventory, 'validation': 'passed'}
             with mock.patch.object(gate, 'probes', return_value=self.queries), \
+                    mock.patch.object(gate, 'current_probes', return_value=self.queries), \
                     mock.patch.object(second, 'all_source_hashes', return_value=inventory), \
                     mock.patch.object(second, 'successful', return_value=response), \
                     mock.patch.object(second, 'document', return_value=Path('requests')), \
@@ -194,7 +195,8 @@ class StrictReferenceControls(unittest.TestCase):
                     mock.patch.object(second, 'portable_queries', return_value=[]), \
                     mock.patch.object(second, 'digest', return_value='binary'):
                 report = gate.run(Path('native'), self.fixture, baseline)
-                keep.assert_called_once_with(Path('native'), self.fixture)
+                keep.assert_called_once_with(Path('native'), self.fixture, primitive_current=not baseline,
+                                             parser_stage='baseline' if baseline else 'current')
                 self.assertEqual('baseline_verified_not_acceptance' if baseline else 'passed', report['validation'])
                 with mock.patch.object(second, 'all_source_hashes', side_effect=[inventory, {'extra.java': 'changed'}]):
                     with self.assertRaises(second.AcceptanceError):

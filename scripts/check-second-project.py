@@ -736,8 +736,50 @@ def portable_queries(response, fixture):
     return json.loads(text)
 
 
-def run_reference_call_acceptance(native, fixture, capture_baseline=False):
+def proof_stages(capture_baseline, primitive_current=None, parser_stage=None):
+    require(type(capture_baseline) is bool, 'capture mode must be boolean')
+    if primitive_current is None:
+        primitive_current = not capture_baseline
+    if parser_stage is None:
+        parser_stage = 'baseline' if capture_baseline else 'current'
+    require(type(primitive_current) is bool, 'primitive proof stage must be boolean')
+    require(parser_stage in ('baseline', 'current'), 'parser proof stage')
+    return primitive_current, parser_stage
+
+
+def qualified_reference_probes(fixture, probes):
+    # Explicitly bridge one frozen prior reference probe, not arbitrary byte hits.
+    import importlib.util
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location('reference_qualified_contract',
+                                                 ROOT / 'scripts/qualified-primitive-contract.py')
+    contract = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(contract)
+    api = SimpleNamespace(CORPUS=CORPUS, reject_symlinks=reject_symlinks, same=same,
+                          digest=digest, canonical_json=canonical_json, unique_json_object=unique_json_object)
+    prior = json.loads((CORPUS / 'strict-reference-probes.json').read_text(), object_pairs_hook=unique_json_object)
+    current = contract.overlay(api, fixture, prior['queries'])
+    correction = next(q for q in current if q['byte'] == 1976)
+    result, changes = copy.deepcopy(probes), 0
+    for q in result:
+        if q['file'] == correction['file'] and q['byte'] == correction['byte']:
+            metadata = {k: v for k, v in q.items() if k not in ('id', 'baseline', 'expected')}
+            same(set(metadata), {'compilation', 'file', 'byte', 'spelling'}, 'frozen reference probe metadata fields')
+            same(canonical_json(metadata), canonical_json({k: correction[k] for k in metadata}),
+                 'complete unchanged reference query metadata')
+            same(canonical_json(q['expected']), canonical_json(correction['baseline']),
+                 'reference result is exact qualified baseline')
+            q['expected'] = copy.deepcopy(correction['expected'])
+            changes += 1
+    same(changes, 1, 'exactly one frozen reference correction')
+    return result
+
+
+def run_reference_call_acceptance(native, fixture, capture_baseline=False, *, primitive_current=None, parser_stage=None):
+    primitive_current, parser_stage = proof_stages(capture_baseline, primitive_current, parser_stage)
     probes, historical, parser_digest = reference_call_probes(fixture)
+    if primitive_current:
+        probes = qualified_reference_probes(fixture, probes)
     before = all_source_hashes(fixture)
     request = document(fixture, 'reference-call-requests.json', {'schema_version': 1, 'queries': [
         {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
@@ -759,7 +801,7 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False):
     check_local_type_response(local, local_probes, fixture)
     parser = successful(native, fixture, 'parser-report')['result']
     inventory = check_reference_parser(parser, fixture, historical, parser_digest,
-                                       stage='baseline' if capture_baseline else 'current')
+                                       stage=parser_stage)
     after = all_source_hashes(fixture)
     same(after, before, 'source hash inventory unchanged after every native request')
     return {
@@ -814,10 +856,13 @@ def constructor_expectations(fixture):
     return expected
 
 
-def run_constructor_call_acceptance(native, fixture, capture_baseline=False):
+def run_constructor_call_acceptance(native, fixture, capture_baseline=False, *, primitive_current=None, parser_stage=None):
     # Validate the correction and all source inputs even when checking a baseline.
+    primitive_current, parser_stage = proof_stages(capture_baseline, primitive_current, parser_stage)
     expectations = constructor_expectations(fixture)
     reference_probes, historical, parser_digest = reference_call_probes(fixture)
+    if primitive_current:
+        reference_probes = qualified_reference_probes(fixture, reference_probes)
     before = all_source_hashes(fixture)
     response = successful(native, fixture, 'declaration', strict_json=True)
     probes = [{**query, 'expected': expected, 'baseline': old}
@@ -840,7 +885,7 @@ def run_constructor_call_acceptance(native, fixture, capture_baseline=False):
     check_reference_call_response(local, local_probes, fixture)
     parser = successful(native, fixture, 'parser-report', strict_json=True)['result']
     inventory = check_reference_parser(parser, fixture, historical, parser_digest,
-                                       stage='baseline' if capture_baseline else 'current')
+                                       stage=parser_stage)
     after = all_source_hashes(fixture)
     same(after, before, 'constructor source inventory unchanged after analysis')
     return {

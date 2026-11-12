@@ -14,6 +14,10 @@ second = string.second
 PLAN = second.CORPUS / 'strict-reference-probes.json'
 PLAN_SHA256 = '8a5e58f8ac87a206f3c61fa5459f24e3e0f62f25cfe4ac2470945d484d16d0df'
 
+_contract_spec = importlib.util.spec_from_file_location('qualified_contract', Path(__file__).with_name('qualified-primitive-contract.py'))
+qualified = importlib.util.module_from_spec(_contract_spec)
+_contract_spec.loader.exec_module(qualified)
+
 
 def load_plan(path=PLAN):
     second.reject_symlinks(path.absolute())
@@ -55,6 +59,10 @@ def probes(fixture):
     return queries
 
 
+def current_probes(fixture):
+    return qualified.overlay(second, fixture, probes(fixture))
+
+
 def check_response(response, queries, fixture, capture_baseline=False):
     second.require(type(capture_baseline) is bool, 'comparison mode must be boolean')
     second.check_reference_call_response(response, queries, fixture,
@@ -62,7 +70,8 @@ def check_response(response, queries, fixture, capture_baseline=False):
 
 
 def run(native, fixture, capture_baseline=False):
-    queries = probes(fixture)
+    primitive_current, parser_stage = second.proof_stages(capture_baseline)
+    queries = probes(fixture) if capture_baseline else current_probes(fixture)
     before = second.all_source_hashes(fixture)
     request = second.document(fixture, 'strict-reference-requests.json', {
         'schema_version': 1, 'queries': [
@@ -71,14 +80,15 @@ def run(native, fixture, capture_baseline=False):
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
     # Always use current string/constructor/reference/local/original expectations.
-    preservation = string.run(native, fixture)
+    preservation = string.run(native, fixture, primitive_current=primitive_current, parser_stage=parser_stage)
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged throughout strict reference gate')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': PLAN_SHA256 if capture_baseline else qualified.PLAN_SHA256,
+        'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

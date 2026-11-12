@@ -70,6 +70,10 @@ parser recovery is not proof of valid Java.
 The later [reference-instance-call slice](REFERENCE_CALLS.md) adds a separate
 qualified local/parameter proof and source contradiction guards. It does not
 generalize the primitive proof to all expression or receiver kinds.
+Its later [single-primitive-argument extension](QUALIFIED_PRIMITIVE_CALLS.md)
+independently proves qualified source instance calls from explicit scalar values
+and a bounded decimal `int` subset. It does not broaden this unqualified static
+proof or add general expression inference.
 
 ## Evidence
 
