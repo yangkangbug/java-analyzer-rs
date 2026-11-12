@@ -320,10 +320,10 @@ def binary_inventory(runner, historical, selected, generated, stage):
     return inventories
 
 
-# Current overlays retain the prior 40 records and explicitly add the non-null binary-argument query.
+# Current overlays retain the prior 41 records and explicitly add all twenty cast-null queries.
 CURRENT_PROBE_GROUPS = (('original_16', 16), ('reference_3', 3), ('local_5', 5),
-                        ('string_8', 8), ('binary_argument_9', 9))
-CURRENT_QUERY_COUNT = 41
+                        ('string_8', 8), ('cast_null_29', 29))
+CURRENT_QUERY_COUNT = 61
 
 def probe_groups(fixture):
     original_expectations = second.current_original_expectations(fixture)
@@ -335,11 +335,11 @@ def probe_groups(fixture):
     reference = second.qualified_reference_probes(fixture, reference)
     groups = [('original_16', originals), ('reference_3', reference),
               ('local_5', second.local_type_probes(fixture)),
-              ('string_8', strict.string.probes(fixture)), ('binary_argument_9', strict.current_probes(fixture))]
+              ('string_8', strict.string.probes(fixture)), ('cast_null_29', strict.current_probes(fixture))]
     same(tuple((name, len(probes)) for name, probes in groups), CURRENT_PROBE_GROUPS,
          'exact current frozen group identity, ordering and cardinality')
     same(sum(len(probes) for _, probes in groups), CURRENT_QUERY_COUNT,
-         '41 current frozen navigation/refusal records including exact binary-argument recoveries')
+         '61 current frozen navigation/refusal records including exact cast-null additions')
     return groups, historical, parser_digest
 
 
@@ -488,7 +488,7 @@ def run(native, inputs, evidence, baseline=False):
                 preserved = {}
                 for label, context in [('historical', fixture), ('manual', selected), ('generated', generated)]:
                     preserved[label] = preservation(runner, context, label)
-                same(preserved['manual'], preserved['historical'], 'all 41 current navigation/refusal rows and complete parser records')
+                same(preserved['manual'], preserved['historical'], 'all 61 current navigation/refusal rows and complete parser records')
                 same(preserved['generated'], preserved['historical'], 'generated preserves all exact results')
                 controls = failure_controls(runner, fixture, selected, stage)
                 sessions = lsp_sessions(runner, fixture, selected, generated, stage)

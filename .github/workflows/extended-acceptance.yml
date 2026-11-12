@@ -38,6 +38,12 @@ on:
       - 'scripts/reference-return-contract.py'
       - 'scripts/null-actual-contract.py'
       - 'scripts/binary-argument-contract.py'
+      - 'scripts/cast-null-contract.py'
+      - 'scripts/check-cast-null-acceptance.py'
+      - 'scripts/check-cast-null-oracle.py'
+      - 'scripts/test_cast_null_acceptance.py'
+      - 'scripts/test_cast_null_oracle.py'
+      - 'scripts/test_cast_null_stages.py'
       - 'scripts/check-binary-argument-acceptance.py'
       - 'scripts/check-binary-argument-oracle.py'
       - 'scripts/test_binary_argument_acceptance.py'
@@ -124,6 +130,8 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_receiver_guard_oracle_contract.py' -v
       - name: Offline binary argument contracts and stage controls (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_binary_argument*.py' -v
+      - name: Offline cast-null exact contract and stage controls
+        run: python3 -m unittest discover -s scripts -p 'test_cast_null*.py' -v
       - name: Offline null actual contracts and stage controls (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_null*.py' -v
       - name: Offline reference return contract and stage controls (no Java)
@@ -274,6 +282,13 @@ jobs:
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/java-analyzer
+      - name: Independent explicit reference cast-null oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-cast-null-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

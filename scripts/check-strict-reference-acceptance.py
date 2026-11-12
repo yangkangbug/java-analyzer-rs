@@ -96,8 +96,17 @@ binary_arguments = importlib.util.module_from_spec(_binary_spec)
 _binary_spec.loader.exec_module(binary_arguments)
 
 
-def current_probes(fixture):
+def frozen_binary_probes(fixture):
     return binary_arguments.overlay(second, fixture, frozen_null_probes(fixture))
+
+
+_cast_spec = importlib.util.spec_from_file_location('cast_null_contract', Path(__file__).with_name('cast-null-contract.py'))
+casts = importlib.util.module_from_spec(_cast_spec)
+_cast_spec.loader.exec_module(casts)
+
+
+def current_probes(fixture):
+    return casts.overlay(second, fixture, frozen_binary_probes(fixture))
 
 
 def check_response(response, queries, fixture, capture_baseline=False):
@@ -124,7 +133,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else binary_arguments.PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else casts.PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,

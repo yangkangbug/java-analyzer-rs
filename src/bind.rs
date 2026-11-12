@@ -4125,6 +4125,61 @@ impl<'a> ReferenceCallProof<'a> {
         let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
         Some(ReferenceValue { class })
     }
+    // Only an explicit plain-reference cast of null supplies new argument evidence.
+    // Keep this out of general expression/receiver typing and retain one depth/work budget.
+    fn cast_null_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<ReferenceValue<'a>> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let children = delimited_nodes(node, at)?;
+            let [(inner, at)] = children.as_slice() else { return None };
+            return self.cast_null_argument(inner, *at, depth + 1);
+        }
+        if node.kind() != SyntaxKind::CastExpr {
+            return None;
+        }
+        let mut state = 0;
+        let mut parts = None;
+        let mut operand = None;
+        let mut offset = at;
+        for child in node.children() {
+            if let Some(token) = child.as_token() {
+                if !token.kind().is_trivia() {
+                    state = match (state, token.kind()) {
+                        (0, SyntaxKind::LParen) => 1,
+                        (2, SyntaxKind::RParen) => 3,
+                        _ => return None,
+                    };
+                }
+            } else if let Some(inner) = child.as_node() {
+                self.charge(inner.children().len().max(1))?;
+                state = match state {
+                    1 if inner.kind() == SyntaxKind::Type && plain_reference_type(inner) => {
+                        parts = Some(type_parts(inner, offset)?);
+                        2
+                    }
+                    3 => {
+                        operand = Some((inner.as_ref(), offset));
+                        4
+                    }
+                    _ => return None,
+                };
+            }
+            offset += child.utf8_len();
+        }
+        if state != 4 {
+            return None;
+        }
+        let (operand, operand_at) = operand?;
+        self.null_argument(operand, operand_at, depth + 1)?;
+        let class = self.reference_type(self.file, &parts?, at)?;
+        Some(ReferenceValue { class })
+    }
+
     // Null is its own strict-argument category, not Object or unknown type.
     // Keep this out of general expression/receiver typing and share the proof budget.
     fn null_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<()> {
@@ -4372,6 +4427,7 @@ impl<'a> ReferenceCallProof<'a> {
                     .map(StrictActual::Reference)
                     .or_else(|| self.scalar_primitive_argument(node, *at, 0).map(StrictActual::Primitive))
                     .or_else(|| self.null_argument(node, *at, 0).map(|()| StrictActual::Null))
+                    .or_else(|| self.cast_null_argument(node, *at, 0).map(StrictActual::Reference))
             })
             .collect::<Option<Vec<_>>>()?;
         let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;

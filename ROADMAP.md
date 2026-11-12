@@ -427,3 +427,12 @@ See [the buffer contract](docs/CLI_OVERLAYS.md).
 A separate [macOS source-build/runtime gate](docs/MACOS_NATIVE.md) targets declared
 native ARM64 and Intel hosted runners. No user computer is used, no binary release
 is uploaded, and workflow configuration alone does not establish compatibility.
+
+### Explicit cast-null strict arguments
+
+The [bounded cast-null argument proof](docs/CAST_NULL_ARGUMENTS.md) preserves the
+explicit plain reference type of `(Type)null` during strict source calls. Real
+Gson coverage adds Number and JsonElement cases only; eighteen other cast-null
+probes, including String/Boolean/Character overload sets, remain conservative
+refusals. No general casts, receivers, generic conversion or cross-scope widening
+are enabled.

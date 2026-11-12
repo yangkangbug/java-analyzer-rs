@@ -489,3 +489,12 @@ work below follows explicit classpath and JDK/model foundations.
 3. Reference search, then one refactoring at a time.
 
 Passing the tests in this crate does not mean those stages are done.
+
+### Explicit cast-null strict arguments
+
+The [bounded cast-null argument proof](docs/CAST_NULL_ARGUMENTS.md) preserves the
+explicit plain reference type of `(Type)null` during strict source calls. Real
+Gson coverage adds Number and JsonElement cases only; eighteen other cast-null
+probes, including String/Boolean/Character overload sets, remain conservative
+refusals. No general casts, receivers, generic conversion or cross-scope widening
+are enabled.

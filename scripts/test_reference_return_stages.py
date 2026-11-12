@@ -66,7 +66,7 @@ class ReturnStageControls(unittest.TestCase):
             caller(Path('native'), self.f, baseline)
             self.assertEqual(not baseline or caller is gate.run, overlay.called)
             if original.called:
-                stage = 'mixed' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'binary_argument')
+                stage = 'mixed' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'cast_null')
                 original.assert_called_once_with(self.f, stage)
 
     def test_every_layer_rejects_parser_stage_swap(self):

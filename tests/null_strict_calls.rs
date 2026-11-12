@@ -105,7 +105,7 @@ fn null_never_matches_primitive_or_new_expression_shapes() {
         "pick(null)",
         1,
     );
-    for arg in ["(A)null", "true ? null : null", "give()", "nulls[0]", "this.value", "unknown"] {
+    for arg in ["(A)(A)null", "true ? null : null", "give()", "nulls[0]", "this.value", "unknown"] {
         let source = format!(
             "class A {{}} class Box {{ public void pick(A a) {{}} }} class Calls {{ A value; A give() {{ return null; }} void run(Box box, A[] nulls) {{ box.pick({arg}); }} }}"
         );

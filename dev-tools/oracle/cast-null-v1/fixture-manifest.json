@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "files": {
+    "expected.tsv": "6cf76dfc606b41f5135450ded9fad316df2326aa0fd2beea15dd58dde037cd26",
+    "files.tsv": "8f2b6960a07989b76d20cbcba507da5f501341c06448e9fe15bdb62a3f314ca0",
+    "invalid/primitive/Use.java": "7141fe67baa304aa7c944e9752d4600e341e50ee4ade4ef22d9bbd5568211345",
+    "invalid/unknown/Use.java": "630111d4cb2d74addb6bdcedeea06bf5a9c9db386065f9e86d05017b114ea0b1",
+    "source/Box.java": "9bc617d9022af7aa17f1541ae720b37b8866d355771ba945b78fb4ff5fab2d50",
+    "source/Child.java": "9944466eb07d44bcadffde279f264d05c14e4792d3a727acdd218191fdf7b949",
+    "source/Parent.java": "b3d6f35a461c0f9eed52e822361fe793d983d9fdf57fcd5b6c468b46e17364ae",
+    "source/Target.java": "317e8ab7e667fe672b7fb0d1c4cb794ae52b684347ab080d68a136e78636ca2b",
+    "source/Use.java": "a4b9322913feaa1652d5811c0407bdc6c7e94a7279180f16259948ab52a19386"
+  }
+}
