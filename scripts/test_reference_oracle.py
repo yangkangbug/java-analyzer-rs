@@ -232,5 +232,72 @@ class InheritedSourceContractTests(unittest.TestCase):
                 p = root/name; p.write_bytes(p.read_bytes()+b'changed')
                 with patch.object(oracle, 'ORACLE', base), self.assertRaises(AssertionError): oracle.inherited_source_fixture()
 
+
+class SourceOverrideContractTests(unittest.TestCase):
+    def setUp(self):
+        self.root, self.ds, self.qs, self.req, self.current, self.old = oracle.source_override_fixture()
+        self.platform = Path('/unused')
+        self.javac = {}
+        for q, (_, selected, _) in self.current.items():
+            marker, owner = selected.split('@'); path, start, end, name = self.ds[marker]
+            self.javac[q] = [path, 'METHOD', owner, name, str(start), str(end)]
+
+    def native(self, contract):
+        return {q: [status, str(len(names.split(','))), *[oracle.reference_target(self.ds, n, self.platform) for n in names.split(',')]]
+                for q, (status, _, names) in contract.items()}
+
+    def compare(self, contract, native):
+        oracle.compare_reference(contract, self.qs, self.ds, self.javac, native, self.platform)
+
+    def test_exact_stages_static_receiver_and_new_selection_count(self):
+        current, old = self.native(self.current), self.native(self.old)
+        self.compare(self.current, current); self.compare(self.old, old)
+        with self.assertRaises(AssertionError): self.compare(self.current, old)
+        with self.assertRaises(AssertionError): self.compare(self.old, current)
+        self.assertEqual(sum(current[q] != old[q] for q in current), 6)
+        self.assertEqual(current['parent_static_receiver'], old['parent_static_receiver'])
+        bad = copy.deepcopy(current); bad['parent_static_receiver'] = current['child_override']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_complete_targets_refusals_and_inventory_mutations(self):
+        rows = self.native(self.current)
+        for q, row in rows.items():
+            bad = copy.deepcopy(rows); bad[q][0] = 'Resolved' if row[0] != 'Resolved' else 'CallNotResolved'
+            with self.assertRaises(AssertionError): self.compare(self.current, bad)
+            for i in range(2, len(row)):
+                for field in range(6):
+                    bad = copy.deepcopy(rows); cells = bad[q][i].split('|'); cells[field] += 'wrong'; bad[q][i] = '|'.join(cells)
+                    with self.assertRaises(AssertionError): self.compare(self.current, bad)
+                bad = copy.deepcopy(rows); bad[q].append(row[i]); bad[q][1] = str(int(row[1])+1)
+                with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad.pop('covariant_return')
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad['extra'] = rows['covariant_return']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_pinned_inputs_original_records_and_forecast_mutations(self):
+        for name in ('source/Use.java', 'source/Refusals.java', 'expected.tsv', 'baseline.tsv', 'baseline-records.json',
+                     'invalid/final/Use.java', 'invalid/return/Use.java', 'invalid/static/Use.java',
+                     'invalid/visibility/Use.java', 'invalid/unknown/Use.java', 'invalid/missing/Use.java',
+                     'prior-override-update.json', 'fixture-manifest.json'):
+            with tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); root = base/'source-override-v1'; shutil.copytree(self.root, root)
+                p = root/name; p.write_bytes(p.read_bytes()+b'changed')
+                with patch.object(oracle, 'ORACLE', base), self.assertRaises(AssertionError): oracle.source_override_fixture()
+
+    def test_prior_overlay_only_exact_override_not_other_refusals(self):
+        _, ds, qs, _, current, baseline = oracle.inherited_source_fixture()
+        updated = oracle.current_source_override_expectations(current, qs, ds)
+        self.assertEqual([q for q in current if updated[q] != current[q]], ['override_refusal'])
+        self.assertEqual(updated['override_refusal'], ('Resolved', 'child_override@core.Override', 'child_override@core.Override'))
+        with self.assertRaises(AssertionError): oracle.current_source_override_expectations(updated, qs, ds)
+        with self.assertRaises(AssertionError): oracle.current_source_override_expectations(baseline, qs, ds)
+        for field in ('status', 'query', 'declaration'):
+            args = [copy.deepcopy(current), copy.deepcopy(qs), copy.deepcopy(ds)]
+            if field == 'status': args[0]['interface_refusal'] = ('Resolved', 'face@core.Face', 'face@core.Face')
+            elif field == 'query': args[1]['override_refusal'] = ('wrong', 0, 1, 'over')
+            else: args[2]['child_override'] = ('wrong', 0, 1, 'over')
+            with self.assertRaises(AssertionError): oracle.current_source_override_expectations(*args)
+
 if __name__ == "__main__":
     unittest.main()

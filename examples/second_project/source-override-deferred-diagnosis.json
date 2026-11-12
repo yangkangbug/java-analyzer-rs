@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "classification": "annotated_local_receiver_not_bound_before_override_selection",
+  "reason": "reference_declaration rejects any annotation child in a local ModifierList, so its reference type is absent. Override metadata and return covariance are not reached. No local-annotation typing is added in this slice.",
+  "real_source_sha256": {
+    "gson/src/test/java/com/google/gson/JsonNullTest.java": "f8c0ff77053a4a1f761db459d5b1d96e2f529629906721a8e18a309b41496a31",
+    "gson/src/main/java/com/google/gson/JsonNull.java": "38a27784721697ca0c2c332948f4373ace079a84aae512aa14709f533a1aca42"
+  },
+  "probe_scope": "Independent handwritten diagnostic, not a mutation claimed as real Gson success",
+  "diagnostic_source": "use java_engine::{Project, ResolveResult, ResolveStatus, TargetKind};\n\nfn project(source: &str) -> Project {\n    let p = project_with_errors(source);\n    assert!(p.file(\"Calls.java\").unwrap().errors().is_empty());\n    p\n}\n\nfn project_with_errors(source: &str) -> Project {\n    let mut p = Project::new();\n    p.insert(\"Calls.java\", source);\n    let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];\n    object.extend(b\"java/lang/Object\");\n    object.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);\n    p.add_class_bytes(\"Object.class\", &object).unwrap();\n    p\n}\n\nfn query(p: &Project, needle: &str) -> ResolveResult {\n    let at = p.file(\"Calls.java\").unwrap().text().rfind(needle).unwrap() as u32;\n    let result = p.resolve_at(\"Calls.java\", at);\n    assert_eq!(result, p.prepare().resolve_at(\"Calls.java\", at));\n    result\n}\n\nfn winner(source: &str, call: &str, declaration: &str) {\n    let result = query(&project(source), call);\n    assert_eq!(result.status, ResolveStatus::Resolved, \"{call}: {result:?}\");\n    assert_eq!(result.targets.len(), 1);\n    let target = &result.targets[0];\n    let at = source.find(declaration).unwrap() as u32;\n    assert_eq!(target.kind, TargetKind::Method);\n    assert_eq!(target.path, \"Calls.java\");\n    assert_eq!((target.start_byte, target.end_byte), (at, at + 4));\n}\n\n\n#[test]\nfn diagnostic_annotated_local_receiver_boundary() {\n    for annotation in [\"\", \"@A\", \"@A()\", r#\"@SuppressWarnings(\"deprecation\")\"#] {\n        let s = format!(\"abstract class Parent {{ public abstract Parent pick(); }} final class Child extends Parent {{ @Override public Child pick() {{ return this; }} }} class Calls {{ void run() {{ {annotation} Child c = new Child(); c.pick(); }} }}\");\n        let r = query(&project(&s), \"pick();\");\n        println!(\"annotation={annotation:?} result={r:?}\");\n        assert_eq!(r.status == ResolveStatus::Resolved, annotation.is_empty());\n    }\n}\n",
+  "diagnostic_source_sha256": "428061b8159d2d2b9795f98de3412e1a5414e2226ca17d612ffbd55e9a23aaae",
+  "diagnostic_log": "   Compiling java-engine v0.1.37 (/home/yk/java-analyzer-work/document-admission-v1)\nwarning: function `winner` is never used\n  --> tests/override_diagnostic.rs:26:4\n   |\n26 | fn winner(source: &str, call: &str, declaration: &str) {\n   |    ^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `java-engine` (test \"override_diagnostic\") generated 1 warning\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s\n     Running tests/override_diagnostic.rs (target/debug/deps/override_diagnostic-1151289d7a878db7)\n\nrunning 1 test\nannotation=\"\" result=ResolveResult { status: Resolved, targets: [Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Child\", start_byte: 115, end_byte: 119 }] }\nannotation=\"@A\" result=ResolveResult { status: Ambiguous, targets: [Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Child\", start_byte: 115, end_byte: 119 }, Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Parent\", start_byte: 47, end_byte: 51 }] }\nannotation=\"@A()\" result=ResolveResult { status: Ambiguous, targets: [Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Child\", start_byte: 115, end_byte: 119 }, Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Parent\", start_byte: 47, end_byte: 51 }] }\nannotation=\"@SuppressWarnings(\\\"deprecation\\\")\" result=ResolveResult { status: Ambiguous, targets: [Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Child\", start_byte: 115, end_byte: 119 }, Target { path: \"Calls.java\", kind: Method, name: \"pick\", owner: \"Parent\", start_byte: 47, end_byte: 51 }] }\ntest diagnostic_annotated_local_receiver_boundary ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+  "diagnostic_log_sha256": "84421d527750026c4fac40b2b77450434ab6de70ae3abdff8c99733a51dcd15e",
+  "real_source_log": "gson-2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b/gson/src/main/java/com/google/gson/JsonNull.java 38a27784721697ca0c2c332948f4373ace079a84aae512aa14709f533a1aca42\ne Gson version 1.8, use {@link #INSTANCE} instead.\r\n   */\r\n  @Deprecated\r\n  public JsonNull() {\r\n    // Do nothing\r\n  }\r\n\r\n  /**\r\n   * Returns the same instance since it is an immutable value.\r\n   *\r\n   * @since 2.8.2\r\n   */\r\n  @Override\r\n  public JsonNull deepCopy() {\r\n    return INSTANCE;\r\n  }\r\n\r\n  /**\r\n   * All instances of {\ngson-2ce6a6106c22bf0cce2e39f68b0da2f117d6e66b/gson/src/test/java/com/google/gson/JsonNullTest.java f8c0ff77053a4a1f761db459d5b1d96e2f529629906721a8e18a309b41496a31\nsertEqualsAndHashCode(JsonNull.INSTANCE, JsonNull.INSTANCE);\n  }\n\n  @Test\n  public void testDeepCopy() {\n    @SuppressWarnings(\"deprecation\")\n    JsonNull a = new JsonNull();\n    assertSame(JsonNull.INSTANCE, a.deepCopy());\n    assertSame(JsonNull.INSTANCE, JsonNull.INSTANCE.deepCopy());\n  }\n}\n\n",
+  "real_source_log_sha256": "786b446318df6054b9920874eb3e63133e3b378a4f56a43c347af43a3c8db283",
+  "first_candidate_failure_sha256": "b908e9f3bd89d5d16891724815f05c5e50483a25a4a8c17597906fcec3b1cfb4",
+  "results": [
+    {
+      "annotation": "",
+      "status": "Resolved",
+      "candidate_count": 1
+    },
+    {
+      "annotation": "@A",
+      "status": "Ambiguous",
+      "candidate_count": 2
+    },
+    {
+      "annotation": "@A()",
+      "status": "Ambiguous",
+      "candidate_count": 2
+    },
+    {
+      "annotation": "@SuppressWarnings(\"deprecation\")",
+      "status": "Ambiguous",
+      "candidate_count": 2
+    }
+  ]
+}

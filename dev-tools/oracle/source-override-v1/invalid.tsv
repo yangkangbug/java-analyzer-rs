@@ -1,0 +1,6 @@
+final	invalid_final	Ambiguous	child@bad.Child,parent@bad.Parent
+missing	invalid_missing	CallNotResolved	child@bad.Child
+return	invalid_return	Ambiguous	child@bad.Child,parent@bad.Parent
+static	invalid_static	Ambiguous	child@bad.Child,parent@bad.Parent
+unknown	invalid_unknown	SignatureNotCompared	child@bad.Child,parent@bad.Parent
+visibility	invalid_visibility	Ambiguous	child@bad.Child,parent@bad.Parent

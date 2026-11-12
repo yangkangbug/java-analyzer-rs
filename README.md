@@ -504,5 +504,15 @@ are enabled.
 The [bounded inherited-source proof](docs/INHERITED_SOURCE_CALLS.md) collects
 plain source-parent candidates and applies existing strict invocation selection.
 Unique inherited methods and different-signature parent/child overloads retain
-the actual declaring class and its type context. Same-signature overrides,
-interface/default methods and binary/generic parent selection remain unsupported.
+the actual declaring class and its type context. The additive source override
+proof below handles a bounded same-signature subset; interface/default methods
+and binary/generic parent selection remain unsupported.
+
+### Plain source override proof
+
+See [source override selection](docs/SOURCE_OVERRIDE_CALLS.md) for the additive
+public instance same-signature capability and conservative annotation/return
+boundaries. Three real Gson deepCopy queries now select their source subclass.
+The fourth predicted JsonNull query remains deferred because its annotated local
+receiver has no supported type evidence; the original forecast and failure are
+preserved alongside an explicit V2 contract.

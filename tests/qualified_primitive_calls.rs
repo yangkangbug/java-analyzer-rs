@@ -104,7 +104,7 @@ fn unsupported_competitors_and_incomplete_platform_do_not_manufacture_a_winner()
             true,
         ),
         (
-            "class Base { public void pick(int x) {} } class Box extends Base { public void pick(int x) {} } class Calls { void run(Box box) { box.pick(1); } }",
+            "class Base { public final void pick(int x) {} } class Box extends Base { public void pick(int x) {} } class Calls { void run(Box box) { box.pick(1); } }",
             true,
         ),
         (

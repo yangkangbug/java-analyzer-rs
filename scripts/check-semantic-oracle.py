@@ -859,7 +859,7 @@ def inherited_source_suite(jdk, native_binary, env, work, helper, empty, platfor
     """Source superclass candidates; complete inherited sets, no override support."""
     assert type(baseline) is bool
     root, ds, qs, req, current, old = inherited_source_fixture()
-    expected = old if baseline else current
+    expected = old if baseline else current_source_override_expectations(current, qs, ds)
     request = work / "inherited-source-requests.tsv"; request.write_text(req)
     compiler = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle", root / "source", request, empty], env).stdout)
     native = records(run([native_binary, root / "source", request, platform], {"PATH": "/nonexistent"}).stdout)
@@ -891,7 +891,74 @@ def inherited_source_suite(jdk, native_binary, env, work, helper, empty, platfor
         actual = records(run([native_binary, source, request, platform], {"PATH": "/nonexistent"}).stdout)
         assert set(actual) == {q}
         check_reference_candidates(q, status, names, ids, actual[q], platform)
-    print("PASS: inherited source candidates; six selections, three valid refusals, two compiler-invalid refusals; baseline=" + str(baseline), flush=True)
+    print("PASS: inherited source candidates with explicit current override overlay; selected=" + str(sum(row[0] == "Resolved" for row in expected.values())) + "; two compiler-invalid refusals; baseline=" + str(baseline), flush=True)
+
+
+def source_override_fixture():
+    root = ORACLE / "source-override-v1"
+    data = (root / "fixture-manifest.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == "397dd951e39b1e0fd77a41c053c68f2d7989fdab1a9c07595f056d994ab5e772", "source override fixture pin"
+    pinned = json.loads(data)["files"]
+    assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*")
+                  if p.is_file() and p.name not in ("README.md", "fixture-manifest.json")) == sorted(pinned)
+    for name, digest in pinned.items(): assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+    ds, qs, req = fixture_markers(root / "source", (root / "files.tsv").read_text().splitlines())
+    contracts = []
+    for filename in ("expected.tsv", "baseline.tsv"):
+        expected = {}
+        for q, status, selected, candidates in rows(root / filename, 4):
+            assert q not in expected; expected[q] = status, selected, candidates
+        assert set(expected) == set(qs) and len(qs) == 12
+        contracts.append(expected)
+    assert sum(v[0] == "Resolved" for v in contracts[0].values()) == 7
+    return root, ds, qs, req, contracts[0], contracts[1]
+
+
+def current_source_override_expectations(expected, queries, declarations):
+    root, _, _, _, _, _ = source_override_fixture()
+    update = json.loads((root / "prior-override-update.json").read_text())
+    for name, digest in update["artifacts"].items():
+        assert hashlib.sha256((ORACLE / name).read_bytes()).hexdigest() == digest, name
+    assert {k: list(v) for k, v in queries.items()} == update["queries"]
+    assert {k: list(v) for k, v in declarations.items()} == update["declarations"]
+    assert {k: list(v) for k, v in expected.items()} == update["previous_current"]
+    q = update["query"]; assert list(expected[q]) == update["before"]
+    assert update["after"] == ["Resolved", expected[q][1], expected[q][1]]
+    result = dict(expected); result[q] = tuple(update["after"])
+    return result
+
+
+def source_override_suite(jdk, native_binary, env, work, helper, empty, platform, baseline=False):
+    """Static source override targets; never guesses a runtime receiver class."""
+    assert type(baseline) is bool
+    root, ds, qs, req, current, old = source_override_fixture()
+    expected = old if baseline else current
+    request = work / "source-override-requests.tsv"; request.write_text(req)
+    compiler = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle", root / "source", request, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, platform], {"PATH": "/nonexistent"}).stdout)
+    for q in sorted(expected): print(q + "\tjavac=" + "|".join(compiler[q]) + "\tnative=" + "|".join(native[q]), flush=True)
+    compare_reference(expected, qs, ds, compiler, native, platform)
+    for q, (_, selected, _) in expected.items():
+        path, start, _, _ = ds[selected.split("@")[0]]; data = (root / "source" / path).read_bytes()
+        begin = data.rfind(b"\n", 0, start) + 1; end = data.find(b"\n", start)
+        begin += len(data[begin:end]) - len(data[begin:end].lstrip())
+        if b"class " in data[begin:start] or b"interface " in data[begin:start]:
+            begin = data.rfind(b"{", begin, start) + 1
+            while data[begin:begin+1].isspace(): begin += 1
+            end = data.index(b"}", start) + 1 if b"}" in data[start:end] else data.index(b";", start) + 1
+        assert tuple(map(int, compiler[q][4:])) == (begin, end), q + ": whole compiler range"
+    if baseline:
+        must_reject(lambda: compare_reference(current, qs, ds, compiler, native, platform), "override baseline must fail new selections")
+    invalid = rows(root / "invalid.tsv", 4)
+    assert {row[0] for row in invalid} == {"final", "return", "static", "visibility", "unknown", "missing"}
+    for case, q, status, candidates in invalid:
+        source = root / "invalid" / case; ids, queries, req = fixture_markers(source, ("Use.java",))
+        assert set(queries) == {q}; request.write_text(req)
+        rejected = run([jdk / "bin/java", "-cp", helper, "BindingOracle", source, request, empty], env, False)
+        assert rejected.returncode == 2 and "compiler.err." in rejected.stderr and not rejected.stdout
+        result = records(run([native_binary, source, request, platform], {"PATH": "/nonexistent"}).stdout)
+        assert set(result) == {q}; check_reference_candidates(q, status, candidates, ids, result[q], platform)
+    print("PASS: source override; seven static targets, five valid refusals, six invalid refusals; baseline=" + str(baseline), flush=True)
 
 
 def main():
@@ -1016,6 +1083,7 @@ def main():
         return_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         reference_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         inherited_source_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        source_override_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

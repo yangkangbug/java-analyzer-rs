@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "files": {
+    "baseline-records.json": "842b9ad41e04ef630bb045e3cfdd83db647fde5a8c295d56d2001fa2244af1c3",
+    "baseline.tsv": "3e9a0d0ec16407e73f567cef141394169d11f4b4c89482c2e3fd5ea5b1b142bd",
+    "expected.tsv": "d1094d196d65bc90759fe67dc3dec5feba85c23eb0c4013d0de39008ca0d72b2",
+    "files.tsv": "a137e2fd8d6867722e73df1a38f8188ec90530713a25e7a9c59c654d965401cd",
+    "invalid/final/Use.java": "26f07a9c050925aebf4807e42e8f0d2f414697c3393ec2044e2006ee23a2675e",
+    "invalid/missing/Use.java": "117132612429f52f813e237432eb30288749b0fc99c34b53b60cd59be4601ebf",
+    "invalid/return/Use.java": "f2b7d21a3de9f5be86bd0736804bd0c6316b7e4efd353bd9843950ef657c0006",
+    "invalid/static/Use.java": "232d5e9cb0c1752fd1fb649ea9bb24707711faa3176f5160452ca08249556382",
+    "invalid/unknown/Use.java": "2c473fdde3b1ad7fec85869f6a7eb156c8c5527e2195d9b8f39563c605951d83",
+    "invalid/visibility/Use.java": "6e4fd1e4c64ad08a5c898991fb07aabf9da8dd3d84245b572ed0c5f60f6b2424",
+    "invalid.tsv": "dd95c42fbfe2bfb3a7f496272f773c3c195fef1f4a09a183150b440adffdf287",
+    "prior-override-update.json": "20c8f1f82020eddb3797078b4d611729b8ff5f94e01ac15d9e94dd8f1b1309bc",
+    "source/Refusals.java": "18605985123ecb60e95dbb50baba515780c094c19d242588baf65529e42fd258",
+    "source/Use.java": "af0779cfb98c37875297da732288f256842744a89b742b15bef7a49c164c0bd2"
+  }
+}

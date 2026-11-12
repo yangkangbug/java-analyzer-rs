@@ -134,7 +134,14 @@ fn incomplete_hierarchy_and_same_name_ancestors_refuse() {
         );
         let p = project(&source);
         let result = query(&p, "Calls.java", "m(a)");
-        assert_ne!(result.status, ResolveStatus::Resolved, "{result:?}");
+        if parent == "Base" {
+            assert_eq!(result.status, ResolveStatus::Resolved);
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].owner, "C");
+            assert_eq!(result.targets[0].start_byte, source.rfind("m(A x)").unwrap() as u32);
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved, "{result:?}");
+        }
     }
     let mut p = project("class A {} class C { public void m(A x) {} } class Calls { void run(C c, A a) { c.m(a); } }");
     p.remove_class("Object.class");

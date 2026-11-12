@@ -103,7 +103,12 @@ fn return_typing_composes_with_inherited_outer_selection_but_not_call_arguments(
     assert_ne!(query(&project(source), "accept(box").status, ResolveStatus::Resolved);
     let override_source =
         source.replace("class Sub extends Result {}", "class Sub extends Result { public void next() {} }");
-    assert_ne!(query(&project(&override_source), "next();").status, ResolveStatus::Resolved);
+    let selected = query(&project(&override_source), "next();");
+    assert_eq!(selected.status, ResolveStatus::Resolved);
+    assert_eq!(selected.targets[0].owner, "Sub");
+    assert_eq!(selected.targets[0].start_byte, override_source.rfind("next() {}").unwrap() as u32);
+    let invalid = override_source.replacen("public void next()", "public final void next()", 1);
+    assert_ne!(query(&project(&invalid), "next();").status, ResolveStatus::Resolved);
 }
 
 #[test]

@@ -81,7 +81,7 @@ fn inherited_formals_and_return_use_declaring_imports() {
 #[test]
 fn inherited_same_signature_and_unknown_competitors_stay_refused() {
     for other in [
-        "public void pick(int x) {}",
+        "public void pick(int x) throws Exception {}",
         "private void pick(long x) {}",
         "public static void pick(long x) {}",
         "public void pick(Missing x, int y) {}",

@@ -1,0 +1,2847 @@
+{
+  "format_version": 1,
+  "base_commit": "dcb31d23",
+  "selected_before_implementation": true,
+  "scope": "Public plain source same-signature overrides with proven ancestry, final restrictions and return compatibility; no interface/binary override or general expression typing.",
+  "baseline_native_sha256": "586d9c3d95d85369daf8a4d5f1f41e3ed8e7025d8d7515dd8840350c4c77dbb5",
+  "source_archive_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+  "source_sha256": {
+    "gson/src/test/java/com/google/gson/JsonArrayTest.java": "752c62615e37af19fa07f582be385f8b2441f9f051a69cdad465cc2880517cf5",
+    "gson/src/main/java/com/google/gson/JsonArray.java": "bce87e669dd59d4ecada99f1db0d53ad46276aa9455ad718fdd460f7c77535d3",
+    "gson/src/main/java/com/google/gson/JsonPrimitive.java": "1a9930736f4d87c0c5ae48338063e5509f409010836f04c3d8fcfb99183b4e68",
+    "gson/src/main/java/com/google/gson/JsonElement.java": "9239d194ace4ea2908f2d7b816512c14468740296391d99d1af0c10578eec147",
+    "gson/src/main/java/com/google/gson/JsonObject.java": "c64030e4275ca5886eb082c7121df1254d91f465bca33731bec1e6a4dbfd6629",
+    "gson/src/test/java/com/google/gson/JsonObjectTest.java": "793f5a91411cc1be6d52cab17c3af0d2c09d9f6b7bbe99765decdc82b42b2aa8",
+    "gson/src/test/java/com/google/gson/functional/InheritanceTest.java": "42b30eaaf049abbda9cca35cc643a5d5db1dc6a617dcb879e6f95d5195080e87",
+    "gson/src/test/java/com/google/gson/JsonPrimitiveTest.java": "91319e3f3884db9890c24aee78d12e44c6afa0cdb16adf7f5a30aac06dd57e5e",
+    "gson/src/test/java/com/google/gson/JsonNullTest.java": "f8c0ff77053a4a1f761db459d5b1d96e2f529629906721a8e18a309b41496a31",
+    "gson/src/main/java/com/google/gson/JsonNull.java": "38a27784721697ca0c2c332948f4373ace079a84aae512aa14709f533a1aca42"
+  },
+  "historical_artifact_sha256": {
+    "strict-reference-probes.json": "8a5e58f8ac87a206f3c61fa5459f24e3e0f62f25cfe4ac2470945d484d16d0df",
+    "reference-call-probes.json": "b57afcbad6c8335d47ba20dcbc45a7266ed3e0bf9b87f88284f59a1645d2182a",
+    "constructor-call-probe.json": "a8dcca8d0a49a9d7e08dcdb1f845d9c967b512357bd43a97833022353d4a43f7",
+    "string-call-probes.json": "730dc287eda7cac024c0a32cf9f4251b40e091fbb6c29b60803a26894d52ac8e",
+    "query-plan.json": "2d23e0d0ae4ad4da7407c42a915b39e52663c3ead2bd41784b59c626cc14d953",
+    "expected.json": "2eb227e75dc02dda469b5fbec55e3ac6012f3a8a3b0eeb6f14d3daca58bfd306",
+    "local-type-comparison.json": "498368e819022271af4f10e7146b0b4318353a57f50f505e7f379f536a780d05",
+    "class-literal-parser-contract.json": "d1a3d241d6f2aa03fa7de0b4cf4a6b1b700204e2f0b8eaa74dcf6be6bed05349",
+    "class-literal-parser-comparison.tsv": "d1b44a3a354e2f45a9cc40475a3ad4de8b0256be56195d966e625b034ababfd9",
+    "qualified-primitive-probes.json": "c9f2e08b78dabf9572f9456ae1d7e0c68ab169b57c0d2ea2408a7cf39834685e",
+    "mixed-strict-probes.json": "64d4519c43fdb8e485db1279ad24d9216b000d3193064b5dab1cc281903b92d6",
+    "reference-return-probes.json": "0370da36211be7d68ee780d46301944381e114f6f8aac454c11dd4f556da8dd6",
+    "null-actual-probes.json": "c0dd9c79f5bccba0c42c744b4375d9d013a0df1334548a15eae4617bd6acf443",
+    "null-actual-deferred-diagnosis.json": "d50f41a68b2c4c99f18ba5c08fd8a538700560f199ab34ca62929b0959ecbc10",
+    "null-actual-probes-v2.json": "33cab5ec727e2a2f934615979f78a30d3ad01dc00e2ee145f77b19244c164bde",
+    "binary-argument-probes.json": "d2cccac5da9beb1c75bd759ee71505ecc2d77d8be312d1c83ce719d2cc8e6a60",
+    "cast-null-probes.json": "3f2b471279027e7f71d4d07452e4a928ba6af67a1c18b7993c2447fe244a3e37",
+    "inherited-source-probes.json": "1b40aa2f447a11ebfcdda3d74015634316b071b80da0f801dba8e981208463bc"
+  },
+  "source_spellings": [
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 4945,
+      "spelling": "remove(JsonElement element)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 5494,
+      "spelling": "remove(int index)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 4463,
+      "spelling": "set(int index, JsonElement element)"
+    },
+    {
+      "path": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1762,
+      "spelling": "JsonPrimitive a = new JsonPrimitive(\"a\");"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonPrimitive.java",
+      "byte": 964,
+      "spelling": "public final class JsonPrimitive extends JsonElement {"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+      "byte": 6420,
+      "spelling": "public String getAsString()"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 5475,
+      "spelling": "public JsonElement remove(int index)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "byte": 6874,
+      "spelling": "public JsonElement get(int i)"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+      "byte": 2333,
+      "spelling": "public void add(String property, JsonElement value)"
+    },
+    {
+      "path": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "byte": 1466,
+      "spelling": "String propertyName = \"property\";"
+    }
+  ],
+  "queries": [
+    {
+      "id": "remove_reference",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1843,
+      "spelling": "remove",
+      "expression": "remove(a)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 4945,
+            "end": 4951
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 4945,
+            "end": 4951
+          }
+        ]
+      }
+    },
+    {
+      "id": "remove_integer_winner",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1976,
+      "spelling": "remove",
+      "expression": "remove(1)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 5494,
+            "end": 5500
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "remove",
+            "start": 5494,
+            "end": 5500
+          }
+        ]
+      }
+    },
+    {
+      "id": "set_mixed_winner",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 2412,
+      "spelling": "set",
+      "expression": "set(0, b)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      }
+    },
+    {
+      "id": "remove_outer_reference_return",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 1986,
+      "spelling": "getAsString",
+      "expression": "getAsString()",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonElement",
+            "name": "getAsString",
+            "start": 6434,
+            "end": 6445
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonElement",
+            "name": "getAsString",
+            "start": 6434,
+            "end": 6445
+          }
+        ]
+      }
+    },
+    {
+      "id": "get_outer_reference_return",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 2489,
+      "spelling": "getAsString",
+      "expression": "getAsString()",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonElement",
+            "name": "getAsString",
+            "start": 6434,
+            "end": 6445
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonElement",
+            "name": "getAsString",
+            "start": 6434,
+            "end": 6445
+          }
+        ]
+      }
+    },
+    {
+      "id": "null_set",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 2527,
+      "spelling": "set",
+      "expression": "set(0, null)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "set",
+            "start": 4463,
+            "end": 4466
+          }
+        ]
+      }
+    },
+    {
+      "id": "null_add",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "byte": 2139,
+      "spelling": "add",
+      "expression": "add(propertyName, null)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      }
+    },
+    {
+      "id": "null_field_refusal",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "byte": 2489,
+      "spelling": "add",
+      "expression": "add(null, JsonNull.INSTANCE)",
+      "baseline": {
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      },
+      "expected": {
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      }
+    },
+    {
+      "id": "binary_add_without_null",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "byte": 1653,
+      "spelling": "add",
+      "expression": "add(propertyName, value)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonObject",
+            "name": "add",
+            "start": 2345,
+            "end": 2348
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_6484",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 6484,
+      "spelling": "add",
+      "expression": "add((String) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_6850",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 6850,
+      "spelling": "add",
+      "expression": "add((Integer) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_7239",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 7239,
+      "spelling": "add",
+      "expression": "add((Double) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_7315",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 7315,
+      "spelling": "add",
+      "expression": "add((Double) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_7638",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 7638,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_7980",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 7980,
+      "spelling": "add",
+      "expression": "add((Character) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8392",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8392,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8502",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8502,
+      "spelling": "add",
+      "expression": "add((Character) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8883",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8883,
+      "spelling": "add",
+      "expression": "add((Character) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8920",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8920,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8955",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8955,
+      "spelling": "add",
+      "expression": "add((Integer) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_8990",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 8990,
+      "spelling": "add",
+      "expression": "add((Double) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9024",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9024,
+      "spelling": "add",
+      "expression": "add((Float) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9057",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9057,
+      "spelling": "add",
+      "expression": "add((BigInteger) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9095",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9095,
+      "spelling": "add",
+      "expression": "add((String) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9129",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9129,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9164",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9164,
+      "spelling": "add",
+      "expression": "add((Number) null)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9573",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9573,
+      "spelling": "add",
+      "expression": "add((JsonElement) null)",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9959",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9959,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "cast_null_9994",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 9994,
+      "spelling": "add",
+      "expression": "add((Boolean) null)",
+      "baseline": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      },
+      "expected": {
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2652,
+            "end": 2655
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 2918,
+            "end": 2921
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3192,
+            "end": 3195
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3454,
+            "end": 3457
+          },
+          {
+            "origin": "source",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "kind": "Method",
+            "owner": "com.google.gson.JsonArray",
+            "name": "add",
+            "start": 3703,
+            "end": 3706
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_5305",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 5305,
+      "spelling": "getAsJsonObject",
+      "expression": "getAsJsonObject()",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "getAsJsonObject",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 3012,
+            "end": 3027
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "getAsJsonObject",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 3012,
+            "end": 3027
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_2883",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/functional/InheritanceTest.java",
+      "byte": 2883,
+      "spelling": "getAsJsonObject",
+      "expression": "getAsJsonObject()",
+      "baseline": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "getAsJsonObject",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 3012,
+            "end": 3027
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "getAsJsonObject",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 3012,
+            "end": 3027
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_3001",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 3001,
+      "spelling": "deepCopy",
+      "expression": "deepCopy()",
+      "baseline": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonArray",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "start": 2244,
+            "end": 2252
+          },
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 1501,
+            "end": 1509
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonArray",
+            "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+            "start": 2244,
+            "end": 2252
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_6712",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "byte": 6712,
+      "spelling": "deepCopy",
+      "expression": "deepCopy()",
+      "baseline": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonObject",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "start": 1790,
+            "end": 1798
+          },
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 1501,
+            "end": 1509
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonObject",
+            "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+            "start": 1790,
+            "end": 1798
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_10817",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonPrimitiveTest.java",
+      "byte": 10817,
+      "spelling": "deepCopy",
+      "expression": "deepCopy()",
+      "baseline": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonPrimitive",
+            "path": "gson/src/main/java/com/google/gson/JsonPrimitive.java",
+            "start": 2485,
+            "end": 2493
+          },
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 1501,
+            "end": 1509
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonPrimitive",
+            "path": "gson/src/main/java/com/google/gson/JsonPrimitive.java",
+            "start": 2485,
+            "end": 2493
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited_6612",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "byte": 6612,
+      "spelling": "toString",
+      "expression": "toString()",
+      "baseline": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "toString",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 11984,
+            "end": 11992
+          },
+          {
+            "origin": "binary",
+            "kind": "Method",
+            "name": "toString",
+            "owner": "java.lang.Object",
+            "artifact": "java_base",
+            "binary_name": "java/lang/Object"
+          }
+        ]
+      },
+      "expected": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "toString",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 11984,
+            "end": 11992
+          },
+          {
+            "origin": "binary",
+            "kind": "Method",
+            "name": "toString",
+            "owner": "java.lang.Object",
+            "artifact": "java_base",
+            "binary_name": "java/lang/Object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "override_jsonnull_1261",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "file": "gson/src/test/java/com/google/gson/JsonNullTest.java",
+      "byte": 1261,
+      "spelling": "deepCopy",
+      "expression": "deepCopy()",
+      "baseline": {
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonNull",
+            "path": "gson/src/main/java/com/google/gson/JsonNull.java",
+            "start": 1307,
+            "end": 1315
+          },
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonElement",
+            "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+            "start": 1501,
+            "end": 1509
+          }
+        ]
+      },
+      "expected": {
+        "status": "Resolved",
+        "targets": [
+          {
+            "origin": "source",
+            "kind": "Method",
+            "name": "deepCopy",
+            "owner": "com.google.gson.JsonNull",
+            "path": "gson/src/main/java/com/google/gson/JsonNull.java",
+            "start": 1307,
+            "end": 1315
+          }
+        ]
+      }
+    }
+  ],
+  "base_tree": "2318c2d3f5a86add548e722db470f20fc41a0bde"
+}

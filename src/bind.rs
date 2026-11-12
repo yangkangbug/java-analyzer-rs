@@ -2651,10 +2651,26 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
 struct SourceCall {
     is_static: bool,
     varargs: bool,
+    override_facts: Option<OverrideFacts>,
     // Only a strictly selected source member may expose this value. It is not
     // part of Shape/MethodIdentity, receiver typing, or overload applicability.
     scalar_return: Option<Primitive>,
     reference_return: Option<Vec<String>>,
+}
+
+// Independent evidence for legality of a source override, not invocation result typing.
+#[derive(Clone, Debug)]
+struct OverrideFacts {
+    is_final: bool,
+    is_abstract: bool,
+    result: OverrideReturn,
+    work: usize,
+}
+#[derive(Clone, Debug)]
+enum OverrideReturn {
+    Void,
+    Primitive(Primitive),
+    Reference(Vec<String>),
 }
 
 // Kept separate from QualName: retaining primitive values must not teach the
@@ -2858,9 +2874,115 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
     Some(SourceCall {
         is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static),
         varargs,
+        override_facts: source_override_facts(node, start),
         scalar_return: primitive_method_return(node),
         reference_return: reference_method_return(node),
     })
+}
+
+// Declaration annotations may be structurally present, but their names confer
+// no override proof. Keep this separate from the stricter result-propagation metadata.
+// Structural marker/empty annotation evidence only, not annotation type/target validation.
+fn marker_override_annotation(node: &GreenNode) -> bool {
+    if node.kind() != SyntaxKind::Annotation {
+        return false;
+    }
+    let mut state = 0;
+    for child in node.children() {
+        if let Some(t) = child.as_token() {
+            if t.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, t.kind()) {
+                (0, SyntaxKind::At) => 1,
+                (2, SyntaxKind::LParen) => 3,
+                (3, SyntaxKind::RParen) => 4,
+                _ => return false,
+            };
+        } else if let Some(n) = child.as_node() {
+            if state != 1 || n.kind() != SyntaxKind::Name {
+                return false;
+            }
+            let mut ident = true;
+            for part in n.children() {
+                let Some(t) = part.as_token() else { return false };
+                if t.kind().is_trivia() {
+                    continue;
+                }
+                if t.kind() != if ident { SyntaxKind::Ident } else { SyntaxKind::Dot } {
+                    return false;
+                }
+                ident = !ident;
+            }
+            if ident {
+                return false;
+            }
+            state = 2;
+        }
+    }
+    matches!(state, 2 | 4)
+}
+
+fn source_override_facts(node: &GreenNode, start: u32) -> Option<OverrideFacts> {
+    if node.kind() != SyntaxKind::Method || !valid_modifiers(node, start, true) {
+        return None;
+    }
+    let mods = child_kind(node, start, SyntaxKind::ModifierList).map(|(n, _)| tokens(n, 0)).unwrap_or_default();
+    if mods.iter().any(|t| t.0 == SyntaxKind::Native) {
+        return None;
+    }
+    let is_abstract = mods.iter().any(|t| t.0 == SyntaxKind::Abstract);
+    let is_final = mods.iter().any(|t| t.0 == SyntaxKind::Final);
+    let mut state = 0;
+    let mut result = None;
+    let mut work = 0usize;
+    for child in node.children() {
+        if !child.as_node().is_some_and(|n| n.kind() == SyntaxKind::Block) {
+            work = work.saturating_add(child.utf8_len() as usize);
+        }
+        if let Some(token) = child.as_token() {
+            if token.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, token.kind()) {
+                (1, SyntaxKind::Ident) => 2,
+                (3, SyntaxKind::Semi) if is_abstract => 4,
+                _ => return None, // Includes every throws clause and postfix result array.
+            };
+        } else if let Some(n) = child.as_node() {
+            if n.kind() != SyntaxKind::Block && !crate::green::collect_errors(n).is_empty() {
+                return None;
+            }
+            state = match (state, n.kind()) {
+                (0, SyntaxKind::ModifierList) if n.child_nodes().all(|n| marker_override_annotation(n)) => 0,
+                (0, SyntaxKind::Type) => {
+                    result = if plain_reference_type(n) {
+                        Some(OverrideReturn::Reference(type_parts(n, 0)?))
+                    } else if n.child_nodes().next().is_none() {
+                        let kinds: Vec<_> = n
+                            .children()
+                            .iter()
+                            .filter_map(|c| c.as_token())
+                            .filter(|t| !t.kind().is_trivia())
+                            .collect();
+                        let [one] = kinds.as_slice() else { return None };
+                        Some(if one.kind() == SyntaxKind::Void {
+                            OverrideReturn::Void
+                        } else {
+                            OverrideReturn::Primitive(Primitive::source(one.text())?)
+                        })
+                    } else {
+                        return None;
+                    };
+                    1
+                }
+                (2, SyntaxKind::ParamList) => 3,
+                (3, SyntaxKind::Block) if !is_abstract => 4,
+                _ => return None,
+            };
+        }
+    }
+    (state == 4).then_some(OverrideFacts { is_final, is_abstract, result: result?, work })
 }
 
 // Validate the complete method header, not just the first primitive token.
@@ -4415,6 +4537,60 @@ impl<'a> ReferenceCallProof<'a> {
         self.reference_type(file, parts, member.member.start)
     }
 
+    // Validate each ancestor pair before removing any candidate. A nearer node
+    // never excuses a final or incompatible declaration elsewhere in the chain.
+    fn source_override(&mut self, child: (&'a ClassRec, &'a Member), parent: (&'a ClassRec, &'a Member)) -> Option<()> {
+        if same_class(child.0, parent.0) || !self.graph(child.0)?.iter().any(|ancestor| same_class(ancestor, parent.0))
+        {
+            return None;
+        }
+        let child_facts = child.1.source_call.as_ref()?.override_facts.as_ref()?;
+        let parent_facts = parent.1.source_call.as_ref()?.override_facts.as_ref()?;
+        self.charge(child_facts.work.saturating_add(parent_facts.work))?;
+        if parent_facts.is_final || (child_facts.is_abstract && child_facts.is_final) {
+            return None;
+        }
+        // Abstract methods are compile-time declarations too. Body legality was
+        // checked when facts were collected; no runtime implementation is guessed.
+        match (&child_facts.result, &parent_facts.result) {
+            (OverrideReturn::Void, OverrideReturn::Void) => Some(()),
+            (OverrideReturn::Primitive(a), OverrideReturn::Primitive(b)) if a == b => Some(()),
+            (OverrideReturn::Reference(a), OverrideReturn::Reference(b)) => {
+                let child_file =
+                    self.index.files.iter().find(|f| f.scope == child.0.scope && f.path == child.0.path)?;
+                let parent_file =
+                    self.index.files.iter().find(|f| f.scope == parent.0.scope && f.path == parent.0.path)?;
+                let a = self.reference_type(child_file, a, child.1.start)?;
+                let b = self.reference_type(parent_file, b, parent.1.start)?;
+                if same_class(a, b) {
+                    return Some(());
+                }
+                // Only a plain source superclass path supplies nonidentity covariance.
+                // Complete graphs were validated above; interface/generic substitution is not proof.
+                if b.binary || b.is_interface || b.reference_generic {
+                    return None;
+                }
+                let mut current = a;
+                for _ in 0..=REFERENCE_PROOF_DEPTH {
+                    self.charge(1)?;
+                    if current.binary || current.is_interface || current.reference_generic {
+                        return None;
+                    }
+                    if same_class(current, b) {
+                        return Some(());
+                    }
+                    let (parts, plain) = current.reference_edges.as_ref()?.first()?;
+                    if !plain {
+                        return None;
+                    }
+                    current = self.edge(current, parts)?;
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
     fn select(
         &mut self,
         owner: &'a ClassRec,
@@ -4499,8 +4675,9 @@ impl<'a> ReferenceCallProof<'a> {
             }
             formals.push(types);
         }
+        let mut hidden = vec![false; members.len()];
         for (i, left) in formals.iter().enumerate() {
-            for right in &formals[i + 1..] {
+            for (j, right) in formals.iter().enumerate().skip(i + 1) {
                 self.charge(left.len().max(1))?;
                 if left.len() == right.len() {
                     if inherited {
@@ -4526,7 +4703,19 @@ impl<'a> ReferenceCallProof<'a> {
                             };
                         }
                         if !different {
-                            return None;
+                            if !left.iter().zip(right).all(|(a, b)| a.same_type(b)) {
+                                return None; // Unknown cross-scope identity is not override equality.
+                            }
+                            if same_class(members[i].0, members[j].0) {
+                                return None;
+                            }
+                            if self.graph(members[i].0)?.iter().any(|c| same_class(c, members[j].0)) {
+                                self.source_override(members[i], members[j])?;
+                                hidden[j] = true;
+                            } else {
+                                self.source_override(members[j], members[i])?;
+                                hidden[i] = true;
+                            }
                         }
                     } else if left.iter().zip(right).all(|(a, b)| a.same_type(b)) {
                         return None;
@@ -4536,7 +4725,7 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let mut applicable = Vec::new();
         for (i, parameters) in formals.iter().enumerate() {
-            if actuals.len() != parameters.len() {
+            if hidden[i] || actuals.len() != parameters.len() {
                 continue;
             }
             let mut applies = true;

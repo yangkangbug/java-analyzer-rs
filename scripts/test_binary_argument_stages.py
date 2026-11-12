@@ -67,7 +67,7 @@ class BinaryStageControls(unittest.TestCase):
             caller(Path('native'), self.f, baseline)
             self.assertEqual(not baseline or caller is gate.run, overlay.called)
             if original.called:
-                stage = 'null_actual' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'inherited_source')
+                stage = 'null_actual' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'source_override')
                 original.assert_called_once_with(self.f, stage)
 
     def test_every_layer_rejects_parser_stage_swap(self):

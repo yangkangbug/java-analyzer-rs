@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "artifacts": {
+    "inherited-source-v1/fixture-manifest.json": "609376e0c8fdda7ac437ba5e78fcd7dfe1fcc75d7fdf7e5d09b8ca04859f0e97",
+    "inherited-source-v1/files.tsv": "f773a180e197aef472b29e05b7750785c417f273dd0e8d40d536dc72ecdf3b5c",
+    "inherited-source-v1/expected.tsv": "7a7ec3af3028a488802f1ee9294e0f7ed50843124a6f12d4263fdd846cc33ff2",
+    "inherited-source-v1/invalid.tsv": "37f457a1da7980ccf1d73491b955f986f60e9ef9b1c62fc2ab64e328d9478309",
+    "inherited-source-v1/prior-inherited-updates.json": "026ff82c7672ce6e7fd3ad05c9d5af52f0f16682fa38d679cecdfd3e1faa0bca",
+    "inherited-source-v1/prior-inherited-revision.json": "63cf804783563664165363d5d1b1a71881583c7673095ab26e814defdd813c1d",
+    "inherited-source-v1/baseline.tsv": "047b8ba5fb8b610beb66fea608c9eac5a0a157f5f71803ec5c5480d576b679ba",
+    "inherited-source-v1/history/forecast-first-failure.log": "3bd34afc33ed971d64651c4d0780da1cdefe8e8fae1ccc893b08c05686221642",
+    "inherited-source-v1/invalid/unknown/Use.java": "2b61edd73dcf5966c836efa2c865ae4e25502eb6adc8d2e6d967a071ade0a376",
+    "inherited-source-v1/invalid/missing/Use.java": "201abad80303fcf2fe1d180c95c1e3e60413aaff943e1f975e6e63e5f0e576ac",
+    "inherited-source-v1/source/base/Parent.java": "789d6eaae3f509a7a73ea70037d3e5edc953be7ddebbe7b3e0dee7ba25173121",
+    "inherited-source-v1/source/core/Use.java": "76066e2e967c4b2589cc729f86b9e8c38f3a899331b69f490cb81d096d099320",
+    "inherited-source-v1/source/client/Use.java": "eb88f3a838785e91d4ff718fd85da641d8d4d4913d5da004892bace137bdc565",
+    "inherited-source-v1/source/client/Child.java": "d0b7ce066e6362fc13da95d3636aa917971081757d49bca9115df548a708b5c8",
+    "inherited-source-v1/source/client/Value.java": "9a1c9537aa5be913ea56a60aa7aca4f53fb5745f5c16e7e34f52963ed2ce0737",
+    "inherited-source-v1/source/model/Value.java": "e037cf643a24f4932206fc36fd74882519e58aac0b89b6bef686dd9a2a12f809"
+  },
+  "queries": {
+    "declaring_import": [
+      "client/Use.java",
+      126,
+      132,
+      "accept"
+    ],
+    "child_shadow": [
+      "client/Use.java",
+      172,
+      178,
+      "accept"
+    ],
+    "unique_parent": [
+      "core/Use.java",
+      723,
+      729,
+      "unique"
+    ],
+    "parent_overload": [
+      "core/Use.java",
+      765,
+      769,
+      "pick"
+    ],
+    "child_overload": [
+      "core/Use.java",
+      804,
+      808,
+      "pick"
+    ],
+    "two_level": [
+      "core/Use.java",
+      838,
+      844,
+      "unique"
+    ],
+    "override_refusal": [
+      "core/Use.java",
+      881,
+      885,
+      "over"
+    ],
+    "interface_refusal": [
+      "core/Use.java",
+      923,
+      927,
+      "face"
+    ],
+    "generic_refusal": [
+      "core/Use.java",
+      963,
+      970,
+      "generic"
+    ]
+  },
+  "declarations": {
+    "imported": [
+      "base/Parent.java",
+      86,
+      92,
+      "accept"
+    ],
+    "shadow": [
+      "client/Child.java",
+      85,
+      91,
+      "accept"
+    ],
+    "unique": [
+      "core/Use.java",
+      93,
+      99,
+      "unique"
+    ],
+    "parent_pick": [
+      "core/Use.java",
+      143,
+      147,
+      "pick"
+    ],
+    "parent_override": [
+      "core/Use.java",
+      195,
+      199,
+      "over"
+    ],
+    "child_pick": [
+      "core/Use.java",
+      273,
+      277,
+      "pick"
+    ],
+    "child_override": [
+      "core/Use.java",
+      393,
+      397,
+      "over"
+    ],
+    "face": [
+      "core/Use.java",
+      450,
+      454,
+      "face"
+    ],
+    "generic": [
+      "core/Use.java",
+      541,
+      548,
+      "generic"
+    ]
+  },
+  "previous_current": {
+    "unique_parent": [
+      "Resolved",
+      "unique@core.Parent",
+      "unique@core.Parent"
+    ],
+    "parent_overload": [
+      "Resolved",
+      "parent_pick@core.Parent",
+      "parent_pick@core.Parent"
+    ],
+    "child_overload": [
+      "Resolved",
+      "child_pick@core.Child",
+      "child_pick@core.Child"
+    ],
+    "two_level": [
+      "Resolved",
+      "unique@core.Parent",
+      "unique@core.Parent"
+    ],
+    "declaring_import": [
+      "Resolved",
+      "imported@base.Parent",
+      "imported@base.Parent"
+    ],
+    "child_shadow": [
+      "Resolved",
+      "shadow@client.Child",
+      "shadow@client.Child"
+    ],
+    "override_refusal": [
+      "Ambiguous",
+      "child_override@core.Override",
+      "child_override@core.Override,parent_override@core.Parent"
+    ],
+    "interface_refusal": [
+      "CallNotResolved",
+      "face@core.Face",
+      "face@core.Face"
+    ],
+    "generic_refusal": [
+      "CallNotResolved",
+      "generic@core.Generic",
+      "generic@core.Generic"
+    ]
+  },
+  "query": "override_refusal",
+  "before": [
+    "Ambiguous",
+    "child_override@core.Override",
+    "child_override@core.Override,parent_override@core.Parent"
+  ],
+  "after": [
+    "Resolved",
+    "child_override@core.Override",
+    "child_override@core.Override"
+  ]
+}

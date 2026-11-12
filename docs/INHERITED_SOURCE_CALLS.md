@@ -13,7 +13,7 @@ method carries its declaring class into ordinary navigation, outer call-result
 navigation and inner call-result return-type lookup. Original declaration paths,
 ranges and context remain authoritative.
 
-Same-signature override is not implemented. In the inherited branch, two equal
+Historical inherited-only boundary (superseded for proven plain source pairs by [source override selection](SOURCE_OVERRIDE_CALLS.md)): same-signature override was not implemented. In the inherited branch, two equal
 arity formal vectors are different only when at least one position is provably
 different. Same logical reference names in different compilation scopes are
 unknown rather than distinct merely because their internal identities differ.

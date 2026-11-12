@@ -1,0 +1,128 @@
+{
+  "source": {
+    "interface_refusal": [
+      "Ambiguous",
+      "2",
+      "Refusals.java|Method|overrides.InterfaceChild|call|148|152",
+      "Refusals.java|Method|overrides.Face|call|64|68"
+    ],
+    "generic_refusal": [
+      "Ambiguous",
+      "2",
+      "Refusals.java|Method|overrides.GenericChild|call|307|311",
+      "Refusals.java|Method|overrides.Generic|call|214|218"
+    ],
+    "throws_refusal": [
+      "Ambiguous",
+      "2",
+      "Refusals.java|Method|overrides.ThrowsChild|call|479|483",
+      "Refusals.java|Method|overrides.ThrowsParent|call|374|378"
+    ],
+    "native_refusal": [
+      "Ambiguous",
+      "2",
+      "Refusals.java|Method|overrides.NativeChild|call|656|660",
+      "Refusals.java|Method|overrides.NativeParent|call|570|574"
+    ],
+    "array_return_refusal": [
+      "Ambiguous",
+      "2",
+      "Refusals.java|Method|overrides.ArrayChild|array|829|834",
+      "Refusals.java|Method|overrides.ArrayParent|array|726|731"
+    ],
+    "child_override": [
+      "OverloadNotResolved",
+      "3",
+      "Use.java|Method|overrides.Child|pick|404|408",
+      "Use.java|Method|overrides.Parent|pick|147|151",
+      "Use.java|Method|overrides.Parent|pick|195|199"
+    ],
+    "multilevel_override": [
+      "OverloadNotResolved",
+      "4",
+      "Use.java|Method|overrides.Grandchild|pick|627|631",
+      "Use.java|Method|overrides.Child|pick|404|408",
+      "Use.java|Method|overrides.Parent|pick|147|151",
+      "Use.java|Method|overrides.Parent|pick|195|199"
+    ],
+    "inherited_overload": [
+      "OverloadNotResolved",
+      "4",
+      "Use.java|Method|overrides.Grandchild|pick|627|631",
+      "Use.java|Method|overrides.Child|pick|404|408",
+      "Use.java|Method|overrides.Parent|pick|147|151",
+      "Use.java|Method|overrides.Parent|pick|195|199"
+    ],
+    "parent_static_receiver": [
+      "Resolved",
+      "1",
+      "Use.java|Method|overrides.Parent|pick|147|151"
+    ],
+    "covariant_return": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|overrides.Child|make|467|471",
+      "Use.java|Method|overrides.Parent|make|247|251"
+    ],
+    "identical_return": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|overrides.Child|same|526|530",
+      "Use.java|Method|overrides.Parent|same|307|311"
+    ],
+    "final_leaf": [
+      "OverloadNotResolved",
+      "3",
+      "Use.java|Method|overrides.FinalChild|pick|717|721",
+      "Use.java|Method|overrides.Parent|pick|147|151",
+      "Use.java|Method|overrides.Parent|pick|195|199"
+    ]
+  },
+  "final": {
+    "invalid_final": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|bad.Child|call|127|131",
+      "Use.java|Method|bad.Parent|call|58|62"
+    ]
+  },
+  "missing": {
+    "invalid_missing": [
+      "CallNotResolved",
+      "1",
+      "Use.java|Method|bad.Child|call|67|71"
+    ]
+  },
+  "return": {
+    "invalid_return": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|bad.Child|call|131|135",
+      "Use.java|Method|bad.Parent|call|51|55"
+    ]
+  },
+  "static": {
+    "invalid_static": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|bad.Child|call|128|132",
+      "Use.java|Method|bad.Parent|call|52|56"
+    ]
+  },
+  "unknown": {
+    "invalid_unknown": [
+      "SignatureNotCompared",
+      "2",
+      "Use.java|Method|bad.Child|call|125|129",
+      "Use.java|Method|bad.Parent|call|52|56"
+    ]
+  },
+  "visibility": {
+    "invalid_visibility": [
+      "Ambiguous",
+      "2",
+      "Use.java|Method|bad.Child|call|124|128",
+      "Use.java|Method|bad.Parent|call|52|56"
+    ]
+  }
+}

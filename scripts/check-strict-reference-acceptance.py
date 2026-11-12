@@ -149,26 +149,97 @@ def inherited_probes(fixture, historical):
     return queries
 
 
-def current_probes(fixture):
+def frozen_inherited_probes(fixture):
     return inherited_probes(fixture, frozen_cast_probes(fixture))
+
+
+OVERRIDE_V1_SHA256 = '95ede0ef806796ee459348b523d2834d11e3cfd97bfdd804d4dc2867db3c39ae'
+OVERRIDE_PLAN_SHA256 = '70298e4fe5c27f8ee2e2ec64be2246ac586754f05377ea831bb6a230a67d4eca'
+OVERRIDE_DIAGNOSIS_SHA256 = '320489e023f00dc402f86d20e115fd9ce38aa6c98d00a39ea63751366cd1b4b6'
+
+
+def override_plan(path=None):
+    def pinned(path, checksum, label):
+        second.reject_symlinks(path.absolute())
+        data=path.read_bytes()
+        second.same(hashlib.sha256(data).hexdigest(), checksum, label)
+        return json.loads(data, object_pairs_hook=second.unique_json_object)
+    original=pinned(second.CORPUS/'source-override-probes.json', OVERRIDE_V1_SHA256, 'preserved original override forecast')
+    diagnosis=pinned(second.CORPUS/'source-override-deferred-diagnosis.json', OVERRIDE_DIAGNOSIS_SHA256, 'fixed annotated-local diagnostic')
+    path=second.CORPUS/'source-override-probes-v2.json' if path is None else path
+    revised=pinned(path, OVERRIDE_PLAN_SHA256, 'complete override V2 contract')
+    for field in ('diagnostic_source','diagnostic_log','real_source_log'):
+        second.same(hashlib.sha256(diagnosis[field].encode()).hexdigest(), diagnosis[field+'_sha256'], 'retained diagnostic bytes '+field)
+    second.same(diagnosis['results'], [{'annotation':a,'status':s,'candidate_count':n} for a,s,n in [('', 'Resolved',1),('@A','Ambiguous',2),('@A()','Ambiguous',2),('@SuppressWarnings("deprecation")','Ambiguous',2)]], 'independent diagnostic outcomes')
+    second.same(diagnosis['real_source_sha256'], {k:v for k,v in original['source_sha256'].items() if 'JsonNull' in k}, 'original JsonNull source hashes')
+    expected=json.loads(json.dumps(original))
+    q=expected['queries'][35]
+    q['expected']=q['baseline']
+    expected['scope_revision']={'supersedes':'source-override-probes.json','supersedes_sha256':OVERRIDE_V1_SHA256,
+        'disposition':'deferred_annotated_local_receiver','query_id':q['id'],'reason':diagnosis['reason'],
+        'original_expected':original['queries'][35]['expected'],'revised_expected':q['expected'],
+        'diagnosis':'source-override-deferred-diagnosis.json','diagnosis_sha256':OVERRIDE_DIAGNOSIS_SHA256,
+        'first_candidate_failure_sha256':diagnosis['first_candidate_failure_sha256']}
+    second.same(revised, expected, 'only JsonNull expected result revised; all original records retained')
+    return revised
+
+
+def override_probes(fixture, historical):
+    plan = override_plan()
+    second.same(plan['source_archive_sha256'], fixture.metadata['inputs']['sources']['sha256'], 'override source archive')
+    for name, checksum in plan['historical_artifact_sha256'].items():
+        second.same(second.digest(second.CORPUS / name), checksum, 'preserved override-stage artifact ' + name)
+    for name, checksum in plan['source_sha256'].items():
+        data = fixture.sources[name]
+        second.same(hashlib.sha256(data).hexdigest(), checksum, 'override source bytes ' + name)
+        second.reject_symlinks(fixture.source_root / name)
+        second.same((fixture.source_root / name).read_bytes(), data, 'unchanged override source')
+    queries = plan['queries']
+    second.same(len(queries), 36, 'exact override-stage query count')
+    second.same(len(historical), 35, 'exact inherited predecessor count')
+    promoted = {31:'com.google.gson.JsonArray',32:'com.google.gson.JsonObject',33:'com.google.gson.JsonPrimitive'}
+    for index, (q, old) in enumerate(zip(queries[:35], historical)):
+        expected = dict(old, baseline=old['expected'])
+        if index in promoted:
+            expected['expected'] = {'status':'Resolved', 'targets':[target for target in old['expected']['targets'] if target['owner']==promoted[index]]}
+        second.same(q, expected, 'exact complete predecessor record and explicit override promotion')
+    second.same([q['byte'] for q in queries if q['baseline'] != q['expected']], [3001,6712,10817], 'only three real override improvements')
+    second.same((queries[35]['file'],queries[35]['byte'],queries[35]['expression']),
+        ('gson/src/test/java/com/google/gson/JsonNullTest.java',1261,'deepCopy()'), 'exact additional JsonNull site')
+    second.same(queries[35]['expected'], queries[35]['baseline'], 'JsonNull annotated-local remains exact deferred refusal')
+    second.same(len({q['id'] for q in queries}), 36, 'unique override query IDs')
+    for q in queries:
+        expression = q['expression'].encode()
+        second.same(fixture.sources[q['file']][q['byte']:q['byte']+len(expression)], expression, 'exact override expression')
+        for stage in ('baseline','expected'):
+            for target in q[stage]['targets']:
+                second.expected_target(target, fixture)
+                if target['origin']=='source':
+                    second.same(fixture.sources[target['path']][target['start']:target['end']], target['name'].encode(), 'exact override declaration')
+    return queries
+
+
+def current_probes(fixture):
+    return override_probes(fixture, frozen_inherited_probes(fixture))
 
 
 def capture_proof_stage(native, fixture, stage):
     """Explicit additive capture; legacy feature captures retain their old entry points."""
-    second.same(stage, 'inherited_source', 'supported additive capture stage')
-    second.same(second.digest(native), inherited_plan()['baseline_native_sha256'], 'exact 39fa8de8 predecessor binary')
-    queries = current_probes(fixture)
+    second.require(stage in ('inherited_source','source_override'), 'supported additive capture stage')
+    plan, checksum, previous, commit = (inherited_plan(), INHERITED_PLAN_SHA256, 'cast_null', '39fa8de8') if stage=='inherited_source' else (override_plan(), OVERRIDE_PLAN_SHA256, 'inherited_source', 'dcb31d23')
+    second.same(second.digest(native), plan['baseline_native_sha256'], 'exact frozen predecessor binary')
+    queries = frozen_inherited_probes(fixture) if stage=='inherited_source' else current_probes(fixture)
     before = second.all_source_hashes(fixture)
     request = second.document(fixture, 'inherited-capture.json', {'schema_version':1, 'queries':[
         {'compilation':q['compilation'], 'file':'sources/'+q['file'], 'position':{'encoding':'utf8','offset':q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     second.check_reference_call_response(response, queries, fixture, 'baseline')
-    preservation = string.run(native, fixture, proof_stage='cast_null', parser_stage='current')
+    preservation = string.run(native, fixture, proof_stage=previous, parser_stage='current')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'capture sources unchanged')
     second.same(after, preservation['source_sha256_after'], 'capture preservation sources')
-    return {'validation':'baseline_verified_not_acceptance', 'comparison_stage':'inherited_source_baseline_39fa8de8',
-            'plan_sha256':INHERITED_PLAN_SHA256, 'native_sha256':second.digest(native),
+    return {'validation':'baseline_verified_not_acceptance', 'comparison_stage':stage+'_baseline_'+commit,
+            'plan_sha256':checksum, 'native_sha256':second.digest(native),
             'queries':second.portable_queries(response,fixture), 'preservation':preservation,
             'source_sha256_before':before, 'source_sha256_after':after, 'source_bytes_unchanged':True}
 
@@ -197,7 +268,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else INHERITED_PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else OVERRIDE_PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,
@@ -214,7 +285,7 @@ def main():
     parser.add_argument('--output', type=Path)
     captures = parser.add_mutually_exclusive_group()
     captures.add_argument('--capture-baseline', action='store_true')
-    captures.add_argument('--capture-proof-stage', choices=['inherited_source'])
+    captures.add_argument('--capture-proof-stage', choices=['inherited_source','source_override'])
     args = parser.parse_args()
     native = args.native.resolve()
     second.require(native.is_file(), 'native executable must exist')

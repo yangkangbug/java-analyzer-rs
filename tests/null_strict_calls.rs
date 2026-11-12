@@ -148,11 +148,15 @@ fn null_parentheses_keep_shared_depth_budget() {
 }
 
 #[test]
-fn null_composes_with_inherited_selection_but_not_override() {
+fn null_composes_with_inherited_selection_and_proven_override() {
     let source = "class A {} class Base { public void pick(A a) {} } class Box extends Base {} class Calls { void run(Box box) { box.pick(null); } }";
     winner(source, "pick(null)", "pick(A a)");
     let overridden = source.replace("class Box extends Base {}", "class Box extends Base { public void pick(A a) {} }");
-    refused(&overridden, "pick(null)", 2);
+    let selected = query(&project(&overridden), "pick(null)");
+    assert_eq!(selected.status, ResolveStatus::Resolved);
+    assert_eq!(selected.targets[0].owner, "Box");
+    assert_eq!(selected.targets[0].start_byte, overridden.rfind("pick(A a)").unwrap() as u32);
+    refused(&overridden.replacen("public void pick", "public final void pick", 1), "pick(null)", 2);
 }
 
 #[test]

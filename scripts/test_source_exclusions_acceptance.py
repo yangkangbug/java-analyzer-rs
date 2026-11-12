@@ -423,7 +423,7 @@ class ResultControls(unittest.TestCase):
         f.plan = [{'id': str(i)} for i in range(16)]
         groups = {'original': [{} for _ in range(16)], 'reference': [{} for _ in range(3)],
                   'local': [{} for _ in range(5)], 'string': [{} for _ in range(8)],
-                  'current': [{'byte': b} for b in [1843, 1976, 2412, 1986, 2489, 2527, 2139, 2489, 1653, 6484,6850,7239,7315,7638,7980,8392,8502,8883,8920,8955,8990,9024,9057,9095,9129,9164,9573,9959,9994,5305,2883,3001,6712,10817,6612]]}
+                  'current': [{'byte': b} for b in [1843, 1976, 2412, 1986, 2489, 2527, 2139, 2489, 1653, 6484,6850,7239,7315,7638,7980,8392,8502,8883,8920,8955,8990,9024,9057,9095,9129,9164,9573,9959,9994,5305,2883,3001,6712,10817,6612,1261]]}
         def run():
             with mock.patch.object(gate.second, 'current_original_expectations', return_value=groups['original']), \
                  mock.patch.object(gate.second, 'reference_call_probes', return_value=(groups['reference'], {}, 'digest')), \
@@ -434,10 +434,10 @@ class ResultControls(unittest.TestCase):
                 return gate.probe_groups(f)[0]
         result = run()
         self.assertEqual(tuple((name, len(rows)) for name, rows in result), gate.CURRENT_PROBE_GROUPS)
-        self.assertEqual(sum(len(rows) for name, rows in result), 67)
-        self.assertEqual(gate.CURRENT_QUERY_COUNT, 67)
-        self.assertEqual(result[-1][0], 'inherited_source_35')
-        self.assertEqual(result[-1][1][-1]['byte'], 6612)
+        self.assertEqual(sum(len(rows) for name, rows in result), 68)
+        self.assertEqual(gate.CURRENT_QUERY_COUNT, 68)
+        self.assertEqual(result[-1][0], 'source_override_36')
+        self.assertEqual(result[-1][1][-1]['byte'], 1261)
         original = copy.deepcopy(groups)
         for key in groups:
             for change in ('omit', 'duplicate'):
