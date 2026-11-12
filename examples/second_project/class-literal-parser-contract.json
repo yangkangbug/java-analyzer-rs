@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "scope": "primitive-and-void-class-literals",
+  "source_archive_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+  "source_count": 211,
+  "comparison_file": "class-literal-parser-comparison.tsv",
+  "comparison_sha256": "d1b44a3a354e2f45a9cc40475a3ad4de8b0256be56195d966e625b034ababfd9",
+  "historical_artifact_sha256": {
+    "reference-call-probes.json": "b57afcbad6c8335d47ba20dcbc45a7266ed3e0bf9b87f88284f59a1645d2182a",
+    "local-type-comparison.json": "498368e819022271af4f10e7146b0b4318353a57f50f505e7f379f536a780d05"
+  },
+  "baseline": {
+    "report_count": 331,
+    "files_with_reports": 58,
+    "parser_result_canonical_sha256": "751c68b759848ec1d2fef620a323d54a67771817f0e727ef3f630f8da660e7df"
+  },
+  "current": {
+    "report_count": 166,
+    "files_with_reports": 44,
+    "parser_result_canonical_sha256": "cfec166a49afc0676728491b4dfb9ed327ddab097404b0fed17ebb0fd678a2da"
+  }
+}

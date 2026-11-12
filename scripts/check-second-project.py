@@ -661,15 +661,69 @@ def parser_result_digest(parser, fixture):
     return hashlib.sha256(canonical_json(portable).encode('utf-8')).hexdigest()
 
 
-def check_reference_parser(parser, fixture, historical, expected_digest):
+def class_literal_parser_contract(fixture, historical, baseline_digest):
+    """An additive exact current contract; historical parser artifacts stay frozen."""
+    spec = json.loads((CORPUS / 'class-literal-parser-contract.json').read_text(),
+                      object_pairs_hook=unique_json_object)
+    same(set(spec), {'format_version', 'scope', 'source_archive_sha256', 'source_count',
+                     'comparison_file', 'comparison_sha256', 'historical_artifact_sha256',
+                     'baseline', 'current'}, 'class-literal contract fields')
+    same(canonical_json(spec['format_version']), '1', 'class-literal contract version')
+    same(spec['scope'], 'primitive-and-void-class-literals', 'class-literal contract scope')
+    same(spec['source_archive_sha256'], fixture.metadata['inputs']['sources']['sha256'],
+         'class-literal source archive pin')
+    same(canonical_json(spec['source_count']), '211', 'class-literal complete source count')
+    same(set(spec['historical_artifact_sha256']),
+         {'reference-call-probes.json', 'local-type-comparison.json'}, 'historical parser artifacts')
+    for name, checksum in spec['historical_artifact_sha256'].items():
+        same(digest(CORPUS / name), checksum, 'unchanged historical parser artifact: ' + name)
+    for stage, count, affected in [('baseline', 331, 58), ('current', 166, 44)]:
+        row = spec[stage]
+        same(set(row), {'report_count', 'files_with_reports', 'parser_result_canonical_sha256'},
+             stage + ' parser contract fields')
+        same(canonical_json(row['report_count']), str(count), stage + ' exact report count')
+        same(canonical_json(row['files_with_reports']), str(affected), stage + ' exact affected count')
+        checksum = row['parser_result_canonical_sha256']
+        require(isinstance(checksum, str) and len(checksum) == 64
+                and all(c in '0123456789abcdef' for c in checksum), stage + ' canonical digest')
+    same(spec['baseline']['parser_result_canonical_sha256'], baseline_digest, 'historical complete parser digest')
+    same(spec['comparison_file'], 'class-literal-parser-comparison.tsv', 'fixed parser comparison path')
+    path = CORPUS / spec['comparison_file']
+    same(digest(path), spec['comparison_sha256'], 'fixed complete parser comparison bytes')
+    before, after = {}, {}
+    rows = [line for line in path.read_text().splitlines() if not line.startswith('#')]
+    for line in rows:
+        columns = line.split('\t')
+        require(len(columns) == 3, 'parser comparison columns')
+        name, old, new = columns
+        require(name not in before, 'duplicate parser comparison path')
+        require(old.isascii() and old.isdecimal() and new.isascii() and new.isdecimal(),
+                'parser comparison nonnegative integer counts')
+        require(str(int(old)) == old and str(int(new)) == new, 'canonical parser counts')
+        before[name], after[name] = int(old), int(new)
+    same(list(before), sorted(historical['parser_after']), 'complete ordered 211-source parser inventory')
+    same(len(before), 211, 'complete parser comparison count')
+    same(before, historical['parser_after'], 'unchanged historical parser inventory')
+    same(sum(after.values()), 166, 'current comparison report count')
+    same(sum(bool(n) for n in after.values()), 44, 'current comparison affected count')
+    return after, spec['current']['parser_result_canonical_sha256']
+
+
+def check_reference_parser(parser, fixture, historical, expected_digest, stage='current'):
+    require(stage in ('baseline', 'current'), 'unknown parser comparison stage')
     check_parser(parser, fixture)
+    if stage == 'baseline':
+        expected_inventory, count, affected = historical['parser_after'], 331, 58
+    else:
+        expected_inventory, expected_digest = class_literal_parser_contract(fixture, historical, expected_digest)
+        count, affected = 166, 44
     inventory = {Path(f['path']).relative_to(fixture.source_root).as_posix(): len(f['reports'])
                  for f in parser['files']}
-    same(inventory, historical['parser_after'], 'unchanged per-source parser inventory')
-    same(parser['report_count'], 331, 'unchanged parser report count')
-    same(parser['files_with_reports'], 58, 'unchanged parser affected-file count')
+    same(inventory, expected_inventory, stage + ' exact per-source parser inventory')
+    same(parser['report_count'], count, stage + ' exact parser report count')
+    same(parser['files_with_reports'], affected, stage + ' exact parser affected-file count')
     same(parser_result_digest(parser, fixture), expected_digest,
-         'unchanged complete parser records including messages and byte/UTF16 ranges')
+         stage + ' complete parser records including messages and byte/UTF16 ranges')
     return inventory
 
 
@@ -704,7 +758,8 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False):
     same(local['result']['index_builds'], 1, 'local-type single prepared index')
     check_local_type_response(local, local_probes, fixture)
     parser = successful(native, fixture, 'parser-report')['result']
-    inventory = check_reference_parser(parser, fixture, historical, parser_digest)
+    inventory = check_reference_parser(parser, fixture, historical, parser_digest,
+                                       stage='baseline' if capture_baseline else 'current')
     after = all_source_hashes(fixture)
     same(after, before, 'source hash inventory unchanged after every native request')
     return {
@@ -784,7 +839,8 @@ def run_constructor_call_acceptance(native, fixture, capture_baseline=False):
     # Reuse strict full-row checking for the five preserved local declarations.
     check_reference_call_response(local, local_probes, fixture)
     parser = successful(native, fixture, 'parser-report', strict_json=True)['result']
-    inventory = check_reference_parser(parser, fixture, historical, parser_digest)
+    inventory = check_reference_parser(parser, fixture, historical, parser_digest,
+                                       stage='baseline' if capture_baseline else 'current')
     after = all_source_hashes(fixture)
     same(after, before, 'constructor source inventory unchanged after analysis')
     return {

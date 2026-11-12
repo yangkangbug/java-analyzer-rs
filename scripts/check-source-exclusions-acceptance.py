@@ -349,8 +349,8 @@ def preservation(runner, fixture, label):
     for file in portable['files']:
         file['path'] = Path(file['path']).relative_to(fixture.source_root).as_posix()
     report['parser'] = portable
-    same(portable['report_count'], 331, 'integer parser count')
-    same(portable['files_with_reports'], 58, 'integer parser affected count')
+    same(portable['report_count'], 166, 'integer parser count')
+    same(portable['files_with_reports'], 44, 'integer parser affected count')
     return report
 
 
@@ -487,7 +487,7 @@ def run(native, inputs, evidence, baseline=False):
                               manifest_sha256=hashlib.sha256(raw).hexdigest(),
                               binary_only_projections=binaries, detail_refusals=details,
                               preservation=preserved['generated'], exact_historical_manual_generated_equality=True,
-                              query_count=36, parser_report_count=331, parser_files_with_reports=58,
+                              query_count=36, parser_report_count=166, parser_files_with_reports=44,
                               controls=controls, lsp_sessions=sessions)
             after, _ = check_inventory(fixture)
             same(after, before, 'all original source hashes after entire run')

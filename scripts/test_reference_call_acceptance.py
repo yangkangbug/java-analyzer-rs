@@ -258,11 +258,11 @@ class FrozenPlanControls(unittest.TestCase):
                             {'path': '/fixture/B.java', 'reports': [None]}]}
         expected_digest = second.parser_result_digest(parser, fixture)
         with mock.patch.object(second, 'check_parser'):
-            second.check_reference_parser(parser, fixture, historical, expected_digest)
+            second.check_reference_parser(parser, fixture, historical, expected_digest, stage='baseline')
             parser['files'][0]['reports'].pop()
             parser['files'][1]['reports'].append(None)
             with self.assertRaises(second.AcceptanceError):
-                second.check_reference_parser(parser, fixture, historical, expected_digest)
+                second.check_reference_parser(parser, fixture, historical, expected_digest, stage='baseline')
 
 
     def test_same_count_parser_message_and_range_mutations_fail(self):
@@ -276,7 +276,7 @@ class FrozenPlanControls(unittest.TestCase):
                                   'start_utf16': 10, 'end_utf16': 15}}]}]}
         expected_digest = second.parser_result_digest(original, fixture)
         with mock.patch.object(second, 'check_parser'):
-            second.check_reference_parser(original, fixture, historical, expected_digest)
+            second.check_reference_parser(original, fixture, historical, expected_digest, stage='baseline')
             for field in ['message', 'start_byte', 'end_byte', 'start_utf16', 'end_utf16']:
                 parser = copy.deepcopy(original)
                 report = parser['files'][0]['reports'][0]
@@ -285,7 +285,7 @@ class FrozenPlanControls(unittest.TestCase):
                 else:
                     report['range'][field] += 1
                 with self.subTest(field=field), self.assertRaises(second.AcceptanceError):
-                    second.check_reference_parser(parser, fixture, historical, expected_digest)
+                    second.check_reference_parser(parser, fixture, historical, expected_digest, stage='baseline')
 
 
 if __name__ == '__main__':

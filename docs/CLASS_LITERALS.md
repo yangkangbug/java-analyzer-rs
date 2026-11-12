@@ -45,3 +45,21 @@ project. No upstream source or JDK archive is added to this repository.
 Error counts include recovery cascades. This reduction does not establish Java
 conformance, semantic diagnostics, reflection navigation or full-project support.
 See the respective workload READMEs for hashes, scope and reproduction commands.
+
+## Additive acceptance contract
+
+The older reference-call and source-selection gates originally required the
+pre-class-literal parser output to remain byte-for-byte unchanged. Their first
+run on the syntax improvement correctly failed that old expectation. The
+[class-literal parser contract](../examples/second_project/class-literal-parser-contract.json)
+now separately pins the current full parser-record digest and the complete
+211-file comparison, while checking the unchanged historical artifact hashes.
+
+Normal acceptance requires exactly 166 reports in 44 files, every per-file
+count, and every diagnostic message and byte/UTF-16 range through the canonical
+digest. Explicit historical parser checks still require 331 reports in 58 files
+and the old digest. The checker never accepts either version opportunistically.
+Reference/constructor baseline capture selects the historical stage explicitly;
+source-selection historical/manual/generated *manifests* all use the current
+parser contract. Navigation targets, source hashes and refusal controls stay
+unchanged. Offline mutation tests cover stage swaps and corrupted records.
