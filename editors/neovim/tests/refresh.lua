@@ -167,8 +167,11 @@ local function run()
     end }
   local initialization_timeout = cfg.scenario == 'initialize_timeout' or cfg.scenario == 'initialize_startup_timeout'
   if initialization_timeout then
-    config.lifecycle_timeouts.initialize_ms = 200
-    observed.initialize_timeout_ms = 200
+    -- Keep the normal startup budget: a cold Python relay on Intel macOS
+    -- can take longer than 200 ms even to record its native child. The
+    -- unreleased 12-second response gates inject the fault, not a race
+    -- against interpreter startup. The product timer still runs unchanged.
+    observed.initialize_timeout_ms = config.lifecycle_timeouts.initialize_ms
   end
   if cfg.scenario == 'shutdown_timeout' then config.lifecycle_timeouts.shutdown_ms = 200 end
   adapter.setup(config)

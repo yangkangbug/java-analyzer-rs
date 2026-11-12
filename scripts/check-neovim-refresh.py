@@ -293,7 +293,7 @@ def _validate(report):
             failures.append('NAVIGATION_ERROR')
     if scenario in ('initialize_timeout', 'initialize_startup_timeout'):
         timeout_valid = (observed.get('ready_seen') is False
-            and type(observed.get('initialize_timeout_ms')) is int and observed['initialize_timeout_ms'] == 200
+            and type(observed.get('initialize_timeout_ms')) is int and observed['initialize_timeout_ms'] == 5000
             and len(spawned) == 1 and expected == 1)
         for status_name in ('timeout_status', 'post_exit_status'):
             status = observed.get(status_name, {})

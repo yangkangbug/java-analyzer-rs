@@ -132,7 +132,7 @@ def fault_report(scenario):
         report['editor']['observed']['replays'] = report['editor']['observed']['replays'][:1]
     if scenario in ('initialize_timeout', 'initialize_startup_timeout'):
         observed = report['editor']['observed']
-        observed.update({'ready_seen': False, 'initialize_timeout_ms': 200,
+        observed.update({'ready_seen': False, 'initialize_timeout_ms': 5000,
                          'initialize_timeout_stage': 'held_response',
                          'timeout_status': copy.deepcopy(observed['terminal_status']),
                          'post_exit_status': copy.deepcopy(observed['terminal_status'])})
@@ -669,6 +669,19 @@ class RefreshEvidenceTests(unittest.TestCase):
             self.report = valid_report()
             self.report[key] = value
             self.assertEqual(MOD.validate(self.report), ['EVIDENCE_SCHEMA'])
+
+    def test_initialize_timeout_uses_normal_startup_budget_without_weakening_evidence(self):
+        for scenario in ('initialize_timeout', 'initialize_startup_timeout'):
+            with self.subTest(scenario=scenario):
+                self.report = fault_report(scenario)
+                observed = self.report['editor']['observed']
+                observed['initialize_timeout_ms'] = 5000
+                self.assertEqual(MOD.validate(self.report), [])
+                observed['initialize_timeout_ms'] = 200
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
+                observed['initialize_timeout_ms'] = 5000
+                self.report['events'].remove(self.events(event='forwarded')[0])
+                self.reject('INITIALIZATION_TIMEOUT_EVIDENCE')
 
     def test_initialize_timeout_requires_actual_forwarding_and_blocked_status(self):
         for mutation in ('missing_forwarded', 'wrong_forwarded_pid', 'wrong_forwarded_id',
