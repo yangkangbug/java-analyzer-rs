@@ -3601,8 +3601,7 @@ fn reference_method_header(node: &GreenNode, start: u32) -> bool {
         return false;
     }
     if let Some((ty, _)) = child_kind(node, start, SyntaxKind::Type)
-        && contains_kind(ty, SyntaxKind::TypeArgList)
-        && !raw_reference_header_type(ty, 0)
+        && !header_type::complete_return_type(ty)
     {
         return false;
     }
@@ -5377,3 +5376,8 @@ mod invocation_budget_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod header_inventory_tests;
+
+mod header_type;

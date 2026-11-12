@@ -1,0 +1,688 @@
+{
+  "baseline_sha256": "e03ce5307cce36444382b1be62eb0c23546b8d83ad10035cb642aa96f511ded6",
+  "cases": {
+    "array_lower": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "array_upper": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "complex_return_caller": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "depth_refusal": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "generic_method_competitor": {
+      "baseline": {
+        "probe": [
+          "SignatureNotCompared",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|191|195"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "SignatureNotCompared",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|191|195"
+        ]
+      }
+    },
+    "generic_parameter_competitor": {
+      "baseline": {
+        "probe": [
+          "SignatureNotCompared",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|187|191"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "SignatureNotCompared",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|187|191"
+        ]
+      }
+    },
+    "invalid_bare_primitive": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.type.found.req: unexpected type\n  required: reference\n  found:    int\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_diamond": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_intersection_bound": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.expected2: > or ',' expected\ncompiler.err.expected: <identifier> expected\ncompiler.err.invalid.meth.decl.ret.type.req: invalid method declaration; return type required\ncompiler.err.wrong.number.type.args: wrong number of type arguments; required 1\ncompiler.err.prob.found.req: incompatible types: unexpected return value\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_missing_lower": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_missing_upper": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_top_wildcard": {
+      "baseline": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\ncompiler.err.invalid.meth.decl.ret.type.req: invalid method declaration; return type required\ncompiler.err.prob.found.req: incompatible types: unexpected return value\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_trailing_comma": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\ncompiler.err.wrong.number.type.args: wrong number of type arguments; required 1\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_void_argument": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.illegal.start.of.type: illegal start of type\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "invalid_wildcard_array": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": null,
+      "compiler_diagnostics": "compiler.err.expected2: > or ',' expected\ncompiler.err.expected: <identifier> expected\ncompiler.err.invalid.meth.decl.ret.type.req: invalid method declaration; return type required\ncompiler.err.wrong.number.type.args: wrong number of type arguments; required 1\ncompiler.err.prob.found.req: incompatible types: unexpected return value\n",
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "lower": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "nested": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "no_return_inference": {
+      "baseline": {
+        "probe": [
+          "ReceiverNotBound",
+          "0"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Box",
+          "take",
+          "49",
+          "103"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "ReceiverNotBound",
+          "0"
+        ]
+      }
+    },
+    "plain_control": {
+      "baseline": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "primitive_array": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "primitive_array_bound_deferred": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    },
+    "qualified": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "reference_array": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "return_array": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "upper": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "wildcard": {
+      "baseline": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      }
+    },
+    "work_refusal": {
+      "baseline": {
+        "probe": [
+          "Resolved",
+          "1",
+          "Case.java|Method|inventory.Sink|take|127|131"
+        ]
+      },
+      "compiler": {
+        "probe": [
+          "Case.java",
+          "METHOD",
+          "inventory.Sink",
+          "take",
+          "104",
+          "158"
+        ]
+      },
+      "compiler_diagnostics": null,
+      "current": {
+        "probe": [
+          "OverloadNotResolved",
+          "2",
+          "Case.java|Method|inventory.Sink|take|127|131",
+          "Case.java|Method|inventory.Sink|take|184|188"
+        ]
+      }
+    }
+  }
+}

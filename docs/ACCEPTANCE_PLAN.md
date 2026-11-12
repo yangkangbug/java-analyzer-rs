@@ -253,3 +253,24 @@ names/descriptors/access flags are preserved under
 candidate successes until the new binary has actually passed them. Optional
 handwritten compiler comparison stays in the shared semantic oracle, never in
 native runtime or an upstream project build.
+
+### Return declaration inventory stage
+
+The current Commons gate applies `header-inventory-probes.json` on top of the
+unchanged binary-method V3 contract. Exactly three deferred ClassUtils records
+now require the original independently predicted `String.substring`/`startsWith`
+declarations, in both default and detailed projections. All other binary rows,
+the 45-query golden plus its existing q06 overlay, parser inventory and four
+historical getters remain exact. The earlier V3 deferral above is retained as
+history, not erased or relabeled as a success from that earlier binary.
+
+`--capture-header-inventory-baseline` requires the exact frozen `0697877b` native
+binary and verifies its complete old default/detailed records. It cannot be
+combined with `--capture-binary-method-baseline`, which still belongs to the
+older `650565ff` protocol stage. Current acceptance never accepts a union of
+old and new outcomes. Offline controls reject changed rows, descriptors,
+linking contexts and modified forecasts.
+
+The separate header-inventory compiler oracle checks bounded handwritten valid
+and invalid declarations; it does not execute fixture programs or become a
+native runtime dependency. See [the design boundary](DECLARATION_INVENTORY.md).

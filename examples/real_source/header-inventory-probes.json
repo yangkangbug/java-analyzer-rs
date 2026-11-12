@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "feature": "return_header_inventory",
+  "baseline_revision": "0697877ba11de2eb8735029540cafd07805e6d7b",
+  "baseline_native_sha256": "26b9c79b86b413eabe378992cfefd5cb184f5bd460352e92ee24744e7a3fd60c",
+  "previous_plan_sha256": "d9aba6446867da62fe779bb2b5251abe931357b3fb73bb3791a1f980d036f56f",
+  "initial_forecast_sha256": "b7f49b891fc1dc7aa0cf1ecced9ba9ef8011c0b1928bbe17f3aa69c326ca5f74",
+  "changes": [
+    {
+      "id": "binary_method_01",
+      "baseline": {
+        "byte_offset": 17502,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17502
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "baseline_details": {
+        "byte_offset": 17502,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17502
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(I)Ljava/lang/String;"
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(II)Ljava/lang/String;"
+          }
+        ]
+      },
+      "expected": {
+        "byte_offset": 17502,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17502
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "expected_details": {
+        "byte_offset": 17502,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17502
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(I)Ljava/lang/String;"
+          }
+        ]
+      }
+    },
+    {
+      "id": "binary_method_02",
+      "baseline": {
+        "byte_offset": 27716,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 27716
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "baseline_details": {
+        "byte_offset": 27716,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 27716
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(I)Ljava/lang/String;"
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(II)Ljava/lang/String;"
+          }
+        ]
+      },
+      "expected": {
+        "byte_offset": 27716,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 27716
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "expected_details": {
+        "byte_offset": 27716,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 27716
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "substring",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(I)Ljava/lang/String;"
+          }
+        ]
+      }
+    },
+    {
+      "id": "binary_method_03",
+      "baseline": {
+        "byte_offset": 17430,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17430
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "baseline_details": {
+        "byte_offset": 17430,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17430
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(Ljava/lang/String;I)Z"
+          },
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(Ljava/lang/String;)Z"
+          }
+        ]
+      },
+      "expected": {
+        "byte_offset": 17430,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17430
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_kind_owner_name_only",
+            "kind": "Method",
+            "linking_context": null,
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      "expected_details": {
+        "byte_offset": 17430,
+        "compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "file": "org/apache/commons/lang3/ClassUtils.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 17430
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "commons-lang",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "commons-lang",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "commons-lang",
+                "source_set": "main"
+              }
+            ],
+            "name": "startsWith",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false,
+            "descriptor": "(Ljava/lang/String;)Z"
+          }
+        ]
+      }
+    }
+  ]
+}

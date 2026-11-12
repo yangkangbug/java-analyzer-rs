@@ -1,0 +1,197 @@
+{
+  "cases": {
+    "array_lower": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "array_upper": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "generic_method_competitor": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "preserve",
+      "query": "probe"
+    },
+    "generic_parameter_competitor": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "preserve",
+      "query": "probe"
+    },
+    "invalid_bare_primitive": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_diamond": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_intersection_bound": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_missing_lower": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_missing_upper": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_top_wildcard": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_trailing_comma": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_void_argument": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "invalid_wildcard_array": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "invalid",
+      "query": "probe"
+    },
+    "lower": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "nested": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "no_return_inference": {
+      "compiler_selected": "target",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "preserve",
+      "query": "probe"
+    },
+    "plain_control": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "control",
+      "query": "probe"
+    },
+    "primitive_array": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "primitive_array_bound_deferred": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "preserve",
+      "query": "probe"
+    },
+    "qualified": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "reference_array": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "return_array": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "upper": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    },
+    "wildcard": {
+      "compiler_selected": "narrow",
+      "files": [
+        "Case.java"
+      ],
+      "kind": "positive",
+      "query": "probe"
+    }
+  },
+  "scope": "return declaration inventory only; no parameter or ancestry grammar expansion"
+}

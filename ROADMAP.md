@@ -31,6 +31,15 @@ omits switch/pattern/module support and some parameter/type-annotation syntax.
 Local type declarations have an opaque containment boundary; their bindings
 remain unsupported rather than being indexed as ordinary members.
 
+### Return declaration inventory separation
+
+A bounded return-Type AST proof now keeps complete nested-generic/wildcard
+headers in declaration inventory independently from strict applicability and
+return propagation. Three previously deferred real Commons ClassUtils queries
+pass their original exact targets. Generic methods/parameters remain complete
+unsupported competitors; ancestor grammar and parser behavior are unchanged.
+See [scope, refusals and IDEA reference](docs/DECLARATION_INVENTORY.md).
+
 ## M0: reproducible independent project
 
 Gate: independent manifest/lockfile/toolchain; preserved licensing/provenance;

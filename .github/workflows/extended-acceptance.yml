@@ -89,6 +89,9 @@ on:
       - 'examples/second_project/**'
       - 'scripts/check-cli-runtime.sh'
       - 'scripts/check-semantic-oracle.py'
+      - 'scripts/check-header-inventory-oracle.py'
+      - 'scripts/test_header_inventory_oracle.py'
+      - 'scripts/test_header_inventory_contract.py'
       - 'examples/real_source/**'
       - 'examples/real_source.rs'
       - 'examples/oracle_bindings.rs'
@@ -292,6 +295,13 @@ jobs:
         run: |
           jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
           python3 scripts/check-cast-null-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
+      - name: Independent return-header inventory oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-header-inventory-oracle.py \
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/examples/oracle_bindings

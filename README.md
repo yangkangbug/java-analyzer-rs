@@ -9,6 +9,10 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+The [return declaration inventory](docs/DECLARATION_INVENTORY.md) separates
+complete generic/wildcard header syntax from usable invocation types, without
+adding generic inference or discarding unsupported same-name competitors.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

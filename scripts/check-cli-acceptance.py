@@ -446,6 +446,47 @@ def binary_method_plan(path=None):
     return plan
 
 
+
+HEADER_INVENTORY_PLAN_SHA256 = 'fcc6271919de7ce2fd271e17fdb157c58cb093384a02a7d3f5b25978001d3cca'
+
+
+def header_inventory_prediction(path=None):
+    previous = binary_method_plan()
+    path = path or CORPUS / 'header-inventory-probes.json'
+    input_helpers().reject_symlink_path(path)
+    same(sha256(path), HEADER_INVENTORY_PLAN_SHA256, 'frozen header inventory forecast')
+    original = json.loads((CORPUS / 'binary-method-probes.json').read_text())
+    expected = {
+        'schema_version': 1, 'feature': 'return_header_inventory',
+        'baseline_revision': '0697877ba11de2eb8735029540cafd07805e6d7b',
+        'baseline_native_sha256': '26b9c79b86b413eabe378992cfefd5cb184f5bd460352e92ee24744e7a3fd60c',
+        'previous_plan_sha256': sha256(CORPUS / 'binary-method-probes-v3.json'),
+        'initial_forecast_sha256': sha256(CORPUS / 'binary-method-probes.json'), 'changes': [],
+    }
+    for i in (0, 1, 2):
+        before, forecast = previous['queries'][i], original['queries'][i]
+        same(before['id'], forecast['id'], 'same independent original query')
+        same(before['classification'], 'deferred_enclosing_generic_header', 'only deferred header queries')
+        expected['changes'].append({
+            'id': before['id'], 'baseline': before['expected'], 'baseline_details': before['expected_details'],
+            'expected': forecast['expected'], 'expected_details': forecast['expected_details'],
+        })
+    plan = json.loads(path.read_text())
+    same(plan, expected, 'complete old records and original independently frozen targets')
+    return plan
+
+
+def header_inventory_plan():
+    result = copy.deepcopy(binary_method_plan())
+    prediction = header_inventory_prediction()
+    for row, change in zip(result['queries'][:3], prediction['changes']):
+        same(row['id'], change['id'], 'fixed header query order')
+        row['classification'] = 'new_header_inventory_selection'
+        row['expected'] = copy.deepcopy(change['expected'])
+        row['expected_details'] = copy.deepcopy(change['expected_details'])
+    return result
+
+
 def check_binary_methods(response, plan, source_root, platform, *, baseline=False, details=False):
     require(not (baseline and details), "old binary has no details protocol")
     same(response['result']['index_builds'], 1, "one binary proof index")
@@ -525,7 +566,9 @@ def main():
                         help="already-built product CLI (default: target/release/java-analyzer)")
     parser.add_argument("--timeout-seconds", type=float, default=60)
     parser.add_argument("--max-output-bytes", type=int, default=16 * 1024 * 1024)
-    parser.add_argument("--capture-binary-method-baseline", action="store_true", help="verify exact frozen 650565ff binary without future target-details")
+    capture = parser.add_mutually_exclusive_group()
+    capture.add_argument("--capture-binary-method-baseline", action="store_true", help="verify exact frozen 650565ff binary without future target-details")
+    capture.add_argument("--capture-header-inventory-baseline", action="store_true", help="verify exact frozen 0697877b default and detailed records before header inventory changes")
     args = parser.parse_args()
     if not 0 < args.timeout_seconds <= 600:
         parser.error("timeout-seconds must be greater than zero and at most 600")
@@ -543,7 +586,10 @@ def main():
         same(sha256(platform), specs["jdk"]["jmod_sha256"], "platform SHA-256")
         native = args.native.resolve(strict=True)
         require(native.is_file() and os.access(native, os.X_OK), "--native must name an executable product CLI")
-        binary_plan = binary_method_plan()
+        historical = args.capture_binary_method_baseline or args.capture_header_inventory_baseline
+        binary_plan = binary_method_plan() if historical else header_inventory_plan()
+        if args.capture_header_inventory_baseline:
+            same(sha256(native), header_inventory_prediction()['baseline_native_sha256'], 'exact header inventory baseline binary')
         same(binary_plan["source_archive_sha256"], specs["sources"]["sha256"], "binary source artifact")
         same(binary_plan["platform_sha256"], specs["jdk"]["jmod_sha256"], "binary platform artifact")
         if args.capture_binary_method_baseline:
@@ -600,8 +646,9 @@ def main():
                 detailed = run_cli(native, cwd, manifest, 'declaration', args.timeout_seconds,
                                    args.max_output_bytes, binary_requests, target_details=True)
                 check_binary_methods(detailed, binary_plan, source_root, platform, details=True)
-            print('binary_methods=10 exact records; contract=3 prospective selections, 3 explicit header deferrals, 3 conservative regressions, 1 preserved refusal; stage=' +
-                  ('baseline_verified_not_acceptance' if args.capture_binary_method_baseline else 'current'))
+            print('binary_methods=10 exact complete records; header_inventory_new_predictions=' +
+                  ('0' if historical else '3') + '; stage=' +
+                  ('baseline_verified_not_acceptance' if historical else 'current'))
             print("declarations=45 candidates=" + str(sum(len(q["targets"]) for q in declarations["result"]["queries"])))
             print("statuses=" + json.dumps(dict(sorted(Counter(q["status"] for q in declarations["result"]["queries"]).items()))))
             # Prove the JMOD changes real binding, not that absent Java means absent platform data.
