@@ -147,6 +147,14 @@ now reports 85 diagnostics, with every cause retained and the unrelated contextu
 separate default native CI from fixed-input extended CI and the optional
 independent compiler oracle. Neither prepared/rebuild agreement nor error counts prove Java semantics.
 
+### Source-grounded primitive class-literal syntax implemented
+
+Primitive/array and scalar void `.class` syntax now has a distinct lossless node.
+The fixed Gson workload drops from 331 to 166 parser errors without narrowing
+its 211 files or changing fixed navigation/refusal checks; the Commons workload
+stays unchanged. This adds no reflection type inference or generic applicability.
+See [class-literal scope and evidence](docs/CLASS_LITERALS.md).
+
 ### Independent acceptance gate implemented
 
 A separate trusted-main/manual workflow verifies pinned upstream artifacts and

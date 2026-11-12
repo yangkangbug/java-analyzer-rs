@@ -746,9 +746,9 @@ impl Index {
     }
 
     fn resolve_field(&self, file: &FileRec, parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
-        // Super lookup is not implemented. Do not let field_chain discard an
-        // unsupported receiver and reinterpret its selector as a simple name.
-        if has_super_receiver(hit.node) {
+        // Super and class-literal reflection lookup are not implemented. Do not
+        // discard an unsupported receiver and reinterpret its selector as a name.
+        if has_super_receiver(hit.node) || has_class_literal_receiver(hit.node) {
             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
         }
         let chain = field_chain(hit.node, hit.start);
@@ -1775,6 +1775,39 @@ fn has_super_receiver(node: &GreenNode) -> bool {
                     .iter()
                     .any(|child| child.as_token().is_some_and(|token| token.kind() == SyntaxKind::Super)))
                 || node.children().iter().find_map(|child| child.as_node()).is_some_and(|base| has_super_receiver(base))
+        }
+        _ => false,
+    }
+}
+
+// Only inspect the receiver/callee spine, not arguments or index operands.
+fn has_class_literal_receiver(node: &GreenNode) -> bool {
+    match node.kind() {
+        SyntaxKind::ClassLiteralExpr => true,
+        SyntaxKind::FieldExpr
+        | SyntaxKind::MethodRefExpr
+        | SyntaxKind::CallExpr
+        | SyntaxKind::IndexExpr
+        | SyntaxKind::ParenExpr => node.child_nodes().next().is_some_and(|base| has_class_literal_receiver(base)),
+        // A cast starts with its Type child; the operand is the last node.
+        SyntaxKind::CastExpr => node.child_nodes().last().is_some_and(|operand| has_class_literal_receiver(operand)),
+        SyntaxKind::BinaryExpr => {
+            let operator = node
+                .children()
+                .iter()
+                .filter_map(|child| child.as_token())
+                .find(|token| !token.kind().is_trivia())
+                .map(|token| token.kind());
+            match operator {
+                // The condition and assignment target do not determine the result.
+                Some(SyntaxKind::Question) => {
+                    node.child_nodes().skip(1).any(|branch| has_class_literal_receiver(branch))
+                }
+                Some(SyntaxKind::Eq) => {
+                    node.child_nodes().nth(1).is_some_and(|value| has_class_literal_receiver(value))
+                }
+                _ => false,
+            }
         }
         _ => false,
     }
@@ -4378,3 +4411,30 @@ mod method_descriptor_tests {
 
 #[cfg(test)]
 mod binary_payload_tests;
+
+#[cfg(test)]
+mod class_literal_receiver_tests {
+    use super::*;
+
+    fn first_field(node: &GreenNode) -> Option<&GreenNode> {
+        if node.kind() == SyntaxKind::FieldExpr {
+            Some(node)
+        } else {
+            node.child_nodes().find_map(|child| first_field(child))
+        }
+    }
+
+    #[test]
+    fn receiver_guard_ignores_conditions_arguments_indices_and_assignment_targets() {
+        for expression in [
+            "(int.class == null ? box : box).field",
+            "box.take(int.class).field",
+            "boxes[index(int.class)].field",
+            "(boxes[index(int.class)] = box).field",
+        ] {
+            let file = ParsedFile::parse(&format!("class C {{ void m() {{ use({expression}); }} }}"));
+            assert!(file.errors().is_empty(), "{expression}");
+            assert!(!has_class_literal_receiver(first_field(file.root()).unwrap()), "{expression}");
+        }
+    }
+}

@@ -132,6 +132,9 @@ overload selection and generic instantiation are not implemented; see the
   listed in `src/lib.rs`, including lambdas, method references, and
   try-with-resources (`Resource` nodes).
 - Names, literals, `this`, and `super` used as expressions are nodes. Tokens stay leaves.
+- [Primitive/void class literals](docs/CLASS_LITERALS.md), including primitive arrays,
+  have explicit syntax nodes; reflection types and class-literal overload proofs
+  are not inferred.
 - Comma-separated field/local declarations preserve each name and postfix array
   suffix. See [declaration binding boundaries](docs/DECLARATORS.md).
 - Basic-for initialization/update support statement-expression lists without a

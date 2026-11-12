@@ -184,6 +184,8 @@ pub enum SyntaxKind {
     ArrayInit,
     /// A literal, `null`, `true`, or `false`. The value is the token child.
     LiteralExpr,
+    /// Primitive/array or scalar void class literal; no reflection type is inferred.
+    ClassLiteralExpr,
     /// A single name used as an expression. Binding starts here, not at the token.
     ReferenceExpr,
     ThisExpr,

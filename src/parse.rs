@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
     }
 
     fn looks_like_local_type_decl(&self) -> bool {
-        // Recovery may reach the keyword in an unsupported primitive `.class`
+        // Recovery may reach the keyword in a malformed primitive `.class`
         // expression. It is not a declaration, even at a statement boundary.
         let follows_dot = self.tokens[..self.next_sig()]
             .iter()
@@ -1248,7 +1248,10 @@ impl<'a> Parser<'a> {
     }
 
     fn can_start_expr(&self) -> bool {
-        can_start_unary(self.kind()) || self.at(SyntaxKind::LBrace) || self.type_then_colon_colon()
+        can_start_unary(self.kind())
+            || self.at(SyntaxKind::LBrace)
+            || self.type_then_colon_colon()
+            || Look::from(self).scan_primitive_class_literal()
     }
 
     fn type_args_then_colon_colon(&self) -> bool {
@@ -1271,7 +1274,7 @@ impl<'a> Parser<'a> {
         if matches!(next, SyntaxKind::PlusPlus | SyntaxKind::MinusMinus) {
             return primitive;
         }
-        can_start_unary(next)
+        can_start_unary(next) || look.scan_primitive_class_literal()
     }
 
     fn parse_expr(&mut self) {
@@ -1476,6 +1479,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) {
+        if Look::from(self).scan_primitive_class_literal() {
+            self.open(SyntaxKind::ClassLiteralExpr);
+            self.bump();
+            while self.eat(SyntaxKind::LBracket) {
+                self.bump(); // The complete lookahead proved an empty dimension.
+            }
+            self.bump(); // Dot.
+            self.bump(); // Class keyword.
+            self.finish();
+            return;
+        }
         match self.kind() {
             SyntaxKind::IntLiteral
             | SyntaxKind::LongLiteral
@@ -1820,6 +1834,22 @@ impl<'a> Look<'a> {
                 | SyntaxKind::DoubleKw
                 | SyntaxKind::Void
         )
+    }
+
+    fn scan_primitive_class_literal(&mut self) -> bool {
+        if !self.is_primitive() {
+            return false;
+        }
+        let is_void = self.kind() == SyntaxKind::Void;
+        self.bump();
+        if !is_void {
+            while self.eat(SyntaxKind::LBracket) {
+                if !self.eat(SyntaxKind::RBracket) {
+                    return false;
+                }
+            }
+        }
+        self.eat(SyntaxKind::Dot) && self.eat(SyntaxKind::ClassKw)
     }
 
     fn skip_annotations(&mut self) {

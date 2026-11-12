@@ -17,6 +17,8 @@
 //! wildcards, and arrays. Expressions include assignment, `?:`, the JLS
 //! binary operators, `instanceof`, unary and postfix operators, calls, field
 //! access, `new`, casts, array initializers, lambdas, and method references.
+//! Primitive types (including arrays) and scalar `void` accept `.class` syntax
+//! in a separate class-literal node; reflection types are not inferred.
 //! Names, literals, `this`, and `super` are expression nodes, not bare tokens.
 //!
 //! # What it does not do
