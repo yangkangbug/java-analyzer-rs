@@ -34,6 +34,12 @@ on:
       - 'scripts/test_string_oracle.py'
       - 'scripts/check-strict-reference-acceptance.py'
       - 'scripts/qualified-primitive-contract.py'
+      - 'scripts/mixed-strict-contract.py'
+      - 'scripts/check-mixed-strict-acceptance.py'
+      - 'scripts/check-mixed-strict-oracle.py'
+      - 'scripts/test_mixed_strict_acceptance.py'
+      - 'scripts/test_mixed_strict_oracle.py'
+      - 'scripts/test_mixed_strict_stages.py'
       - 'scripts/check-qualified-primitive-acceptance.py'
       - 'scripts/check-qualified-primitive-oracle.py'
       - 'scripts/test_qualified_primitive_acceptance.py'
@@ -92,6 +98,8 @@ jobs:
           toolchain: 1.96.0
       - name: Offline fetch-security unit tests (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
+      - name: Offline mixed strict contract and stage controls (no Java)
+        run: python3 -m unittest discover -s scripts -p 'test_mixed_strict*.py' -v
       - name: Offline qualified primitive contract and stage controls (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_qualified_primitive*.py' -v
       - name: Offline source-selection checker mutations (no Java)
@@ -205,6 +213,13 @@ jobs:
         run: |
           jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
           python3 scripts/check-qualified-primitive-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
+      - name: Independent mixed strict invocation oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-mixed-strict-oracle.py \
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/examples/oracle_bindings

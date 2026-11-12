@@ -59,8 +59,18 @@ def probes(fixture):
     return queries
 
 
-def current_probes(fixture):
+def frozen_qualified_probes(fixture):
+    """Exact post-single-primitive stage, not the evolving current contract."""
     return qualified.overlay(second, fixture, probes(fixture))
+
+
+_mixed_spec = importlib.util.spec_from_file_location('mixed_strict_contract', Path(__file__).with_name('mixed-strict-contract.py'))
+mixed = importlib.util.module_from_spec(_mixed_spec)
+_mixed_spec.loader.exec_module(mixed)
+
+
+def current_probes(fixture):
+    return mixed.overlay(second, fixture, frozen_qualified_probes(fixture))
 
 
 def check_response(response, queries, fixture, capture_baseline=False):
@@ -87,7 +97,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else qualified.PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else mixed.PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,

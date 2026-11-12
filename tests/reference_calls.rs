@@ -803,8 +803,8 @@ fn string_literal_identity_across_compilations_requires_matching_binary_closure(
     for directory in ["lib", "app", "platform/java/lang", "other/java/lang"] {
         fs::create_dir_all(fixture.0.join(directory)).unwrap();
     }
-    let callee = "package api; public class C { public void m(String a) {} }";
-    let caller = r#"package app; import api.C; public class Calls { void run(C c, String s) { c.m("😀"); c.m(s); } }"#;
+    let callee = "package api; public class C { public void m(String a) {} public void mixed(int i, String a) {} }";
+    let caller = r#"package app; import api.C; public class Calls { void run(C c, String s) { c.m("😀"); c.m(s); c.mixed(1,"😀"); c.mixed(1,s); } }"#;
     fs::write(fixture.0.join("lib/C.java"), callee).unwrap();
     fs::write(fixture.0.join("app/Calls.java"), caller).unwrap();
     let string = literal_string_binary(0x31, Some("Ljava/lang/Object;"), &[]);
@@ -830,7 +830,12 @@ fn string_literal_identity_across_compilations_requires_matching_binary_closure(
             ..Default::default()
         })
         .unwrap();
-        for (needle, expected) in [(r#"m("😀")"#, expected), ("m(s)", ResolveStatus::CallNotResolved)] {
+        for (needle, expected) in [
+            (r#"m("😀")"#, expected),
+            ("m(s)", ResolveStatus::CallNotResolved),
+            (r#"mixed(1,"😀")"#, expected),
+            ("mixed(1,s)", ResolveStatus::CallNotResolved),
+        ] {
             let at = caller.find(needle).unwrap() as u32;
             let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
             assert_eq!(result.status, expected, "{platform}: {result:?}");

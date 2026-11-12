@@ -1,5 +1,9 @@
 # Single-primitive-argument instance-call proof
 
+This records the original single-argument slice. The subsequent
+[mixed strict-invocation extension](MIXED_STRICT_CALLS.md) advances the former
+mixed-argument refusal without rewriting this slice's frozen baseline.
+
 This is a narrow extension of the [reference instance-call proof](REFERENCE_CALLS.md),
 not general Java overload resolution. The receiver and all candidate declarations
 retain that proof's source ownership, visibility, complete hierarchy, access,

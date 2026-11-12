@@ -1,0 +1,12 @@
+# query	native status	javac selected	exact native candidates
+mixed_mixed	Resolved	mix_int@mixed.Target	mix_int@mixed.Target
+mixed_swapped	Resolved	swap_ref@mixed.Target	swap_ref@mixed.Target
+mixed_multiprimitive	Resolved	multi_int@mixed.Target	multi_int@mixed.Target
+mixed_reverse	Resolved	reverse_int@mixed.Target	reverse_int@mixed.Target
+mixed_three	Resolved	tri_int@mixed.Target	tri_int@mixed.Target
+mixed_widen	Resolved	mix_int@mixed.Target	mix_int@mixed.Target
+mixed_set	Resolved	set@mixed.Target	set@mixed.Target
+mixed_unknown	OverloadNotResolved	mix_int@mixed.Target	mix_int@mixed.Target,mix_long@mixed.Target
+mixed_null	CallNotResolved	set@mixed.Target	set@mixed.Target
+mixed_boxed	CallNotResolved	boxed@mixed.Target	boxed@mixed.Target
+mixed_varargs	CallNotResolved	varargs@mixed.Target	varargs@mixed.Target

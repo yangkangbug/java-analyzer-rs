@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact qualified-primitive current/a935 baseline gate; native only, no downloads."""
+"""Latest explicit current overlays or frozen a935 baseline; native only, no downloads."""
 import argparse
 import importlib.util
 import json
@@ -20,7 +20,7 @@ def check_response(response, queries, fixture, capture_baseline=False):
 
 def run(native, fixture, capture_baseline=False):
     second.require(type(capture_baseline) is bool, 'comparison mode must be boolean')
-    queries = strict.current_probes(fixture)
+    queries = strict.frozen_qualified_probes(fixture) if capture_baseline else strict.current_probes(fixture)
     if capture_baseline:
         second.same(second.digest(native), strict.qualified.load_plan(second)['baseline_native_sha256'],
                     'exact frozen a935 baseline binary')
@@ -38,7 +38,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'qualified_baseline_a935' if capture_baseline else 'qualified_current',
-        'plan_sha256': strict.qualified.PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': strict.qualified.PLAN_SHA256 if capture_baseline else strict.mixed.PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture), 'preservation': preservation,
         'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

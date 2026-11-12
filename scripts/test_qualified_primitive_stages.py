@@ -57,6 +57,7 @@ class StageControls(unittest.TestCase):
                 patch(module, 'check_response')
             patch(gate.strict, 'probes', return_value=[])
             patch(gate.strict, 'current_probes', return_value=[])
+            patch(gate.strict, 'frozen_qualified_probes', return_value=[])
             patch(gate.strict.string, 'probes', return_value=[])
             caller(Path('native'), self.f, baseline)
             self.assertEqual(not baseline, overlay.called)

@@ -2,9 +2,10 @@
 
 ## Goal and boundary
 
-Build a reusable Rust Java project-analysis engine, then integrate it with
-OpenIDEA to replace JDT LS analysis capabilities incrementally. The core must
-not start a JVM. Java compilation, application execution, and debugging still
+Build a reusable, standalone Rust Java project-analysis engine. Editor and
+build-tool integrations remain optional adapters, not goals or dependencies of
+the analysis core. Historical extraction provenance is recorded in NOTICE and
+PROVENANCE.md. The core must not start a JVM. Java compilation, application execution, and debugging still
 use a JVM/JDK. Maven/Gradle model-import adapters may invoke their existing
 JVM tools; their output must cross a clear boundary into the native core.
 
@@ -231,6 +232,12 @@ nonnegative decimal `int` literals. The additive frozen Gson plan changes only
 `remove(1)` to its exact `remove(int)` declaration, while mixed-argument and
 chained-result controls remain refused. IDEA Community mechanisms inform the
 independent Rust design, not a PSI dependency or full overload-resolution claim.
+
+The [mixed strict-invocation slice](docs/MIXED_STRICT_CALLS.md) combines the existing
+reference and scalar-primitive argument evidence position by position. A unique
+winner must dominate every other applicable complete formal vector; no aggregate
+conversion score is used. The additive Gson target is now `set(0,b)`, while outer
+call-result receiver inference remains outside scope.
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one

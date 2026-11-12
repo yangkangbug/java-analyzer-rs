@@ -3527,8 +3527,12 @@ struct ReferenceValue<'a> {
     string_literal: bool,
 }
 
-// Scalar primitives are retained for signature validation, even though proved
-// reference actuals cannot match them in strict invocation (JLS 15.12.2.2).
+enum StrictActual<'a> {
+    Reference(ReferenceValue<'a>),
+    Primitive(PrimitiveValue),
+}
+
+// Primitive and reference evidence never cross via boxing in strict invocation.
 enum ReferenceFormal<'a> {
     Reference(&'a ClassRec),
     Primitive(Primitive),
@@ -4162,14 +4166,14 @@ impl<'a> ReferenceCallProof<'a> {
         }
         self.charge(args.children().len())?;
         let args = delimited_nodes(args, at)?;
-        let actuals = args.iter().map(|(n, at)| self.expression(n, *at, 0)).collect::<Option<Vec<_>>>();
-        let primitive_actual = if actuals.is_none() {
-            let [(node, at)] = args.as_slice() else { return None };
-            Some(self.scalar_primitive_argument(node, *at, 0)?)
-        } else {
-            None
-        };
-        let actuals = actuals.unwrap_or_default();
+        let actuals = args
+            .iter()
+            .map(|(node, at)| {
+                self.expression(node, *at, 0)
+                    .map(StrictActual::Reference)
+                    .or_else(|| self.scalar_primitive_argument(node, *at, 0).map(StrictActual::Primitive))
+            })
+            .collect::<Option<Vec<_>>>()?;
         let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
         let members: Vec<_> = owner.methods.iter().filter(|m| m.name == name).collect();
         let mut formals = Vec::new();
@@ -4201,33 +4205,6 @@ impl<'a> ReferenceCallProof<'a> {
                 }
             }
         }
-        if let Some(actual) = primitive_actual {
-            let mut applicable = Vec::new();
-            for (i, parameters) in formals.iter().enumerate() {
-                self.charge(1)?;
-                if let [ReferenceFormal::Primitive(primitive)] = parameters.as_slice() {
-                    let formal = PrimitiveValue { primitive: *primitive, rank: 0 };
-                    if actual.converts_to(formal) {
-                        applicable.push((i, formal));
-                    }
-                }
-            }
-            let mut winner = None;
-            for &(i, left) in &applicable {
-                let mut specific = true;
-                for &(_, right) in &applicable {
-                    self.charge(1)?;
-                    specific &= left.converts_to(right);
-                }
-                if specific {
-                    if winner.is_some() {
-                        return None;
-                    }
-                    winner = Some(members[i]);
-                }
-            }
-            return winner;
-        }
         let mut applicable = Vec::new();
         for (i, parameters) in formals.iter().enumerate() {
             if actuals.len() != parameters.len() {
@@ -4235,21 +4212,29 @@ impl<'a> ReferenceCallProof<'a> {
             }
             let mut applies = true;
             for (actual, formal) in actuals.iter().zip(parameters) {
-                let ReferenceFormal::Reference(formal) = formal else {
-                    // No unboxing in the strict phase. Keep validating all other
-                    // formals; a primitive slot must not hide unknown evidence.
-                    applies = false;
-                    continue;
-                };
-                applies &= if actual.string_literal
-                    && actual.class.scope != formal.scope
-                    && formal.package == "java.lang"
-                    && formal.nesting.as_slice() == ["String"]
-                {
-                    self.literal_identity(actual.class, formal)?;
-                    true
-                } else {
-                    self.converts(actual.class, formal)?
+                applies &= match (actual, formal) {
+                    (StrictActual::Primitive(actual), ReferenceFormal::Primitive(formal)) => {
+                        self.charge(1)?;
+                        actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 })
+                    }
+                    (StrictActual::Reference(actual), ReferenceFormal::Reference(formal)) => {
+                        if actual.string_literal
+                            && actual.class.scope != formal.scope
+                            && formal.package == "java.lang"
+                            && formal.nesting.as_slice() == ["String"]
+                        {
+                            self.literal_identity(actual.class, formal)?;
+                            true
+                        } else {
+                            self.converts(actual.class, formal)?
+                        }
+                    }
+                    // Strict invocation neither boxes nor unboxes. Do not skip
+                    // the other slots: they still need complete evidence.
+                    _ => {
+                        self.charge(1)?;
+                        false
+                    }
                 };
             }
             if applies {
@@ -4261,10 +4246,20 @@ impl<'a> ReferenceCallProof<'a> {
             let mut specific = true;
             for &j in &applicable {
                 for (left, right) in formals[i].iter().zip(&formals[j]) {
-                    let (ReferenceFormal::Reference(left), ReferenceFormal::Reference(right)) = (left, right) else {
-                        return None;
+                    specific &= match (left, right) {
+                        (ReferenceFormal::Primitive(left), ReferenceFormal::Primitive(right)) => {
+                            self.charge(1)?;
+                            PrimitiveValue { primitive: *left, rank: 0 }
+                                .converts_to(PrimitiveValue { primitive: *right, rank: 0 })
+                        }
+                        (ReferenceFormal::Reference(left), ReferenceFormal::Reference(right)) => {
+                            self.converts(left, right)?
+                        }
+                        _ => {
+                            self.charge(1)?;
+                            false
+                        }
                     };
-                    specific &= self.converts(left, right)?;
                 }
             }
             if specific {

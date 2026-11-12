@@ -119,12 +119,17 @@ fn unsupported_competitors_and_incomplete_platform_do_not_manufacture_a_winner()
 }
 
 #[test]
-fn multiple_actuals_and_outer_call_return_receivers_remain_unproved() {
+fn mixed_actuals_are_additive_but_outer_call_return_receivers_remain_unproved() {
     let source = "class Value { public void later() {} } class Box { public Value pick(int x) { return null; } public Value pick(long x) { return null; } public void mixed(int x, Value v) {} } class Calls { void run(Box box, Value value) { box.pick(1).later(); box.mixed(0, value); } }";
     let p = project(source, true);
     winner(&p, "pick(1)", "pick(int x)");
     assert_ne!(query(&p, "later();").status, ResolveStatus::Resolved);
-    assert_ne!(query(&p, "mixed(0, value)").status, ResolveStatus::Resolved);
+    // The mixed-vector slice intentionally advances this former refusal.
+    let mixed = query(&p, "mixed(0, value)");
+    assert_eq!(mixed.status, ResolveStatus::Resolved);
+    assert_eq!(mixed.targets.len(), 1);
+    let at = source.find("mixed(int x").unwrap() as u32;
+    assert_eq!((mixed.targets[0].start_byte, mixed.targets[0].end_byte), (at, at + 5));
 }
 
 #[test]

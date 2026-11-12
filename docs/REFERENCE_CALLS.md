@@ -59,7 +59,8 @@ could participate. This does not claim reference values never unbox, implement
 unboxing, or type primitive arguments on this reference-actual path. The separate
 [single-primitive-argument extension](QUALIFIED_PRIMITIVE_CALLS.md) now handles
 explicit scalar locals/parameters and a bounded decimal `int` literal subset;
-mixed primitive/reference argument lists remain unsupported. If no unique strict winner is proved,
+the later [mixed strict-invocation extension](MIXED_STRICT_CALLS.md) combines those
+same proofs across argument positions. If no unique strict winner is proved,
 the original refusal and candidate inventory remain. Primitive arrays are
 reference types, still unsupported here, and are never skipped as scalars.
 Mixed formal vectors are checked in full, including reference evidence on a

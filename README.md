@@ -57,6 +57,9 @@ adding unboxing, integer-argument typing or chained-call inference.
 A later [single-primitive-argument instance-call proof](docs/QUALIFIED_PRIMITIVE_CALLS.md)
 adds explicit scalar locals/parameters and bounded decimal `int` literals, without
 boxing, mixed-argument or call-result receiver inference.
+The subsequent [mixed strict-invocation proof](docs/MIXED_STRICT_CALLS.md) combines
+those existing argument types across multiple positions without boxing, generic
+inference, conversion scoring or call-result receiver propagation.
 
 ### Experimental project CLI
 
