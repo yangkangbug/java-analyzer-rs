@@ -20,7 +20,7 @@ def check_response(response, queries, fixture, capture_baseline=False):
 
 def run(native, fixture, capture_baseline=False):
     second.require(type(capture_baseline) is bool, 'comparison mode must be boolean')
-    queries = strict.current_probes(fixture)
+    queries = strict.frozen_return_probes(fixture) if capture_baseline else strict.current_probes(fixture)
     if capture_baseline:
         second.same(second.digest(native), strict.returns.load_plan(second)['baseline_native_sha256'],
                     'exact frozen 4eecefd0 baseline binary')
@@ -31,14 +31,14 @@ def run(native, fixture, capture_baseline=False):
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
-    preservation = strict.string.run(native, fixture, proof_stage='mixed' if capture_baseline else 'reference_return', parser_stage='current')
+    preservation = strict.string.run(native, fixture, proof_stage='mixed' if capture_baseline else 'null_actual', parser_stage='current')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'return_baseline_4eecefd0' if capture_baseline else 'return_current',
-        'plan_sha256': strict.returns.PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': strict.returns.PLAN_SHA256 if capture_baseline else strict.nulls.PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture), 'preservation': preservation,
         'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

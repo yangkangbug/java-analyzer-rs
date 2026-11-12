@@ -1,0 +1,277 @@
+{
+  "format_version": 1,
+  "purpose": "Diagnostic input variations isolate the pre-existing ordinary String-local cross-compilation identity gap; diagnostic mutations are not acceptance source replacements.",
+  "native_sha256": "c11abe82401c837fb4c6b6c33868728a87c050396fbdc15af0d7dd3318e321dd",
+  "source_report_sha256": "6f35852d5c12a4fc4dd0228b2cafcbce40ba11060a2b1ba5f7347f7477e0a6ed",
+  "source_inputs_report_sha256": "88dd999ea98ebfbf6a06fde2759f1b926b37397ab07a188c90b341d7b6d9ea6e",
+  "first_failed_candidate_receipt_sha256": "0f2ce7bdc14b199fff9cf3af5bb5bbe9fc3125b6a191ac0057e947e1966285af",
+  "inputs": {
+    "source_file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+    "archive_sha256": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+    "start_byte": 2143,
+    "end_byte": 2155,
+    "original_bytes": "propertyName",
+    "original_sha256": "793f5a91411cc1be6d52cab17c3af0d2c09d9f6b7bbe99765decdc82b42b2aa8",
+    "mutations": [
+      {
+        "label": "diagnostic_literal_only",
+        "replacement_utf8": "\"property\"  ",
+        "replacement_hex": "2270726f7065727479222020",
+        "length": 12,
+        "source_sha256": "4ffbefb77cc645659c9c882bc45fe8534ba4e959e5e55e0372b5bdd07fd32f1c"
+      },
+      {
+        "label": "diagnostic_both_null",
+        "replacement_utf8": "null        ",
+        "replacement_hex": "6e756c6c2020202020202020",
+        "length": 12,
+        "source_sha256": "aa48b3b8c34afe882505a7c3543674c87adadbb70f3e906b3dfa5a57da4806e7"
+      }
+    ]
+  },
+  "actual_cases": [
+    {
+      "label": "original",
+      "queries": [
+        {
+          "byte_offset": 2139,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 2139
+          },
+          "query_index": 0,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "CallNotResolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        },
+        {
+          "byte_offset": 1653,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 1653
+          },
+          "query_index": 1,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "CallNotResolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "diagnostic_literal_only",
+      "queries": [
+        {
+          "byte_offset": 2139,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 2139
+          },
+          "query_index": 0,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "Resolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        },
+        {
+          "byte_offset": 1653,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 1653
+          },
+          "query_index": 1,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "CallNotResolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "diagnostic_both_null",
+      "queries": [
+        {
+          "byte_offset": 2139,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 2139
+          },
+          "query_index": 0,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "Resolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        },
+        {
+          "byte_offset": 1653,
+          "compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "file": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "position": {
+            "encoding": "utf8",
+            "offset": 1653
+          },
+          "query_index": 1,
+          "source_compilation": {
+            "project": "gson",
+            "source_set": "test"
+          },
+          "status": "CallNotResolved",
+          "targets": [
+            {
+              "compilation": {
+                "project": "gson",
+                "source_set": "main"
+              },
+              "kind": "Method",
+              "name": "add",
+              "origin": "source",
+              "owner": "com.google.gson.JsonObject",
+              "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+              "range": {
+                "end_byte": 2348,
+                "end_utf16": 2348,
+                "start_byte": 2345,
+                "start_utf16": 2345
+              },
+              "source_available": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

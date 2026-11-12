@@ -758,8 +758,11 @@ fn native_string_arguments_follow_unsaved_literal_and_formal_edits() {
     for (version, expression) in [(2, "null"), (4, "\"\\q\""), (6, "'x'")] {
         let changed = consumer.replace("\"你好😀\"", expression);
         replace_source(&mut session, &use_uri, version, &changed);
-        let refused = source_definition(&mut session, 50 + version, &use_uri, &changed, "m(");
-        assert_eq!(refused.get("result"), Some(&Value::Null), "{refused}");
+        let result = source_definition(&mut session, 50 + version, &use_uri, &changed, "m(");
+        // Plain null now proves this reference formal through the same unsaved
+        // snapshot. Invalid string spelling and primitive char remain refused.
+        let expected = if expression == "null" { &location } else { &Value::Null };
+        assert_eq!(result.get("result"), Some(expected), "{result}");
         replace_source(&mut session, &use_uri, version + 1, consumer);
         let repaired = source_definition(&mut session, 51 + version, &use_uri, consumer, "m(");
         assert_eq!(repaired.get("result"), Some(&location), "{repaired}");

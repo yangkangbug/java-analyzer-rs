@@ -36,6 +36,14 @@ on:
       - 'scripts/qualified-primitive-contract.py'
       - 'scripts/mixed-strict-contract.py'
       - 'scripts/reference-return-contract.py'
+      - 'scripts/null-actual-contract.py'
+      - 'scripts/null-oracle-contract.py'
+      - 'scripts/check-null-actual-acceptance.py'
+      - 'scripts/check-null-actual-oracle.py'
+      - 'scripts/test_null_actual_acceptance.py'
+      - 'scripts/test_null_actual_oracle.py'
+      - 'scripts/test_null_actual_stages.py'
+      - 'scripts/test_null_oracle_contract.py'
       - 'scripts/receiver-guard-oracle-contract.py'
       - 'scripts/test_receiver_guard_oracle_contract.py'
       - 'scripts/check-reference-return-acceptance.py'
@@ -108,6 +116,8 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
       - name: Offline prior oracle guard overlay controls (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_receiver_guard_oracle_contract.py' -v
+      - name: Offline null actual contracts and stage controls (no Java)
+        run: python3 -m unittest discover -s scripts -p 'test_null*.py' -v
       - name: Offline reference return contract and stage controls (no Java)
         run: python3 -m unittest discover -s scripts -p 'test_reference_return*.py' -v
       - name: Offline mixed strict contract and stage controls (no Java)
@@ -239,6 +249,13 @@ jobs:
         run: |
           jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
           python3 scripts/check-reference-return-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
+      - name: Independent plain null actual oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-null-actual-oracle.py \
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/examples/oracle_bindings

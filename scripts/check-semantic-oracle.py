@@ -305,6 +305,14 @@ def current_receiver_guard_expectations(suite, expected, queries, declarations):
     return module.apply(ORACLE, suite, expected, queries, declarations)
 
 
+def current_null_expectations(suite, expected, queries, declarations):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('null_oracle_contract', ROOT / 'scripts/null-oracle-contract.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.apply(ORACLE, suite, expected, queries, declarations)
+
+
 def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     """Source-only strict primitive selections, plus explicit unknown/invalid cases."""
     root = ORACLE / "primitive-v1"
@@ -618,6 +626,7 @@ def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
     root = ORACLE / "reference-v1"
     declarations, queries, requests, expected = reference_fixture()
     expected = current_receiver_guard_expectations("reference-v1", expected, queries, declarations)
+    expected = current_null_expectations("reference-v1", expected, queries, declarations)
     binaries = work / "reference-classes"
     binaries.mkdir()
     dependency = root / "dependency"

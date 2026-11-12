@@ -305,7 +305,7 @@ def check_parser(result, fixture):
     same(result['report_count'], count, 'parser total count')
 
 
-def check_response(command, response, fixture, historical_constructor=False, *, proof_stage='reference_return'):
+def check_response(command, response, fixture, historical_constructor=False, *, proof_stage='null_actual'):
     """Validate full actual response, not just an exit code or a resolution ratio."""
     check_envelope(command, response, fixture)
     result = response['result']
@@ -739,10 +739,10 @@ def portable_queries(response, fixture):
 def proof_stages(capture_baseline, proof_stage=None, parser_stage=None):
     require(type(capture_baseline) is bool, 'capture mode must be boolean')
     if proof_stage is None:
-        proof_stage = 'pre_primitive' if capture_baseline else 'reference_return'
+        proof_stage = 'pre_primitive' if capture_baseline else 'null_actual'
     if parser_stage is None:
         parser_stage = 'baseline' if capture_baseline else 'current'
-    require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return'), 'unknown proof stage')
+    require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return', 'null_actual'), 'unknown proof stage')
     require(parser_stage in ('baseline', 'current'), 'parser proof stage')
     return proof_stage, parser_stage
 
@@ -863,10 +863,10 @@ def reference_return_contract():
     return module
 
 
-def current_original_expectations(fixture, proof_stage='reference_return'):
+def current_original_expectations(fixture, proof_stage='null_actual'):
     proof_stages(False, proof_stage)
     expected = constructor_expectations(fixture)
-    if proof_stage != 'reference_return':
+    if proof_stage not in ('reference_return', 'null_actual'):
         return expected
     from types import SimpleNamespace
     api = SimpleNamespace(CORPUS=CORPUS, reject_symlinks=reject_symlinks, same=same,

@@ -243,6 +243,13 @@ The later [one-layer call-result receiver proof](docs/CALL_RESULT_RECEIVERS.md)
 composes those strict calls through an explicit nongeneric reference return,
 with declaration-context lookup and one shared budget. Call-result arguments,
 general expression inference and deeper chains remain unsupported.
+The subsequent [plain-null strict-argument proof](docs/NULL_STRICT_CALLS.md)
+adds the null invocation conversion to validated reference formals only. Formal
+specificity and complete competitor checks remain unchanged; unknown arguments,
+arrays, generics, boxing and additional expression inference are not enabled.
+Its sole new real-Gson success is `set(0, null)`; the predicted
+`add(propertyName, null)` target is explicitly deferred because ordinary String
+local identity across compilation scopes is still unsupported.
 
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one

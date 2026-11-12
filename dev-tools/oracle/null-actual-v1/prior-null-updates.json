@@ -1,0 +1,115 @@
+{
+  "format_version": 1,
+  "scope": "Five existing qualified plain-null query selections; historical fixtures/goldens immutable. Unqualified primitive nullable and compiler ambiguity remain unchanged.",
+  "artifacts": {
+    "reference-v1/expected.tsv": "4ff75571bafefa277a2f3308bec18536a996f6cd65c4d1a1c01e3bded57b65f3",
+    "reference-v1/files.tsv": "dfdf11789073d12bc23df9736190d9930bafefad1744b52753f5bd9aeb70f581",
+    "reference-v1/source/model/Branch.java": "49873e2da5f2670ae2a195a02b75f8ccf01333ecae629f6a6ddf69de2d103490",
+    "reference-v1/source/model/Marker.java": "2156a84e83c1e34ebdb7c4b7b9ce607e5cf7ac9eea418c73808f6331e72db27b",
+    "reference-v1/source/model/Mid.java": "d9c179eb34bfc2dbd728cc59be42dcae7a6b3bdf0b477155362aaad461f6da5c",
+    "reference-v1/source/model/Leaf.java": "d550da82a4d4cde40731bebe27d67f98c45cb57723cd51a1065f7cea0e076e0d",
+    "reference-v1/source/model/BinaryReceiver.java": "f222b03cd51ad5ebe245eb967d148ad5906edba84feef2777a3e87c6c15ccd23",
+    "reference-v1/source/model/InheritedReceiver.java": "8c3c089b93463092422a9219d5c7e91b72bfe510c56a1d684739842a4acb32a4",
+    "reference-v1/source/model/Root.java": "c17649caf2e993199129464cdf79cae688065df5e779b1b52ba8606da8011ad1",
+    "reference-v1/source/model/Target.java": "b7efc41703e9c0f763b444c8747ea7ac022011fa843d4001fa762f0a1c689f3d",
+    "reference-v1/source/model/Parent.java": "eb141d1c8c2f9757268cabe76dba016b645372c09f9b198855183f8303de883f",
+    "reference-v1/source/model/GenericReceiver.java": "d729c6df044c4d8f04e178a83c460e47d11efa6136d799bf148fb90e8fdd580a",
+    "reference-v1/source/model/GenericMethods.java": "83f884497340d11a353d4d572b80af1ecb2191dba3711ee3d902289d6cb74dad",
+    "reference-v1/source/model/Other.java": "bcfd47293050110f2588b28cf098f9737f9222c05bc3a28e15117ce6902a197e",
+    "reference-v1/source/app/Use.java": "a69d5a4388e2a6d43db5ccacd22bad3b4728699ffd6ab44b165158572cae91f6",
+    "string-v1/expected.tsv": "d4ac27c85ac97a004e6cd56959a1dd15e50db8b609b727d3fc69e0e23db94162",
+    "string-v1/files.tsv": "1c4df511ac90e3d4582d29700200034db593b7e27837752ae18e2702c32f0554",
+    "string-v1/source/Ref.java": "f24335cad15458c0daae9fb75c344e2fb339aba1841205e18534150c07be383e",
+    "string-v1/source/String.java": "564d02c0412d15f50c1e2e758e6f2ca80cc7202ce095847f887cdd586af22d61",
+    "string-v1/source/Use.java": "98a06858c08e48836a2e6644cc666ef47048a521b20c5012e4a117e05e963c05",
+    "string-v1/source/Target.java": "422980d5df07f3fc9d57e1b9551b54b5d473f83de1c84b38236b14b79a0c70cc",
+    "strict-reference-v1/expected.tsv": "7ac814de59f47eae5bfe378a716a5426e3e7b8e9d6348bff110f66004e7c2f16",
+    "strict-reference-v1/files.tsv": "e08942d7a4a38dafbaf9e546cf65509c6520c078bd54404c8f9f9d2e2de59e5a",
+    "strict-reference-v1/source/Derived.java": "2a9f577dbb5f45a3d80d5d83314c070b5a37bff728d32cba84f583e27078f665",
+    "strict-reference-v1/source/Use.java": "51f6e311f64f7bcef9c6655f3df369c80dd69173be569ecb04d3307c79854086",
+    "strict-reference-v1/source/Child.java": "462b313bf7a125185b84bfdfc2cb9c05def166bbe175c1ac4b1972140ae95385",
+    "strict-reference-v1/source/Target.java": "d01e7de7a06d6a4892bd0d0bcd20545b2e88d627cc13c0fc64260d0f990784ae",
+    "strict-reference-v1/source/Parent.java": "259e99972dd57fec70402c17336903d17f2a2f41c2d7c65bb3a9787c2304624b",
+    "strict-reference-v1/source/Base.java": "c2641fbdda5539f34d82f4770fd74781d424d9a7348b259ebc07173be9f661fd",
+    "qualified-primitive-v1/expected.tsv": "e49164663e5c07787e852ff9494ea2d387f8efd85cf9cd73e6ecb5cb947e0f92",
+    "qualified-primitive-v1/files.tsv": "375988b3287549562814b56acb51ddfc83c73c7f4235eb8c6a21c9799f6c673b",
+    "qualified-primitive-v1/source/Derived.java": "5daf4b8f3aa5de917372cf2199f1901879002fbede8b4a0e9ad0e1b47f1cccef",
+    "qualified-primitive-v1/source/Use.java": "d5d54e9ff239e3aae2116b5a53acb56a94d02876c47166e8c90131bc657905db",
+    "qualified-primitive-v1/source/Target.java": "de75b9bf0eac5ffef561af68353ca007d0d22f59f169997a7c0118e5815c82f9",
+    "qualified-primitive-v1/source/Base.java": "cc05634a85799e873b4e8e56f4443347f5094b806e3a852a536c27281c5d642e",
+    "mixed-strict-v1/expected.tsv": "f47dcfa05e9b08d2f866b921bcb04fb03a48e3e9b4610ff2f0d573709526548b",
+    "mixed-strict-v1/files.tsv": "1781cc2bf78cbd2317a1f83507484f197cfedbe5156f0caf53c4ad21e3bc0e8e",
+    "mixed-strict-v1/source/Ref.java": "9b416aec6a2ad39ec23de1a28b99e4922b42f33f3ce68584168a753db55e10bf",
+    "mixed-strict-v1/source/Sub.java": "51ddb74df947e1acf2d872a15978cc0d01843a81e6659b42913f7d29820a7224",
+    "mixed-strict-v1/source/Use.java": "4e893eb2deca51827ebf796aeda42dd8101a7c20eb0e079cea55b0dc6dca4caa",
+    "mixed-strict-v1/source/Target.java": "5d705b547b8a6377091ac6c5d569816cf60eb0534314cf0326986047a0e27f1e",
+    "reference-return-v1/receiver-guard-updates.json": "67f7255a63062c94f08e3fb37332000bd5dac65bd81c2fd225b6a84d2938b10f"
+  },
+  "updates": {
+    "reference-v1": {
+      "query": "reference_null_refusal",
+      "before": [
+        "CallNotResolved",
+        "only_root@model.Target",
+        "only_root@model.Target"
+      ],
+      "after": [
+        "Resolved",
+        "only_root@model.Target",
+        "only_root@model.Target"
+      ]
+    },
+    "string-v1": {
+      "query": "string_null",
+      "before": [
+        "CallNotResolved",
+        "exact@literal.Target",
+        "exact@literal.Target"
+      ],
+      "after": [
+        "Resolved",
+        "exact@literal.Target",
+        "exact@literal.Target"
+      ]
+    },
+    "strict-reference-v1": {
+      "query": "strict_unknown",
+      "before": [
+        "OverloadNotResolved",
+        "unknown_parent@strict.Target",
+        "unknown_parent@strict.Target,unknown_scalar@strict.Target"
+      ],
+      "after": [
+        "Resolved",
+        "unknown_parent@strict.Target",
+        "unknown_parent@strict.Target"
+      ]
+    },
+    "qualified-primitive-v1": {
+      "query": "primitive_mixed",
+      "before": [
+        "OverloadNotResolved",
+        "mixed_int@qualified.Target",
+        "mixed_int@qualified.Target,mixed_long@qualified.Target"
+      ],
+      "after": [
+        "Resolved",
+        "mixed_int@qualified.Target",
+        "mixed_int@qualified.Target"
+      ]
+    },
+    "mixed-strict-v1": {
+      "query": "mixed_null",
+      "before": [
+        "CallNotResolved",
+        "set@mixed.Target",
+        "set@mixed.Target"
+      ],
+      "after": [
+        "Resolved",
+        "set@mixed.Target",
+        "set@mixed.Target"
+      ]
+    }
+  }
+}

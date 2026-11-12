@@ -106,7 +106,7 @@ def run_suite(jdk, native, work, baseline=False):
     actual = o.records(o.run([native, ROOT / 'source', request, platform], env).stdout)
     for q in sorted(expected):
         print(q + '\tjavac=' + '|'.join(javac[q]) + '\tnative=' + '|'.join(actual[q]), flush=True)
-    compare(baseline_expectations(expected) if baseline else expected, qs, ds, javac, actual, platform)
+    compare(baseline_expectations(expected) if baseline else o.current_null_expectations('string-v1', expected, qs, ds), qs, ds, javac, actual, platform)
     for case, status, candidates, diagnostic, ids, contents in invalid_fixtures():
         request.write_text(contents)
         rejected = o.run([jdk / 'bin/java', '-cp', helper, 'BindingOracle', ROOT / 'invalid' / case, request, empty, empty], env, False)

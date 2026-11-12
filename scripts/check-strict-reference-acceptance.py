@@ -78,8 +78,17 @@ returns = importlib.util.module_from_spec(_return_spec)
 _return_spec.loader.exec_module(returns)
 
 
-def current_probes(fixture):
+def frozen_return_probes(fixture):
     return returns.overlay(second, fixture, frozen_mixed_probes(fixture))
+
+
+_null_spec = importlib.util.spec_from_file_location('null_actual_contract', Path(__file__).with_name('null-actual-contract.py'))
+nulls = importlib.util.module_from_spec(_null_spec)
+_null_spec.loader.exec_module(nulls)
+
+
+def current_probes(fixture):
+    return nulls.overlay(second, fixture, frozen_return_probes(fixture))
 
 
 def check_response(response, queries, fixture, capture_baseline=False):
@@ -106,7 +115,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else returns.PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else nulls.PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,

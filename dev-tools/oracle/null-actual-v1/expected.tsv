@@ -1,0 +1,12 @@
+# query	native status	javac selected	exact native candidates
+null_related	Resolved	related_child@nulls.Target	related_child@nulls.Target
+null_reverse	Resolved	reverse_child@nulls.Target	reverse_child@nulls.Target
+null_vector	Resolved	vector_child@nulls.Target	vector_child@nulls.Target
+null_primitive	Resolved	primitive_parent@nulls.Target	primitive_parent@nulls.Target
+null_only	Resolved	only@nulls.Target	only@nulls.Target
+null_paren	Resolved	related_child@nulls.Target	related_child@nulls.Target
+null_unknown	OverloadNotResolved	related_parent@nulls.Target	related_parent@nulls.Target,related_child@nulls.Target
+null_generic	SignatureNotCompared	generic_parent@nulls.Target	generic_any@nulls.Target,generic_parent@nulls.Target
+null_array	CallNotResolved	array@nulls.Target	array@nulls.Target
+null_field	CallNotResolved	only@nulls.Target	only@nulls.Target
+null_chain	Resolved	next@nulls.Product	next@nulls.Product

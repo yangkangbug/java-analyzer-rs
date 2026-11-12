@@ -106,7 +106,7 @@ fn independent_qualified_arity_and_type_receiver_guards_need_no_platform() {
 }
 #[test]
 fn unique_unknown_arguments_never_become_applicability_evidence() {
-    for actual in ["null", "new A()", "give()", "a.value", "1"] {
+    for actual in ["(A)null", "new A()", "give()", "a.value", "1"] {
         let source = format!(
             "class A {{ A value; }} class C {{ public void m(A x) {{}} }} class Calls {{ A give() {{ return null; }} void run(C c, A a) {{ c.m({actual}); }} }}"
         );
@@ -614,6 +614,9 @@ fn string_literals_validate_ordinary_spelling_and_preserve_ranges() {
 }
 #[test]
 fn string_literals_reject_other_expressions_and_unaudited_spelling() {
+    let null_source = "class C { public void m(java.lang.String x) {} } class Calls { void run(C c) { c.m(null); } }";
+    selected(&literal_project(null_source), "m(null)", "Calls.java", "m(java.lang.String x)");
+
     for literal in [
         r#""\q""#,
         r#""\8""#,
@@ -626,7 +629,7 @@ fn string_literals_reject_other_expressions_and_unaudited_spelling() {
         "\"a\\\nb\"",
         "\"a\\\rb\"",
         "\"\"\"\nhello\n\"\"\"",
-        "null",
+        "(java.lang.String)null",
         "1",
         "true",
         "'a'",
@@ -981,11 +984,13 @@ fn strict_reference_competitors_preserve_hierarchy_and_argument_guards() {
     p.insert("Duplicate.java", "class A {}");
     refused(&p, "m(a)", &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
     for expression in
-        ["null".to_owned(), "give()".to_owned(), "1L".to_owned(), format!("{}a{}", "(".repeat(40), ")".repeat(40))]
+        ["(A)null".to_owned(), "give()".to_owned(), "1L".to_owned(), format!("{}a{}", "(".repeat(40), ")".repeat(40))]
     {
         let text = source.replace("c.m(a)", &format!("c.m({expression})"));
         refused(&project(&text), &format!("m({expression})"), &[("Calls.java", "m(A x)"), ("Calls.java", "m(int x)")]);
     }
+    // Plain null is now a strict reference actual; cast-null stays unsupported above.
+    selected(&project(&source.replace("c.m(a)", "c.m(null)")), "m(null)", "Calls.java", "m(A x)");
     // The additive scalar-primitive slice now proves a decimal int argument.
     selected(&project(&source.replace("c.m(a)", "c.m(1)")), "m(1)", "Calls.java", "m(int x)");
     // Formal evidence must be complete even for a primitive-inapplicable vector.

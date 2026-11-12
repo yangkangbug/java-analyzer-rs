@@ -3632,6 +3632,7 @@ struct ReferenceValue<'a> {
 }
 
 enum StrictActual<'a> {
+    Null,
     Reference(ReferenceValue<'a>),
     Primitive(PrimitiveValue),
 }
@@ -4125,6 +4126,37 @@ impl<'a> ReferenceCallProof<'a> {
         let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
         Some(ReferenceValue { class, string_literal: false })
     }
+    // Null is its own strict-argument category, not Object or unknown type.
+    // Keep this out of general expression/receiver typing and share the proof budget.
+    fn null_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<()> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            return None;
+        }
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let children = delimited_nodes(node, at)?;
+            let [(inner, at)] = children.as_slice() else { return None };
+            return self.null_argument(inner, *at, depth + 1);
+        }
+        if node.kind() != SyntaxKind::LiteralExpr {
+            return None;
+        }
+        let mut found = false;
+        for child in node.children() {
+            let token = child.as_token()?;
+            if token.kind().is_trivia() {
+                continue;
+            }
+            if found || token.kind() != SyntaxKind::Null || token.text() != "null" {
+                return None;
+            }
+            found = true;
+        }
+        found.then_some(())
+    }
+
     // A fallback only after reference typing fails: explicit scalar declarations
     // or a range-checked decimal int token, never fields or general expressions.
     fn scalar_primitive_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
@@ -4340,6 +4372,7 @@ impl<'a> ReferenceCallProof<'a> {
                 self.expression(node, *at, 0)
                     .map(StrictActual::Reference)
                     .or_else(|| self.scalar_primitive_argument(node, *at, 0).map(StrictActual::Primitive))
+                    .or_else(|| self.null_argument(node, *at, 0).map(|()| StrictActual::Null))
             })
             .collect::<Option<Vec<_>>>()?;
         let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
@@ -4381,6 +4414,10 @@ impl<'a> ReferenceCallProof<'a> {
             let mut applies = true;
             for (actual, formal) in actuals.iter().zip(parameters) {
                 applies &= match (actual, formal) {
+                    (StrictActual::Null, ReferenceFormal::Reference(_)) => {
+                        self.charge(1)?;
+                        true
+                    }
                     (StrictActual::Primitive(actual), ReferenceFormal::Primitive(formal)) => {
                         self.charge(1)?;
                         actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 })
