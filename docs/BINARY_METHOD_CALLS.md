@@ -1,5 +1,9 @@
 # Direct binary instance method declarations
 
+The direct-call milestone below is extended by the later
+[effective declaration slice](EFFECTIVE_BINARY_METHODS.md); its exact historical
+fixtures remain available independently.
+
 The native strict selector now admits public, nongeneric, fixed-arity methods
 on a proven direct binary receiver. Existing strict actual classification and
 formal-to-formal partial ordering are reused. There is no second overload

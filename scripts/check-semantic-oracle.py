@@ -1279,6 +1279,32 @@ def binary_instance_fixture():
     return root, contract
 
 
+def binary_instance_effective_expected(contract, label):
+    """Current capability projection; retain the frozen historical contract bytes.
+
+    The pinned javap call independently selects Child.inherited(int), not the
+    inherited Parent.inherited(long). This is overload selection, not override
+    elimination. All metadata and every other query remain exact.
+    """
+    wanted = json.loads(json.dumps(contract['current'][label]))
+    if label != 'valid':
+        return wanted
+    assert contract['baseline']['compiler']['probe_calls']['ancestorRefusal'] == [
+        ['invokevirtual', 'dep/Child', 'inherited', '(I)I']]
+    changed = []
+    for row in wanted['queries']:
+        if row['query_index'] not in (19, 44):
+            continue
+        assert row['status'] == 'OverloadNotResolved'
+        assert [(t['binary_name'], t['name'], t['descriptor']) for t in row['targets']] == [
+            ('dep/Child', 'inherited', '(I)I'), ('dep/Parent', 'inherited', '(J)J')]
+        row['status'] = 'Resolved'
+        row['targets'] = row['targets'][:1]
+        changed.append(row['source_compilation']['project'])
+    assert changed == ['first', 'second']
+    return wanted
+
+
 def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
     """Two real linking contexts, source javap oracle, exact v1/opt-in contracts."""
     assert type(baseline) is bool
@@ -1301,7 +1327,7 @@ def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
             detailed = binary_instance_query(native_cli, batch, details=True)
             binary_instance_compare_modes(default, detailed)
             rich = binary_instance_normalize(detailed['result'], prepared)
-            binary_instance_compare_expected(rich, contract['current'][label])
+            binary_instance_compare_expected(rich, binary_instance_effective_expected(contract, label))
         total += len(normalized['queries'])
         print('binary-instance ' + label + ' contexts=2 queries=' + str(len(normalized['queries'])) + ' baseline=' + str(baseline), flush=True)
     if baseline:

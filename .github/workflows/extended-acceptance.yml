@@ -90,6 +90,9 @@ on:
       - 'scripts/check-cli-runtime.sh'
       - 'scripts/check-semantic-oracle.py'
       - 'scripts/check-header-inventory-oracle.py'
+      - 'scripts/check-effective-binary-oracle.py'
+      - 'scripts/test_effective_binary_oracle.py'
+      - 'scripts/test_effective_binary_contract.py'
       - 'scripts/test_header_inventory_oracle.py'
       - 'scripts/test_header_inventory_contract.py'
       - 'examples/real_source/**'
@@ -305,6 +308,13 @@ jobs:
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/examples/oracle_bindings
+      - name: Independent effective binary declaration oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-effective-binary-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/java-analyzer
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import shutil
 import tempfile
+import json
 import unittest
 from unittest.mock import patch
 
@@ -482,6 +483,32 @@ class BinaryInstanceFixtureTests(unittest.TestCase):
                 base=Path(temp);root=base/'binary-instance-v1';shutil.copytree(self.root,root)
                 p=root/name;p.write_bytes(p.read_bytes()+b'changed')
                 with patch.object(oracle,'ORACLE',base),self.assertRaises(AssertionError):oracle.binary_instance_fixture()
+
+
+class EffectiveBinaryHistoricalProjection(unittest.TestCase):
+    def test_exact_two_context_upgrade_and_frozen_input(self):
+        _, contract = oracle.binary_instance_fixture()
+        before = json.dumps(contract, sort_keys=True)
+        for label, old in contract['current'].items():
+            current = oracle.binary_instance_effective_expected(contract, label)
+            changed = [i for i, (a, b) in enumerate(zip(old['queries'], current['queries'])) if a != b]
+            self.assertEqual(changed, [19, 44] if label == 'valid' else [])
+            if label == 'valid':
+                for i in changed:
+                    expected = dict(old['queries'][i], status='Resolved', targets=old['queries'][i]['targets'][:1])
+                    self.assertEqual(current['queries'][i], expected)
+        self.assertEqual(json.dumps(contract, sort_keys=True), before)
+
+    def test_rejects_wrong_compiler_and_candidate_descriptor(self):
+        _, contract = oracle.binary_instance_fixture()
+        for mode in ('compiler', 'candidate'):
+            wrong = json.loads(json.dumps(contract))
+            if mode == 'compiler':
+                wrong['baseline']['compiler']['probe_calls']['ancestorRefusal'][0][3] = '(J)J'
+            else:
+                wrong['current']['valid']['queries'][19]['targets'][1]['descriptor'] = '(I)I'
+            with self.assertRaises(AssertionError):
+                oracle.binary_instance_effective_expected(wrong, 'valid')
 
 if __name__ == "__main__":
     unittest.main()

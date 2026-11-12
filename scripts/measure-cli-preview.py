@@ -349,10 +349,10 @@ def prepare_commons(stage, source, platform_file, native, worker_timeout_ms):
         a.check_parser_report(response, inspection, source_root, sources, print_inventory=False)
 
     def check_declarations(response):
-        a.check_declarations(response, queries, targets, source_root, platform_file, sources)
+        a.check_declarations(response, queries, targets, source_root, platform_file, sources, effective_binary=True)
 
     def check_edit(response):
-        a.check_declarations(response, edited_queries, edited_targets, source_root, platform_file, edited_sources)
+        a.check_declarations(response, edited_queries, edited_targets, source_root, platform_file, edited_sources, effective_binary=True)
 
     cases = []
     for name, command, request, check in (

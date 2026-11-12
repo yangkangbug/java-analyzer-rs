@@ -1,0 +1,2438 @@
+{
+  "baseline": {
+    "index_builds": 1,
+    "queries": [
+      {
+        "byte_offset": 478,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 478
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 520,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 520
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Override",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Override",
+            "path": "@DEPENDENCY@/dep/Override.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 566,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 566
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Overload",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Overload",
+            "path": "@DEPENDENCY@/dep/Overload.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 609,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 609
+        },
+        "query_index": 3,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Overload",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Overload",
+            "path": "@DEPENDENCY@/dep/Overload.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 650,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 650
+        },
+        "query_index": 4,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 689,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 689
+        },
+        "query_index": 5,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/J",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.J",
+            "path": "@DEPENDENCY@/dep/J.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 729,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 729
+        },
+        "query_index": 6,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/Impl",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Impl",
+            "path": "@DEPENDENCY@/dep/Impl.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 768,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 768
+        },
+        "query_index": 7,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 809,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 809
+        },
+        "query_index": 8,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "descriptor": "(I)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "charAt",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "(I)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "charAt",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 854,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 854
+        },
+        "query_index": 9,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 899,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 899
+        },
+        "query_index": 10,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "(I)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "charAt",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 947,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 947
+        },
+        "query_index": 11,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/CovChild",
+            "descriptor": "()Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovChild",
+            "path": "@DEPENDENCY@/dep/CovChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/CovChild",
+            "descriptor": "()Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovChild",
+            "path": "@DEPENDENCY@/dep/CovChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/CovBase",
+            "descriptor": "()Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovBase",
+            "path": "@DEPENDENCY@/dep/CovBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 993,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 993
+        },
+        "query_index": 12,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/DefaultI",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.DefaultI",
+            "path": "@DEPENDENCY@/dep/DefaultI.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1042,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1042
+        },
+        "query_index": 13,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "SignatureNotCompared",
+        "targets": [
+          {
+            "binary_name": "dep/GenericChild",
+            "descriptor": "(Ljava/lang/String;)Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericChild",
+            "path": "@DEPENDENCY@/dep/GenericChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/GenericChild",
+            "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericChild",
+            "path": "@DEPENDENCY@/dep/GenericChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/GenericBase",
+            "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericBase",
+            "path": "@DEPENDENCY@/dep/GenericBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1093,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1093
+        },
+        "query_index": 14,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/K",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.K",
+            "path": "@DEPENDENCY@/dep/K.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1138,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1138
+        },
+        "query_index": 15,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1188,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1188
+        },
+        "query_index": 16,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/Object",
+            "descriptor": "()Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "toString",
+            "origin": "binary",
+            "owner": "java.lang.Object",
+            "path": "@PLATFORM@!/classes/java/lang/Object.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1246,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1246
+        },
+        "query_index": 17,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/StaticOver",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.StaticOver",
+            "path": "@DEPENDENCY@/dep/StaticOver.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/WideBase",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.WideBase",
+            "path": "@DEPENDENCY@/dep/WideBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1302,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1302
+        },
+        "query_index": 18,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/VarargChild",
+            "descriptor": "([I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.VarargChild",
+            "path": "@DEPENDENCY@/dep/VarargChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1361,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1361
+        },
+        "query_index": 19,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/PublicChild",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.PublicChild",
+            "path": "@DEPENDENCY@/dep/PublicChild.class",
+            "source_available": false
+          }
+        ]
+      }
+    ],
+    "target_details_version": 1
+  },
+  "baseline_sha256": "89280e2a70afb12aed329f9551581e4e63a96711b12ffb1f58fd673e8ab88b10",
+  "candidate": {
+    "index_builds": 1,
+    "queries": [
+      {
+        "byte_offset": 478,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 478
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 520,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 520
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Override",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Override",
+            "path": "@DEPENDENCY@/dep/Override.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 566,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 566
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 609,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 609
+        },
+        "query_index": 3,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Overload",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Overload",
+            "path": "@DEPENDENCY@/dep/Overload.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 650,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 650
+        },
+        "query_index": 4,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 689,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 689
+        },
+        "query_index": 5,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/J",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.J",
+            "path": "@DEPENDENCY@/dep/J.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 729,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 729
+        },
+        "query_index": 6,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Impl",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Impl",
+            "path": "@DEPENDENCY@/dep/Impl.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 768,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 768
+        },
+        "query_index": 7,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 809,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 809
+        },
+        "query_index": 8,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "descriptor": "(I)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "charAt",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 854,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 854
+        },
+        "query_index": 9,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 899,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 899
+        },
+        "query_index": 10,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/CharSequence",
+            "descriptor": "(I)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "charAt",
+            "origin": "binary",
+            "owner": "java.lang.CharSequence",
+            "path": "@PLATFORM@!/classes/java/lang/CharSequence.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 947,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 947
+        },
+        "query_index": 11,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/CovChild",
+            "descriptor": "()Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovChild",
+            "path": "@DEPENDENCY@/dep/CovChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/CovChild",
+            "descriptor": "()Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovChild",
+            "path": "@DEPENDENCY@/dep/CovChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/CovBase",
+            "descriptor": "()Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.CovBase",
+            "path": "@DEPENDENCY@/dep/CovBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 993,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 993
+        },
+        "query_index": 12,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/DefaultI",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "value",
+            "origin": "binary",
+            "owner": "dep.DefaultI",
+            "path": "@DEPENDENCY@/dep/DefaultI.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1042,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1042
+        },
+        "query_index": 13,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "SignatureNotCompared",
+        "targets": [
+          {
+            "binary_name": "dep/GenericChild",
+            "descriptor": "(Ljava/lang/String;)Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericChild",
+            "path": "@DEPENDENCY@/dep/GenericChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/GenericChild",
+            "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericChild",
+            "path": "@DEPENDENCY@/dep/GenericChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/GenericBase",
+            "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "echo",
+            "origin": "binary",
+            "owner": "dep.GenericBase",
+            "path": "@DEPENDENCY@/dep/GenericBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1093,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1093
+        },
+        "query_index": 14,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Ambiguous",
+        "targets": [
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/K",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.K",
+            "path": "@DEPENDENCY@/dep/K.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1138,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1138
+        },
+        "query_index": 15,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/I",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.I",
+            "path": "@DEPENDENCY@/dep/I.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1188,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1188
+        },
+        "query_index": 16,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/Object",
+            "descriptor": "()Ljava/lang/String;",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "toString",
+            "origin": "binary",
+            "owner": "java.lang.Object",
+            "path": "@PLATFORM@!/classes/java/lang/Object.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1246,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1246
+        },
+        "query_index": 17,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/StaticOver",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.StaticOver",
+            "path": "@DEPENDENCY@/dep/StaticOver.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/WideBase",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.WideBase",
+            "path": "@DEPENDENCY@/dep/WideBase.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1302,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1302
+        },
+        "query_index": 18,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/VarargChild",
+            "descriptor": "([I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.VarargChild",
+            "path": "@DEPENDENCY@/dep/VarargChild.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Base",
+            "descriptor": "(J)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Base",
+            "path": "@DEPENDENCY@/dep/Base.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 1361,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1361
+        },
+        "query_index": 19,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/PublicChild",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.PublicChild",
+            "path": "@DEPENDENCY@/dep/PublicChild.class",
+            "source_available": false
+          }
+        ]
+      }
+    ],
+    "target_details_version": 1
+  },
+  "compiler": {
+    "abstract_child": [
+      "dep/J",
+      "pick",
+      "(I)I"
+    ],
+    "abstract_direct": [
+      "dep/I",
+      "pick",
+      "(I)I"
+    ],
+    "class_implements": [
+      "dep/Impl",
+      "pick",
+      "(I)I"
+    ],
+    "class_override": [
+      "dep/Override",
+      "pick",
+      "(I)I"
+    ],
+    "covariant_refusal": [
+      "dep/CovChild",
+      "value",
+      "()Ljava/lang/String;"
+    ],
+    "cross_branch_refusal": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ],
+    "default_refusal": [
+      "dep/DefaultI",
+      "value",
+      "()I"
+    ],
+    "generic_bridge_refusal": [
+      "dep/GenericChild",
+      "echo",
+      "(Ljava/lang/String;)Ljava/lang/String;"
+    ],
+    "inherited_base": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ],
+    "inherited_overload": [
+      "dep/Base",
+      "pick",
+      "(J)I"
+    ],
+    "interface_object_refusal": [
+      "java/lang/Object",
+      "toString",
+      "()Ljava/lang/String;"
+    ],
+    "own_overload": [
+      "dep/Overload",
+      "pick",
+      "(I)I"
+    ],
+    "private_ancestor_refusal": [
+      "dep/PublicChild",
+      "pick",
+      "(I)I"
+    ],
+    "sequence_char_at": [
+      "java/lang/CharSequence",
+      "charAt",
+      "(I)C"
+    ],
+    "sequence_length": [
+      "java/lang/CharSequence",
+      "length",
+      "()I"
+    ],
+    "static_competitor_refusal": [
+      "dep/WideBase",
+      "pick",
+      "(J)I"
+    ],
+    "string_char_at": [
+      "java/lang/String",
+      "charAt",
+      "(I)C"
+    ],
+    "string_length": [
+      "java/lang/String",
+      "length",
+      "()I"
+    ],
+    "unrelated_refusal": [
+      "dep/K",
+      "pick",
+      "(I)I"
+    ],
+    "varargs_competitor_refusal": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ]
+  },
+  "invalid_diagnostics": {
+    "final_override": [
+      "Bad.java:1:101: compiler.err.override.meth: (compiler.misc.cant.override: pick(int), Child, pick(int), Parent), final"
+    ],
+    "primitive_return": [
+      "Bad.java:1:96: compiler.err.override.incompatible.ret: (compiler.misc.cant.override: pick(int), Child, pick(int), Parent), long, int"
+    ]
+  },
+  "query_order": [
+    "inherited_base",
+    "class_override",
+    "inherited_overload",
+    "own_overload",
+    "abstract_direct",
+    "abstract_child",
+    "class_implements",
+    "string_length",
+    "string_char_at",
+    "sequence_length",
+    "sequence_char_at",
+    "covariant_refusal",
+    "default_refusal",
+    "generic_bridge_refusal",
+    "unrelated_refusal",
+    "cross_branch_refusal",
+    "interface_object_refusal",
+    "static_competitor_refusal",
+    "varargs_competitor_refusal",
+    "private_ancestor_refusal"
+  ]
+}

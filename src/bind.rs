@@ -676,24 +676,7 @@ impl Index {
     }
 
     fn locals_named(&self, file: &FileRec, byte: u32, name: &str) -> Option<ResolveResult> {
-        let locals: Vec<&LocalRec> = file
-            .locals
-            .iter()
-            .filter(|local| {
-                local.name == name && local.scope_start <= byte && byte < local.scope_end && local.visible_from <= byte
-            })
-            .collect();
-        if locals.is_empty() {
-            return None;
-        }
-        let min_span = locals.iter().map(|local| local.scope_end - local.scope_start).min().unwrap();
-        let targets = locals
-            .into_iter()
-            .filter(|local| local.scope_end - local.scope_start == min_span)
-            .map(LocalRec::target)
-            .collect::<Vec<_>>();
-        let status = if targets.len() == 1 { ResolveStatus::Resolved } else { ResolveStatus::Ambiguous };
-        Some(ResolveResult::many(status, targets))
+        local_resolution(file.locals.iter(), byte, name)
     }
 
     fn fields_named(&self, file: &FileRec, byte: u32, name: &str) -> Option<ResolveResult> {
@@ -892,7 +875,20 @@ impl Index {
         if proof.charge(file.locals.len().max(1)).is_none() {
             return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
         }
-        let locals = self.locals_named(file, *receiver_at, &receiver_name);
+        // This complete scan already inspects every declaration. Reuse only
+        // its fixed caller subset; ordinary name hints still use their existing
+        // innermost-scope policy, while strict expression proof checks overlaps.
+        let mut caller_locals = Vec::new();
+        let locals = local_resolution(
+            file.locals.iter().inspect(|local| {
+                if local.start >= caller_start && local.end <= caller_end {
+                    caller_locals.push(*local);
+                }
+            }),
+            *receiver_at,
+            &receiver_name,
+        );
+        proof.caller_locals = Some(caller_locals);
         let is_value = locals.is_some();
         let owner = if let Some(local) = locals {
             if local.targets.len() != 1 || local.status != ResolveStatus::Resolved {
@@ -1749,6 +1745,25 @@ fn member_target(class: &ClassRec, member: &Member) -> Target {
         start_byte: member.start,
         end_byte: member.end,
     }
+}
+
+fn local_resolution<'a>(locals: impl Iterator<Item = &'a LocalRec>, byte: u32, name: &str) -> Option<ResolveResult> {
+    let locals: Vec<&LocalRec> = locals
+        .filter(|local| {
+            local.name == name && local.scope_start <= byte && byte < local.scope_end && local.visible_from <= byte
+        })
+        .collect();
+    if locals.is_empty() {
+        return None;
+    }
+    let min_span = locals.iter().map(|local| local.scope_end - local.scope_start).min().unwrap();
+    let targets = locals
+        .into_iter()
+        .filter(|local| local.scope_end - local.scope_start == min_span)
+        .map(LocalRec::target)
+        .collect::<Vec<_>>();
+    let status = if targets.len() == 1 { ResolveStatus::Resolved } else { ResolveStatus::Ambiguous };
+    Some(ResolveResult::many(status, targets))
 }
 
 fn declared_of<'a>(file: &'a FileRec, target: &Target) -> Option<&'a QualName> {
@@ -4813,6 +4828,25 @@ impl<'a> ReferenceCallProof<'a> {
         }
     }
 
+    // Full candidate legality and parameter identities are checked before this
+    // pairwise step. Exact descriptors suffice for equal returns only within
+    // one linking scope; no covariance, substitution or return propagation.
+    fn binary_override(&mut self, child: (&'a ClassRec, &'a Member), parent: (&'a ClassRec, &'a Member)) -> Option<()> {
+        if !child.0.binary
+            || !parent.0.binary
+            || child.0.scope != parent.0.scope
+            || same_class(child.0, parent.0)
+            || (child.0.is_interface && !parent.0.is_interface)
+            || !self.graph(child.0)?.iter().any(|ancestor| same_class(ancestor, parent.0))
+        {
+            return None;
+        }
+        let Shape::Binary { descriptor: left, .. } = &child.1.shape else { return None };
+        let Shape::Binary { descriptor: right, flags, .. } = &parent.1.shape else { return None };
+        self.charge(left.len().saturating_add(right.len()))?;
+        (flags & 0x0010 == 0 && left == right).then_some(())
+    }
+
     fn select(
         &mut self,
         owner: &'a ClassRec,
@@ -4822,16 +4856,18 @@ impl<'a> ReferenceCallProof<'a> {
         depth: usize,
     ) -> Option<SelectedMethod<'a>> {
         self.check_depth(depth)?;
-        if owner.is_interface || owner.reference_generic {
+        if (owner.is_interface && !owner.binary) || owner.reference_generic {
             return None;
         }
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
-        if owner.binary && inherited {
+        // A class-file interface's synthetic Object edge is inventory, not
+        // ordinary interface inheritance. Object-name semantics remain refused.
+        if owner.is_interface && graph.iter().any(|c| c.binary_root && c.methods.iter().any(|m| m.name == name)) {
             return None;
         }
-        if inherited {
+        if inherited && !owner.binary {
             // A new inherited path needs a plain source superclass chain. Binary
             // Object may close the graph, but cannot contribute a named method.
             for class in &graph {
@@ -4862,7 +4898,10 @@ impl<'a> ReferenceCallProof<'a> {
                 self.charge(declaring.methods.len().max(1))?;
             }
             for member in declaring.methods.iter().filter(|m| m.name == name) {
-                if (declaring.binary && !owner.binary) || declaring.is_interface || declaring.reference_generic {
+                if declaring.binary != owner.binary
+                    || (declaring.is_interface && !owner.binary)
+                    || declaring.reference_generic
+                {
                     return None;
                 }
                 if inherited {
@@ -4880,6 +4919,7 @@ impl<'a> ReferenceCallProof<'a> {
                 // Native/abstract/final/synchronized are valid invocation declarations.
                 // No bridge, synthetic, static or variable-arity candidate is silently filtered.
                 if member.access != Access::Public
+                    || (declaring.is_interface && flags & 0x0400 == 0)
                     || *generic
                     || flags & !0x1dff != 0
                     || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
@@ -4986,10 +5026,18 @@ impl<'a> ReferenceCallProof<'a> {
                                 return None;
                             }
                             if self.graph(members[i].0)?.iter().any(|c| same_class(c, members[j].0)) {
-                                self.source_override(members[i], members[j])?;
+                                if owner.binary {
+                                    self.binary_override(members[i], members[j])?;
+                                } else {
+                                    self.source_override(members[i], members[j])?;
+                                }
                                 hidden[j] = true;
                             } else {
-                                self.source_override(members[j], members[i])?;
+                                if owner.binary {
+                                    self.binary_override(members[j], members[i])?;
+                                } else {
+                                    self.source_override(members[j], members[i])?;
+                                }
                                 hidden[i] = true;
                             }
                         }

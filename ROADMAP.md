@@ -40,6 +40,14 @@ pass their original exact targets. Generic methods/parameters remain complete
 unsupported competitors; ancestor grammar and parser behavior are unchanged.
 See [scope, refusals and IDEA reference](docs/DECLARATION_INVENTORY.md).
 
+### Effective binary declarations
+
+The shared strict selector now validates complete same-name binary candidate
+sets before proving exact-descriptor ancestor overrides. It supports inherited
+class declarations and public abstract interface declarations, while preserving
+default/bridge/generic/mixed-source refusal boundaries. See
+[scope and frozen evidence](docs/EFFECTIVE_BINARY_METHODS.md).
+
 ## M0: reproducible independent project
 
 Gate: independent manifest/lockfile/toolchain; preserved licensing/provenance;

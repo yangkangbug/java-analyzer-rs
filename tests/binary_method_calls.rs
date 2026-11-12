@@ -233,7 +233,7 @@ fn binary_return_values_are_not_propagated_by_source_invocation_proof() {
     assert!(r.targets.is_empty());
 }
 #[test]
-fn inherited_binary_same_name_is_not_direct_owner_evidence() {
+fn inherited_binary_overload_keeps_the_parent_competitor() {
     let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[member(1, "pick", "(I)V")]);
     p.add_class_bytes(
         "Parent.class",
@@ -245,7 +245,7 @@ fn inherited_binary_same_name_is_not_direct_owner_evidence() {
         &class_bytes("lib/Lib", Some("lib/Parent"), 0x21, &[], &[], &[member(1, "pick", "(I)V")], None),
     )
     .unwrap();
-    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    exact_effective_target(&p, "lib/Lib", "(I)V");
 }
 
 #[test]
@@ -503,4 +503,199 @@ fn class_signatures_preserve_raw_ancestor_order_beside_legacy_projections() {
     assert_eq!(signature.super_class.as_deref(), Some("lib.Outer.Base"));
     assert_eq!(signature.binary_interfaces, ["lib/Outer$First", "lib/Outer/Second"]);
     assert_eq!(signature.interfaces, ["lib.Outer.First", "lib.Outer.Second"]);
+}
+
+fn effective_class(
+    p: &mut Project,
+    name: &str,
+    parent: &str,
+    interfaces: &[&str],
+    interface: bool,
+    methods: &[Member],
+) {
+    p.add_class_bytes(
+        format!("{}.class", name.rsplit('/').next().unwrap()),
+        &class_bytes(name, Some(parent), if interface { 0x601 } else { 0x21 }, interfaces, &[], methods, None),
+    )
+    .unwrap();
+}
+
+fn exact_effective_target(p: &Project, owner: &str, descriptor: &str) {
+    let result = query(p, "pick(1)");
+    assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+    assert_eq!(result.targets.len(), 1);
+    let identity = result.targets[0].binary.as_ref().unwrap();
+    assert_eq!(identity.binary_name, owner);
+    assert_eq!(identity.descriptor, descriptor);
+    assert_eq!(result.targets[0].name, "pick");
+}
+
+#[test]
+fn effective_binary_class_inheritance_overrides_and_overloads() {
+    for mode in 0..3 {
+        let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+        effective_class(
+            &mut p,
+            "lib/Base",
+            "java/lang/Object",
+            &[],
+            false,
+            &[member(1, "pick", if mode == 2 { "(J)V" } else { "(I)V" })],
+        );
+        let own = if mode == 0 { vec![] } else { vec![member(1, "pick", "(I)V")] };
+        effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &own);
+        exact_effective_target(&p, if mode == 0 { "lib/Base" } else { "lib/Lib" }, "(I)V");
+    }
+}
+
+#[test]
+fn effective_binary_abstract_interface_direct_inherited_and_implemented() {
+    for mode in 0..4 {
+        let receiver = if mode < 3 { "lib.I" } else { "lib.Lib" };
+        let mut p = project(&format!("class Use {{ void run({receiver} lib) {{ lib.pick(1); }} }}"), &[]);
+        effective_class(&mut p, "lib/Parent", "java/lang/Object", &[], true, &[member(0x401, "pick", "(I)V")]);
+        let supers = if mode == 0 { vec![] } else { vec!["lib/Parent"] };
+        let own = if mode == 1 { vec![] } else { vec![member(0x401, "pick", "(I)V")] };
+        effective_class(&mut p, "lib/I", "java/lang/Object", &supers, true, &own);
+        if mode == 3 {
+            effective_class(&mut p, "lib/Lib", "java/lang/Object", &["lib/I"], false, &[member(1, "pick", "(I)V")]);
+        }
+        exact_effective_target(
+            &p,
+            if mode == 1 {
+                "lib/Parent"
+            } else if mode == 3 {
+                "lib/Lib"
+            } else {
+                "lib/I"
+            },
+            "(I)V",
+        );
+    }
+}
+
+#[test]
+fn effective_binary_complete_competitors_and_exact_returns_fail_closed() {
+    for flags in [0x11, 0x41, 0x81, 0x1001, 0x9, 0x2, 0x4] {
+        let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+        effective_class(&mut p, "lib/Base", "java/lang/Object", &[], false, &[member(flags, "pick", "(I)V")]);
+        effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[member(1, "pick", "(I)V")]);
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "flags={flags:x}");
+    }
+    for result in ["I", "J", "Ljava/lang/Object;", "Llib/Lib;"] {
+        let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+        effective_class(&mut p, "lib/Base", "java/lang/Object", &[], false, &[member(1, "pick", "(I)V")]);
+        effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[member(1, "pick", &format!("(I){result}"))]);
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "{result}");
+    }
+}
+
+#[test]
+fn effective_binary_interface_conflicts_and_cross_branch_implementation_refuse() {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    for name in ["lib/I", "lib/J"] {
+        effective_class(&mut p, name, "java/lang/Object", &[], true, &[member(0x401, "pick", "(I)V")]);
+    }
+    effective_class(&mut p, "lib/Lib", "java/lang/Object", &["lib/I", "lib/J"], false, &[]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    effective_class(&mut p, "lib/Base", "java/lang/Object", &[], false, &[member(1, "pick", "(I)V")]);
+    effective_class(&mut p, "lib/Lib", "lib/Base", &["lib/I"], false, &[]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    // When the declaration itself establishes the interface relation, the
+    // inherited concrete declaration is sufficient and remains the target.
+    effective_class(&mut p, "lib/Base", "java/lang/Object", &["lib/I"], false, &[member(1, "pick", "(I)V")]);
+    exact_effective_target(&p, "lib/Base", "(I)V");
+}
+
+#[test]
+fn effective_binary_defaults_object_and_mixed_source_candidates_refuse() {
+    for interface_flags in [1, 9, 2, 0x441, 0x481, 0x1401] {
+        let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+        effective_class(&mut p, "lib/I", "java/lang/Object", &[], true, &[member(interface_flags, "pick", "(J)V")]);
+        effective_class(&mut p, "lib/Lib", "java/lang/Object", &["lib/I"], false, &[member(1, "pick", "(I)V")]);
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    }
+    let mut p = project("class Use { void run(lib.I lib) { lib.pick(1); } }", &[]);
+    p.add_class_bytes(
+        "Object.class",
+        &class_bytes("java/lang/Object", None, 0x21, &[], &[], &[member(1, "pick", "(I)V")], None),
+    )
+    .unwrap();
+    effective_class(&mut p, "lib/I", "java/lang/Object", &[], true, &[member(0x401, "pick", "(I)V")]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    p.insert("Base.java", "package lib; public class Base { public void pick(int n) {} }");
+    effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[member(1, "pick", "(I)V")]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn effective_binary_generic_nonparticipants_do_not_hide_real_competitors() {
+    for same_name in [false, true] {
+        let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+        p.add_class_bytes(
+            "G.class",
+            &class_bytes(
+                "lib/G",
+                Some("java/lang/Object"),
+                0x601,
+                &[],
+                &[],
+                &[member(0x401, if same_name { "pick" } else { "other" }, "(I)V")],
+                Some("<T:Ljava/lang/Object;>Ljava/lang/Object;"),
+            ),
+        )
+        .unwrap();
+        effective_class(&mut p, "lib/I", "java/lang/Object", &[], true, &[member(0x401, "pick", "(I)V")]);
+        p.add_class_bytes(
+            "Lib.class",
+            &class_bytes(
+                "lib/Lib",
+                Some("java/lang/Object"),
+                0x21,
+                &["lib/G", "lib/I"],
+                &[],
+                &[member(1, "pick", "(I)V")],
+                Some("Ljava/lang/Object;Llib/G<Ljava/lang/Object;>;Llib/I;"),
+            ),
+        )
+        .unwrap();
+        if same_name {
+            assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+        } else {
+            exact_effective_target(&p, "lib/Lib", "(I)V");
+        }
+    }
+}
+
+#[test]
+fn effective_binary_final_ancestor_is_checked_even_when_intermediate_is_overridden() {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    effective_class(&mut p, "lib/Grand", "java/lang/Object", &[], false, &[member(0x11, "pick", "(I)V")]);
+    effective_class(&mut p, "lib/Base", "lib/Grand", &[], false, &[member(1, "pick", "(I)V")]);
+    effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[member(1, "pick", "(I)V")]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn effective_binary_reference_return_exactness_and_transitive_override() {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    effective_class(&mut p, "lib/Result", "java/lang/Object", &[], false, &[]);
+    for (name, parent) in [("lib/Grand", "java/lang/Object"), ("lib/Base", "lib/Grand"), ("lib/Lib", "lib/Base")] {
+        effective_class(&mut p, name, parent, &[], false, &[member(1, "pick", "(I)Llib/Result;")]);
+    }
+    exact_effective_target(&p, "lib/Lib", "(I)Llib/Result;");
+    effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[member(1, "pick", "(I)Llib/Lib;")]);
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn effective_binary_interface_diamond_retains_one_actual_declaration() {
+    let mut p = project("class Use { void run(lib.D lib) { lib.pick(1); } }", &[]);
+    effective_class(&mut p, "lib/I", "java/lang/Object", &[], true, &[member(0x401, "pick", "(I)V")]);
+    for name in ["lib/J", "lib/K"] {
+        effective_class(&mut p, name, "java/lang/Object", &["lib/I"], true, &[]);
+    }
+    effective_class(&mut p, "lib/D", "java/lang/Object", &["lib/J", "lib/K"], true, &[]);
+    exact_effective_target(&p, "lib/I", "(I)V");
 }

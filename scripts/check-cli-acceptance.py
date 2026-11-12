@@ -294,7 +294,7 @@ def parser_controls(response, checker):
     print("parser_controls=3 rejected (omission, semantic label, inconsistent count)")
 
 
-def check_declarations(response, queries, targets, source_root, platform, sources, *, binary_baseline=False):
+def check_declarations(response, queries, targets, source_root, platform, sources, *, binary_baseline=False, effective_binary=False):
     result = response["result"]
     same(result["index_builds"], 1, "one prepared index per request batch")
     same(len(result["queries"]), len(queries), "returned query count")
@@ -305,7 +305,7 @@ def check_declarations(response, queries, targets, source_root, platform, source
             same([t for t in targets if t[0] == identifier],
                  [["q06", "!/classes/java/lang/String.class", "Method", "java.lang.String", "length", "0", "0"]],
                  "frozen q06 original target")
-            expected = copy.deepcopy(binary_method_plan()['queries'][8]['expected'])
+            expected = copy.deepcopy((effective_binary_plan() if effective_binary else binary_method_plan())['queries'][8]['expected'])
             expected['query_index'] = index
             changed = copy.deepcopy(actual)
             changed['file'] = Path(changed['file']).relative_to(source_root).as_posix()
@@ -487,6 +487,50 @@ def header_inventory_plan():
     return result
 
 
+EFFECTIVE_BINARY_PLAN_SHA256 = 'beb8c5a1a5fb4caccaec7ad1b33346f3a2778a549f01e35248692668a8f360c6'
+
+
+def effective_binary_prediction(path=None):
+    previous = header_inventory_plan()
+    path = path or CORPUS / 'effective-binary-probes.json'
+    input_helpers().reject_symlink_path(path)
+    same(sha256(path), EFFECTIVE_BINARY_PLAN_SHA256, 'frozen effective binary forecast')
+    expected = {
+        'schema_version': 1, 'feature': 'effective_binary_declarations',
+        'baseline_revision': '5563da7a446ca71f8b19a20e812979cccfd3adc3',
+        'baseline_native_sha256': '89280e2a70afb12aed329f9551581e4e63a96711b12ffb1f58fd673e8ab88b10',
+        'previous_header_plan_sha256': HEADER_INVENTORY_PLAN_SHA256,
+        'source_archive_sha256': previous['source_archive_sha256'],
+        'platform_sha256': previous['platform_sha256'],
+        'source_sha256': previous['source_sha256'], 'changes': [],
+    }
+    for i in (3, 4, 8):
+        row = previous['queries'][i]
+        change = {'id': row['id'], 'index': i, 'baseline': row['expected'], 'baseline_details': row['expected_details']}
+        for key in ('expected', 'expected_details'):
+            revised = copy.deepcopy(row[key])
+            same(revised['status'], 'Ambiguous', 'old class/interface declaration pair')
+            revised['status'] = 'Resolved'
+            revised['targets'] = [t for t in revised['targets'] if t['binary_name'] == 'java/lang/String']
+            same(len(revised['targets']), 1, 'exact class implementation')
+            change[key] = revised
+        expected['changes'].append(change)
+    result = json.loads(path.read_text())
+    same(result, expected, 'only three independently predicted effective declarations')
+    return result
+
+
+def effective_binary_plan():
+    result = copy.deepcopy(header_inventory_plan())
+    for change in effective_binary_prediction()['changes']:
+        row = result['queries'][change['index']]
+        same(row['id'], change['id'], 'fixed effective declaration order')
+        row['classification'] = 'new_effective_binary_selection'
+        for key in ('expected', 'expected_details'):
+            row[key] = copy.deepcopy(change[key])
+    return result
+
+
 def check_binary_methods(response, plan, source_root, platform, *, baseline=False, details=False):
     require(not (baseline and details), "old binary has no details protocol")
     same(response['result']['index_builds'], 1, "one binary proof index")
@@ -569,6 +613,7 @@ def main():
     capture = parser.add_mutually_exclusive_group()
     capture.add_argument("--capture-binary-method-baseline", action="store_true", help="verify exact frozen 650565ff binary without future target-details")
     capture.add_argument("--capture-header-inventory-baseline", action="store_true", help="verify exact frozen 0697877b default and detailed records before header inventory changes")
+    capture.add_argument("--capture-effective-binary-baseline", action="store_true", help="verify exact frozen 5563da7a records before effective binary declarations")
     args = parser.parse_args()
     if not 0 < args.timeout_seconds <= 600:
         parser.error("timeout-seconds must be greater than zero and at most 600")
@@ -587,7 +632,9 @@ def main():
         native = args.native.resolve(strict=True)
         require(native.is_file() and os.access(native, os.X_OK), "--native must name an executable product CLI")
         historical = args.capture_binary_method_baseline or args.capture_header_inventory_baseline
-        binary_plan = binary_method_plan() if historical else header_inventory_plan()
+        binary_plan = binary_method_plan() if historical else header_inventory_plan() if args.capture_effective_binary_baseline else effective_binary_plan()
+        if args.capture_effective_binary_baseline:
+            same(sha256(native), effective_binary_prediction()['baseline_native_sha256'], 'exact effective declaration baseline binary')
         if args.capture_header_inventory_baseline:
             same(sha256(native), header_inventory_prediction()['baseline_native_sha256'], 'exact header inventory baseline binary')
         same(binary_plan["source_archive_sha256"], specs["sources"]["sha256"], "binary source artifact")
@@ -624,7 +671,7 @@ def main():
                 changed, inspection, source_root, sources, print_inventory=False))
             declarations = invoke("declaration", selected_requests=requests)
             def check(value):
-                check_declarations(value, queries, targets, source_root, platform, sources, binary_baseline=args.capture_binary_method_baseline)
+                check_declarations(value, queries, targets, source_root, platform, sources, binary_baseline=args.capture_binary_method_baseline, effective_binary=not (historical or args.capture_effective_binary_baseline))
             check(declarations)
             comparator_controls(declarations, check)
             inheritance = inherited_preservation_plan(source_root, platform)
@@ -646,9 +693,9 @@ def main():
                 detailed = run_cli(native, cwd, manifest, 'declaration', args.timeout_seconds,
                                    args.max_output_bytes, binary_requests, target_details=True)
                 check_binary_methods(detailed, binary_plan, source_root, platform, details=True)
-            print('binary_methods=10 exact complete records; header_inventory_new_predictions=' +
+            print('binary_methods=10 exact complete records; effective_binary_predictions=' + str(0 if historical or args.capture_effective_binary_baseline else 3) + '; header_inventory_new_predictions=' +
                   ('0' if historical else '3') + '; stage=' +
-                  ('baseline_verified_not_acceptance' if historical else 'current'))
+                  ('baseline_verified_not_acceptance' if historical or args.capture_effective_binary_baseline else 'current'))
             print("declarations=45 candidates=" + str(sum(len(q["targets"]) for q in declarations["result"]["queries"])))
             print("statuses=" + json.dumps(dict(sorted(Counter(q["status"] for q in declarations["result"]["queries"]).items()))))
             # Prove the JMOD changes real binding, not that absent Java means absent platform data.

@@ -1,0 +1,128 @@
+{
+  "compiler": {
+    "inherited_base": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ],
+    "class_override": [
+      "dep/Override",
+      "pick",
+      "(I)I"
+    ],
+    "inherited_overload": [
+      "dep/Base",
+      "pick",
+      "(J)I"
+    ],
+    "own_overload": [
+      "dep/Overload",
+      "pick",
+      "(I)I"
+    ],
+    "abstract_direct": [
+      "dep/I",
+      "pick",
+      "(I)I"
+    ],
+    "abstract_child": [
+      "dep/J",
+      "pick",
+      "(I)I"
+    ],
+    "class_implements": [
+      "dep/Impl",
+      "pick",
+      "(I)I"
+    ],
+    "string_length": [
+      "java/lang/String",
+      "length",
+      "()I"
+    ],
+    "string_char_at": [
+      "java/lang/String",
+      "charAt",
+      "(I)C"
+    ],
+    "sequence_length": [
+      "java/lang/CharSequence",
+      "length",
+      "()I"
+    ],
+    "sequence_char_at": [
+      "java/lang/CharSequence",
+      "charAt",
+      "(I)C"
+    ],
+    "covariant_refusal": [
+      "dep/CovChild",
+      "value",
+      "()Ljava/lang/String;"
+    ],
+    "default_refusal": [
+      "dep/DefaultI",
+      "value",
+      "()I"
+    ],
+    "generic_bridge_refusal": [
+      "dep/GenericChild",
+      "echo",
+      "(Ljava/lang/String;)Ljava/lang/String;"
+    ],
+    "unrelated_refusal": [
+      "dep/K",
+      "pick",
+      "(I)I"
+    ],
+    "cross_branch_refusal": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ],
+    "interface_object_refusal": [
+      "java/lang/Object",
+      "toString",
+      "()Ljava/lang/String;"
+    ],
+    "static_competitor_refusal": [
+      "dep/WideBase",
+      "pick",
+      "(J)I"
+    ],
+    "varargs_competitor_refusal": [
+      "dep/Base",
+      "pick",
+      "(I)I"
+    ],
+    "private_ancestor_refusal": [
+      "dep/PublicChild",
+      "pick",
+      "(I)I"
+    ]
+  },
+  "native_positive": [
+    "inherited_base",
+    "class_override",
+    "inherited_overload",
+    "own_overload",
+    "abstract_direct",
+    "abstract_child",
+    "class_implements",
+    "string_length",
+    "string_char_at",
+    "sequence_length",
+    "sequence_char_at"
+  ],
+  "native_refusal": [
+    "covariant_refusal",
+    "default_refusal",
+    "generic_bridge_refusal",
+    "unrelated_refusal",
+    "cross_branch_refusal",
+    "interface_object_refusal",
+    "static_competitor_refusal",
+    "varargs_competitor_refusal",
+    "private_ancestor_refusal"
+  ]
+}

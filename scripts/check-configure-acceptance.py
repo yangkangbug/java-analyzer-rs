@@ -342,7 +342,7 @@ def run_commons(native, source, platform, stage):
         commons.check_parser_report(parser, generated, source_root, sources)
         preserve_commons_parser(parser['result'], source_root)
         declarations = commons.run_cli(native, cwd, manifest, 'declaration', 90, 20*1024*1024, request)
-        commons.check_declarations(declarations, queries, targets, source_root, platform, sources)
+        commons.check_declarations(declarations, queries, targets, source_root, platform, sources, effective_binary=True)
         results[name] = {'parser': parser['result'], 'declarations': declarations['result']}
     same(results['generated'], results['manual'], 'Commons exact parser and declaration preservation')
     same({p.relative_to(source_root).as_posix(): second.digest(p) for p in source_root.rglob('*.java')},

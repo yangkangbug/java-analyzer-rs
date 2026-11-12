@@ -13,6 +13,10 @@ The [return declaration inventory](docs/DECLARATION_INVENTORY.md) separates
 complete generic/wildcard header syntax from usable invocation types, without
 adding generic inference or discarding unsupported same-name competitors.
 
+The [effective binary declaration view](docs/EFFECTIVE_BINARY_METHODS.md) adds bounded
+inherited binary methods, exact overrides and abstract interface calls to the
+existing strict selector, without generic substitution or binary return propagation.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

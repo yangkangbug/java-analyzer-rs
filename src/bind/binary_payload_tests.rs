@@ -488,3 +488,45 @@ fn caller_local_subset_reuses_only_scanned_declarations_and_keeps_scope_checks()
     assert!(fresh.visible_argument_local("x", at).is_none());
     assert!(fresh.caller_locals.is_none(), "incomplete scan cannot populate subset");
 }
+
+#[test]
+fn receiver_hint_scan_keeps_all_caller_declarations_for_independent_strict_lookup() {
+    let text = "class Use { void run(int x) { int y = x; { int x = 0; int later = 1; y = x; } } void other(int z) {} }";
+    let mut project = Project::new();
+    project.insert("Use.java", text);
+    let index = Index::build(&project.files, &project.binaries);
+    let file = &index.files[0];
+    let start = text.find("void run").unwrap() as u32;
+    let end = text.find("void other").unwrap() as u32;
+    let at = text.find("int later").unwrap() as u32;
+    let after = text.rfind("x;").unwrap() as u32;
+    for receiver in ["x", "absent"] {
+        let mut proof = ReferenceCallProof::new(&index, file, start, end);
+        proof.charge(file.locals.len().max(1)).unwrap();
+        let mut subset = Vec::new();
+        let mut inspected = 0;
+        let hint = local_resolution(
+            file.locals.iter().inspect(|local| {
+                inspected += 1;
+                if local.start >= start && local.end <= end {
+                    subset.push(*local);
+                }
+            }),
+            at,
+            receiver,
+        );
+        assert_eq!(hint, index.locals_named(file, at, receiver));
+        assert_eq!(inspected, file.locals.len(), "even absent names consume the full scan");
+        assert_eq!(subset.len(), 4, "other names and future declarations are retained");
+        proof.caller_locals = Some(subset);
+        if receiver == "x" {
+            assert_eq!(hint.as_ref().unwrap().status, ResolveStatus::Resolved, "hint chooses inner scope");
+            assert_eq!(hint.as_ref().unwrap().targets.len(), 1);
+        }
+        assert!(proof.visible_argument_local("x", at).is_none(), "strict evidence still rejects overlap");
+        assert!(proof.visible_argument_local("y", at).is_some(), "another name remains available");
+        assert!(proof.visible_argument_local("later", at).is_none(), "declaration is not yet visible");
+        assert!(proof.visible_argument_local("later", after).is_some(), "later position rechecks visibility");
+        assert!(proof.visible_argument_local("z", after).is_none());
+    }
+}

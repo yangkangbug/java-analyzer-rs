@@ -48,28 +48,18 @@ fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>) {
 
 fn check(query: &Query, result: &ResolveResult) {
     let f = &query.fields;
-    // Historical TSV stays intact. The strict binary-instance path preserves
-    // both same-name interface candidates rather than using legacy hiding.
-    let mut expected_targets = query.targets.clone();
-    let (status, count) = if query.id == "q06" {
+    // The immutable TSV's q06 target is now independently justified by the
+    // effective-binary proof. Its intermediate Ambiguous stage remains frozen
+    // in binary-method-probes-v3.json and the CLI baseline verification mode.
+    let expected_targets = query.targets.clone();
+    let (status, count) = (f[4].as_str(), f[5].parse::<usize>().unwrap());
+    if query.id == "q06" {
         assert_eq!(&f[1..], &["org/apache/commons/lang3/StringUtils.java", "15520", "length", "Resolved", "1"]);
-        assert_eq!(expected_targets.len(), 1);
-        assert_eq!(
-            &expected_targets[0][1..],
-            &["!/classes/java/lang/String.class", "Method", "java.lang.String", "length", "0", "0"]
-        );
-        expected_targets.push(
-            ["q06", "!/classes/java/lang/CharSequence.class", "Method", "java.lang.CharSequence", "length", "0", "0"]
-                .map(str::to_owned)
-                .to_vec(),
-        );
-        for target in &result.targets {
-            assert_eq!(target.binary.as_ref().unwrap().descriptor, "()I");
-        }
-        ("Ambiguous", 2)
-    } else {
-        (f[4].as_str(), f[5].parse::<usize>().unwrap())
-    };
+        assert_eq!(result.targets.len(), 1);
+        let identity = result.targets[0].binary.as_ref().unwrap();
+        assert_eq!(identity.binary_name, "java/lang/String");
+        assert_eq!(identity.descriptor, "()I");
+    }
     assert_eq!(format!("{:?}", result.status), status, "{} status", query.id);
     assert_eq!(result.targets.len(), count, "{} count", query.id);
     assert_eq!(expected_targets.len(), result.targets.len(), "{} fixture target count", query.id);

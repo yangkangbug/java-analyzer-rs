@@ -1,0 +1,30 @@
+{
+  "files": {
+    "BinaryDeclarationOracle.java": "78287b4a9dca62fd98ab7f6abf26d2f693ed703c1aef30006e4feea400ece16e",
+    "dependency/dep/Base.java": "744c96ef9053823829144eab93995f6edddfc946fdbfa3a5d825da8826f87e36",
+    "dependency/dep/CovBase.java": "70b9af0b60767b80666cc56c163a432579371d02a957ea44b37019b934d1f22e",
+    "dependency/dep/CovChild.java": "e44ac66f47022344a98b56b71ea15a995676c0b2d5ac385a1e9fee0837f3d3b3",
+    "dependency/dep/Cross.java": "d47bfa143e5e6f8866b5b7a41295bf58fc3064bac9f9b5034973fd947a141611",
+    "dependency/dep/DefaultI.java": "334757c35329cf2c3bc34236bcb3dd02dc9ffba3c278832ce4495d4d987c07c0",
+    "dependency/dep/DefaultImpl.java": "5ebf116d637f31e94d4595e4cbd1795ee50b436f551d53166dd3d3d9a327c7f1",
+    "dependency/dep/GenericBase.java": "44daca486410dbbd791282b95cada0c97e36e119567d8d135b13c5171f2474e1",
+    "dependency/dep/GenericChild.java": "67f251136647cd43882d76070eac611186f38db6660c1b020b3544a00c19fe48",
+    "dependency/dep/HiddenBase.java": "cbd2aab676ff5986516c46a8af9d6ec7fe5a0daebab512a8eee9172993e6f10a",
+    "dependency/dep/I.java": "578f5e3ac067bcbd0b89a5d8efa3cf3d431d9167cd96620965259296dac366ec",
+    "dependency/dep/Impl.java": "f5ec8249a690600d5bd7b316e9fb367856f0d5b23704475913479017589c5e30",
+    "dependency/dep/Inherited.java": "3e00e9bcb5d483c20fe4a0ee8ef8ed7269f19019976d551f072bbcaf69b513b6",
+    "dependency/dep/J.java": "eb1c4301ba2b53befb9b9a4fcbfc31f29e3b1946bde7d9bf7a0acb8dddd5a449",
+    "dependency/dep/K.java": "7a019ff1b080fc984fc4fca1e7cf7417b2759ea0580813718b60900cf54d5a9b",
+    "dependency/dep/Overload.java": "aa2f05ef43fc284ae1129adabded7cc9a7b56dfabbc05f71c3fc0ac0efdf7895",
+    "dependency/dep/Override.java": "10510c546edb90f081d89b7a9b98e25cec55282d28534289c4c14887133ba40a",
+    "dependency/dep/PublicChild.java": "0af29577c907cf9053671f9927b47121128cac00703d8e2951b49d69b71140c4",
+    "dependency/dep/StaticOver.java": "1beef59807426462ab6fa69b517a93a78db4b02dd153c5b033bfa209ce244dff",
+    "dependency/dep/Unrelated.java": "5151d840545d9cdd9e93e2bb6443fe4dc603abbcd5068f9a75fc7fb4e4c21b92",
+    "dependency/dep/VarargChild.java": "4f5da9719eebba13a9f254f2349dba010bc9587938457e1ae1a80d7636db3292",
+    "dependency/dep/WideBase.java": "d8410aa529b9e054ee985f2cca92252c03e74b29e7666d98617ae7ced1d7dda7",
+    "invalid/final_override/Bad.java": "5685bfd3ecff1b058532af11e4ee83dccc7db1ec835da985826dd5a144079452",
+    "invalid/primitive_return/Bad.java": "0164cc37973acb8b74f58944aa386bb93bcafc0edfb27c3b4d22c9d173952461",
+    "predictions.json": "f79692c7512334dc9ea353571204d7b20dda8a0bf535fdff9bc4be2877ecaee5",
+    "source/app/Use.java": "ff864cf28c088af4777dcb9e977ac6497a5f2f841a46d1bf40e0e51eebef7603"
+  }
+}
