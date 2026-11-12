@@ -61,11 +61,12 @@ class ReturnStageControls(unittest.TestCase):
             patch(gate.strict, 'frozen_qualified_probes', return_value=[])
             patch(gate.strict, 'frozen_mixed_probes', return_value=[])
             patch(gate.strict, 'frozen_return_probes', return_value=[])
+            patch(gate.strict, 'frozen_null_probes', return_value=[])
             patch(gate.strict.string, 'probes', return_value=[])
             caller(Path('native'), self.f, baseline)
             self.assertEqual(not baseline or caller is gate.run, overlay.called)
             if original.called:
-                stage = 'mixed' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'null_actual')
+                stage = 'mixed' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'binary_argument')
                 original.assert_called_once_with(self.f, stage)
 
     def test_every_layer_rejects_parser_stage_swap(self):

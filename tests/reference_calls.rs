@@ -298,7 +298,7 @@ fn proof_budget_exhaustion_and_local_type_boundaries_refuse() {
 }
 
 #[test]
-fn source_and_binary_reference_identities_stay_in_the_owning_compilation() {
+fn source_identity_and_exact_binary_compatibility_preserve_declaring_scope() {
     use java_engine::{
         ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig, WorkspaceSnapshot,
     };
@@ -345,10 +345,14 @@ fn source_and_binary_reference_identities_stay_in_the_owning_compilation() {
         fs::write(fixture.0.join("lib/C.java"), callee).unwrap();
         let snapshot = WorkspaceSnapshot::load(&config).unwrap();
         let path = fixture.0.join("app/Calls.java").canonicalize().unwrap().to_str().unwrap().to_owned();
-        for (needle, expected) in [("m(a)", ResolveStatus::OverloadNotResolved), ("same(c)", ResolveStatus::Resolved)] {
+        // The exact Object root now has cross-scope argument compatibility;
+        // source C still uses its existing visible declaration identity.
+        for (needle, declaration) in [("m(a)", "m(Object a)"), ("same(c)", "same(C a)")] {
             let at = caller.find(needle).unwrap() as u32;
             let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
-            assert_eq!(result.status, expected, "{result:?}");
+            assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].start_byte, callee.find(declaration).unwrap() as u32);
             assert_eq!(snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at), result);
             assert!(result.targets.iter().all(|t| t.path.ends_with("lib/C.java")));
         }
@@ -835,9 +839,10 @@ fn string_literal_identity_across_compilations_requires_matching_binary_closure(
         .unwrap();
         for (needle, expected) in [
             (r#"m("😀")"#, expected),
-            ("m(s)", ResolveStatus::CallNotResolved),
+            // Exact ordinary binary roots now share the validated closure bridge.
+            ("m(s)", expected),
             (r#"mixed(1,"😀")"#, expected),
-            ("mixed(1,s)", ResolveStatus::CallNotResolved),
+            ("mixed(1,s)", expected),
         ] {
             let at = caller.find(needle).unwrap() as u32;
             let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);

@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "files": {
+    "dependency/dep/Base.java": "ff7134de797c749c5eac4ef4d406c6bcc66c9f4245aece6923ebba4326553a34",
+    "dependency/dep/Token.java": "46fd2c55b02e890bc57d1fd57f3eed88aead967d8482e3affce4dba9d9a723c6",
+    "files.tsv": "2898ab23ba9c103e4142b552fa8a53e47917cbd507bac8884c09ecc38013cc48",
+    "invalid/cross/app/client/Use.java": "4b07d2e58b17b316b3e1a79ddbb7005cff4c16ddf666b20340f5e8cd01520396",
+    "invalid/cross/lib/api/Target.java": "96bbf88565dc92e93ca7d02c98738e9e2a78d86afb4f3054822e8564a3daf620",
+    "mr/dep/Token.java": "350e0addc8fcfc8c85396adda2ce6376991f4cc47e8c928c196e05daf9c3ebe5",
+    "shadow/dep/Token.java": "46fd2c55b02e890bc57d1fd57f3eed88aead967d8482e3affce4dba9d9a723c6",
+    "source/app/client/Use.java": "244b70c6810a0c58a8521093e75d2121d4c143f85db6490497c1a9937d6881ca",
+    "source/lib/api/Target.java": "12ca61e0d01a8ec0a6b86f19dc56804ca7487c6b7d95f8545a7c31910bfdb644"
+  }
+}

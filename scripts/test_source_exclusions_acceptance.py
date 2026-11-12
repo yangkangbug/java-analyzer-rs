@@ -416,14 +416,14 @@ class ResultControls(unittest.TestCase):
             with self.assertRaises(ValueError): gate.same(changed, stages, 'LSP preservation')
 
 
-    def test_current_probe_inventory_explicitly_adds_null_queries(self):
+    def test_current_probe_inventory_explicitly_adds_binary_query(self):
         # The imported contracts own exact targets; this test checks the gate's
         # aggregate wiring without an external corpus or native process.
         f = gate.second.Fixture()
         f.plan = [{'id': str(i)} for i in range(16)]
         groups = {'original': [{} for _ in range(16)], 'reference': [{} for _ in range(3)],
                   'local': [{} for _ in range(5)], 'string': [{} for _ in range(8)],
-                  'current': [{'byte': b} for b in [1843, 1976, 2412, 1986, 2489, 2527, 2139, 2489]]}
+                  'current': [{'byte': b} for b in [1843, 1976, 2412, 1986, 2489, 2527, 2139, 2489, 1653]]}
         def run():
             with mock.patch.object(gate.second, 'current_original_expectations', return_value=groups['original']), \
                  mock.patch.object(gate.second, 'reference_call_probes', return_value=(groups['reference'], {}, 'digest')), \
@@ -434,10 +434,10 @@ class ResultControls(unittest.TestCase):
                 return gate.probe_groups(f)[0]
         result = run()
         self.assertEqual(tuple((name, len(rows)) for name, rows in result), gate.CURRENT_PROBE_GROUPS)
-        self.assertEqual(sum(len(rows) for name, rows in result), 40)
-        self.assertEqual(gate.CURRENT_QUERY_COUNT, 40)
-        self.assertEqual(result[-1][0], 'null_actual_8')
-        self.assertEqual(result[-1][1][-1]['byte'], 2489)
+        self.assertEqual(sum(len(rows) for name, rows in result), 41)
+        self.assertEqual(gate.CURRENT_QUERY_COUNT, 41)
+        self.assertEqual(result[-1][0], 'binary_argument_9')
+        self.assertEqual(result[-1][1][-1]['byte'], 1653)
         original = copy.deepcopy(groups)
         for key in groups:
             for change in ('omit', 'duplicate'):

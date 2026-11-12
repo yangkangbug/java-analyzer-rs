@@ -69,9 +69,14 @@ The subsequent [plain-null strict-argument proof](docs/NULL_STRICT_CALLS.md)
 adds the null invocation conversion to validated reference formals only. Formal
 specificity and complete competitor checks remain unchanged; unknown arguments,
 arrays, generics, boxing and additional expression inference are not enabled.
-Its sole new real-Gson success is `set(0, null)`; the predicted
-`add(propertyName, null)` target is explicitly deferred because ordinary String
-local identity across compilation scopes is still unsupported.
+That phase's sole new real-Gson success was `set(0, null)`; its predicted
+`add(propertyName, null)` target was explicitly deferred rather than counted as
+success. The later [exact binary argument compatibility proof](docs/BINARY_ARGUMENT_COMPATIBILITY.md)
+addresses the ordinary binary-root cross-scope gap using selected-origin and
+complete modeled inheritance-closure evidence, without global type unification
+or cross-scope subtype widening. Independent signature comparison is budgeted;
+small complete closures support both shared and independent parses, while shared
+signatures can allow proofs that oversized independent copies must refuse.
 
 ### Experimental project CLI
 

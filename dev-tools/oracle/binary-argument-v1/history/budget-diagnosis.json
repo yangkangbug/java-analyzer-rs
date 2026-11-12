@@ -1,0 +1,22 @@
+{
+  "fields": {
+    "count": 11,
+    "variable_text_bytes": 216
+  },
+  "methods": {
+    "count": 167,
+    "variable_text_bytes": 5578,
+    "classfile_count": 168
+  },
+  "class_sha256": "831a11d5c76c84b8777a7813440b4570d49934dee05c285c9068a0ec43158412",
+  "single_signature_member_bytes": 5794,
+  "two_signature_member_bytes": 11588,
+  "proof_total_budget": 4096,
+  "conclusion": "Member names/descriptors/signatures alone exceed full proof budget; excludes origins, class metadata, ancestors, graph and other work.",
+  "excluded_clinit": {
+    "name": "<clinit>",
+    "descriptor": "()V",
+    "text_bytes": 11
+  },
+  "parser_evidence": "src/classfile.rs filters only <clinit>; binary_closure_evidence charges each retained member name, descriptor, and Signature text for both independently parsed signatures before equality."
+}

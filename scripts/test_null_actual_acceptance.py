@@ -156,7 +156,7 @@ class NullControls(unittest.TestCase):
     def test_invalid_modes_and_frozen_binary_gate(self):
         for mode in (0, 1, None, 'baseline'):
             with self.assertRaises(second.AcceptanceError): self.check(self.response, mode)
-        with mock.patch.object(gate.strict, 'current_probes', return_value=self.queries), \
+        with mock.patch.object(gate.strict, 'frozen_null_probes', return_value=self.queries), \
                 mock.patch.object(second, 'digest', return_value='wrong'), \
                 mock.patch.object(second, 'successful') as execute:
             with self.assertRaises(second.AcceptanceError):

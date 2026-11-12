@@ -71,3 +71,7 @@ in the existing Apache-2.0 IntelliJ Community reference tree at commit
 `840d3be11dfdeada533d05052008b48816b6cc4e` as a design reference, not a port of
 its general assignability, PSI or inference implementation. No JVM or IDE runtime
 dependency is added. Optional javac comparisons remain separate from native tests.
+
+The subsequent [exact binary argument compatibility slice](BINARY_ARGUMENT_COMPATIBILITY.md)
+addresses the deferred ordinary binary-root gap under a separate additive plan.
+It does not rewrite this null phase's failed V1 prediction or V2 baseline.

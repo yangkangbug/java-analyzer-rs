@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "supersedes_fixture_sha256": "a806e4776b20dcfe9c5168b24e893f9c59427d7dae7367947c5d2e7437406338",
+  "evidence": {
+    "history/forecast-v1.py.txt": "388bb18234566531abccc9eb9d05c18953cdba9da9f00abc5b1c0b37f318ceb6",
+    "history/budget-diagnosis.json": "be7d5f7b4a33720f3a2e17352bb5f7df01e52e5baec354283d81a2dfc09562d3",
+    "history/candidate-first.log": "56da10000800c7738089576a1dfd6720e22e9d2ce784b0aa4204a228a3f1d98f"
+  },
+  "revision": "Directory String refusal is bounded-proof budget exhaustion, not type incompatibility. Preserve all old cases; add shared JMOD String and shared jar Token positive controls.",
+  "directory_string": "CallNotResolved",
+  "shared_platform_string": "Resolved",
+  "shared_platform_token": "Resolved"
+}

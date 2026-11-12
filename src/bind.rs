@@ -3628,7 +3628,6 @@ const REFERENCE_PROOF_WORK: usize = 4096;
 // One budget covers discovery, arguments, closure and pairwise specificity.
 struct ReferenceValue<'a> {
     class: &'a ClassRec,
-    string_literal: bool,
 }
 
 enum StrictActual<'a> {
@@ -4066,7 +4065,7 @@ impl<'a> ReferenceCallProof<'a> {
             }
             self.accessible(class)?;
             self.graph(class)?;
-            return Some(ReferenceValue { class, string_literal: true });
+            return Some(ReferenceValue { class });
         }
         if node.kind() == SyntaxKind::NewExpr {
             let mut state = 0;
@@ -4098,7 +4097,7 @@ impl<'a> ReferenceCallProof<'a> {
             }
             let class = self.reference_type(self.file, &ty?, at)?;
             self.charge(class.reference_constructor_work?)?;
-            return Some(ReferenceValue { class, string_literal: false });
+            return Some(ReferenceValue { class });
         }
         if node.kind() != SyntaxKind::ReferenceExpr {
             return None;
@@ -4124,7 +4123,7 @@ impl<'a> ReferenceCallProof<'a> {
             return None;
         }
         let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
-        Some(ReferenceValue { class, string_literal: false })
+        Some(ReferenceValue { class })
     }
     // Null is its own strict-argument category, not Object or unknown type.
     // Keep this out of general expression/receiver typing and share the proof budget.
@@ -4214,10 +4213,10 @@ impl<'a> ReferenceCallProof<'a> {
         local.primitive.filter(|value| value.rank == 0)
     }
 
-    // A literal's platform identity can cross compilation scopes only when
-    // both complete binary closures carry identical supplied evidence. This is
-    // not a general relaxation of snapshot-local declaration identity.
-    fn literal_identity(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<()> {
+    // Flat-classpath compatibility for one exact binary argument root only:
+    // both scopes must select identical modeled signatures/origins throughout
+    // their complete inheritance closures. Not global Java type identity.
+    fn binary_closure_evidence(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<()> {
         let left = self.graph(actual)?;
         let right = self.graph(formal)?;
         self.charge(left.len().max(1))?;
@@ -4423,15 +4422,32 @@ impl<'a> ReferenceCallProof<'a> {
                         actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 })
                     }
                     (StrictActual::Reference(actual), ReferenceFormal::Reference(formal)) => {
-                        if actual.string_literal
+                        if actual.class.binary
+                            && formal.binary
+                            && !actual.class.reference_generic
+                            && !formal.reference_generic
                             && actual.class.scope != formal.scope
-                            && formal.package == "java.lang"
-                            && formal.nesting.as_slice() == ["String"]
+                            && actual.class.binary_signature.as_ref()?.binary_name
+                                == formal.binary_signature.as_ref()?.binary_name
                         {
-                            self.literal_identity(actual.class, formal)?;
+                            self.binary_closure_evidence(actual.class, formal)?;
                             true
                         } else {
-                            self.converts(actual.class, formal)?
+                            let converts = self.converts(actual.class, formal)?;
+                            if !converts {
+                                // An unsupported cross-scope ancestor match is
+                                // unknown, not evidence that this competitor
+                                // is inapplicable. Include source replacements:
+                                // refusing is not declaring these names equal.
+                                let name = formal.dotted();
+                                for ancestor in self.graph(actual.class)? {
+                                    self.charge(1)?;
+                                    if ancestor.scope != formal.scope && ancestor.dotted() == name {
+                                        return None;
+                                    }
+                                }
+                            }
+                            converts
                         }
                     }
                     // Strict invocation neither boxes nor unboxes. Do not skip
@@ -4742,3 +4758,6 @@ mod class_literal_receiver_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod binary_actual_tests;
