@@ -1,0 +1,8 @@
+# query	native status	javac selected	exact native candidates
+return_direct	Resolved	product_value@model.Product	product_value@model.Product
+return_parens	Resolved	product_value@model.Product	product_value@model.Product
+return_array	ReceiverNotBound	product_value@model.Product	-
+return_generic	ReceiverNotBound	product_value@model.Product	-
+return_deep	ReceiverNotBound	product_value@model.Product	-
+return_unknown_inner	ReceiverNotBound	product_value@model.Product	-
+return_argument	CallNotResolved	consume@api.Sink	consume@api.Sink

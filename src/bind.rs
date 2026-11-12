@@ -751,6 +751,14 @@ impl Index {
         if has_super_receiver(hit.node) || has_class_literal_receiver(hit.node) {
             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
         }
+        if has_call_result_receiver(hit.node) {
+            return if hit.call {
+                self.reference_call(file, parsed, &hit, byte)
+                    .unwrap_or_else(|| ResolveResult::none(ResolveStatus::ReceiverNotBound))
+            } else {
+                ResolveResult::none(ResolveStatus::ReceiverNotBound)
+            };
+        }
         let chain = field_chain(hit.node, hit.start);
         let Some(index) = chain.iter().position(|segment| segment.start <= byte && byte < segment.end) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
@@ -810,6 +818,29 @@ impl Index {
             plain_receiver = node;
             plain_at = *at;
             parens += 1;
+        }
+        if plain_receiver.kind() == SyntaxKind::CallExpr {
+            let refused = || ResolveResult::none(ResolveStatus::ReceiverNotBound);
+            let Some((caller, caller_start, caller_end)) = direct_caller(parsed.root(), byte) else {
+                return Some(refused());
+            };
+            if !reference_method_header(caller, caller_start)
+                || child_kind(caller, caller_start, SyntaxKind::TypeParamList).is_some()
+                || contains_kind(caller, SyntaxKind::LocalType)
+                || !crate::green::collect_errors(caller).is_empty()
+            {
+                return Some(refused());
+            }
+            let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+            let Some(owner) = proof.call_result_receiver(plain_receiver, plain_at) else {
+                return Some(refused());
+            };
+            return Some(match proof.select(owner, selector?, args, args_at) {
+                Some(member) if !proof.exhausted => {
+                    ResolveResult::one(ResolveStatus::Resolved, member_target(owner, member))
+                }
+                _ => refused(),
+            });
         }
         if plain_receiver.kind() != SyntaxKind::ReferenceExpr {
             return None;
@@ -1813,6 +1844,36 @@ fn has_class_literal_receiver(node: &GreenNode) -> bool {
     }
 }
 
+fn has_call_result_receiver(node: &GreenNode) -> bool {
+    match node.kind() {
+        SyntaxKind::CallExpr => true,
+        SyntaxKind::FieldExpr
+        | SyntaxKind::MethodRefExpr
+        | SyntaxKind::IndexExpr
+        | SyntaxKind::ParenExpr
+        | SyntaxKind::UnaryExpr => node.child_nodes().next().is_some_and(|base| has_call_result_receiver(base)),
+        // A cast starts with its Type child; the operand is the last node.
+        SyntaxKind::CastExpr => node.child_nodes().last().is_some_and(|operand| has_call_result_receiver(operand)),
+        SyntaxKind::BinaryExpr => {
+            let operator = node
+                .children()
+                .iter()
+                .filter_map(|child| child.as_token())
+                .find(|token| !token.kind().is_trivia())
+                .map(|token| token.kind());
+            match operator {
+                // Ignore the condition and plain assignment target.
+                Some(SyntaxKind::Question) => node.child_nodes().skip(1).any(|branch| has_call_result_receiver(branch)),
+                Some(SyntaxKind::Eq) => node.child_nodes().nth(1).is_some_and(|value| has_call_result_receiver(value)),
+                // Other binary results, including compound assignments, depend
+                // on their operands. This is refusal provenance, not typing.
+                _ => node.child_nodes().any(|operand| has_call_result_receiver(operand)),
+            }
+        }
+        _ => false,
+    }
+}
+
 fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {
     if node.kind() == SyntaxKind::ThisExpr {
         return vec![Segment { name: "this".into(), start, end: start + node.utf8_len(), this: true }];
@@ -2593,6 +2654,7 @@ struct SourceCall {
     // Only a strictly selected source member may expose this value. It is not
     // part of Shape/MethodIdentity, receiver typing, or overload applicability.
     scalar_return: Option<Primitive>,
+    reference_return: Option<Vec<String>>,
 }
 
 // Kept separate from QualName: retaining primitive values must not teach the
@@ -2797,6 +2859,7 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
         is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static),
         varargs,
         scalar_return: primitive_method_return(node),
+        reference_return: reference_method_return(node),
     })
 }
 
@@ -2834,6 +2897,47 @@ fn primitive_method_return(node: &GreenNode) -> Option<Primitive> {
                     if result.is_none() || parts.next().is_some() {
                         return None;
                     }
+                    1
+                }
+                (2, SyntaxKind::ParamList) => 3,
+                (4, SyntaxKind::Type) if plain_reference_type(child) => 5,
+                (3 | 5, SyntaxKind::Block) => 6,
+                _ => return None,
+            };
+        }
+    }
+    (state == 6).then_some(result).flatten()
+}
+
+// This checks syntax, not Throwable inheritance. Unmodeled annotation/generic
+// and array forms cannot make a malformed throws header supply a return value.
+// A separate, complete-header proof; never reuse lossy Member.declared.
+fn reference_method_return(node: &GreenNode) -> Option<Vec<String>> {
+    if node.kind() != SyntaxKind::Method {
+        return None;
+    }
+    let mut state = 0;
+    let mut result = None;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if token.kind().is_trivia() {
+                continue;
+            }
+            state = match (state, token.kind()) {
+                (1, SyntaxKind::Ident) => 2,
+                (3, SyntaxKind::Throws) => 4,
+                (5, SyntaxKind::Comma) => 4,
+                (3 | 5, SyntaxKind::Semi) => 6,
+                _ => return None,
+            };
+        } else if let Some(child) = child.as_node() {
+            state = match (state, child.kind()) {
+                (0, SyntaxKind::ModifierList) if child.child_nodes().next().is_none() => 0,
+                (0, SyntaxKind::Type) => {
+                    if !plain_reference_type(child) {
+                        return None;
+                    }
+                    result = type_parts(child, 0);
                     1
                 }
                 (2, SyntaxKind::ParamList) => 3,
@@ -4155,6 +4259,70 @@ impl<'a> ReferenceCallProof<'a> {
         }
         if unknown { None } else { Some(false) }
     }
+    fn call_result_receiver(&mut self, node: &GreenNode, at: u32) -> Option<&'a ClassRec> {
+        self.charge(node.children().len().max(1))?;
+        let (callee, callee_at) = child_kind(node, at, SyntaxKind::FieldExpr)?;
+        let (args, args_at) = child_kind(node, at, SyntaxKind::ArgList)?;
+        if node.child_nodes().count() != 2
+            || node.children().iter().any(|c| c.as_token().is_some_and(|t| !t.kind().is_trivia()))
+        {
+            return None;
+        }
+        self.charge(callee.children().len().max(1))?;
+        let mut offset = callee_at;
+        let mut state = 0;
+        let mut base = None;
+        let mut name = None;
+        for child in callee.children() {
+            if let Some(n) = child.as_node() {
+                if state != 0 {
+                    return None;
+                }
+                base = Some((n.as_ref(), offset));
+                state = 1;
+            } else if let Some(t) = child.as_token()
+                && !t.kind().is_trivia()
+            {
+                state = match (state, t.kind()) {
+                    (1, SyntaxKind::Dot) => 2,
+                    (2, SyntaxKind::Ident) => {
+                        name = Some(t.text());
+                        3
+                    }
+                    _ => return None,
+                };
+            }
+            offset += child.utf8_len();
+        }
+        if state != 3 {
+            return None;
+        }
+        let (mut base, mut base_at) = base?;
+        let mut depth = 0;
+        while base.kind() == SyntaxKind::ParenExpr {
+            self.charge(base.children().len().max(1))?;
+            if depth >= REFERENCE_PROOF_DEPTH {
+                return None;
+            }
+            let children = delimited_nodes(base, base_at)?;
+            let [(inner, at)] = children.as_slice() else { return None };
+            base = inner;
+            base_at = *at;
+            depth += 1;
+        }
+        // No constructor, field, static type, or another call as the base.
+        if base.kind() != SyntaxKind::ReferenceExpr {
+            return None;
+        }
+        let owner = self.expression(base, base_at, depth)?.class;
+        let member = self.select(owner, name?, args, args_at)?;
+        let parts = member.source_call.as_ref()?.reference_return.as_ref()?;
+        let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+        // Resolve in declaration context, then enforce caller accessibility and
+        // complete hierarchy using the same bounded proof as both selections.
+        self.reference_type(file, parts, member.start)
+    }
+
     fn select(&mut self, owner: &'a ClassRec, name: &str, args: &GreenNode, at: u32) -> Option<&'a Member> {
         if owner.binary || owner.is_interface || owner.reference_generic {
             return None;
@@ -4521,6 +4689,19 @@ mod class_literal_receiver_tests {
             let file = ParsedFile::parse(&format!("class C {{ void m() {{ use({expression}); }} }}"));
             assert!(file.errors().is_empty(), "{expression}");
             assert!(!has_class_literal_receiver(first_field(file.root()).unwrap()), "{expression}");
+        }
+    }
+    #[test]
+    fn call_guard_ignores_conditions_indices_and_assignment_targets() {
+        for expression in [
+            "(test() ? box : box).field",
+            "boxes[index()].field",
+            "(boxes[index()] = box).field",
+            "(boxes[index()] += box).field",
+        ] {
+            let file = ParsedFile::parse(&format!("class C {{ void m() {{ use({expression}); }} }}"));
+            assert!(file.errors().is_empty(), "{expression}");
+            assert!(!has_call_result_receiver(first_field(file.root()).unwrap()), "{expression}");
         }
     }
 }

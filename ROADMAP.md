@@ -239,6 +239,11 @@ winner must dominate every other applicable complete formal vector; no aggregate
 conversion score is used. The additive Gson target is now `set(0,b)`, while outer
 call-result receiver inference remains outside scope.
 
+The later [one-layer call-result receiver proof](docs/CALL_RESULT_RECEIVERS.md)
+composes those strict calls through an explicit nongeneric reference return,
+with declaration-context lookup and one shared budget. Call-result arguments,
+general expression inference and deeper chains remain unsupported.
+
 This does not complete M2 or make every legacy Resolved result an applicability
 proof. The independent oracle preserves original evidence and records one
 no-platform singleton tightening. Missing Object is not silently treated as an

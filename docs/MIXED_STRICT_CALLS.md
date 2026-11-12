@@ -62,3 +62,7 @@ and formal-to-formal specificity boundaries in JLS 15.12.2 and the official IDEA
 Community mechanisms/license references recorded in
 [the preceding slice](QUALIFIED_PRIMITIVE_CALLS.md#intellij-idea-behavior-reference-and-license).
 It does not copy the PSI type system or use a conversion-cost heuristic.
+
+The later [one-layer return-receiver slice](CALL_RESULT_RECEIVERS.md) explicitly
+advances the old outer-call refusals. It does not change this phase's frozen
+baseline or add call-result arguments to the mixed invocation proof.

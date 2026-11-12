@@ -105,7 +105,7 @@ fn unknown_or_ineligible_competitors_cannot_be_filtered_by_arity() {
 }
 
 #[test]
-fn mixed_calls_do_not_add_boxing_narrowing_or_result_receiver_typing() {
+fn mixed_calls_keep_narrowing_refusals_and_gain_one_return_receiver() {
     for formal in ["byte", "short", "Integer"] {
         let source = format!(
             "class Integer {{}} class A {{}} class Box {{ public void pick({formal} i, A a) {{}} }} class Calls {{ void run(Box box, A a) {{ box.pick(1,a); }} }}"
@@ -114,7 +114,12 @@ fn mixed_calls_do_not_add_boxing_narrowing_or_result_receiver_typing() {
     }
     let source = "class A { public void later() {} } class Box { public A pick(int i, A a) { return a; } } class Calls { void run(Box box, A a) { box.pick(1,a).later(); } }";
     winner(source, "pick(1,a)", "pick(int i, A a)");
-    refused(source, "later();", 0);
+    // The return-receiver slice intentionally advances this historical refusal.
+    let result = query(&project(source), "later();");
+    assert_eq!(result.status, ResolveStatus::Resolved);
+    assert_eq!(result.targets[0].owner, "A");
+    let at = source.find("later()").unwrap() as u32;
+    assert_eq!((result.targets[0].start_byte, result.targets[0].end_byte), (at, at + 5));
 }
 
 #[test]

@@ -44,6 +44,7 @@ class MixedStageControls(unittest.TestCase):
             patch(second, 'class_literal_parser_contract', return_value=(self.new, current_digest))
             patch(second, 'reference_call_probes', return_value=([], {'parser_after': self.old}, old_digest))
             patch(second, 'constructor_expectations', return_value=[])
+            original = patch(second, 'current_original_expectations', return_value=[])
             patch(second, 'local_type_probes', return_value=[])
             overlay = patch(second, 'qualified_reference_probes', side_effect=lambda f, p: p)
             for name in ['check_reference_call_response', 'check_local_type_response', 'check_response']:
@@ -58,9 +59,13 @@ class MixedStageControls(unittest.TestCase):
             patch(gate.strict, 'probes', return_value=[])
             patch(gate.strict, 'current_probes', return_value=[])
             patch(gate.strict, 'frozen_qualified_probes', return_value=[])
+            patch(gate.strict, 'frozen_mixed_probes', return_value=[])
             patch(gate.strict.string, 'probes', return_value=[])
             caller(Path('native'), self.f, baseline)
             self.assertEqual(not baseline or caller is gate.run, overlay.called)
+            if original.called:
+                stage = 'single_primitive' if baseline and caller is gate.run else ('pre_primitive' if baseline else 'reference_return')
+                original.assert_called_once_with(self.f, stage)
 
     def test_every_layer_rejects_parser_stage_swap(self):
         for caller in [second.run_reference_call_acceptance, second.run_constructor_call_acceptance,
@@ -73,8 +78,8 @@ class MixedStageControls(unittest.TestCase):
                         self.run_chain(caller, baseline, 'current' if expected == 'baseline' else 'baseline')
 
     def test_invalid_stage_parameters_fail_closed(self):
-        for args in [(False, 1, 'current'), (False, False, 'both'), (1, False, 'baseline')]:
+        for args in [(False, 1, 'current'), (False, 'mixed', 'both'), (1, 'pre_primitive', 'baseline'), (False, 'auto', 'current')]:
             with self.assertRaises(second.AcceptanceError): second.proof_stages(*args)
-        self.assertEqual((False, 'current'), second.proof_stages(False, False, 'current'))
+        self.assertEqual(('mixed', 'current'), second.proof_stages(False, 'mixed', 'current'))
 
 if __name__ == '__main__': unittest.main()

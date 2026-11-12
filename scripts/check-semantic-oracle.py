@@ -297,6 +297,14 @@ def pinned_object(jdk, work):
     return platform
 
 
+def current_receiver_guard_expectations(suite, expected, queries, declarations):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('receiver_guard_contract', ROOT / 'scripts/receiver-guard-oracle-contract.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.apply(ORACLE, suite, expected, queries, declarations)
+
+
 def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     """Source-only strict primitive selections, plus explicit unknown/invalid cases."""
     root = ORACLE / "primitive-v1"
@@ -317,6 +325,7 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
         assert expected[query][0] == before and expected[query][1] == selected
         assert after == "Resolved" and selected == candidates
         expected[query] = (after, selected, candidates)
+    expected = current_receiver_guard_expectations("primitive-v1", expected, queries, declarations)
     request = work / "primitive-requests.tsv"
     request.write_text(requests)
     javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
@@ -608,6 +617,7 @@ def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
     """Optional javac comparison, never fixture execution or production dependency."""
     root = ORACLE / "reference-v1"
     declarations, queries, requests, expected = reference_fixture()
+    expected = current_receiver_guard_expectations("reference-v1", expected, queries, declarations)
     binaries = work / "reference-classes"
     binaries.mkdir()
     dependency = root / "dependency"

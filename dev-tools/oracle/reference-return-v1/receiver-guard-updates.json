@@ -1,0 +1,78 @@
+{
+  "format_version": 1,
+  "scope": "Two previously unsupported unqualified call-result receivers now terminate without fallback; no new selected targets.",
+  "artifacts": {
+    "primitive-v1/expected.tsv": "47329ce0402e85c5419841a7038b47ab391dbe1954fceaeb716bba235db8c7ec",
+    "primitive-v1/source/PrimitiveCalls.java": "6c548452811e158392a1712be7e5c4e69a09a473dd52c8a121abc75daa0ec79d",
+    "reference-v1/expected.tsv": "4ff75571bafefa277a2f3308bec18536a996f6cd65c4d1a1c01e3bded57b65f3",
+    "reference-v1/source/app/Use.java": "a69d5a4388e2a6d43db5ccacd22bad3b4728699ffd6ab44b165158572cae91f6",
+    "return-v1/primitive-updates.tsv": "d870db06a0dcfb3fa584b1ffeb7e45c0c6e1cac508bb88b4588767e783375c8e",
+    "primitive-v1/source/SingletonCalls.java": "13bf36c53849d20961ae9e3eeb1d28eb8405efe5f45c56badb09b6063553d08f",
+    "primitive-v1/source/Boundaries.java": "60f8ceac1c150c890d9d3f36dd7c65b1bd206b205d9a82b4b54145b5d0259a74",
+    "reference-v1/source/model/Branch.java": "49873e2da5f2670ae2a195a02b75f8ccf01333ecae629f6a6ddf69de2d103490",
+    "reference-v1/source/model/Marker.java": "2156a84e83c1e34ebdb7c4b7b9ce607e5cf7ac9eea418c73808f6331e72db27b",
+    "reference-v1/source/model/Mid.java": "d9c179eb34bfc2dbd728cc59be42dcae7a6b3bdf0b477155362aaad461f6da5c",
+    "reference-v1/source/model/Leaf.java": "d550da82a4d4cde40731bebe27d67f98c45cb57723cd51a1065f7cea0e076e0d",
+    "reference-v1/source/model/BinaryReceiver.java": "f222b03cd51ad5ebe245eb967d148ad5906edba84feef2777a3e87c6c15ccd23",
+    "reference-v1/source/model/InheritedReceiver.java": "8c3c089b93463092422a9219d5c7e91b72bfe510c56a1d684739842a4acb32a4",
+    "reference-v1/source/model/Root.java": "c17649caf2e993199129464cdf79cae688065df5e779b1b52ba8606da8011ad1",
+    "reference-v1/source/model/Target.java": "b7efc41703e9c0f763b444c8747ea7ac022011fa843d4001fa762f0a1c689f3d",
+    "reference-v1/source/model/Parent.java": "eb141d1c8c2f9757268cabe76dba016b645372c09f9b198855183f8303de883f",
+    "reference-v1/source/model/GenericReceiver.java": "d729c6df044c4d8f04e178a83c460e47d11efa6136d799bf148fb90e8fdd580a",
+    "reference-v1/source/model/GenericMethods.java": "83f884497340d11a353d4d572b80af1ecb2191dba3711ee3d902289d6cb74dad",
+    "reference-v1/source/model/Other.java": "bcfd47293050110f2588b28cf098f9737f9222c05bc3a28e15117ce6902a197e",
+    "reference-v1/files.tsv": "dfdf11789073d12bc23df9736190d9930bafefad1744b52753f5bd9aeb70f581"
+  },
+  "updates": {
+    "primitive-v1": {
+      "query": "receiver_spine_outer_refusal",
+      "query_record": [
+        "PrimitiveCalls.java",
+        1747,
+        1752,
+        "other"
+      ],
+      "before": [
+        "Unresolved",
+        "carrier_other@oracle.Carrier",
+        "-"
+      ],
+      "after": [
+        "ReceiverNotBound",
+        "carrier_other@oracle.Carrier",
+        "-"
+      ],
+      "selected_declaration": [
+        "PrimitiveCalls.java",
+        209,
+        214,
+        "other"
+      ]
+    },
+    "reference-v1": {
+      "query": "reference_receiver_return_refusal",
+      "query_record": [
+        "app/Use.java",
+        2275,
+        2280,
+        "exact"
+      ],
+      "before": [
+        "Unresolved",
+        "exact_leaf@model.Target",
+        "-"
+      ],
+      "after": [
+        "ReceiverNotBound",
+        "exact_leaf@model.Target",
+        "-"
+      ],
+      "selected_declaration": [
+        "model/Target.java",
+        299,
+        304,
+        "exact"
+      ]
+    }
+  }
+}

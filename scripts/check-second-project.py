@@ -305,7 +305,7 @@ def check_parser(result, fixture):
     same(result['report_count'], count, 'parser total count')
 
 
-def check_response(command, response, fixture, historical_constructor=False):
+def check_response(command, response, fixture, historical_constructor=False, *, proof_stage='reference_return'):
     """Validate full actual response, not just an exit code or a resolution ratio."""
     check_envelope(command, response, fixture)
     result = response['result']
@@ -325,7 +325,7 @@ def check_response(command, response, fixture, historical_constructor=False):
         same(result['index_builds'], 1, 'batch reuses one index')
         same(len(result['queries']), QUERY_COUNT, 'returned query count')
         expectations = (fixture.expected if historical_constructor else
-                        constructor_expectations(fixture))
+                        current_original_expectations(fixture, proof_stage))
         for i, (row, query, expected) in enumerate(zip(result['queries'], fixture.plan, expectations)):
             check_query_row(row, query, expected, fixture, i)
     elif command == 'parser-report':
@@ -736,15 +736,15 @@ def portable_queries(response, fixture):
     return json.loads(text)
 
 
-def proof_stages(capture_baseline, primitive_current=None, parser_stage=None):
+def proof_stages(capture_baseline, proof_stage=None, parser_stage=None):
     require(type(capture_baseline) is bool, 'capture mode must be boolean')
-    if primitive_current is None:
-        primitive_current = not capture_baseline
+    if proof_stage is None:
+        proof_stage = 'pre_primitive' if capture_baseline else 'reference_return'
     if parser_stage is None:
         parser_stage = 'baseline' if capture_baseline else 'current'
-    require(type(primitive_current) is bool, 'primitive proof stage must be boolean')
+    require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return'), 'unknown proof stage')
     require(parser_stage in ('baseline', 'current'), 'parser proof stage')
-    return primitive_current, parser_stage
+    return proof_stage, parser_stage
 
 
 def qualified_reference_probes(fixture, probes):
@@ -775,10 +775,10 @@ def qualified_reference_probes(fixture, probes):
     return result
 
 
-def run_reference_call_acceptance(native, fixture, capture_baseline=False, *, primitive_current=None, parser_stage=None):
-    primitive_current, parser_stage = proof_stages(capture_baseline, primitive_current, parser_stage)
+def run_reference_call_acceptance(native, fixture, capture_baseline=False, *, proof_stage=None, parser_stage=None):
+    proof_stage, parser_stage = proof_stages(capture_baseline, proof_stage, parser_stage)
     probes, historical, parser_digest = reference_call_probes(fixture)
-    if primitive_current:
+    if proof_stage != 'pre_primitive':
         probes = qualified_reference_probes(fixture, probes)
     before = all_source_hashes(fixture)
     request = document(fixture, 'reference-call-requests.json', {'schema_version': 1, 'queries': [
@@ -790,7 +790,7 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False, *, pr
     stage = 'baseline' if capture_baseline else 'expected'
     check_reference_call_response(response, probes, fixture, stage)
     original = successful(native, fixture, 'declaration')
-    check_response('declaration', original, fixture, historical_constructor=capture_baseline)
+    check_response('declaration', original, fixture, historical_constructor=capture_baseline, proof_stage=proof_stage)
     local_probes = local_type_probes(fixture)
     local_request = document(fixture, 'reference-local-type-requests.json', {
         'schema_version': 1, 'queries': [
@@ -856,12 +856,30 @@ def constructor_expectations(fixture):
     return expected
 
 
-def run_constructor_call_acceptance(native, fixture, capture_baseline=False, *, primitive_current=None, parser_stage=None):
+def reference_return_contract():
+    spec = importlib.util.spec_from_file_location('original_reference_return_contract', ROOT / 'scripts/reference-return-contract.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def current_original_expectations(fixture, proof_stage='reference_return'):
+    proof_stages(False, proof_stage)
+    expected = constructor_expectations(fixture)
+    if proof_stage != 'reference_return':
+        return expected
+    from types import SimpleNamespace
+    api = SimpleNamespace(CORPUS=CORPUS, reject_symlinks=reject_symlinks, same=same,
+                          digest=digest, canonical_json=canonical_json, unique_json_object=unique_json_object)
+    return reference_return_contract().original_overlay(api, fixture, expected)
+
+
+def run_constructor_call_acceptance(native, fixture, capture_baseline=False, *, proof_stage=None, parser_stage=None):
     # Validate the correction and all source inputs even when checking a baseline.
-    primitive_current, parser_stage = proof_stages(capture_baseline, primitive_current, parser_stage)
-    expectations = constructor_expectations(fixture)
+    proof_stage, parser_stage = proof_stages(capture_baseline, proof_stage, parser_stage)
+    expectations = current_original_expectations(fixture, proof_stage)
     reference_probes, historical, parser_digest = reference_call_probes(fixture)
-    if primitive_current:
+    if proof_stage != 'pre_primitive':
         reference_probes = qualified_reference_probes(fixture, reference_probes)
     before = all_source_hashes(fixture)
     response = successful(native, fixture, 'declaration', strict_json=True)

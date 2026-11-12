@@ -320,15 +320,26 @@ def binary_inventory(runner, historical, selected, generated, stage):
     return inventories
 
 
+# Current overlays retain the original 36 records and explicitly add outer2489.
+CURRENT_PROBE_GROUPS = (('original_16', 16), ('reference_3', 3), ('local_5', 5),
+                        ('string_8', 8), ('reference_return_5', 5))
+CURRENT_QUERY_COUNT = 37
+
 def probe_groups(fixture):
+    original_expectations = second.current_original_expectations(fixture)
+    same(len(fixture.plan), 16, 'complete original query inventory before pairing')
+    same(len(original_expectations), 16, 'complete original expected inventory before pairing')
     originals = [{**query, 'expected': expected} for query, expected in
-                 zip(fixture.plan, second.constructor_expectations(fixture))]
+                 zip(fixture.plan, original_expectations)]
     reference, historical, parser_digest = second.reference_call_probes(fixture)
     reference = second.qualified_reference_probes(fixture, reference)
     groups = [('original_16', originals), ('reference_3', reference),
               ('local_5', second.local_type_probes(fixture)),
-              ('string_8', strict.string.probes(fixture)), ('strict_reference_4', strict.current_probes(fixture))]
-    same(sum(len(probes) for _, probes in groups), 36, '36 frozen navigation/refusal records')
+              ('string_8', strict.string.probes(fixture)), ('reference_return_5', strict.current_probes(fixture))]
+    same(tuple((name, len(probes)) for name, probes in groups), CURRENT_PROBE_GROUPS,
+         'exact current frozen group identity, ordering and cardinality')
+    same(sum(len(probes) for _, probes in groups), CURRENT_QUERY_COUNT,
+         '37 current frozen navigation/refusal records including outer2489')
     return groups, historical, parser_digest
 
 
@@ -477,7 +488,7 @@ def run(native, inputs, evidence, baseline=False):
                 preserved = {}
                 for label, context in [('historical', fixture), ('manual', selected), ('generated', generated)]:
                     preserved[label] = preservation(runner, context, label)
-                same(preserved['manual'], preserved['historical'], 'all 36 navigation/refusal rows and complete parser records')
+                same(preserved['manual'], preserved['historical'], 'all 37 current navigation/refusal rows and complete parser records')
                 same(preserved['generated'], preserved['historical'], 'generated preserves all exact results')
                 controls = failure_controls(runner, fixture, selected, stage)
                 sessions = lsp_sessions(runner, fixture, selected, generated, stage)
@@ -488,7 +499,7 @@ def run(native, inputs, evidence, baseline=False):
                               manifest_sha256=hashlib.sha256(raw).hexdigest(),
                               binary_only_projections=binaries, detail_refusals=details,
                               preservation=preserved['generated'], exact_historical_manual_generated_equality=True,
-                              query_count=36, parser_report_count=166, parser_files_with_reports=44,
+                              query_count=CURRENT_QUERY_COUNT, parser_report_count=166, parser_files_with_reports=44,
                               controls=controls, lsp_sessions=sessions)
             after, _ = check_inventory(fixture)
             same(after, before, 'all original source hashes after entire run')

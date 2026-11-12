@@ -61,6 +61,11 @@ The subsequent [mixed strict-invocation proof](docs/MIXED_STRICT_CALLS.md) combi
 those existing argument types across multiple positions without boxing, generic
 inference, conversion scoring or call-result receiver propagation.
 
+The later [one-layer call-result receiver proof](docs/CALL_RESULT_RECEIVERS.md)
+composes those strict calls through an explicit nongeneric reference return,
+with declaration-context lookup and one shared budget. Call-result arguments,
+general expression inference and deeper chains remain unsupported.
+
 ### Experimental project CLI
 
 Configure explicit compilations, source roots, local dependencies and platform

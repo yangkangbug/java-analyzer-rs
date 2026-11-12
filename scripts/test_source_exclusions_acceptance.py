@@ -416,5 +416,40 @@ class ResultControls(unittest.TestCase):
             with self.assertRaises(ValueError): gate.same(changed, stages, 'LSP preservation')
 
 
+    def test_current_probe_inventory_explicitly_adds_outer2489(self):
+        # The imported contracts own exact targets; this test checks the gate's
+        # aggregate wiring without an external corpus or native process.
+        f = gate.second.Fixture()
+        f.plan = [{'id': str(i)} for i in range(16)]
+        groups = {'original': [{} for _ in range(16)], 'reference': [{} for _ in range(3)],
+                  'local': [{} for _ in range(5)], 'string': [{} for _ in range(8)],
+                  'current': [{'byte': b} for b in [1843, 1976, 2412, 1986, 2489]]}
+        def run():
+            with mock.patch.object(gate.second, 'current_original_expectations', return_value=groups['original']), \
+                 mock.patch.object(gate.second, 'reference_call_probes', return_value=(groups['reference'], {}, 'digest')), \
+                 mock.patch.object(gate.second, 'qualified_reference_probes', side_effect=lambda fixture, rows: rows), \
+                 mock.patch.object(gate.second, 'local_type_probes', return_value=groups['local']), \
+                 mock.patch.object(gate.strict.string, 'probes', return_value=groups['string']), \
+                 mock.patch.object(gate.strict, 'current_probes', return_value=groups['current']):
+                return gate.probe_groups(f)[0]
+        result = run()
+        self.assertEqual(tuple((name, len(rows)) for name, rows in result), gate.CURRENT_PROBE_GROUPS)
+        self.assertEqual(sum(len(rows) for name, rows in result), 37)
+        self.assertEqual(gate.CURRENT_QUERY_COUNT, 37)
+        self.assertEqual(result[-1][0], 'reference_return_5')
+        self.assertEqual(result[-1][1][-1]['byte'], 2489)
+        original = copy.deepcopy(groups)
+        for key in groups:
+            for change in ('omit', 'duplicate'):
+                groups = copy.deepcopy(original)
+                if change == 'omit': groups[key].pop()
+                else: groups[key].append(copy.deepcopy(groups[key][-1]))
+                with self.subTest(group=key, change=change), self.assertRaises(ValueError): run()
+        # Equal total is insufficient: an extra string row cannot replace the
+        # new independent return query or conceal a lost original row.
+        groups = copy.deepcopy(original); groups['current'].pop(); groups['string'].append({})
+        with self.assertRaises(ValueError): run()
+
+
 if __name__ == '__main__':
     unittest.main()

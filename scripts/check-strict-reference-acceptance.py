@@ -69,8 +69,17 @@ mixed = importlib.util.module_from_spec(_mixed_spec)
 _mixed_spec.loader.exec_module(mixed)
 
 
-def current_probes(fixture):
+def frozen_mixed_probes(fixture):
     return mixed.overlay(second, fixture, frozen_qualified_probes(fixture))
+
+
+_return_spec = importlib.util.spec_from_file_location('reference_return_contract', Path(__file__).with_name('reference-return-contract.py'))
+returns = importlib.util.module_from_spec(_return_spec)
+_return_spec.loader.exec_module(returns)
+
+
+def current_probes(fixture):
+    return returns.overlay(second, fixture, frozen_mixed_probes(fixture))
 
 
 def check_response(response, queries, fixture, capture_baseline=False):
@@ -80,7 +89,7 @@ def check_response(response, queries, fixture, capture_baseline=False):
 
 
 def run(native, fixture, capture_baseline=False):
-    primitive_current, parser_stage = second.proof_stages(capture_baseline)
+    proof_stage, parser_stage = second.proof_stages(capture_baseline)
     queries = probes(fixture) if capture_baseline else current_probes(fixture)
     before = second.all_source_hashes(fixture)
     request = second.document(fixture, 'strict-reference-requests.json', {
@@ -90,14 +99,14 @@ def run(native, fixture, capture_baseline=False):
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
     # Always use current string/constructor/reference/local/original expectations.
-    preservation = string.run(native, fixture, primitive_current=primitive_current, parser_stage=parser_stage)
+    preservation = string.run(native, fixture, proof_stage=proof_stage, parser_stage=parser_stage)
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged throughout strict reference gate')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else mixed.PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else returns.PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,

@@ -99,7 +99,7 @@ class ConstructorCorrectionControls(unittest.TestCase):
             second.same(row, wanted, 'actual complete row ' + str(index))
         with mock.patch.object(second, 'check_envelope'), \
                 mock.patch.object(second, 'check_query_row', side_effect=exact):
-            second.check_response('declaration', response, self.fixture)
+            second.check_response('declaration', response, self.fixture, proof_stage='mixed')
             for i in range(16):
                 changed = copy.deepcopy(response)
                 changed['result']['queries'][i]['status'] = 'Unjustified'
