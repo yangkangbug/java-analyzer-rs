@@ -76,16 +76,17 @@ use green::utf16_to_byte;
 use parse::{parse_file, parse_fragment};
 use reparse::reparse_root;
 
-/// A parsed buffer. Edits take UTF-8 byte offsets unless noted.
+/// A parsed buffer. Clones share immutable text and syntax storage.
+/// Edits take UTF-8 byte offsets unless noted and leave existing clones unchanged.
 #[derive(Clone, Debug)]
 pub struct ParsedFile {
-    text: String,
+    text: Arc<str>,
     root: Arc<GreenNode>,
 }
 
 impl ParsedFile {
     pub fn parse(text: &str) -> Self {
-        Self { text: text.to_string(), root: parse_file(text) }
+        Self { text: Arc::from(text), root: parse_file(text) }
     }
 
     pub fn text(&self) -> &str {
@@ -153,7 +154,7 @@ impl ParsedFile {
         if !snapped
             && let Some((root, kind)) = reparse_root(&self.root, &self.text, &text, edit.start_byte, edit.end_byte)
         {
-            let file = Self { text: text.clone(), root };
+            let file = Self { text: Arc::from(text.as_str()), root };
             if !verify || file.root.as_ref() == Self::parse(&text).root.as_ref() {
                 return EditResult { file, mode: UpdateMode::Incremental { kind } };
             }

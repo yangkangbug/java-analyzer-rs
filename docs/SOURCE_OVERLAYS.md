@@ -25,8 +25,8 @@ The entire batch is validated before cloning inputs or parsing replacements:
 3. Subtract **all** replaced source byte counts before adding **all** replacement
    byte counts. Check each final compilation input total and the final workspace
    total. A grow/shrink batch has the same acceptance in either order.
-4. Clone the validated snapshot, fully parse each replacement, and update source
-   usage accounting. Syntax errors and empty buffers are retained as source input;
+4. Clone the validated snapshot, retain the existing parsed file for an exactly
+   identical replacement, fully parse changed text, and update source usage accounting. Syntax errors and empty buffers are retained as source input;
    a parser report is not a proven Java semantic error.
 
 Original compilation budgets are retained separately from the temporary
@@ -49,10 +49,12 @@ their owner's context even when queried from a consumer compilation.
 
 A derived snapshot does **not** reread source files, directories, JARs or JMODs.
 Loaded immutable signatures share reference-counted storage, so their original
-files need not still exist to derive and query the snapshot. Cloning still copies
-source strings, maps and other snapshot metadata; it is not wholly zero-copy
-storage. Unchanged syntax trees also share reference-counted nodes. Replaced files
-receive full parses rather than a series of incremental text edits. Signature
+files need not still exist to derive and query the snapshot. Immutable source text
+and syntax trees also share reference-counted storage. Cloning still copies maps
+and other snapshot metadata; it is not wholly zero-copy storage. Exactly identical
+overlays retain the original text and tree only after the entire batch passes all
+validation, including duplicate checks and byte budgets. Changed files receive full
+parses rather than a series of incremental text edits. Signature
 sharing does not share a compilation's resolved hierarchy or binding records.
 
 Prepare the new snapshot independently. Its prepared workspace still rebuilds
@@ -131,3 +133,33 @@ checking binary origins and shadowed classes. Byte-limit tests cover exact/over
 boundaries, binary accounting, chained replacements, grow/shrink order and the
 original-versus-temporary loading-budget distinction. Fixtures are assembled in
 Rust; no Java toolchain is executed or required.
+
+## Source storage reuse measurement
+
+A Linux release-build library probe compared the previous exact source tree with
+shared immutable text and same-text overlay reuse. The [receipt and raw samples](measurements/source-sharing-2026-11-12/receipt.json)
+retain input/build identities and limitations. Each operation had one excluded
+warmup and seven observations, with full independently fixed target checks and
+old-snapshot checks after every operation. Loading, preparation, queries and drop
+were outside the operation timer; preparation/query times remain in the CSVs.
+
+Median operation milliseconds, baseline → candidate:
+
+| Operation | Commons (249 files) | Gson (211 files) |
+| --- | ---: | ---: |
+| Snapshot clone | 1.923 → 1.252 | 6.645 → 6.417 |
+| One identical buffer | 6.172 → 1.288 | 6.685 → 6.373 |
+| All loaded buffers identical | 38.911 → 1.873 | 36.269 → 6.762 |
+| One changed buffer | 6.307 → 5.279 | 6.688 → 6.386 |
+
+All-identical is a many-open-buffer stress case, not a typical editing workload.
+The main benefit is avoiding unchanged-buffer parsing; Gson's single-buffer
+improvement is small. Every unchanged source shared its actual text storage and
+syntax root in the candidate, while the changed source had a distinct allocation.
+The former baseline shared roots only for untouched files and copied all texts.
+
+This is a local storage optimization, not an overall editor latency claim, a
+memory-peak measurement, or incremental semantic analysis. Source maps and binary
+containers still clone, changed text still fully parses, and preparation still
+rebuilds the index. Results from one machine and ordered baseline/candidate runs
+do not establish statistical significance or a cross-platform speed guarantee.

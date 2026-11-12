@@ -254,7 +254,8 @@ impl WorkspaceSnapshot {
     /// Derive an immutable snapshot by replacing complete, already loaded sources.
     ///
     /// All identities, owners and final source/input byte budgets are validated
-    /// before cloning or parsing. The complete batch is atomic: an error returns
+    /// before cloning or parsing. Exact same-text replacements retain their parsed
+    /// source. The complete batch is atomic: an error returns
     /// no new snapshot. Omitted files retain this snapshot's text, so an empty
     /// batch is a clone, not a close/reset operation. To discard overlays, derive
     /// again from the retained disk-loaded base, or explicitly load a fresh base.
@@ -262,7 +263,8 @@ impl WorkspaceSnapshot {
     /// No filesystem reads, path canonicalization, archive decoding or Java
     /// execution occur. Sources cannot be added/removed and the compilation graph
     /// and binary contexts cannot be changed. Immutable parsed binary signatures
-    /// are shared, not reread or deeply cloned. Other snapshot/index allocations
+    /// and immutable source text/trees are shared, not reread or deeply cloned.
+    /// Other snapshot/index allocations
     /// remain; this is not zero-copy storage or an incremental semantic index.
     /// A new prepared view still indexes the derived snapshot independently. Old
     /// snapshots and their prepared views remain valid. Revisions, cancellation

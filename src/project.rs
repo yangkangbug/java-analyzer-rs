@@ -369,6 +369,10 @@ impl ProjectSnapshot {
 
     /// The workspace validates ownership and the entire replacement budget first.
     pub(crate) fn replace_source_text(&mut self, path: &str, text: &str) {
+        // Called only after the complete overlay batch passed ownership/budgets.
+        if self.project.file(path).is_some_and(|file| file.text() == text) {
+            return;
+        }
         self.project.insert(path, text);
     }
 }

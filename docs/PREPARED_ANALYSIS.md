@@ -81,7 +81,7 @@ an editor latency guarantee or a comparison with IntelliJ/JDT LS.
 existing canonical, owner-matched source files. Old snapshots and their prepared
 handles stay valid. Prepare the derived workspace separately; an index cannot be
 moved across snapshots merely because paths still match. The update performs no
-filesystem or archive I/O. It clones snapshot containers and source text while
-sharing immutable parsed binary signatures, then builds a fresh index when
-requested. Binding records remain compilation-specific.
+filesystem or archive I/O. It clones snapshot containers while sharing immutable source text, syntax trees
+and parsed binary signatures. Identical validated overlays retain the original
+parsed source; changed text is fully parsed. A fresh index is built when requested. Binding records remain compilation-specific.
 See [source overlay validation and budgets](SOURCE_OVERLAYS.md).

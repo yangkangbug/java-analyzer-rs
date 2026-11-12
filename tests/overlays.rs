@@ -314,3 +314,85 @@ fn unchanged_binary_bytes_remain_charged_to_the_compilation_budget() {
         SourceOverlayErrorKind::LimitExceeded
     );
 }
+
+#[test]
+fn snapshot_clones_share_immutable_source_storage() {
+    let f = Fixture::new();
+    let path = f.write("src/A.java", "class A { int value; }");
+    let owner = id("app", "main");
+    let base = WorkspaceSnapshot::load(&single(&f)).unwrap();
+    let clone = base.with_source_overlays(&[]).unwrap();
+    let original = source(&base, &owner, &path);
+    let copied = source(&clone, &owner, &path);
+    assert!(std::sync::Arc::ptr_eq(original.root(), copied.root()));
+    assert_eq!(original.text().as_ptr(), copied.text().as_ptr());
+}
+
+#[test]
+fn identical_overlays_retain_the_parsed_source() {
+    let f = Fixture::new();
+    let text = "// 😀\r\nclass A { int value; int read() { return value; } }";
+    let path = f.write("src/A.java", text);
+    let owner = id("app", "main");
+    let base = WorkspaceSnapshot::load(&single(&f)).unwrap();
+    let next = base.with_source_overlays(&[overlay(&owner, &path, text)]).unwrap();
+    let original = source(&base, &owner, &path);
+    let retained = source(&next, &owner, &path);
+    assert!(std::sync::Arc::ptr_eq(original.root(), retained.root()));
+    assert_eq!(original.text().as_ptr(), retained.text().as_ptr());
+    // Equality must never bypass validation of the complete request.
+    assert_eq!(
+        base.with_source_overlays(&[overlay(&owner, &path, text), overlay(&owner, &path, text)]).unwrap_err().kind,
+        SourceOverlayErrorKind::DuplicateSource
+    );
+}
+
+#[test]
+fn shared_source_clone_edits_leave_original_text_and_tree_unchanged() {
+    use java_engine::{ParsedFile, TextEdit};
+    let original = ParsedFile::parse("// 😀\nclass A { int value; }");
+    let clone = original.clone();
+    assert_eq!(original.text().as_ptr(), clone.text().as_ptr());
+    let offset = clone.text().find("value").unwrap() as u32;
+    let changed =
+        clone.apply_edit_verified(TextEdit { start_byte: offset, end_byte: offset + 5, insert: "other".into() }).file;
+    assert_eq!(original.text(), "// 😀\nclass A { int value; }");
+    assert_eq!(clone.text(), original.text());
+    assert_eq!(changed.text(), "// 😀\nclass A { int other; }");
+    assert!(changed.tokens_cover_text());
+    assert_ne!(changed.text().as_ptr(), original.text().as_ptr());
+    assert!(std::sync::Arc::ptr_eq(original.root(), clone.root()));
+    drop(original);
+    assert!(clone.tokens_cover_text());
+    assert_eq!(changed.root(), ParsedFile::parse(changed.text()).root());
+}
+
+#[test]
+fn mixed_shared_and_changed_overlays_still_validate_atomically() {
+    let f = Fixture::new();
+    let a_text = "class A { int value; int read() { return value; } }";
+    let a = f.write("src/A.java", a_text);
+    let b = f.write("src/B.java", "class B { int before; }");
+    let owner = id("app", "main");
+    let mut config = single(&f);
+    config.compilations[0].inputs.limits.max_file_bytes = 100;
+    let base = WorkspaceSnapshot::load(&config).unwrap();
+    let old = base.prepare();
+    let at = a_text.rfind("value").unwrap() as u32;
+    let expected = old.scope(&owner).unwrap().resolve_at(&a, at);
+    let next = base
+        .with_source_overlays(&[overlay(&owner, &a, a_text), overlay(&owner, &b, "class B { int after; }")])
+        .unwrap();
+    assert!(std::sync::Arc::ptr_eq(source(&base, &owner, &a).root(), source(&next, &owner, &a).root()));
+    assert_eq!(source(&base, &owner, &a).text().as_ptr(), source(&next, &owner, &a).text().as_ptr());
+    assert_eq!(source(&next, &owner, &b).text(), "class B { int after; }");
+    assert_eq!(source(&base, &owner, &b).text(), "class B { int before; }");
+    assert_eq!(next.prepare().scope(&owner).unwrap().resolve_at(&a, at), expected);
+    assert_eq!(
+        base.with_source_overlays(&[overlay(&owner, &a, a_text), overlay(&owner, &b, &" ".repeat(101))])
+            .unwrap_err()
+            .kind,
+        SourceOverlayErrorKind::LimitExceeded
+    );
+    assert_eq!(old.scope(&owner).unwrap().resolve_at(&a, at), expected);
+}

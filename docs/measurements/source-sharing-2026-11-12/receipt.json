@@ -1,0 +1,117 @@
+{
+  "format_version": 1,
+  "scope": "Library snapshot clone and whole-buffer overlays, Linux x86_64, release; not end-to-end LSP latency",
+  "protocol": {
+    "warmups_per_case": 1,
+    "measured_samples_per_case": 7,
+    "order": "baseline all cases, then candidate all cases; not alternating",
+    "operations": [
+      "clone",
+      "one_identical",
+      "all_identical",
+      "one_changed"
+    ],
+    "change": "// overlay\\n prepended to independently reviewed target source (11 UTF-8 bytes)",
+    "timing_excludes": [
+      "load",
+      "overlay vector construction",
+      "validation queries",
+      "drop"
+    ],
+    "prepare_and_query": "separate observed phases; fresh prepare for every sample; old snapshot also verified outside reported timings",
+    "root_observation": "Arc::ptr_eq against base root; new-root count is not a parser invocation instrument",
+    "text_observation": "nonempty text pointer equality against base",
+    "concurrency": "formal baseline and candidate ran without concurrent project build/test; earlier overlapping exploration excluded",
+    "limits": [
+      "single host",
+      "one fixed successful query per project",
+      "all-identical is a many-open-buffer scenario, not typical workload frequency",
+      "no statistical significance or complete memory measurement",
+      "allocator/cache state not cold"
+    ]
+  },
+  "toolchain": "rustc 1.96.0; x86_64-unknown-linux-gnu",
+  "probe_sha256": "4ce4b08349cfaf2b7529837d00e13af7d231dfe8d04cb9f81a2634229bcda19d",
+  "inputs_sha256": {
+    "sources.jar": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+    "java.base.jmod": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+    "gson.zip": "3678276a90e914bfabeb069c2c7ff99460f5de951baf65e764a2c9731946da13",
+    "junit.jar": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3",
+    "hamcrest.jar": "66fdef91e9739348df7a096aa384a5685f4e875584cce89386a7a47251c4d8e9",
+    "jsr250.jar": "a1a922d0d9b6d183ed3800dfac01d1e1eb159f0e8c6f94736931c1def54a941f",
+    "java.sql.jmod": "3dcb75061ccbab687679908001f96f0c8544930c2f3e94f738574bf944121004"
+  },
+  "projects": {
+    "commons": {
+      "source_count": 249,
+      "source_bytes": 3676819,
+      "definition": {
+        "query_source": "org/apache/commons/lang3/StringUtils.java",
+        "query_byte": 309172,
+        "target_source": "org/apache/commons/lang3/ArrayUtils.java",
+        "target_byte_range": [
+          2159,
+          2169
+        ],
+        "query_buffer": "original disk bytes captured by didOpen",
+        "target_buffer": "original disk bytes plus the latest measured prefix",
+        "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+        "initial_document_version": 1
+      }
+    },
+    "gson": {
+      "source_count": 211,
+      "source_bytes": 1484012,
+      "definition": {
+        "query_source": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+        "query_byte": 1082,
+        "target_source": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+        "target_byte_range": [
+          6402,
+          6420
+        ],
+        "query_buffer": "original disk bytes captured by didOpen",
+        "target_buffer": "original disk bytes plus the latest measured prefix",
+        "target_prefix_scheme": "// LSP reload measurement {iteration} \ud83d\ude00\r\n",
+        "initial_document_version": 1
+      }
+    }
+  },
+  "variants": {
+    "baseline": {
+      "source_revision": "f65a5067029e5638e1d2ade2e1afa06a1a991814",
+      "source_revision_kind": "source_equivalent",
+      "rust_build_inputs_sha256": "10ebff49b894e4a76fd84e3573bcf6c075aaff318de6468c697e5101d0330048",
+      "rlib_sha256": "932af455121b65e757df07c4869ab8db8acce4d5aa39d37b4a3118142ab41cb7",
+      "probe_binary_sha256": "820693f169b07d9f9e78ec3a3320a6df9e2d2a8a71f44071a70a493351a89efb",
+      "raw_csv_sha256": "ba8c5dd8d95bc33ee612d5e68c5a56761025b5c985229381a9959810c11afcd1",
+      "all_exact_target_checks_passed": true,
+      "raw_csv": "baseline.csv",
+      "source_dirty": false,
+      "source_identity_note": "Full src/**/*.rs plus Cargo.toml, Cargo.lock, rust-toolchain.toml digest; baseline read from Git tree, candidate read from actual working files. Operator build record, not independent compiler attestation."
+    },
+    "candidate": {
+      "source_revision": "f65a5067029e5638e1d2ade2e1afa06a1a991814",
+      "source_revision_kind": "dirty_working_tree",
+      "rust_build_inputs_sha256": "23d2acbf05dda8d307c9b398c578dfc6d5d37349123c2c0c1243e12f088ea443",
+      "rlib_sha256": "2d8ba5b397fc9255d5311862f5dc1e70317c371791e7ee0417883a8e2e267e24",
+      "probe_binary_sha256": "e32332021c1fd444c0d7e1ced4ca71ae72c6a0abb6cdf4a7602da7b1b1d74c1e",
+      "raw_csv_sha256": "c22b8939d5acc4c1da7338f4d85313af584b27e1f51abe9e9864fd611b86e033",
+      "all_exact_target_checks_passed": true,
+      "raw_csv": "candidate.csv",
+      "source_dirty": true,
+      "source_identity_note": "Full src/**/*.rs plus Cargo.toml, Cargo.lock, rust-toolchain.toml digest; baseline read from Git tree, candidate read from actual working files. Operator build record, not independent compiler attestation.",
+      "production_modified_files": [
+        "src/lib.rs",
+        "src/project.rs",
+        "src/workspace.rs"
+      ]
+    }
+  },
+  "candidate_identity_verification": {
+    "current_source_digest_matches_measurement": true,
+    "retained_rlib_matches_current_release_rlib": true,
+    "production_file_mtimes_precede_release_rlib": true,
+    "limitation": "mtime ordering is supporting evidence only, not cryptographic build attestation"
+  }
+}
