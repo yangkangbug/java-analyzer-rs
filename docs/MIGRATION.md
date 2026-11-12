@@ -58,3 +58,18 @@ extraction's identities, notices, and dependency boundary.
 
 The original one-sample timing test is not a benchmark against IntelliJ or JDT LS.
 See ROADMAP.md for project-level milestones and acceptance gates.
+
+
+## Binary method target details (early API change)
+
+`Target` adds `binary: Option<BinaryTargetIdentity>`; downstream struct literals
+must initialize it (`None` for source/non-method targets). `MemberSignature`
+adds `raw_access_flags: u16`, preserving original method/field bits. This is a
+Rust source compatibility change in the unpublished early crate; the crate
+version has not been silently treated as a stability guarantee. Derived target
+equality now distinguishes binary method descriptors and declaration contexts.
+Do not populate a workspace context by guessing from an origin shared by several
+compilations. Default CLI v1 target serialization remains its old projection;
+`declaration --target-details` opts into versioned detail. See
+[BINARY_METHOD_CALLS.md](BINARY_METHOD_CALLS.md) for scope and conservative
+contractions, including no binary return propagation or source location.

@@ -57,7 +57,10 @@ pub use project::{
     ProjectSnapshot, ShadowedClass,
 };
 
-pub use bind::{PreparedProject, Project, ResolveResult, ResolveStatus, Target, TargetKind};
+pub use bind::{
+    BinaryLinkingContext, BinaryTargetIdentity, PreparedProject, Project, ResolveResult, ResolveStatus, Target,
+    TargetKind,
+};
 pub use classfile::{
     Access, ClassError, ClassErrorKind, ClassSignature, MemberKind, MemberSignature, parse_class_bytes,
 };

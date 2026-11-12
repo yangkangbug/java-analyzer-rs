@@ -543,3 +543,29 @@ fn repeated_workspace_queries_measurement() {
         start.elapsed().as_micros()
     );
 }
+
+#[test]
+fn binary_method_identity_uses_actual_declaration_context_not_origin_guessing() {
+    let f = Fixture::new();
+    let shared = f.write("shared.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    let a = f.write("a/A.java", "class A extends lib.Lib { void use(){run();} }");
+    let b = f.write("b/B.java", "class B extends lib.Lib { void use(){run();} }");
+    let mut first = compilation("z", "main", vec![f.0.join("a")], vec![]);
+    first.inputs.classpath = vec![ClasspathEntry::Jar(shared.clone())];
+    let mut second = compilation("a", "test", vec![f.0.join("b")], vec![]);
+    second.inputs.classpath = vec![ClasspathEntry::Jar(shared)];
+    let s =
+        WorkspaceSnapshot::load(&WorkspaceConfig { compilations: vec![first, second], ..Default::default() }).unwrap();
+    let one = query(&s, &id("z", "main"), &a, "run");
+    let two = query(&s, &id("a", "test"), &b, "run");
+    assert_eq!(one.status, ResolveStatus::Resolved);
+    assert_eq!(two.status, ResolveStatus::Resolved);
+    assert_eq!(one.targets[0].path, two.targets[0].path);
+    for (r, scope) in [(&one, id("z", "main")), (&two, id("a", "test"))] {
+        let identity = r.targets[0].binary.as_ref().unwrap();
+        assert_eq!(identity.binary_name, "lib/Lib");
+        assert_eq!(identity.descriptor, "()V");
+        assert_eq!(identity.linking_context, java_engine::BinaryLinkingContext::Compilation(scope));
+    }
+    assert_ne!(one.targets, two.targets);
+}

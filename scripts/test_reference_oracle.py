@@ -377,5 +377,111 @@ class SourceInvocationContractTests(unittest.TestCase):
                 with self.assertRaises(AssertionError): oracle.current_source_invocation_expectations(suite, *args)
         with self.assertRaises(AssertionError): oracle.current_source_invocation_expectations('unknown-suite', {}, {}, {})
 
+
+class BinaryInstanceProtocolTests(unittest.TestCase):
+    def test_independent_classfile_raw_flags_and_descriptor(self):
+        import struct
+        utf = lambda text: b'\x01'+struct.pack('>H', len(text))+text
+        pool = utf(b'dep/X')+b'\x07\x00\x01'+utf(b'java/lang/Object')+b'\x07\x00\x03'+utf(b'pick')+utf(b'(I)I')
+        data = b'\xca\xfe\xba\xbe'+struct.pack('>HHH',0,65,7)+pool+struct.pack('>HHHHHHHHHHH',0x21,2,4,0,0,1,0x101,5,6,0,0)
+        parsed = oracle.binary_instance_class_members(data)
+        self.assertEqual(parsed['binary_name'],'dep/X'); self.assertEqual(parsed['super_name'],'java/lang/Object')
+        self.assertEqual(parsed['methods'][0]['descriptor'],'(I)I'); self.assertEqual(parsed['methods'][0]['raw_flags'],0x101)
+        mutated = bytearray(data); at=parsed['methods'][0]['flags_offset']; mutated[at:at+2]=(0x411).to_bytes(2,'big')
+        self.assertEqual(oracle.binary_instance_class_members(mutated)['methods'][0]['raw_flags'],0x411)
+        with self.assertRaises(AssertionError): oracle.binary_instance_class_members(data+b'extra')
+
+    def test_javap_selection_is_explicit_owner_name_descriptor(self):
+        output = """public class app.Probe {
+  public app.Probe();
+    Code:
+       1: invokespecial #1 // Method java/lang/Object."<init>":()V
+  public int pick(dep.Methods, byte);
+    descriptor: (Ldep/Methods;B)I
+    Code:
+       2: invokevirtual #7 // Method dep/Methods.pick:(I)I
+  public int none(dep.Methods);
+    Code:
+       2: getfield #9 // Field dep/Methods.field:I
+}
+"""
+        self.assertEqual(oracle.binary_instance_javap_calls(output), {'pick':[['invokevirtual','dep/Methods','pick','(I)I']], 'none':[]})
+        with self.assertRaises(AssertionError): oracle.binary_instance_javap_calls(output.replace('dep/Methods.pick:', 'pick:'))
+        with self.assertRaises(AssertionError): oracle.binary_instance_javap_calls(output.replace('public int none', 'public int pick'))
+
+    def test_default_projection_preserves_overload_multiplicity_and_old_precision(self):
+        target = {'kind':'Method','origin':'binary','source_available':False,'owner':'dep.Methods','name':'pick',
+                  'binary_name':'dep/Methods','path':'@CLASSES@/dep/Methods.class',
+                  'loaded_contexts':[{'project':'first','source_set':'main'},{'project':'second','source_set':'main'}],
+                  'linking_context':{'project':'first','source_set':'main'},
+                  'identity_precision':'origin_binary_name_descriptor_linking_context','descriptor':'(I)I'}
+        rich = {'schema_version':1,'result':{'target_details_version':1,'index_builds':1,'queries':[{'status':'OverloadNotResolved','targets':[target,dict(target,descriptor='(J)J')]}]}}
+        plain = {'schema_version':1,'result':{'index_builds':1,'queries':[{'status':'OverloadNotResolved','targets':[oracle.binary_instance_default_projection(t) for t in rich['result']['queries'][0]['targets']]}]}}
+        oracle.binary_instance_compare_modes(plain,rich)
+        for key,value in [('descriptor','(Z)Z'),('linking_context',{'project':'second','source_set':'main'}),('identity_precision','wrong')]:
+            wrong=copy.deepcopy(rich);wrong['result']['queries'][0]['targets'][0][key]=value
+            with self.assertRaises(AssertionError): oracle.binary_instance_compare_expected(wrong,rich)
+        wrong=copy.deepcopy(plain);wrong['result']['queries'][0]['targets'].pop()
+        with self.assertRaises(AssertionError): oracle.binary_instance_compare_modes(wrong,rich)
+        wrong=copy.deepcopy(rich);wrong['result']['target_details_version']=True
+        with self.assertRaises(AssertionError): oracle.binary_instance_compare_modes(plain,wrong)
+        for kind in ('Class','Field'):
+            row={'kind':kind,'origin':'binary','linking_context':None,'identity_precision':'origin_kind_owner_name_only'}
+            self.assertEqual(oracle.binary_instance_default_projection(row),row)
+
+
+class BinaryInstanceFixtureTests(unittest.TestCase):
+    def setUp(self):
+        self.root, self.contract = oracle.binary_instance_fixture()
+
+    def test_frozen_current_is_independent_forecast_plus_explicit_topology_revision(self):
+        import json
+        compiler = json.loads((self.root/'compiler-expected.json').read_text())
+        previous = oracle.binary_instance_predict(self.contract['baseline'], compiler)
+        self.assertEqual(previous, json.loads((self.root/'history/pre-candidate-topology-v1.json').read_text()))
+        differences=[]
+        for label, current in self.contract['current'].items():
+            for index,(before,after) in enumerate(zip(previous[label]['queries'],current['queries'])):
+                if before != after:
+                    differences.append((label,index))
+                    self.assertEqual(before['status'],'CallNotResolved');self.assertEqual(after['status'],'Ambiguous')
+                    self.assertEqual(len(before['targets']),1);self.assertEqual(len(after['targets']),2)
+                    self.assertEqual([t['binary_name'] for t in after['targets']],['dep/FaceOwner','dep/Face'])
+                    self.assertEqual({t['descriptor'] for t in after['targets']},{'(I)I'})
+        self.assertEqual(len(differences),2)
+        self.assertEqual(len(compiler['positive_targets']),11)
+        self.assertNotIn('nested_binary',compiler['positive_targets']);self.assertNotIn('dollar_binary',compiler['positive_targets'])
+
+    def test_exact_sixty_records_and_context_descriptor_mutations(self):
+        self.assertEqual(sum(len(v['queries']) for v in self.contract['current'].values()),60)
+        for label,current in self.contract['current'].items():
+            oracle.binary_instance_compare_expected(current,current)
+            wrong=copy.deepcopy(current);wrong['index_builds']=True
+            with self.assertRaises(AssertionError):oracle.binary_instance_compare_expected(wrong,current)
+            wrong=copy.deepcopy(current);wrong['queries'].pop()
+            with self.assertRaises(AssertionError):oracle.binary_instance_compare_expected(wrong,current)
+            for index,row in enumerate(current['queries']):
+                for member in ('compilation','source_compilation','position','byte_offset','query_index','status'):
+                    wrong=copy.deepcopy(current);wrong['queries'][index][member]='wrong'
+                    with self.assertRaises(AssertionError):oracle.binary_instance_compare_expected(wrong,current)
+                for ti,target in enumerate(row['targets']):
+                    for key in target:
+                        wrong=copy.deepcopy(current);wrong['queries'][index]['targets'][ti][key]='wrong'
+                        with self.assertRaises(AssertionError):oracle.binary_instance_compare_expected(wrong,current)
+                    if target['kind']=='Method':
+                        self.assertEqual(target['linking_context'],row['compilation'])
+                        self.assertIn('descriptor',target)
+                    else:
+                        self.assertNotIn('descriptor',target);self.assertIsNone(target['linking_context'])
+
+    def test_frozen_sources_flags_and_revision_chain_mutations(self):
+        for name in ('source/app/Probe.java','source/app/Navigation.java','dependency/dep/Methods.java',
+                     'compiler-expected.json','flags-expected.json','contract.json','scope-revision.json',
+                     'topology-revision.json','topology-mechanism.json','history/pre-candidate-topology-v1.json','fixture-manifest.json'):
+            with tempfile.TemporaryDirectory() as temp:
+                base=Path(temp);root=base/'binary-instance-v1';shutil.copytree(self.root,root)
+                p=root/name;p.write_bytes(p.read_bytes()+b'changed')
+                with patch.object(oracle,'ORACLE',base),self.assertRaises(AssertionError):oracle.binary_instance_fixture()
+
 if __name__ == "__main__":
     unittest.main()

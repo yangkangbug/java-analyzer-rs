@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "original_prediction_sha256": "5e79d4ed8b6ef0cc182b73db375a3f0dd7e1255abb85d73600544a1e3d89e711",
+  "mechanism_sha256": "9ed39ec67dc04d5a20d3790f3c9eeb512a124635eebd463d5c84c7a14acaefe8",
+  "query": "interface_refusal",
+  "reason": "Legacy select_methods hides a same-signature ancestor using populated ancestors. The strict fallback deliberately supplies empty ancestor sets, retaining both same-name declarations without claiming binary override proof. Their owners already differed; identity itself is not the cause. This is a pre-candidate mechanism revision, not a candidate-derived golden.",
+  "before_status": "CallNotResolved",
+  "after_status": "Ambiguous",
+  "before_declarations": [
+    [
+      "dep/FaceOwner",
+      "face",
+      "(I)I"
+    ]
+  ],
+  "after_declarations": [
+    [
+      "dep/FaceOwner",
+      "face",
+      "(I)I"
+    ],
+    [
+      "dep/Face",
+      "face",
+      "(I)I"
+    ]
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "reason": "Legacy signature selection hides proven ancestor declarations. Strict failure hints deliberately retain complete same-name declarations without binary override; descriptor identity is not the cause.",
+  "classes": [
+    {
+      "binary_name": "java/lang/String",
+      "super": "java/lang/Object",
+      "interfaces": [
+        "java/io/Serializable",
+        "java/lang/Comparable",
+        "java/lang/CharSequence",
+        "java/lang/constant/Constable",
+        "java/lang/constant/ConstantDesc"
+      ],
+      "sha256": "831a11d5c76c84b8777a7813440b4570d49934dee05c285c9068a0ec43158412",
+      "methods": [
+        {
+          "name": "length",
+          "descriptor": "()I",
+          "raw_access_flags": 1
+        },
+        {
+          "name": "charAt",
+          "descriptor": "(I)C",
+          "raw_access_flags": 1
+        }
+      ]
+    },
+    {
+      "binary_name": "java/lang/CharSequence",
+      "super": "java/lang/Object",
+      "interfaces": [],
+      "sha256": "f8c34925fa86e536c2697c75fba224e801083d39cc790bfa1bbd81672c0d5b07",
+      "methods": [
+        {
+          "name": "length",
+          "descriptor": "()I",
+          "raw_access_flags": 1025
+        },
+        {
+          "name": "charAt",
+          "descriptor": "(I)C",
+          "raw_access_flags": 1025
+        }
+      ]
+    }
+  ],
+  "platform_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+  "code": [
+    {
+      "label": "legacy_select_methods",
+      "text": "fn select_methods(found: Vec<Candidate<'_>>) -> ResolveResult {\n    if found.is_empty() {\n        return ResolveResult::none(ResolveStatus::Unresolved);\n    }\n    if found.iter().all(|candidate| candidate.unspecified) {\n        return ResolveResult::many(\n            ResolveStatus::NotDetermined,\n            found.into_iter().map(|candidate| candidate.target).collect(),\n        );\n    }\n    let found: Vec<_> = found.into_iter().filter(|candidate| !candidate.unspecified).collect();\n    if found.iter().any(|candidate| candidate.signature.is_none()) {\n        return ResolveResult::many(\n            ResolveStatus::SignatureNotCompared,\n            found.into_iter().map(|candidate| candidate.target).collect(),\n        );\n    }\n    // A unique name is navigation, not proof of applicability or a complete type.\n    // Across declarations, only proven equality permits hiding; unknown types\n    // can still prove distinctness via arity or a different concrete parameter.\n    let mut hidden = vec![false; found.len()];\n    let mut different = false;\n    for (i, left) in found.iter().enumerate() {\n        for (j, right) in found.iter().enumerate().skip(i + 1) {\n            match compare_signatures(left.signature.as_ref().unwrap(), right.signature.as_ref().unwrap()) {\n                Comparison::Unknown => {\n                    return ResolveResult::many(\n                        ResolveStatus::SignatureNotCompared,\n                        found.into_iter().map(|candidate| candidate.target).collect(),\n                    );\n                }\n                Comparison::Different => different = true,\n                Comparison::Equal => {\n                    // Traversal distance is not an override relation: unrelated\n                    // interfaces can be reached at different depths.\n                    if left.ancestors.contains(&right.declaring) {\n                        hidden[j] = true;\n                    }\n                    if right.ancestors.contains(&left.declaring) {\n                        hidden[i] = true;\n                    }\n                }\n            }\n        }\n    }\n    let kept: Vec<_> = found.into_iter().zip(hidden).filter_map(|(c, hidden)| (!hidden).then_some(c.target)).collect();\n    let status = if kept.len() == 1 {\n        ResolveStatus::Resolved\n    } else if different {\n        ResolveStatus::OverloadNotResolved\n    } else {\n        ResolveStatus::Ambiguous\n    };\n    ResolveResult::many(status, kept)\n}\n",
+      "sha256": "9885f4299341790013ebf762b72f27d002c5362896f36f6b42c75579a6827024"
+    },
+    {
+      "label": "strict_hints",
+      "text": "        let members = proof.hints(owner, name);\n        if let Some(failure) = proof.failure.take() {\n            return Some(failure);\n        }\n        if members.is_empty() {\n            return Some(ResolveResult::none(ResolveStatus::Unresolved));\n        }\n        let targets: Vec<_> = members.iter().map(|(owner, m)| member_target(owner, m)).collect();\n        let mut result = if proof.charge(members.len().saturating_mul(members.len())).is_some() {\n            let candidates = members\n                .iter()\n                .map(|(declaring, member)| Candidate {\n                    member,\n                    target: member_target(declaring, member),\n                    depth: 0,\n                    signature: proof.hint_signature(declaring, member),\n                    declaring: ClassIdentity::of(declaring),\n                    ancestors: BTreeSet::new(),\n                    unspecified: false,\n                })\n                .collect();\n            select_methods(candidates)\n        } else {\n            ResolveResult::many(\n                if members.len() == 1 { ResolveStatus::CallNotResolved } else { ResolveStatus::OverloadNotResolved },\n                targets.clone(),\n            )\n        };\n        result.targets = targets;\n",
+      "sha256": "26c3033517313988d5a74c99d17a4f73742f9d1d3fb1dee98d8255bffc0cd04c"
+    }
+  ]
+}

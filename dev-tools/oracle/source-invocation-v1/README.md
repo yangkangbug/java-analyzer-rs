@@ -9,8 +9,10 @@ both a runtime Child override and caller-package shadow.Product.
 No binary method receiver, static field actual, generic return or array expansion.
 Unknown and void actuals are compiler-invalid separate cases. A 40-link chain
 and three distinct 1500-method source owners are conservative end-to-end refusal
-controls. Rust unit tests establish the exact budget-exhausted internal state;
-this oracle does not infer a specific reason from status alone. No fixture
+controls. The independent Rust shallow_invocation_tree_reports_shared_work_exhaustion
+unit test checks shared-work exhaustion with 200 shallow actuals. It does not
+observe this three-owner fixture internally; this oracle does not infer a
+specific reason from status alone. No fixture
 program is executed.
 
 The frozen prior-stage forecast observes six whole old suites. Only

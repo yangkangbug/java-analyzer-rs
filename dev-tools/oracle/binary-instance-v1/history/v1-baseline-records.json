@@ -1,0 +1,3349 @@
+{
+  "class_hashes": {
+    "dep/Outer.class": "f51fe2807cb44c4a78a84129f5ed9596266bf30838e9266fe19ec0c24e46526b",
+    "dep/Outer$Inner.class": "4cb5f0ffa27556843f389436589b33c9091e83d61a44498a74d19f09717072ea",
+    "dep/Methods.class": "fe0fab3abc23e16c19968509ec9e68c86ffcaffe10fc61a91ae31578478e1957",
+    "dep/GenericOwner.class": "21674b74d5d74d087f6d43703f11b0870d7e4cb325f857f22e854531eb044ac8",
+    "dep/FaceOwner.class": "f6bf307d0a7ee9683d318e5a23dca0991fe781c0dae642445c46fb02d7b78fe9",
+    "dep/Face.class": "8caac294e63bb33fb48cf1482c17bf977806861ea59155e71ea04361438ffc8d",
+    "dep/Parent.class": "69ba400ab884f73f3dcf7c0436c47fc581b18c4fedd2a0f411d62fbaf2ae3934",
+    "dep/Child.class": "ac8d74ba3e2117b311ea9bff276df05f2c9b5eaf0ac8d326ae6c7c505ab82508",
+    "dep/Token.class": "9bb027d16eda917f24c313d399563f5096f57a1bfc1e0dd45634490ff20bac92",
+    "dep/GenericBase.class": "c62762b67b79c9eecf9903e5bf45368254396c98224f181294bb78012ad8fb19",
+    "dep/BridgeOwner.class": "393167121ef3716e8a4b497e680e11ca4af21aa0c185ebd48aea67f9c5edede4",
+    "dep/AbstractOwner.class": "16a3b5072c0c1fd41f7cf5de6acd425b02c743f777669def3624326ef1c3591e"
+  },
+  "class_data": {
+    "dep/Outer": {
+      "binary_name": "dep/Outer",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 149,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Outer$Inner": {
+      "binary_name": "dep/Outer$Inner",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 160,
+          "signature": null
+        },
+        {
+          "name": "ping",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 191,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Methods": {
+      "binary_name": "dep/Methods",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [
+        {
+          "name": "field",
+          "descriptor": "I",
+          "raw_flags": 1,
+          "flags_offset": 446,
+          "signature": null
+        },
+        {
+          "name": "SHARED",
+          "descriptor": "Ldep/Methods;",
+          "raw_flags": 9,
+          "flags_offset": 454,
+          "signature": null
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 464,
+          "signature": null
+        },
+        {
+          "name": "finish",
+          "descriptor": "(I)V",
+          "raw_flags": 1,
+          "flags_offset": 495,
+          "signature": null
+        },
+        {
+          "name": "zero",
+          "descriptor": "()I",
+          "raw_flags": 1,
+          "flags_offset": 522,
+          "signature": null
+        },
+        {
+          "name": "pick",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 550,
+          "signature": null
+        },
+        {
+          "name": "pick",
+          "descriptor": "(J)J",
+          "raw_flags": 1,
+          "flags_offset": 578,
+          "signature": null
+        },
+        {
+          "name": "token",
+          "descriptor": "(Ldep/Token;)Ldep/Token;",
+          "raw_flags": 1,
+          "flags_offset": 606,
+          "signature": null
+        },
+        {
+          "name": "arrayResult",
+          "descriptor": "(I)[I",
+          "raw_flags": 1,
+          "flags_offset": 634,
+          "signature": null
+        },
+        {
+          "name": "finalMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 17,
+          "flags_offset": 662,
+          "signature": null
+        },
+        {
+          "name": "syncMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 33,
+          "flags_offset": 690,
+          "signature": null
+        },
+        {
+          "name": "nativeMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 257,
+          "flags_offset": 718,
+          "signature": null
+        },
+        {
+          "name": "staticMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 9,
+          "flags_offset": 726,
+          "signature": null
+        },
+        {
+          "name": "vararg",
+          "descriptor": "([I)I",
+          "raw_flags": 129,
+          "flags_offset": 754,
+          "signature": null
+        },
+        {
+          "name": "generic",
+          "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+          "raw_flags": 1,
+          "flags_offset": 782,
+          "signature": "<T:Ljava/lang/Object;>(TT;)TT;"
+        },
+        {
+          "name": "arrayFormal",
+          "descriptor": "([I)I",
+          "raw_flags": 1,
+          "flags_offset": 818,
+          "signature": null
+        },
+        {
+          "name": "secret",
+          "descriptor": "(I)I",
+          "raw_flags": 2,
+          "flags_offset": 846,
+          "signature": null
+        },
+        {
+          "name": "protectedMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 4,
+          "flags_offset": 874,
+          "signature": null
+        }
+      ]
+    },
+    "dep/GenericOwner": {
+      "binary_name": "dep/GenericOwner",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": true,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 168,
+          "signature": null
+        },
+        {
+          "name": "plain",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 199,
+          "signature": null
+        }
+      ]
+    },
+    "dep/FaceOwner": {
+      "binary_name": "dep/FaceOwner",
+      "super_name": "java/lang/Object",
+      "interfaces": [
+        "dep/Face"
+      ],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 125,
+          "signature": null
+        },
+        {
+          "name": "face",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 156,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Face": {
+      "binary_name": "dep/Face",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 1537,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "face",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 79,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Parent": {
+      "binary_name": "dep/Parent",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 111,
+          "signature": null
+        },
+        {
+          "name": "inherited",
+          "descriptor": "(J)J",
+          "raw_flags": 1,
+          "flags_offset": 142,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Child": {
+      "binary_name": "dep/Child",
+      "super_name": "dep/Parent",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 104,
+          "signature": null
+        },
+        {
+          "name": "inherited",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 135,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Token": {
+      "binary_name": "dep/Token",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 102,
+          "signature": null
+        },
+        {
+          "name": "id",
+          "descriptor": "()I",
+          "raw_flags": 1,
+          "flags_offset": 133,
+          "signature": null
+        }
+      ]
+    },
+    "dep/GenericBase": {
+      "binary_name": "dep/GenericBase",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": true,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 213,
+          "signature": null
+        },
+        {
+          "name": "bridge",
+          "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+          "raw_flags": 1,
+          "flags_offset": 244,
+          "signature": "(TT;)TT;"
+        }
+      ]
+    },
+    "dep/BridgeOwner": {
+      "binary_name": "dep/BridgeOwner",
+      "super_name": "dep/GenericBase",
+      "interfaces": [],
+      "raw_flags": 33,
+      "generic": true,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 262,
+          "signature": null
+        },
+        {
+          "name": "bridge",
+          "descriptor": "(Ldep/Token;)Ldep/Token;",
+          "raw_flags": 1,
+          "flags_offset": 293,
+          "signature": null
+        },
+        {
+          "name": "bridge",
+          "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+          "raw_flags": 4161,
+          "flags_offset": 321,
+          "signature": null
+        }
+      ]
+    },
+    "dep/AbstractOwner": {
+      "binary_name": "dep/AbstractOwner",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 1057,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 123,
+          "signature": null
+        },
+        {
+          "name": "abstractMethod",
+          "descriptor": "(I)I",
+          "raw_flags": 1025,
+          "flags_offset": 154,
+          "signature": null
+        }
+      ]
+    }
+  },
+  "compiler": {
+    "probe_calls": {
+      "voidAllowed": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "finish",
+          "(I)V"
+        ]
+      ],
+      "zero": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "zero",
+          "()I"
+        ]
+      ],
+      "intIdentity": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "pick",
+          "(I)I"
+        ]
+      ],
+      "longIdentity": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "pick",
+          "(J)J"
+        ]
+      ],
+      "byteSpecificity": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "pick",
+          "(I)I"
+        ]
+      ],
+      "tokenIdentity": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "token",
+          "(Ldep/Token;)Ldep/Token;"
+        ]
+      ],
+      "arrayReturn": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "arrayResult",
+          "(I)[I"
+        ]
+      ],
+      "finalAllowed": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "finalMethod",
+          "(I)I"
+        ]
+      ],
+      "syncAllowed": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "syncMethod",
+          "(I)I"
+        ]
+      ],
+      "nativeAllowed": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "nativeMethod",
+          "(I)I"
+        ]
+      ],
+      "abstractAllowed": [
+        [
+          "invokevirtual",
+          "dep/AbstractOwner",
+          "abstractMethod",
+          "(I)I"
+        ]
+      ],
+      "nestedBinary": [
+        [
+          "invokevirtual",
+          "dep/Outer$Inner",
+          "ping",
+          "(I)I"
+        ]
+      ],
+      "staticRefusal": [
+        [
+          "invokestatic",
+          "dep/Methods",
+          "staticMethod",
+          "(I)I"
+        ]
+      ],
+      "varargRefusal": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "vararg",
+          "([I)I"
+        ]
+      ],
+      "genericRefusal": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "generic",
+          "(Ljava/lang/Object;)Ljava/lang/Object;"
+        ]
+      ],
+      "arrayFormalRefusal": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "arrayFormal",
+          "([I)I"
+        ]
+      ],
+      "ancestorRefusal": [
+        [
+          "invokevirtual",
+          "dep/Child",
+          "inherited",
+          "(I)I"
+        ]
+      ],
+      "interfaceRefusal": [
+        [
+          "invokevirtual",
+          "dep/FaceOwner",
+          "face",
+          "(I)I"
+        ]
+      ],
+      "genericOwnerRefusal": [
+        [
+          "invokevirtual",
+          "dep/GenericOwner",
+          "plain",
+          "(I)I"
+        ]
+      ],
+      "bridgeRefusal": [
+        [
+          "invokevirtual",
+          "dep/BridgeOwner",
+          "bridge",
+          "(Ldep/Token;)Ldep/Token;"
+        ]
+      ],
+      "staticFieldRefusal": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "zero",
+          "()I"
+        ]
+      ],
+      "returnReceiverRefusal": [
+        [
+          "invokevirtual",
+          "dep/Methods",
+          "token",
+          "(Ldep/Token;)Ldep/Token;"
+        ],
+        [
+          "invokevirtual",
+          "dep/Token",
+          "id",
+          "()I"
+        ]
+      ]
+    },
+    "navigation_calls": {
+      "type": [],
+      "field": []
+    }
+  },
+  "batches": {
+    "valid": {
+      "identities": [
+        [
+          "first",
+          "binary_class"
+        ],
+        [
+          "first",
+          "binary_field"
+        ],
+        [
+          "first",
+          "void_allowed"
+        ],
+        [
+          "first",
+          "zero"
+        ],
+        [
+          "first",
+          "int_identity"
+        ],
+        [
+          "first",
+          "long_identity"
+        ],
+        [
+          "first",
+          "byte_specificity"
+        ],
+        [
+          "first",
+          "token_identity"
+        ],
+        [
+          "first",
+          "array_return"
+        ],
+        [
+          "first",
+          "final_allowed"
+        ],
+        [
+          "first",
+          "sync_allowed"
+        ],
+        [
+          "first",
+          "native_allowed"
+        ],
+        [
+          "first",
+          "abstract_allowed"
+        ],
+        [
+          "first",
+          "nested_binary"
+        ],
+        [
+          "first",
+          "static_refusal"
+        ],
+        [
+          "first",
+          "vararg_refusal"
+        ],
+        [
+          "first",
+          "generic_refusal"
+        ],
+        [
+          "first",
+          "array_formal_refusal"
+        ],
+        [
+          "first",
+          "ancestor_refusal"
+        ],
+        [
+          "first",
+          "interface_refusal"
+        ],
+        [
+          "first",
+          "generic_owner_refusal"
+        ],
+        [
+          "first",
+          "bridge_refusal"
+        ],
+        [
+          "first",
+          "static_field_refusal"
+        ],
+        [
+          "first",
+          "return_receiver_refusal"
+        ],
+        [
+          "second",
+          "binary_class"
+        ],
+        [
+          "second",
+          "binary_field"
+        ],
+        [
+          "second",
+          "void_allowed"
+        ],
+        [
+          "second",
+          "zero"
+        ],
+        [
+          "second",
+          "int_identity"
+        ],
+        [
+          "second",
+          "long_identity"
+        ],
+        [
+          "second",
+          "byte_specificity"
+        ],
+        [
+          "second",
+          "token_identity"
+        ],
+        [
+          "second",
+          "array_return"
+        ],
+        [
+          "second",
+          "final_allowed"
+        ],
+        [
+          "second",
+          "sync_allowed"
+        ],
+        [
+          "second",
+          "native_allowed"
+        ],
+        [
+          "second",
+          "abstract_allowed"
+        ],
+        [
+          "second",
+          "nested_binary"
+        ],
+        [
+          "second",
+          "static_refusal"
+        ],
+        [
+          "second",
+          "vararg_refusal"
+        ],
+        [
+          "second",
+          "generic_refusal"
+        ],
+        [
+          "second",
+          "array_formal_refusal"
+        ],
+        [
+          "second",
+          "ancestor_refusal"
+        ],
+        [
+          "second",
+          "interface_refusal"
+        ],
+        [
+          "second",
+          "generic_owner_refusal"
+        ],
+        [
+          "second",
+          "bridge_refusal"
+        ],
+        [
+          "second",
+          "static_field_refusal"
+        ],
+        [
+          "second",
+          "return_receiver_refusal"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 113,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Navigation.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 113
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Class",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "Methods",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 191,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Navigation.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 191
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Field",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "field",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 157,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 157
+            },
+            "query_index": 2,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "finish",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 222,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 222
+            },
+            "query_index": 3,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 306,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 306
+            },
+            "query_index": 4,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 395,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 395
+            },
+            "query_index": 5,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 489,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 489
+            },
+            "query_index": 6,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 582,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 582
+            },
+            "query_index": 7,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "token",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 670,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 670
+            },
+            "query_index": 8,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "arrayResult",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 764,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 764
+            },
+            "query_index": 9,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "finalMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 856,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 856
+            },
+            "query_index": 10,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "syncMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 951,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 951
+            },
+            "query_index": 11,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "nativeMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1058,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1058
+            },
+            "query_index": 12,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/AbstractOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "abstractMethod",
+                "origin": "binary",
+                "owner": "dep.AbstractOwner",
+                "path": "@CLASSES@/dep/AbstractOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1159,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1159
+            },
+            "query_index": 13,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          },
+          {
+            "byte_offset": 1248,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1248
+            },
+            "query_index": 14,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "staticMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1338,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1338
+            },
+            "query_index": 15,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "vararg",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1435,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1435
+            },
+            "query_index": 16,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "generic",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1540,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1540
+            },
+            "query_index": 17,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "arrayFormal",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1638,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1638
+            },
+            "query_index": 18,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Child",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "inherited",
+                "origin": "binary",
+                "owner": "dep.Child",
+                "path": "@CLASSES@/dep/Child.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Parent",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "inherited",
+                "origin": "binary",
+                "owner": "dep.Parent",
+                "path": "@CLASSES@/dep/Parent.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1740,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1740
+            },
+            "query_index": 19,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/FaceOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "face",
+                "origin": "binary",
+                "owner": "dep.FaceOwner",
+                "path": "@CLASSES@/dep/FaceOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1854,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1854
+            },
+            "query_index": 20,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/GenericOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "plain",
+                "origin": "binary",
+                "owner": "dep.GenericOwner",
+                "path": "@CLASSES@/dep/GenericOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1952,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1952
+            },
+            "query_index": 21,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "SignatureNotCompared",
+            "targets": [
+              {
+                "binary_name": "dep/BridgeOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.BridgeOwner",
+                "path": "@CLASSES@/dep/BridgeOwner.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/BridgeOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.BridgeOwner",
+                "path": "@CLASSES@/dep/BridgeOwner.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/GenericBase",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.GenericBase",
+                "path": "@CLASSES@/dep/GenericBase.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 2051,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 2051
+            },
+            "query_index": 22,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          },
+          {
+            "byte_offset": 2167,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 2167
+            },
+            "query_index": 23,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          },
+          {
+            "byte_offset": 113,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Navigation.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 113
+            },
+            "query_index": 24,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Class",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "Methods",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 191,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Navigation.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 191
+            },
+            "query_index": 25,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Field",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "field",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 157,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 157
+            },
+            "query_index": 26,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "finish",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 222,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 222
+            },
+            "query_index": 27,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 306,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 306
+            },
+            "query_index": 28,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 395,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 395
+            },
+            "query_index": 29,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 489,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 489
+            },
+            "query_index": 30,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 582,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 582
+            },
+            "query_index": 31,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "token",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 670,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 670
+            },
+            "query_index": 32,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "arrayResult",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 764,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 764
+            },
+            "query_index": 33,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "finalMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 856,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 856
+            },
+            "query_index": 34,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "syncMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 951,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 951
+            },
+            "query_index": 35,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "nativeMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1058,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1058
+            },
+            "query_index": 36,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/AbstractOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "abstractMethod",
+                "origin": "binary",
+                "owner": "dep.AbstractOwner",
+                "path": "@CLASSES@/dep/AbstractOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1159,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1159
+            },
+            "query_index": 37,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          },
+          {
+            "byte_offset": 1248,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1248
+            },
+            "query_index": 38,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "staticMethod",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1338,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1338
+            },
+            "query_index": 39,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "vararg",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1435,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1435
+            },
+            "query_index": 40,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "generic",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1540,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1540
+            },
+            "query_index": 41,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "arrayFormal",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1638,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1638
+            },
+            "query_index": 42,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Child",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "inherited",
+                "origin": "binary",
+                "owner": "dep.Child",
+                "path": "@CLASSES@/dep/Child.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Parent",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "inherited",
+                "origin": "binary",
+                "owner": "dep.Parent",
+                "path": "@CLASSES@/dep/Parent.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1740,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1740
+            },
+            "query_index": 43,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/FaceOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "face",
+                "origin": "binary",
+                "owner": "dep.FaceOwner",
+                "path": "@CLASSES@/dep/FaceOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1854,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1854
+            },
+            "query_index": 44,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/GenericOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "plain",
+                "origin": "binary",
+                "owner": "dep.GenericOwner",
+                "path": "@CLASSES@/dep/GenericOwner.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 1952,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 1952
+            },
+            "query_index": 45,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "SignatureNotCompared",
+            "targets": [
+              {
+                "binary_name": "dep/BridgeOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.BridgeOwner",
+                "path": "@CLASSES@/dep/BridgeOwner.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/BridgeOwner",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.BridgeOwner",
+                "path": "@CLASSES@/dep/BridgeOwner.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/GenericBase",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "bridge",
+                "origin": "binary",
+                "owner": "dep.GenericBase",
+                "path": "@CLASSES@/dep/GenericBase.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 2051,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 2051
+            },
+            "query_index": 46,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          },
+          {
+            "byte_offset": 2167,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/valid/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 2167
+            },
+            "query_index": 47,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "ReceiverNotBound",
+            "targets": []
+          }
+        ]
+      }
+    },
+    "private": {
+      "identities": [
+        [
+          "first",
+          "private_refusal"
+        ],
+        [
+          "second",
+          "private_refusal"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 112,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/private/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 112
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Unresolved",
+            "targets": []
+          },
+          {
+            "byte_offset": 112,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/private/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 112
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Unresolved",
+            "targets": []
+          }
+        ]
+      }
+    },
+    "protected": {
+      "identities": [
+        [
+          "first",
+          "protected_refusal"
+        ],
+        [
+          "second",
+          "protected_refusal"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 114,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/protected/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 114
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Unresolved",
+            "targets": []
+          },
+          {
+            "byte_offset": 114,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/protected/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 114
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Unresolved",
+            "targets": []
+          }
+        ]
+      }
+    },
+    "wrong_arity": {
+      "identities": [
+        [
+          "first",
+          "wrong_arity"
+        ],
+        [
+          "second",
+          "wrong_arity"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 108,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/wrong_arity/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 108
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 108,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/wrong_arity/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 108
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "wrong_type": {
+      "identities": [
+        [
+          "first",
+          "wrong_type"
+        ],
+        [
+          "second",
+          "wrong_type"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 107,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/wrong_type/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 107
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 107,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/wrong_type/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 107
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "OverloadNotResolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              },
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "pick",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@CLASSES@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "malformed_flags": {
+      "identities": [
+        [
+          "first",
+          "zero"
+        ],
+        [
+          "second",
+          "zero"
+        ]
+      ],
+      "default": {
+        "index_builds": 1,
+        "queries": [
+          {
+            "byte_offset": 222,
+            "compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/malformed_flags/first/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 222
+            },
+            "query_index": 0,
+            "source_compilation": {
+              "project": "first",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@MALFORMED@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          },
+          {
+            "byte_offset": 222,
+            "compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "file": "@SOURCE@/malformed_flags/second/app/Probe.java",
+            "position": {
+              "encoding": "utf8",
+              "offset": 222
+            },
+            "query_index": 1,
+            "source_compilation": {
+              "project": "second",
+              "source_set": "main"
+            },
+            "status": "Resolved",
+            "targets": [
+              {
+                "binary_name": "dep/Methods",
+                "identity_precision": "origin_kind_owner_name_only",
+                "kind": "Method",
+                "linking_context": null,
+                "loaded_contexts": [
+                  {
+                    "project": "first",
+                    "source_set": "main"
+                  },
+                  {
+                    "project": "second",
+                    "source_set": "main"
+                  }
+                ],
+                "name": "zero",
+                "origin": "binary",
+                "owner": "dep.Methods",
+                "path": "@MALFORMED@/dep/Methods.class",
+                "source_available": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "unsupported_details": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "{\"error\":{\"code\":\"usage\",\"message\":\"unknown option --target-details\"},\"schema_version\":1}\n"
+  }
+}

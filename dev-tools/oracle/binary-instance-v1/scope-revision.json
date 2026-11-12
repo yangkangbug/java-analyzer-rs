@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "supersedes_sha256": "8e06581ef7c4c5d11a92cc9315e8b9e0ef259dfed282f080fc5bf477b3b50f6f",
+  "reason": "The frozen baseline also refuses legal top-level Dollar$Owner. Existing classfile dotted_binary/split_binary treats every dollar as nesting; this slice does not change lookup. Both dollar probes remain exact ReceiverNotBound controls. Raw-dollar Method identity is not claimed as CLI coverage; independent Rust serialization tests cover that representation. No candidate was run to derive this correction.",
+  "history": {
+    "history/v2-compiler-expected.json": "98490a1ed58e36ea964ca6cd5450e72f69f5bd69ebd2046b58789e44905e8461",
+    "history/v1-Probe.java.txt": "56a29ebe452cfb5639d528650b79bb33837ca1843ae967802b149d49bedcd3a9",
+    "history/v2-baseline-records.json": "d3dc77f6ad974261f0bfe2eab5028db1eb9165592cb0824859580fab1d55dee7",
+    "history/v1-baseline-records.json": "e83d2251adc771e512e67f6f100af42a0f710db03a800c41de3813fec35ac5b0",
+    "history/v1-compiler-expected.json": "ebfa5b291202c0f1e1fcf2dce916f1866be926cda516a93cd73745f8cca3f9af",
+    "history/v2-scope-revision.json": "8e06581ef7c4c5d11a92cc9315e8b9e0ef259dfed282f080fc5bf477b3b50f6f",
+    "history/v1-flags-expected.json": "fbe47cc1b9a7d95abad60f2dfc25ea283446abfb2e50dbab953343c40e64e659"
+  },
+  "removed_positive": "dollar_binary",
+  "preserved_refusals": [
+    "nested_binary",
+    "dollar_binary"
+  ]
+}

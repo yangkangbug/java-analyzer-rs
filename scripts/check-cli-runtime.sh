@@ -69,7 +69,10 @@ with tempfile.TemporaryDirectory(prefix="java-native-cli-") as directory:
     declaration = run("declaration", "--requests", str(requests))
     require(declaration["index_builds"] == 1, "batch did not use one prepared snapshot")
     queries = declaration["queries"]
-    require(len(queries) == 2 and all(q["status"] == "Resolved" for q in queries), "unexpected declaration status")
+    # No Object.class is provided: preserve the incomplete-platform control.
+    # A unique binary name is no longer proof of invocation applicability.
+    require(len(queries) == 2 and [q["status"] for q in queries] == ["Resolved", "CallNotResolved"],
+            "unexpected source selection or incomplete-platform binary refusal")
     source_target = queries[0]["targets"]
     require(len(source_target) == 1, "source target count differs")
     target = source_target[0]
@@ -87,5 +90,5 @@ with tempfile.TemporaryDirectory(prefix="java-native-cli-") as directory:
             not reports["java_semantic_diagnostics"], "parser report advertised semantic diagnostics")
     require(reports["source_count"] == 1 and reports["report_count"] == 0, "unexpected parser inventory")
 
-print("PASS: native configuration, inventory, prepared source/binary declaration batch and parser report with no Java environment")
+print("PASS: native configuration, inventory, prepared source selection/binary refusal batch and parser report with no Java environment")
 PY

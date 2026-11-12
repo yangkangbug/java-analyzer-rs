@@ -48,10 +48,32 @@ fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>) {
 
 fn check(query: &Query, result: &ResolveResult) {
     let f = &query.fields;
-    assert_eq!(format!("{:?}", result.status), f[4], "{} status", query.id);
-    assert_eq!(result.targets.len(), f[5].parse::<usize>().unwrap(), "{} count", query.id);
-    assert_eq!(query.targets.len(), result.targets.len(), "{} fixture target count", query.id);
-    for (target, expected) in result.targets.iter().zip(&query.targets) {
+    // Historical TSV stays intact. The strict binary-instance path preserves
+    // both same-name interface candidates rather than using legacy hiding.
+    let mut expected_targets = query.targets.clone();
+    let (status, count) = if query.id == "q06" {
+        assert_eq!(&f[1..], &["org/apache/commons/lang3/StringUtils.java", "15520", "length", "Resolved", "1"]);
+        assert_eq!(expected_targets.len(), 1);
+        assert_eq!(
+            &expected_targets[0][1..],
+            &["!/classes/java/lang/String.class", "Method", "java.lang.String", "length", "0", "0"]
+        );
+        expected_targets.push(
+            ["q06", "!/classes/java/lang/CharSequence.class", "Method", "java.lang.CharSequence", "length", "0", "0"]
+                .map(str::to_owned)
+                .to_vec(),
+        );
+        for target in &result.targets {
+            assert_eq!(target.binary.as_ref().unwrap().descriptor, "()I");
+        }
+        ("Ambiguous", 2)
+    } else {
+        (f[4].as_str(), f[5].parse::<usize>().unwrap())
+    };
+    assert_eq!(format!("{:?}", result.status), status, "{} status", query.id);
+    assert_eq!(result.targets.len(), count, "{} count", query.id);
+    assert_eq!(expected_targets.len(), result.targets.len(), "{} fixture target count", query.id);
+    for (target, expected) in result.targets.iter().zip(&expected_targets) {
         assert!(target.path.ends_with(&expected[1]), "{} target origin", query.id);
         assert_eq!(format!("{:?}", target.kind), expected[2], "{} kind", query.id);
         assert_eq!(target.owner, if expected[3] == "-" { "" } else { &expected[3] }, "{} owner", query.id);

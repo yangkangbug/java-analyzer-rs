@@ -347,7 +347,10 @@ impl WorkspaceSnapshot {
     /// new snapshot separately and do not change existing prepared views.
     pub fn prepare(&self) -> PreparedWorkspace<'_> {
         let projects = self.inputs.iter().map(ProjectSnapshot::project).collect();
-        PreparedWorkspace { workspace: self, index: crate::bind::PreparedScopedIndex::new(projects, &self.visibility) }
+        PreparedWorkspace {
+            workspace: self,
+            index: crate::bind::PreparedScopedIndex::new(projects, &self.visibility).with_compilation_ids(&self.ids),
+        }
     }
 
     /// IDs are returned in lexicographic project/source-set order.
@@ -389,7 +392,14 @@ impl<'a> CompilationScope<'a> {
     /// Indexes are rebuilt on each query; no performance guarantee is implied.
     pub fn resolve_at(&self, path: &str, byte: u32) -> ResolveResult {
         let projects: Vec<_> = self.workspace.inputs.iter().map(ProjectSnapshot::project).collect();
-        crate::bind::resolve_scoped(&projects, &self.workspace.visibility, self.index, path, byte)
+        crate::bind::resolve_scoped(
+            &projects,
+            &self.workspace.visibility,
+            self.index,
+            path,
+            byte,
+            Some(&self.workspace.ids),
+        )
     }
 }
 

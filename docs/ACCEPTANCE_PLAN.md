@@ -59,14 +59,15 @@ python3 -m unittest discover -s scripts -p 'test_fetch_acceptance_inputs.py' -v
 python3 scripts/fetch-acceptance-inputs.py --cache /tmp/java-acceptance-cache --output /tmp/java-acceptance --include-oracle-jdk
 python3 scripts/check-real-source.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --profile debug --rounds 1
 python3 scripts/check-cli-acceptance.py /tmp/java-acceptance/sources.jar /tmp/java-acceptance/java.base.jmod --native target/debug/java-analyzer
-python3 scripts/check-semantic-oracle.py --jdk /tmp/java-acceptance/jdk --native target/debug/examples/oracle_bindings --sources-jar /tmp/java-acceptance/sources.jar
+jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+python3 scripts/check-semantic-oracle.py --jdk /tmp/java-acceptance/jdk --jdk-archive "/tmp/java-acceptance-cache/$jdk_sha" --native target/debug/examples/oracle_bindings --native-cli target/debug/java-analyzer --sources-jar /tmp/java-acceptance/sources.jar
 ```
 
 For no-network setup after filling the cache, pass `--offline` and a fresh output
 directory. Omit `--include-oracle-jdk` when only corpus analysis is needed. The
 comparator downloads nothing and executes only the supplied compiler/runtime.
-Its version check is not a cryptographic verifier: use the verified extraction
-flow rather than an arbitrary ambient JDK.
+The comparator verifies the pinned archive and installed JDK bytes before running
+any Java tool; use the matching archive from the verified extraction flow.
 
 ## Shipped executable evidence
 
@@ -196,3 +197,59 @@ it. [Installation](CLI_INSTALL.md) and [resource evaluation](CLI_PREVIEW.md) kee
 source/build provenance, deterministic packaging, native build reproducibility
 and measured runtime observations separate. Full repeated resource measurements
 are explicit local runs, not inferred from a green CI status.
+
+### Binary instance-method proof and opt-in identity
+
+The existing Commons CLI gate also reads the checksum-pinned
+`examples/real_source/binary-method-probes-v3.json`, explicitly linked to the
+unaltered original forecast and topology V2. Its ten complete real records retain
+three prospective new selections, three explicitly deferred original positives,
+three conservative migrations of previously legacy-resolved
+length/charAt calls, and one preserved bridge/interface compareTo refusal.
+Ancestor/interface same-name evidence remains outside this direct-declaration
+proof, so those three regressions are intentional refusals, not preservation or
+new successes. The old 45-query golden is unmodified: its exact q06 String.length
+record receives a current-only full-record overlay, preserving both String and
+CharSequence declarations as Ambiguous. All other old records remain exact.
+
+The original forecast incorrectly predicted a singleton CallNotResolved for
+three length/charAt controls. The first candidate failure is retained and pinned.
+V2 changes only those three complete refusal records, never the six positives.
+The reason is legacy signature-based ancestor hiding versus strict failure hints
+that retain both declarations without implementing binary override; it is not
+a claim that the old identity conflated distinct owners. Independent pinned
+String/CharSequence class-file evidence and exact mechanism excerpts accompany
+the revision. The loader reconstructs the entire permitted revision and rejects
+old-or-new unions. V2 itself did not change any positive forecast. The later diagnosis established
+that three ClassUtils sites fail before actual classification: the existing
+`Comparator<Class<?>> comparator()` return header at byte 5865 invalidates the
+enclosing inventory under the current generic-header boundary. V3 explicitly
+defers only those three original positives, retaining their complete original
+OverloadNotResolved candidate sets in both default and detailed projections.
+It pins V2, the first failure, original source bytes, exact diagnostic traces and
+independent class-file descriptors. It does not expand generic headers or erase
+the original forecasts. The final candidate passed the full Commons CLI gate, including both StringUtils
+substring targets and startsWith(local), in default and detailed projections.
+These three observed gains are distinct from the three deferred ClassUtils
+predictions; V3 itself was not treated as evidence of success. Recovery checks
+also restored the original nested-receiver q12 refusal and caller-visible binary
+failure hints without changing the frozen records.
+
+The default declaration JSON remains version 1 with its original target shape
+and coarse identity precision. A separate `declaration --target-details` query
+requires `result.target_details_version: 1` and exact binary-method descriptor,
+binary name and declaring compilation context. These details distinguish
+same-name overloads without inventing source ranges or persistent symbol IDs.
+The gate compares whole records in both modes, not a normalized subset that
+could discard wrong identity fields. Class and field targets do not acquire
+method descriptors by implication.
+
+`--capture-binary-method-baseline` verifies the exact frozen 650565ff executable
+and original full records; it neither invokes the new unsupported details mode
+nor counts old results as current acceptance. The native CLI and oracle binaries,
+18 exploratory full baseline rows and an independent read of String.class method
+names/descriptors/access flags are preserved under
+`evidence/binary-method-20261113/`. Frozen predictions are not reported as
+candidate successes until the new binary has actually passed them. Optional
+handwritten compiler comparison stays in the shared semantic oracle, never in
+native runtime or an upstream project build.

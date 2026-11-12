@@ -48,7 +48,7 @@ fn same_logical_binary_formal_in_two_scopes_is_not_proven_different() {
     app.insert("Use.java", "package app; class Use { void run(Child c, dep.Token t) { c.pick(t); } }");
     let visibility = [BTreeSet::from([0]), BTreeSet::from([0, 1])];
     let at = app.file("Use.java").unwrap().text().rfind("pick(").unwrap() as u32;
-    let result = resolve_scoped(&[&lib, &app], &visibility, 1, "Use.java", at);
+    let result = resolve_scoped(&[&lib, &app], &visibility, 1, "Use.java", at, None);
     assert_ne!(result.status, ResolveStatus::Resolved, "{result:?}");
     assert_eq!(result.targets.len(), 2);
     assert_eq!(result, PreparedScopedIndex::new(vec![&lib, &app], &visibility).resolve_at(1, "Use.java", at));

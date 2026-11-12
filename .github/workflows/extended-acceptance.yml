@@ -228,11 +228,14 @@ jobs:
           --native target/debug/java-analyzer
           --evidence-dir "$RUNNER_TEMP/source-exclusions-evidence"
       - name: Independent javac oracle (optional Java)
-        run: >-
-          python3 scripts/check-semantic-oracle.py
-          --jdk "$RUNNER_TEMP/acceptance/jdk"
-          --native target/debug/examples/oracle_bindings
-          --sources-jar "$RUNNER_TEMP/acceptance/sources.jar"
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-semantic-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings \
+            --native-cli target/debug/java-analyzer \
+            --sources-jar "$RUNNER_TEMP/acceptance/sources.jar"
       - name: Independent handwritten constructor oracle (optional Java)
         run: >-
           python3 scripts/check-constructor-oracle.py

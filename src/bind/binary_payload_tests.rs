@@ -22,7 +22,20 @@ fn signature(origin: &str, name: &str, parent: Option<&str>) -> Arc<ClassSignatu
 }
 
 fn member(name: &str, descriptor: &str, kind: MemberKind, access: Access) -> MemberSignature {
-    MemberSignature { name: name.into(), descriptor: descriptor.into(), signature: None, kind, access }
+    MemberSignature {
+        raw_access_flags: match access {
+            Access::Public => 1,
+            Access::Private => 2,
+            Access::Protected => 4,
+            Access::Package => 0,
+            Access::Unspecified => 3,
+        },
+        name: name.into(),
+        descriptor: descriptor.into(),
+        signature: None,
+        kind,
+        access,
+    }
 }
 
 fn reset_counts() {
@@ -109,7 +122,11 @@ fn uncached(projects: &[&Project], visibility: &[BTreeSet<usize>]) -> Index {
             files.push(file);
         }
         for signature in project.binaries.values() {
-            binaries.push(ClassRec { scope, data: ClassData::Binary(Arc::new(class_from_signature(signature))) });
+            binaries.push(ClassRec {
+                scope,
+                context: BinaryLinkingContext::Standalone,
+                data: ClassData::Binary(Arc::new(class_from_signature(signature))),
+            });
         }
     }
     Index::with_reference_names(files, binaries, visibility.to_vec())
@@ -139,7 +156,7 @@ fn assert_every_offset(projects: &[&Project], visibility: &[BTreeSet<usize>]) {
                         ResolveResult::none(ResolveStatus::Unresolved)
                     };
                     assert_eq!(prepared.resolve_at(scope, path, byte), expected, "{scope}: {path}:{byte}");
-                    assert_eq!(resolve_scoped(projects, visibility, scope, path, byte), expected);
+                    assert_eq!(resolve_scoped(projects, visibility, scope, path, byte, None), expected);
                 }
             }
         }
@@ -386,4 +403,23 @@ fn source_payloads_remain_independently_owned() {
     second.classes[0].source_data_mut().fields[0].name = "changed".into();
     assert_eq!(first.classes[0].fields[0].name, "field");
     assert_eq!(second.classes[0].fields[0].name, "changed");
+}
+
+#[test]
+fn method_identity_preserves_raw_dollar_name_without_claiming_nested_lookup() {
+    let mut sig = signature("lib.jar!/lib/Outer$Inner.class", "lib.Outer.Inner", None);
+    let data = Arc::make_mut(&mut sig);
+    data.binary_name = "lib/Outer$Inner".into();
+    data.package = "lib".into();
+    data.nesting = vec!["Outer".into(), "Inner".into()];
+    let mut project = Project::new();
+    project.insert_class_signature(sig);
+    let index = Index::build(&project.files, &project.binaries);
+    let class = &index.binaries[0];
+    let target = member_target(class, &class.methods[0]);
+    let identity = target.binary.unwrap();
+    assert_eq!(identity.binary_name, "lib/Outer$Inner");
+    assert_eq!(identity.descriptor, "()I");
+    assert_eq!(identity.linking_context, BinaryLinkingContext::Standalone);
+    assert_eq!(target.owner, "lib.Outer.Inner");
 }

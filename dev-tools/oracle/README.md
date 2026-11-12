@@ -9,12 +9,12 @@ cargo build --locked --example oracle_bindings
 ```
 
 ```
-python3 scripts/check-semantic-oracle.py --jdk /path/to/verified/jdk
+python3 scripts/check-semantic-oracle.py --jdk /path/to/verified/jdk --jdk-archive /path/to/pinned/jdk-archive --native-cli target/debug/java-analyzer
 ```
 
 The optional acceptance-artifact fetch script can supply the pinned JDK. The
-version guard here is not a cryptographic integrity check: verification belongs
-to that fetch/extraction boundary. No download occurs in this comparator.
+comparator verifies the archive and installed JDK bytes before Java execution.
+No download occurs in this comparator.
 
 All fixture and helper sources are handwritten for this Apache-2.0 project.
 `expected.tsv` is hand-authored, never regenerated from native output. Its rows
@@ -266,7 +266,7 @@ Add the existing checksum-pinned Commons Lang source archive to the same optiona
 development comparator:
 
 ```
-python3 scripts/check-semantic-oracle.py --jdk /path/to/verified/jdk \
+python3 scripts/check-semantic-oracle.py --jdk /path/to/verified/jdk --jdk-archive /path/to/pinned/jdk-archive --native-cli target/debug/java-analyzer \
   --sources-jar /path/to/commons-lang3-3.17.0-sources.jar
 ```
 

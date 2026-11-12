@@ -523,5 +523,18 @@ preserved alongside an explicit V2 contract.
 [Bounded source invocation values](docs/COMPOSED_SOURCE_INVOCATIONS.md) unify
 receiver chains and nested actual arguments through the same strict selector,
 with declared reference/primitive results and shared work/path-depth limits.
-Binary method selection and descriptor target identity remain high-priority
-separate work; this does not introduce generic or general expression inference.
+Direct binary method selection and descriptor identity are covered by the
+separate bounded slice below; neither slice introduces generic or general
+expression inference.
+
+
+### Direct binary instance selection
+
+The shared strict selector supports bounded direct binary instance declarations
+with complete JVM method descriptors and explicit declaration contexts. This is
+not binary override selection or binary return propagation. Unsupported ancestors
+and flags fail closed, including deliberate contractions of legacy name-only
+successes. [Scope and CLI opt-in details](docs/BINARY_METHOD_CALLS.md) describe the
+three revised StringUtils selection targets, three ClassUtils deferrals and
+three conservative controls; original
+historical records remain intact.

@@ -43,6 +43,7 @@ fn basic_for_targets_match_independent_lexical_scope_goldens() {
         let expected = ResolveResult {
             status: ResolveStatus::Resolved,
             targets: vec![Target {
+                binary: None,
                 path: "C.java".into(),
                 kind,
                 name: name.into(),

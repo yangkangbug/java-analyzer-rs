@@ -291,12 +291,13 @@ reordered by the adapter. Each target has `kind`, `name`, `owner` and `origin`:
   `compilation`, and `range` with `start_byte`, `end_byte`, `start_utf16`, `end_utf16`.
   Ranges are half-open and cover the exact declaration identifier in that snapshot.
   The adapter verifies that the source slice equals `name` before reporting it.
-- **Binary:** `origin:"binary"`, `source_available:false`, `path` preserving the
+- **Binary (default projection):** `origin:"binary"`, `source_available:false`, `path` preserving the
   class-directory or `archive!/entry` origin, `binary_name`, `loaded_contexts`,
   `linking_context:null`, and `identity_precision:"origin_kind_owner_name_only"`.
   **No `range` or synthetic `0..0` coordinates are emitted.** `loaded_contexts`
   names exactly where that origin was loaded, not the context selected during
-  binding. The core target does not expose that context or a member descriptor.
+  binding. The default projection omits the core binary-method context and
+  descriptor; the explicit versioned target-details mode below exposes them.
   Same-looking candidates can be distinct; do not invent exact binary symbol
   identity or use this response to choose an overload. No source attachment or
   decompilation is implemented.
@@ -416,3 +417,9 @@ See [installation and package checks](CLI_INSTALL.md) and the
 certify macOS/Windows, and successful sample checks do not imply complete Java
 or Maven/Gradle support. External project build scripts are never executed by
 the native acceptance or measurement paths.
+
+
+Binary method detail: `declaration --target-details` opts into result
+`target_details_version: 1`; default schema-v1 target projection is unchanged.
+See [binary method identities](BINARY_METHOD_CALLS.md). This option is not a
+request for binary source ranges and is not accepted by other commands.

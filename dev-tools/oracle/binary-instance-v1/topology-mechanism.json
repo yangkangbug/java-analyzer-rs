@@ -1,0 +1,52 @@
+{
+  "observation": "Pre-candidate source mechanism snapshot; full source hash is provenance, not a promise that unrelated implementation lines remain unchanged.",
+  "source_sha256": "27343c82c0d72b40a964a9b3c9c14166b471b316e26e7d783104b0bdf21f14b8",
+  "strict_hints_empty_ancestors": "            return Some(ResolveResult::none(ResolveStatus::Unresolved));\n        }\n        let targets: Vec<_> = members.iter().map(|(owner, m)| member_target(owner, m)).collect();\n        let mut result = if proof.charge(members.len().saturating_mul(members.len())).is_some() {\n            let candidates = members\n                .iter()\n                .map(|(declaring, member)| Candidate {\n                    member,\n                    target: member_target(declaring, member),\n                    depth: 0,\n                    signature: proof.hint_signature(declaring, member),\n                    declaring: ClassIdentity::of(declaring),\n                    ancestors: BTreeSet::new(),\n                    unspecified: false,\n                })\n                .collect();\n            select_methods(candidates)",
+  "legacy_ancestor_relation": "                    signature: if call { self.method_signature(step.class, member) } else { None },\n                    declaring: ClassIdentity::of(step.class),\n                    ancestors: if call {\n                        self.method_hierarchy(step.class)?\n                            .into_iter()\n                            .skip(1)\n                            .map(|s| ClassIdentity::of(s.class))\n                            .collect()\n                    } else {\n                        BTreeSet::new()\n                    },\n                    unspecified: member.access == Access::Unspecified,\n                });\n            }\n        }\n        Ok(found)",
+  "select_methods_hiding": "                        ResolveStatus::SignatureNotCompared,\n                        found.into_iter().map(|candidate| candidate.target).collect(),\n                    );\n                }\n                Comparison::Different => different = true,\n                Comparison::Equal => {\n                    // Traversal distance is not an override relation: unrelated\n                    // interfaces can be reached at different depths.\n                    if left.ancestors.contains(&right.declaring) {\n                        hidden[j] = true;\n                    }\n                    if right.ancestors.contains(&left.declaring) {\n                        hidden[i] = true;\n                    }\n                }\n            }\n        }\n    }\n    let kept: Vec<_> = found.into_iter().zip(hidden).filter_map(|(c, hidden)| (!hidden).then_some(c.target)).collect();\n    let status = if kept.len() == 1 {\n        ResolveStatus::Resolved",
+  "independent_compiler_classes": {
+    "dep/FaceOwner": {
+      "binary_name": "dep/FaceOwner",
+      "super_name": "java/lang/Object",
+      "interfaces": [
+        "dep/Face"
+      ],
+      "raw_flags": 33,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "<init>",
+          "descriptor": "()V",
+          "raw_flags": 1,
+          "flags_offset": 125,
+          "signature": null
+        },
+        {
+          "name": "face",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 156,
+          "signature": null
+        }
+      ]
+    },
+    "dep/Face": {
+      "binary_name": "dep/Face",
+      "super_name": "java/lang/Object",
+      "interfaces": [],
+      "raw_flags": 1537,
+      "generic": false,
+      "fields": [],
+      "methods": [
+        {
+          "name": "face",
+          "descriptor": "(I)I",
+          "raw_flags": 1,
+          "flags_offset": 79,
+          "signature": null
+        }
+      ]
+    }
+  }
+}

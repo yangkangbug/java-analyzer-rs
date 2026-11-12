@@ -94,6 +94,7 @@ struct Arguments {
     queries: Option<Requests>,
     filter: Option<Id>,
     details: bool,
+    target_details: bool,
 }
 fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
     if args == ["--help"] || args == ["--version"] {
@@ -110,8 +111,16 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
     }
     let mut flags = BTreeMap::new();
     let mut details = false;
+    let mut target_details = false;
     let mut iter = args[1..].iter();
     while let Some(flag) = iter.next() {
+        if flag == "--target-details" {
+            if target_details || command != "declaration" {
+                return Err(Error::new("usage", "--target-details is a single declaration-only option"));
+            }
+            target_details = true;
+            continue;
+        }
         if flag == "--details" {
             if details {
                 return Err(Error::new("usage", "duplicate option --details"));
@@ -220,7 +229,7 @@ fn arguments(args: &[String]) -> Result<Option<Arguments>, Error> {
     if let Some(queries) = &queries {
         queries.validate()?;
     }
-    Ok(Some(Arguments { command: command.clone(), manifest, overlays, queries, filter, details }))
+    Ok(Some(Arguments { command: command.clone(), manifest, overlays, queries, filter, details, target_details }))
 }
 
 /// Includes source files, class origins, shadowed records, visible-path references,
@@ -257,7 +266,7 @@ fn encode(value: &Value) -> Result<Vec<u8>, Error> {
     Ok(out.0)
 }
 fn capabilities() -> Value {
-    json!({
+    json!({"binary_target_details":{"version":1,"option":"--target-details","command":"declaration","scope":"binary_methods_only"},
         "experimental": true,
         "declaration_navigation": "limited_name_binding",
         "method_argument_applicability": false,
@@ -289,8 +298,8 @@ fn help() -> Value {
     json!({"schema_version":1,"version":env!("CARGO_PKG_VERSION"),"capabilities":capabilities(),"usage":[
         "java-analyzer configure --compilation PROJECT SOURCE_SET (--source-root PATH ...|--binary-only) [--exclude-source PATH ...] (--platform-jmod PATH|--platform-jar PATH|--no-platform) [--depends-on PROJECT SOURCE_SET ...] [--classpath-jar PATH|--classpath-dir PATH ...] [--target-release N] [--compilation ...] (explicit inputs only; stdout schema-v1 manifest; no build import)",
         "java-analyzer inspect --manifest FILE [--details] [--overlays FILE]",
-        "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N|--line N --character N) [--overlays FILE]",
-        "java-analyzer declaration --manifest FILE --requests FILE [--overlays FILE]",
+        "java-analyzer declaration --manifest FILE --project ID --source-set ID --file PATH (--byte N|--utf16 N|--line N --character N) [--overlays FILE] [--target-details]",
+        "java-analyzer declaration --manifest FILE --requests FILE [--overlays FILE] [--target-details]",
         "java-analyzer parser-report --manifest FILE [--project ID --source-set ID] [--overlays FILE]"
     ],"execution_options":["--timeout-ms 1..300000 (default 30000)","--cancel-on-stdin-close"],"documentation":"docs/CLI.md"})
 }
@@ -386,6 +395,7 @@ fn target_json(
     sources: &BTreeMap<&str, Source<'_>>,
     target: &Target,
     status: ResolveStatus,
+    target_details: bool,
 ) -> Result<Value, Error> {
     let common = json!({"kind":kind_name(target.kind),"name":target.name,"owner":target.owner});
     let mut out = common.as_object().expect("object").clone();
@@ -405,7 +415,7 @@ fn target_json(
             ("range".into(), range(source.file, target.start_byte, target.end_byte)?),
         ]);
     } else {
-        // Public Target omits binary linking context. These are exact locations
+        // The default projection omits binary linking context. These are locations
         // where this origin was loaded, NOT guessed contexts used by resolution.
         let mut loaded_contexts = Vec::new();
         let mut binary_name = None;
@@ -430,6 +440,27 @@ fn target_json(
             ("identity_precision".into(), json!("origin_kind_owner_name_only")),
         ]);
     }
+    if target_details && let Some(identity) = &target.binary {
+        let java_engine::BinaryLinkingContext::Compilation(id) = &identity.linking_context else {
+            return Err(Error::new("invalid_target", "workspace binary target lacks its declaration linking context"));
+        };
+        let signature = workspace
+            .scope(id)
+            .and_then(|scope| scope.inputs().project().class_signature(&target.path))
+            .ok_or_else(|| Error::new("invalid_target", "binary target origin is absent from its declared context"))?;
+        if signature.binary_name != identity.binary_name
+            || !signature
+                .methods
+                .iter()
+                .any(|member| member.name == target.name && member.descriptor == identity.descriptor)
+        {
+            return Err(Error::new("invalid_target", "binary method identity does not match its selected signature"));
+        }
+        out.insert("binary_name".into(), json!(identity.binary_name));
+        out.insert("descriptor".into(), json!(identity.descriptor));
+        out.insert("linking_context".into(), json!(Id::from(id)));
+        out.insert("identity_precision".into(), json!("origin_binary_name_descriptor_linking_context"));
+    }
     Ok(Value::Object(out))
 }
 fn declarations(
@@ -437,6 +468,7 @@ fn declarations(
     base: &Path,
     requests: &Requests,
     budget: &mut OutputBudget,
+    target_details: bool,
 ) -> Result<Value, Error> {
     let sources = sources(workspace);
     // Check every path/position before preparing or returning any query result.
@@ -486,7 +518,7 @@ fn declarations(
         let targets = result
             .targets
             .iter()
-            .map(|target| target_json(workspace, &sources, target, result.status))
+            .map(|target| target_json(workspace, &sources, target, result.status, target_details))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.query(index))?;
         queries.push(json!({"query_index":index,"compilation":query.compilation,"source_compilation":Id::from(owner),
@@ -577,12 +609,19 @@ fn run(raw_args: &[String]) -> Result<Value, Error> {
     };
     let mut result = match args.command.as_str() {
         "inspect" => inspect(&workspace, &manifest, &mut budget, args.details)?,
-        "declaration" => {
-            declarations(&workspace, base, args.queries.as_ref().expect("validated queries"), &mut budget)?
-        }
+        "declaration" => declarations(
+            &workspace,
+            base,
+            args.queries.as_ref().expect("validated queries"),
+            &mut budget,
+            args.target_details,
+        )?,
         "parser-report" => parser_report(&workspace, args.filter.as_ref(), &mut budget)?,
         _ => unreachable!("validated command"),
     };
+    if args.target_details {
+        result["target_details_version"] = json!(1);
+    }
     if let Some(state) = overlay_state {
         result["overlay_state"] = state;
     }

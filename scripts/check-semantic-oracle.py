@@ -1036,15 +1036,300 @@ def source_invocation_suite(jdk, native_binary, env, work, helper, empty, platfo
     print("PASS: source invocation; eight new/nine total static targets, five valid expression refusals, one large-work refusal, two invalid refusals; baseline=" + str(baseline), flush=True)
 
 
+def binary_instance_class_members(data):
+    """Independent small classfile reader for handwritten javac fixture evidence."""
+    import struct
+    assert data[:4] == b"\xca\xfe\xba\xbe"
+    at = 8
+    def u2():
+        nonlocal at
+        value = struct.unpack_from(">H", data, at)[0]; at += 2; return value
+    def u4():
+        nonlocal at
+        value = struct.unpack_from(">I", data, at)[0]; at += 4; return value
+    count = u2(); pool = [None] * count; i = 1
+    while i < count:
+        tag = data[at]; at += 1
+        if tag == 1:
+            size = u2(); pool[i] = data[at:at+size].decode('utf-8'); at += size
+        elif tag in (7, 8, 16, 19, 20): pool[i] = u2()
+        elif tag in (3, 4, 9, 10, 11, 12, 17, 18): at += 4
+        elif tag in (5, 6): at += 8; i += 1
+        elif tag == 15: at += 3
+        else: raise AssertionError('unexpected classfile pool tag ' + str(tag))
+        i += 1
+    class_flags = u2(); this = u2(); parent = u2()
+    binary_name = pool[pool[this]]; super_name = pool[pool[parent]] if parent else None
+    interfaces = [pool[pool[u2()]] for _ in range(u2())]
+    def attributes():
+        nonlocal at
+        result = {}
+        for _ in range(u2()):
+            name = pool[u2()]; size = u4(); value = data[at:at+size]; at += size
+            assert name not in result; result[name] = value
+        return result
+    members = {}
+    for kind in ('fields', 'methods'):
+        result = []
+        for _ in range(u2()):
+            flags_at = at; flags = u2(); name = pool[u2()]; descriptor = pool[u2()]; attrs = attributes()
+            signature = pool[struct.unpack('>H', attrs['Signature'])[0]] if 'Signature' in attrs else None
+            result.append({'name': name, 'descriptor': descriptor, 'raw_flags': flags, 'flags_offset': flags_at,
+                           'signature': signature})
+        members[kind] = result
+    attrs = attributes(); assert at == len(data), 'complete classfile bytes'
+    return {'binary_name': binary_name, 'super_name': super_name, 'interfaces': interfaces,
+            'raw_flags': class_flags, 'generic': 'Signature' in attrs, **members}
+
+
+def binary_instance_javap_calls(output):
+    """Read selected bytecode call descriptors, independently of engine output."""
+    current = None; result = {}
+    for line in output.splitlines():
+        method = re.match(r"  public [^;]+? ([A-Za-z_$][A-Za-z0-9_$]*)\([^;]*\);$", line)
+        if method:
+            current = method.group(1); assert current not in result; result[current] = []
+        elif current:
+            call = re.search(r"\b(invokevirtual|invokestatic|invokeinterface|invokespecial)\s+#\d+.*// (?:InterfaceMethod|Method) ([^:]+):(\S+)", line)
+            if call:
+                owner_name = call.group(2)
+                assert '.' in owner_name, 'explicit binary declaring owner required'
+                owner, name = owner_name.rsplit('.', 1)
+                result[current].append([call.group(1), owner, name, call.group(3)])
+    return result
+
+
+def binary_instance_default_projection(target):
+    result = dict(target)
+    if result.get('origin') == 'binary' and result.get('kind') == 'Method':
+        assert 'descriptor' in result and isinstance(result['descriptor'], str)
+        assert result['identity_precision'] == 'origin_binary_name_descriptor_linking_context'
+        assert isinstance(result['linking_context'], dict)
+        del result['descriptor']
+        result['linking_context'] = None
+        result['identity_precision'] = 'origin_kind_owner_name_only'
+    return result
+
+
+def binary_instance_compare_expected(actual, wanted):
+    assert json.dumps(actual, sort_keys=True) == json.dumps(wanted, sort_keys=True), 'complete binary target/query contract'
+
+
+def binary_instance_compare_modes(default, detailed):
+    """Default schema-v1 target projection stays exact; do not deduplicate."""
+    assert default['schema_version'] == detailed['schema_version'] == 1
+    plain, rich = default['result'], detailed['result']
+    assert 'target_details_version' not in plain
+    assert type(rich['target_details_version']) is int and rich['target_details_version'] == 1
+    assert set(rich) == set(plain) | {'target_details_version'}
+    projected = {k: v for k, v in rich.items() if k != 'target_details_version'}
+    projected['queries'] = [dict(row, targets=[binary_instance_default_projection(t) for t in row['targets']]) for row in rich['queries']]
+    assert json.dumps(projected, sort_keys=True) == json.dumps(plain, sort_keys=True), 'exact v1 projection including multiplicity'
+
+
+def binary_instance_prepare(jdk, work):
+    """Compile only handwritten fixture bytes; javap reads, never runs, probes."""
+    import shutil
+    root = ORACLE / 'binary-instance-v1'; env = {'PATH': '/nonexistent'}
+    classes, app, empty = work / 'dependency', work / 'probe-classes', work / 'empty'
+    for path in (classes, app, empty): path.mkdir()
+    platform = pinned_object(jdk, work)
+    common = [jdk / 'bin/javac', '--release', '21', '-g:none', '-proc:none', '-implicit:none', '-encoding', 'UTF-8', '-sourcepath', empty]
+    dependency = sorted((root / 'dependency').rglob('*.java'))
+    run(common + ['-classpath', empty, '-d', classes, *dependency], env)
+    class_data = {p.relative_to(classes).as_posix()[:-6]: binary_instance_class_members(p.read_bytes()) for p in classes.rglob('*.class')}
+    expected_flags = json.loads((root / 'flags-expected.json').read_text())
+    for owner, expected in expected_flags.items():
+        actual = {m['name'] + ':' + m['descriptor']: m['raw_flags'] for m in class_data[owner]['methods'] if m['name'] != '<init>'}
+        assert actual == expected, owner + ': exact handwritten compiler flags'
+    source_files = sorted((root / 'source').rglob('*.java'))
+    run(common + ['-classpath', classes, '-d', app, *source_files], env)
+    compiler_expected = json.loads((root / 'compiler-expected.json').read_text())
+    compiler = {}
+    for owner, key in [('app.Probe', 'probe_calls'), ('app.Navigation', 'navigation_calls')]:
+        result = run([jdk / 'bin/javap', '-classpath', str(app) + ':' + str(classes), '-c', '-s', '-p', owner], env).stdout
+        compiler[key] = binary_instance_javap_calls(result)
+        assert compiler[key] == compiler_expected[key], (owner, compiler[key], compiler_expected[key])
+    invalid = sorted((root / 'invalid').iterdir())
+    assert [p.name for p in invalid] == ['private', 'protected', 'wrong_arity', 'wrong_type']
+    for directory in invalid:
+        rejected = run(common + ['-XDrawDiagnostics', '-classpath', classes, '-d', app, directory / 'app/Probe.java'], env, False)
+        assert rejected.returncode != 0 and 'compiler.err.' in rejected.stderr, directory.name
+    malformed = work / 'malformed'; shutil.copytree(classes, malformed)
+    method = next(m for m in class_data['dep/Methods']['methods'] if m['name'] == 'zero')
+    data = bytearray((malformed / 'dep/Methods.class').read_bytes())
+    data[method['flags_offset']:method['flags_offset']+2] = (0x0411).to_bytes(2, 'big')
+    (malformed / 'dep/Methods.class').write_bytes(data)
+    assert next(m for m in binary_instance_class_members(data)['methods'] if m['name'] == 'zero')['raw_flags'] == 0x0411
+    batches = []; source_roots = {}
+    for label, source, cp, only in [('valid', root / 'source', classes, None),
+                                  *[(p.name, p, classes, None) for p in invalid],
+                                  ('malformed_flags', root / 'source', malformed, {'zero'})]:
+        files = sorted(p.relative_to(source).as_posix() for p in source.rglob('*.java'))
+        _, queries, _ = fixture_markers(source, files)
+        if only is not None: queries = {q: v for q, v in queries.items() if q in only}
+        scopes = [{'project': name, 'source_set': 'main'} for name in ('first', 'second')]
+        copies = {}
+        for scope in scopes:
+            copied = work / (label + '-source') / scope['project']; shutil.copytree(source, copied)
+            copies[scope['project']] = copied
+            source_roots[str(copied)] = '@SOURCE@/' + label + '/' + scope['project']
+        manifest = work / (label + '-manifest.json')
+        manifest.write_text(json.dumps({'schema_version': 1, 'compilations': [
+            {'id': scope, 'source_roots': [str(copies[scope['project']])], 'classpath': [{'kind': 'directory', 'path': str(cp)}, {'kind': 'directory', 'path': str(platform)}]} for scope in scopes]}))
+        requests = work / (label + '-requests.json')
+        identities = []; rows = []
+        for scope in scopes:
+            for q, (path, at, _, _) in queries.items():
+                identities.append([scope['project'], q])
+                rows.append({'compilation': scope, 'file': str(copies[scope['project']] / path), 'position': {'encoding': 'utf8', 'offset': at}})
+        requests.write_text(json.dumps({'schema_version': 1, 'queries': rows}))
+        batches.append({'label': label, 'manifest': manifest, 'requests': requests, 'identities': identities})
+    return {'root': root, 'classes': classes, 'malformed': malformed, 'platform': platform,
+            'class_data': class_data, 'compiler': compiler, 'batches': batches, 'source_roots': source_roots,
+            'class_hashes': {p.relative_to(classes).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in classes.rglob('*.class')}}
+
+
+def binary_instance_normalize(value, prepared):
+    if isinstance(value, list): return [binary_instance_normalize(v, prepared) for v in value]
+    if isinstance(value, dict): return {k: binary_instance_normalize(v, prepared) for k, v in value.items()}
+    if isinstance(value, str):
+        for source, marker in prepared['source_roots'].items(): value = value.replace(source, marker)
+        for key, marker in [('root', '@FIXTURE@'), ('classes', '@CLASSES@'), ('malformed', '@MALFORMED@'), ('platform', '@PLATFORM@')]:
+            value = value.replace(str(prepared[key]), marker)
+    return value
+
+
+def binary_instance_query(native_cli, batch, details=False, success=True):
+    command = [native_cli, 'declaration', '--manifest', batch['manifest'], '--requests', batch['requests']]
+    if details: command.append('--target-details')
+    completed = run(command, {'PATH': '/nonexistent'}, success)
+    if not success: return completed
+    response = json.loads(completed.stdout)
+    assert type(response['schema_version']) is int and response['schema_version'] == 1 and response['command'] == 'declaration'
+    assert response['capabilities']['runtime'] == 'native_rust_no_jvm'
+    assert response['snapshot']['manifest'] == str(batch['manifest'])
+    return response
+
+
+def binary_instance_target(owner, name, descriptor, scope, malformed=False):
+    # Handwritten top-level names retain literal '$'; nested fixture metadata
+    # uses its independently frozen compiler target rather than guessing scope.
+    dotted = owner.replace('/', '.')
+    if owner == 'dep/Outer$Inner': dotted = 'dep.Outer.Inner'
+    return {'kind': 'Method', 'name': name, 'owner': dotted,
+            'origin': 'binary', 'source_available': False,
+            'path': ('@MALFORMED@/' if malformed else '@CLASSES@/') + owner + '.class',
+            'binary_name': owner,
+            'loaded_contexts': [{'project': value, 'source_set': 'main'} for value in ('first', 'second')],
+            'linking_context': {'project': scope, 'source_set': 'main'},
+            'identity_precision': 'origin_binary_name_descriptor_linking_context', 'descriptor': descriptor}
+
+
+def binary_instance_predict(baseline, compiler_expected):
+    """Freeze predictions before candidate execution, using independent descriptors."""
+    import copy
+    result = {}
+    positives = compiler_expected['positive_targets']
+    for label, batch in baseline['batches'].items():
+        wanted = copy.deepcopy(batch['default']); wanted['target_details_version'] = 1
+        for (scope, query), row in zip(batch['identities'], wanted['queries']):
+            if label == 'valid' and query in positives:
+                owner, name, descriptor = positives[query]
+                row['status'] = 'Resolved'; row['targets'] = [binary_instance_target(owner, name, descriptor, scope)]
+            elif query not in ('binary_class', 'binary_field'):
+                if row['status'] == 'Resolved': row['status'] = 'CallNotResolved'
+                targets = []
+                by_owner_name = {}
+                for target in row['targets']:
+                    assert target['origin'] == 'binary' and target['kind'] == 'Method'
+                    key = target['binary_name'], target['name']
+                    by_owner_name.setdefault(key, []).append(target)
+                for (owner, name), old_targets in by_owner_name.items():
+                    members = [m for m in baseline['class_data'][owner]['methods'] if m['name'] == name]
+                    assert len(members) == len(old_targets), 'complete legacy candidate multiplicity must match independent descriptors'
+                    for method in members:
+                        targets.append(binary_instance_target(owner, name, method['descriptor'], scope, label == 'malformed_flags'))
+                row['targets'] = targets
+        result[label] = wanted
+    return result
+
+
+def binary_instance_fixture():
+    root = ORACLE / 'binary-instance-v1'
+    data = (root / 'fixture-manifest.json').read_bytes()
+    assert hashlib.sha256(data).hexdigest() == '9ae7787ee4ea63c596c07cab07b4cc62511b2588eaf08b996756443ca39d5202', 'frozen binary instance inputs'
+    pinned = json.loads(data)['files']
+    assert sorted(p.relative_to(root).as_posix() for p in root.rglob('*')
+                  if p.is_file() and p.name not in ('fixture-manifest.json', 'README.md')) == sorted(pinned)
+    for name, digest in pinned.items(): assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+    preservation = json.loads((root / 'prior-preservation.json').read_text())
+    for name, digest in preservation['artifacts'].items():
+        assert hashlib.sha256((ORACLE / name).read_bytes()).hexdigest() == digest, 'unchanged prior oracle: ' + name
+    contract = json.loads((root / 'contract.json').read_text())
+    assert contract['schema_version'] == 2
+    for key, name in [('scope_revision_sha256', 'scope-revision.json'), ('topology_revision_sha256', 'topology-revision.json')]:
+        assert contract[key] == hashlib.sha256((root / name).read_bytes()).hexdigest()
+    scope = json.loads((root / 'scope-revision.json').read_text())
+    assert scope['supersedes_sha256'] == hashlib.sha256((root / 'history/v2-scope-revision.json').read_bytes()).hexdigest()
+    for name, digest in scope['history'].items(): assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+    topology = json.loads((root / 'topology-revision.json').read_text())
+    assert topology['original_prediction_sha256'] == hashlib.sha256((root / 'history/pre-candidate-topology-v1.json').read_bytes()).hexdigest()
+    assert topology['mechanism_sha256'] == hashlib.sha256((root / 'topology-mechanism.json').read_bytes()).hexdigest()
+    return root, contract
+
+
+def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
+    """Two real linking contexts, source javap oracle, exact v1/opt-in contracts."""
+    assert type(baseline) is bool
+    root, contract = binary_instance_fixture()
+    local = work / 'binary-instance'; local.mkdir()
+    prepared = binary_instance_prepare(jdk, local)
+    assert prepared['class_hashes'] == contract['baseline']['class_hashes'], 'fixed compiler class bytes'
+    assert prepared['class_data'] == contract['baseline']['class_data'], 'independent complete classfile metadata'
+    assert prepared['compiler'] == contract['baseline']['compiler'], 'independent compiler calls'
+    assert set(contract['current']) == {b['label'] for b in prepared['batches']}
+    total = 0
+    for batch in prepared['batches']:
+        label = batch['label']; historical = contract['baseline']['batches'][label]
+        assert batch['identities'] == historical['identities']
+        default = binary_instance_query(native_cli, batch)
+        normalized = binary_instance_normalize(default['result'], prepared)
+        if baseline:
+            binary_instance_compare_expected(normalized, historical['default'])
+        else:
+            detailed = binary_instance_query(native_cli, batch, details=True)
+            binary_instance_compare_modes(default, detailed)
+            rich = binary_instance_normalize(detailed['result'], prepared)
+            binary_instance_compare_expected(rich, contract['current'][label])
+        total += len(normalized['queries'])
+        print('binary-instance ' + label + ' contexts=2 queries=' + str(len(normalized['queries'])) + ' baseline=' + str(baseline), flush=True)
+    if baseline:
+        rejected = binary_instance_query(native_cli, prepared['batches'][0], details=True, success=False)
+        assert rejected.returncode != 0 and 'target-details' in rejected.stdout + rejected.stderr
+        current = dict(contract['current']['valid']); del current['target_details_version']
+        current['queries'] = [dict(row, targets=[binary_instance_default_projection(t) for t in row['targets']]) for row in current['queries']]
+        must_reject(lambda: binary_instance_compare_expected(contract['baseline']['batches']['valid']['default'], current),
+                    'legacy status false positives/overloads must fail strict current contract')
+    print('PASS: binary instance strict; 2 linking contexts; ' + str(total) + ' complete queries; descriptor/raw-flags javap evidence; v1/opt-in exact projections; baseline=' + str(baseline), flush=True)
+
+
 def main():
     if sys.flags.optimize:
         raise RuntimeError("oracle validation requires Python without -O/PYTHONOPTIMIZE")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jdk", required=True, type=Path, help="checksum-verified Temurin 21.0.13+9 root")
     parser.add_argument("--native", type=Path, default=ROOT / "target/debug/examples/oracle_bindings")
+    parser.add_argument("--native-cli", required=True, type=Path, help="explicit matching-profile java-analyzer CLI")
+    parser.add_argument("--jdk-archive", required=True, type=Path, help="pinned JDK archive for installed-byte verification")
     parser.add_argument("--sources-jar", type=Path, help="optional checksum-pinned Commons Lang sources for eight real overload queries")
     args = parser.parse_args()
     jdk = args.jdk.resolve()
+    import importlib.util
+    verifier_spec = importlib.util.spec_from_file_location('semantic_jdk_verifier', ROOT / 'scripts/check-strict-reference-oracle.py')
+    verifier = importlib.util.module_from_spec(verifier_spec); verifier_spec.loader.exec_module(verifier)
+    print('verified-jdk=' + verifier.verify_jdk(jdk, args.jdk_archive.resolve()), flush=True)
+    native_cli = args.native_cli.resolve(strict=True)
     # Use only caller-selected pinned tools, with no inherited Java injection settings.
     env = {"PATH": "", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"}
     optimized = run([sys.executable, "-O", Path(__file__).resolve(), "--help"], env, False)
@@ -1160,6 +1445,7 @@ def main():
         inherited_source_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         source_override_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         source_invocation_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        binary_instance_suite(jdk, native_cli, env, work)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

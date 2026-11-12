@@ -61,7 +61,7 @@ fn query(lib: &Project, app: &Project) -> ResolveResult {
     let visibility = [BTreeSet::from([0]), BTreeSet::from([0, 1])];
     let parsed = app.file("Use.java").unwrap();
     let at = parsed.text().rfind("pick(").unwrap() as u32;
-    let once = resolve_scoped(&[lib, app], &visibility, 1, "Use.java", at);
+    let once = resolve_scoped(&[lib, app], &visibility, 1, "Use.java", at, None);
     let prepared = PreparedScopedIndex::new(vec![lib, app], &visibility);
     assert_eq!(once, prepared.resolve_at(1, "Use.java", at));
     once
@@ -276,5 +276,16 @@ fn known_incompatible_slot_does_not_skip_unknown_cross_scope_ancestor() {
         "Use.java",
         "package app; class Use { void run(api.Box box, lib.Token token, byte b) { box.pick(b,token); } }",
     );
+    refused(&lib, &app);
+}
+
+#[test]
+fn same_origin_raw_member_flag_change_is_not_binary_closure_identity() {
+    let (mut lib, mut app) = pair(false);
+    let bytes = binary("lib/Token", Some("java/lang/Object"), &[("marker", "()V")], true);
+    lib.add_class_bytes("library.jar!/lib/Token.class", &bytes).unwrap();
+    app.add_class_bytes("library.jar!/lib/Token.class", &bytes).unwrap();
+    selected(&lib, &app);
+    Arc::make_mut(app.binaries.get_mut("library.jar!/lib/Token.class").unwrap()).methods[0].raw_access_flags ^= 0x20;
     refused(&lib, &app);
 }

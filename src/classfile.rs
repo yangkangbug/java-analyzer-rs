@@ -37,6 +37,8 @@ pub enum MemberKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MemberSignature {
+    /// Original JVMS member access bits; interpretation depends on member kind.
+    pub raw_access_flags: u16,
     pub name: String,
     pub kind: MemberKind,
     /// JVM field or method descriptor, such as `I` or `()V`.
@@ -121,7 +123,14 @@ pub fn parse_class_bytes(origin: &str, bytes: &[u8]) -> Result<ClassSignature, C
             detail: format!("major {} minor {}", class.major_version, class.minor_version),
         });
     }
-    Ok(signature_from(origin, &class))
+    let (field_flags, method_flags) = raw_member_flags(bytes)
+        .filter(|(fields, methods)| fields.len() == class.fields.len() && methods.len() == class.methods.len())
+        .ok_or_else(|| ClassError {
+            origin: origin.to_owned(),
+            kind: ClassErrorKind::Other,
+            detail: "raw member flag inventory does not match parsed class".into(),
+        })?;
+    Ok(signature_from(origin, &class, &field_flags, &method_flags))
 }
 
 /// Read every `*.class` file under `root`. A parse error or an I/O error
@@ -174,7 +183,84 @@ fn walk_class_dir(dir: &Path, out: &mut Vec<ClassSignature>) -> Result<(), Class
     Ok(())
 }
 
-fn signature_from(origin: &str, class: &cafebabe::ClassFile<'_>) -> ClassSignature {
+// cafebabe intentionally truncates unknown access bits. Walk only the already
+// validated binary framing to retain original member u16 flags; never interpret
+// constant-pool names, descriptors, bytecode, or attribute payloads here.
+fn raw_member_flags(bytes: &[u8]) -> Option<(Vec<u16>, Vec<u16>)> {
+    struct Cursor<'a> {
+        bytes: &'a [u8],
+        at: usize,
+    }
+    impl Cursor<'_> {
+        fn skip(&mut self, count: usize) -> Option<()> {
+            let end = self.at.checked_add(count)?;
+            self.bytes.get(self.at..end)?;
+            self.at = end;
+            Some(())
+        }
+        fn u1(&mut self) -> Option<u8> {
+            let value = *self.bytes.get(self.at)?;
+            self.skip(1)?;
+            Some(value)
+        }
+        fn u2(&mut self) -> Option<u16> {
+            Some(u16::from_be_bytes([self.u1()?, self.u1()?]))
+        }
+        fn u4(&mut self) -> Option<u32> {
+            Some(u32::from_be_bytes([self.u1()?, self.u1()?, self.u1()?, self.u1()?]))
+        }
+        fn members(&mut self) -> Option<Vec<u16>> {
+            let count = self.u2()?;
+            let mut flags = Vec::with_capacity(usize::from(count));
+            for _ in 0..count {
+                flags.push(self.u2()?);
+                self.skip(4)?; // name_index and descriptor_index
+                let attributes = self.u2()?;
+                for _ in 0..attributes {
+                    self.skip(2)?;
+                    let length = usize::try_from(self.u4()?).ok()?;
+                    self.skip(length)?;
+                }
+            }
+            Some(flags)
+        }
+    }
+    let mut cursor = Cursor { bytes, at: 0 };
+    cursor.skip(8)?;
+    let count = cursor.u2()?;
+    let mut index = 1u32;
+    while index < u32::from(count) {
+        match cursor.u1()? {
+            1 => {
+                let length = usize::from(cursor.u2()?);
+                cursor.skip(length)?;
+            }
+            3 | 4 | 9 | 10 | 11 | 12 | 17 | 18 => cursor.skip(4)?,
+            5 | 6 => {
+                cursor.skip(8)?;
+                index += 1;
+            }
+            7 | 8 | 16 | 19 | 20 => cursor.skip(2)?,
+            15 => cursor.skip(3)?,
+            _ => return None,
+        }
+        index += 1;
+    }
+    if index != u32::from(count) {
+        return None;
+    }
+    cursor.skip(6)?;
+    let interfaces = usize::from(cursor.u2()?);
+    cursor.skip(interfaces.checked_mul(2)?)?;
+    Some((cursor.members()?, cursor.members()?))
+}
+
+fn signature_from(
+    origin: &str,
+    class: &cafebabe::ClassFile<'_>,
+    field_flags: &[u16],
+    method_flags: &[u16],
+) -> ClassSignature {
     let binary_name = class.this_class.to_string();
     let (package, nesting) = split_binary(&binary_name);
     let dotted_name = dotted_binary(&binary_name);
@@ -195,7 +281,9 @@ fn signature_from(origin: &str, class: &cafebabe::ClassFile<'_>) -> ClassSignatu
         fields: class
             .fields
             .iter()
-            .map(|field| MemberSignature {
+            .zip(field_flags)
+            .map(|(field, raw_flags)| MemberSignature {
+                raw_access_flags: *raw_flags,
                 name: field.name.to_string(),
                 kind: MemberKind::Field,
                 descriptor: field.descriptor.to_string(),
@@ -206,8 +294,10 @@ fn signature_from(origin: &str, class: &cafebabe::ClassFile<'_>) -> ClassSignatu
         methods: class
             .methods
             .iter()
-            .filter(|method| method.name != "<clinit>")
-            .map(|method| MemberSignature {
+            .zip(method_flags)
+            .filter(|(method, _)| method.name != "<clinit>")
+            .map(|(method, raw_flags)| MemberSignature {
+                raw_access_flags: *raw_flags,
                 name: method.name.to_string(),
                 kind: MemberKind::Method,
                 descriptor: method.descriptor.to_string(),
@@ -288,4 +378,45 @@ fn classify(origin: &str, detail: &str) -> ClassError {
         ClassErrorKind::Other
     };
     ClassError { origin: origin.to_string(), kind, detail: detail.to_string() }
+}
+
+#[cfg(test)]
+mod raw_flags_tests {
+    use super::raw_member_flags;
+    fn framing() -> Vec<u8> {
+        // Framing-only unit fixture: the semantic parser remains cafebabe.
+        let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 5];
+        bytes.push(5);
+        bytes.extend([0; 8]); // long occupies slots 1 and 2
+        bytes.push(6);
+        bytes.extend([0; 8]); // double occupies slots 3 and 4
+        bytes.extend([0, 0, 0, 0, 0, 0, 0, 0]); // access/this/super/interfaces
+        for flags in [0x2001u16, 0x4001u16] {
+            bytes.extend(1u16.to_be_bytes()); // one member
+            bytes.extend(flags.to_be_bytes());
+            bytes.extend([0; 4]);
+            bytes.extend(2u16.to_be_bytes());
+            for payload in [&b"abc"[..], &b""[..]] {
+                bytes.extend([0, 0]);
+                bytes.extend((payload.len() as u32).to_be_bytes());
+                bytes.extend(payload);
+            }
+        }
+        bytes
+    }
+    #[test]
+    fn raw_flags_checked_framing_handles_double_slots_and_attributes() {
+        let bytes = framing();
+        assert_eq!(raw_member_flags(&bytes), Some((vec![0x2001], vec![0x4001])));
+        for end in 0..bytes.len() {
+            assert!(raw_member_flags(&bytes[..end]).is_none(), "prefix {end}");
+        }
+        let mut unknown = bytes.clone();
+        unknown[10] = 2;
+        assert!(raw_member_flags(&unknown).is_none());
+        let mut overflow = bytes;
+        let len = overflow.len();
+        overflow[len - 4..].copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(raw_member_flags(&overflow).is_none());
+    }
 }

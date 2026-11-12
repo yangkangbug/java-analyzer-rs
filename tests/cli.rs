@@ -720,3 +720,58 @@ fn proven_nested_call_result_survives_cli_and_fresh_source_load() {
     assert_eq!(omitted["result"]["queries"][0]["status"], "OverloadNotResolved");
     assert_eq!(omitted["result"]["queries"][0]["targets"].as_array().unwrap().len(), 2);
 }
+
+#[test]
+fn binary_target_details_are_explicit_and_default_projection_stays_v1() {
+    let f = Fixture::new();
+    let text = "class A extends lib.Lib { void use() { run(); } }";
+    f.write("src/A.java", text);
+    f.write("deps/library.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    let mut manifest = minimal_manifest();
+    manifest["compilations"][0]["classpath"] = json!([{"kind":"jar","path":"deps/library.jar"}]);
+    let path = f.write("project.json", manifest.to_string());
+    let ordinary = f.declaration("src/A.java", text.rfind("run").unwrap());
+    let old = &ordinary["result"]["queries"][0]["targets"][0];
+    assert_eq!(old["identity_precision"], "origin_kind_owner_name_only");
+    assert!(old["linking_context"].is_null());
+    assert!(old.get("descriptor").is_none());
+    assert!(ordinary["result"].get("target_details_version").is_none());
+    let details = f.run(
+        &[
+            "declaration",
+            "--target-details",
+            "--manifest",
+            path.to_str().unwrap(),
+            "--project",
+            "app",
+            "--source-set",
+            "main",
+            "--file",
+            "src/A.java",
+            "--byte",
+            &text.rfind("run").unwrap().to_string(),
+        ],
+        true,
+    );
+    assert_eq!(details["result"]["target_details_version"], 1);
+    let target = &details["result"]["queries"][0]["targets"][0];
+    assert_eq!(target["descriptor"], "()V");
+    assert_eq!(target["binary_name"], "lib/Lib");
+    assert_eq!(target["linking_context"], json!({"project":"app","source_set":"main"}));
+    assert_eq!(target["identity_precision"], "origin_binary_name_descriptor_linking_context");
+    assert_eq!(target["source_available"], false);
+    assert!(target.get("range").is_none());
+}
+
+#[test]
+fn target_details_option_is_single_and_declaration_only() {
+    let f = Fixture::new();
+    for args in [
+        vec!["inspect", "--target-details"],
+        vec!["parser-report", "--target-details"],
+        vec!["declaration", "--target-details", "--target-details"],
+    ] {
+        let result = f.run(&args, false);
+        assert_eq!(result["error"]["code"], "usage");
+    }
+}

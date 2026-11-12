@@ -1,0 +1,29 @@
+{
+  "dep/Methods": {
+    "zero:()I": 1,
+    "pick:(I)I": 1,
+    "pick:(J)J": 1,
+    "token:(Ldep/Token;)Ldep/Token;": 1,
+    "arrayResult:(I)[I": 1,
+    "finalMethod:(I)I": 17,
+    "syncMethod:(I)I": 33,
+    "nativeMethod:(I)I": 257,
+    "staticMethod:(I)I": 9,
+    "vararg:([I)I": 129,
+    "generic:(Ljava/lang/Object;)Ljava/lang/Object;": 1,
+    "arrayFormal:([I)I": 1,
+    "secret:(I)I": 2,
+    "protectedMethod:(I)I": 4,
+    "finish:(I)V": 1
+  },
+  "dep/AbstractOwner": {
+    "abstractMethod:(I)I": 1025
+  },
+  "dep/BridgeOwner": {
+    "bridge:(Ldep/Token;)Ldep/Token;": 1,
+    "bridge:(Ljava/lang/Object;)Ljava/lang/Object;": 4161
+  },
+  "dep/Dollar$Owner": {
+    "ping:(I)I": 1
+  }
+}

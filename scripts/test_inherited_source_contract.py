@@ -230,4 +230,92 @@ class CommonsPreservationControls(unittest.TestCase):
                 else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]) if rows[i]['targets'] else {})
                 with self.assertRaises(ValueError):self.c.check_inherited_preservation(changed,self.plan,self.root)
 
+class BinaryMethodControls(unittest.TestCase):
+    def setUp(self):
+        spec=importlib.util.spec_from_file_location('commons_binary',Path(__file__).with_name('check-cli-acceptance.py'))
+        self.c=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.c)
+        self.plan=self.c.binary_method_plan();self.root=Path('/synthetic/sources');self.platform=Path('/synthetic/java.base.jmod')
+    def response(self, mode):
+        rows=copy.deepcopy([q[mode] for q in self.plan['queries']])
+        for row in rows:
+            row['file']=str(self.root/row['file'])
+            for target in row['targets']:target['path']=target['path'].replace('@PLATFORM@',str(self.platform))
+        result={'index_builds':1,'queries':rows}
+        if mode=='expected_details':result['target_details_version']=1
+        return {'result':result}
+    def check(self, value, mode):
+        self.c.check_binary_methods(value,self.plan,self.root,self.platform,
+             baseline=mode=='baseline',details=mode=='expected_details')
+    def test_three_disjoint_modes(self):
+        for mode in ['baseline','expected','expected_details']:
+            self.check(self.response(mode),mode)
+            for other in ['baseline','expected','expected_details']:
+                if other!=mode:
+                    with self.assertRaises(ValueError):self.check(self.response(other),mode)
+    def test_full_inventory_and_identity_mutations(self):
+        for mode in ['baseline','expected','expected_details']:
+            for i in range(10):
+                for key,value in [('query_index',99),('file','/wrong'),('byte_offset',0),('position',{}),('compilation',{}),('source_compilation',{}),('status','Wrong')]:
+                    d=self.response(mode);d['result']['queries'][i][key]=value
+                    with self.assertRaises(ValueError):self.check(d,mode)
+                for key in self.response(mode)['result']['queries'][i]['targets'][0]:
+                    d=self.response(mode);d['result']['queries'][i]['targets'][0][key]='wrong'
+                    with self.assertRaises(ValueError):self.check(d,mode)
+                for action in ['omit','extra','targetomit','targetextra']:
+                    d=self.response(mode);rows=d['result']['queries']
+                    if action=='omit':rows.pop(i)
+                    elif action=='extra':rows.append(copy.deepcopy(rows[i]))
+                    elif action=='targetomit':rows[i]['targets'].pop()
+                    else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]))
+                    with self.assertRaises(ValueError):self.check(d,mode)
+    def test_default_cannot_leak_details_or_drop_context(self):
+        for key,value in [('descriptor','()I'),('linking_context',{}),('identity_precision','exact')]:
+            d=self.response('expected');d['result']['queries'][0]['targets'][0][key]=value
+            with self.assertRaises(ValueError):self.check(d,'expected')
+        for mode in ['baseline','expected','expected_details']:
+            d=self.response(mode);d['target_details_version']=1
+            with self.assertRaises(ValueError):self.check(d,mode)
+        d=self.response('expected_details');del d['result']['target_details_version']
+        with self.assertRaises(ValueError):self.check(d,'expected_details')
+        d=self.response('expected_details');d['result']['queries'][0]['targets'][0]['linking_context']=None
+        with self.assertRaises(ValueError):self.check(d,'expected_details')
+    def test_v1_refusal_forecast_is_not_accepted_as_current(self):
+        old=json.loads((self.c.CORPUS/'binary-method-probes.json').read_text())
+        for mode in ['expected','expected_details']:
+            d=self.response(mode)
+            for i in (3,4,8):
+                row=copy.deepcopy(old['queries'][i][mode]);row['file']=str(self.root/row['file'])
+                for t in row['targets']:t['path']=t['path'].replace('@PLATFORM@',str(self.platform))
+                d['result']['queries'][i]=row
+            with self.assertRaises(ValueError):self.check(d,mode)
+    def test_v2_success_forecast_not_accepted_for_deferred_sites(self):
+        old=self.c.binary_method_plan_v2()
+        for mode in ['expected','expected_details']:
+            d=self.response(mode)
+            for i in (0,1,2):
+                row=copy.deepcopy(old['queries'][i][mode]);row['file']=str(self.root/row['file'])
+                for t in row['targets']:t['path']=t['path'].replace('@PLATFORM@',str(self.platform))
+                d['result']['queries'][i]=row
+            with self.assertRaises(ValueError):self.check(d,mode)
+    def test_revision_reconstruction_even_with_candidate_hash_stub(self):
+        import tempfile
+        original_sha=self.c.sha256
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'revision.json'
+            for kind in ['positive','baseline','extra_change']:
+                d=copy.deepcopy(self.plan)
+                if kind=='positive':d['queries'][5]['expected']['status']='OverloadNotResolved'
+                elif kind=='baseline':d['queries'][3]['baseline']['status']='Ambiguous'
+                else:d['scope_revision']['changes'].append(copy.deepcopy(d['scope_revision']['changes'][0]))
+                p.write_text(json.dumps(d))
+                with mock.patch.object(self.c,'sha256',side_effect=lambda path:self.c.BINARY_METHOD_PLAN_SHA256 if path==p else original_sha(path)):
+                    with self.assertRaises(ValueError):self.c.binary_method_plan(p)
+    def test_plan_hash_rejects_mutation(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'plan.json';p.write_text(json.dumps(self.plan)+' ')
+            with self.assertRaises(ValueError):self.c.binary_method_plan(p)
+            link=Path(td)/'linked.json';link.symlink_to(self.c.CORPUS/'binary-method-probes.json')
+            with self.assertRaises(ValueError):self.c.binary_method_plan(link)
+
 if __name__=='__main__':unittest.main()

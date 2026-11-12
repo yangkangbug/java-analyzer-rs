@@ -1,0 +1,276 @@
+{
+  "probe_calls": {
+    "zero": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "zero",
+        "()I"
+      ]
+    ],
+    "intIdentity": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "pick",
+        "(I)I"
+      ]
+    ],
+    "longIdentity": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "pick",
+        "(J)J"
+      ]
+    ],
+    "byteSpecificity": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "pick",
+        "(I)I"
+      ]
+    ],
+    "tokenIdentity": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "token",
+        "(Ldep/Token;)Ldep/Token;"
+      ]
+    ],
+    "arrayReturn": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "arrayResult",
+        "(I)[I"
+      ]
+    ],
+    "finalAllowed": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "finalMethod",
+        "(I)I"
+      ]
+    ],
+    "syncAllowed": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "syncMethod",
+        "(I)I"
+      ]
+    ],
+    "nativeAllowed": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "nativeMethod",
+        "(I)I"
+      ]
+    ],
+    "abstractAllowed": [
+      [
+        "invokevirtual",
+        "dep/AbstractOwner",
+        "abstractMethod",
+        "(I)I"
+      ]
+    ],
+    "nestedBinary": [
+      [
+        "invokevirtual",
+        "dep/Outer$Inner",
+        "ping",
+        "(I)I"
+      ]
+    ],
+    "staticRefusal": [
+      [
+        "invokestatic",
+        "dep/Methods",
+        "staticMethod",
+        "(I)I"
+      ]
+    ],
+    "varargRefusal": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "vararg",
+        "([I)I"
+      ]
+    ],
+    "genericRefusal": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "generic",
+        "(Ljava/lang/Object;)Ljava/lang/Object;"
+      ]
+    ],
+    "arrayFormalRefusal": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "arrayFormal",
+        "([I)I"
+      ]
+    ],
+    "ancestorRefusal": [
+      [
+        "invokevirtual",
+        "dep/Child",
+        "inherited",
+        "(I)I"
+      ]
+    ],
+    "interfaceRefusal": [
+      [
+        "invokevirtual",
+        "dep/FaceOwner",
+        "face",
+        "(I)I"
+      ]
+    ],
+    "genericOwnerRefusal": [
+      [
+        "invokevirtual",
+        "dep/GenericOwner",
+        "plain",
+        "(I)I"
+      ]
+    ],
+    "bridgeRefusal": [
+      [
+        "invokevirtual",
+        "dep/BridgeOwner",
+        "bridge",
+        "(Ldep/Token;)Ldep/Token;"
+      ]
+    ],
+    "staticFieldRefusal": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "zero",
+        "()I"
+      ]
+    ],
+    "returnReceiverRefusal": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "token",
+        "(Ldep/Token;)Ldep/Token;"
+      ],
+      [
+        "invokevirtual",
+        "dep/Token",
+        "id",
+        "()I"
+      ]
+    ],
+    "voidAllowed": [
+      [
+        "invokevirtual",
+        "dep/Methods",
+        "finish",
+        "(I)V"
+      ]
+    ]
+  },
+  "positive_targets": {
+    "zero": [
+      "dep/Methods",
+      "zero",
+      "()I"
+    ],
+    "int_identity": [
+      "dep/Methods",
+      "pick",
+      "(I)I"
+    ],
+    "long_identity": [
+      "dep/Methods",
+      "pick",
+      "(J)J"
+    ],
+    "byte_specificity": [
+      "dep/Methods",
+      "pick",
+      "(I)I"
+    ],
+    "token_identity": [
+      "dep/Methods",
+      "token",
+      "(Ldep/Token;)Ldep/Token;"
+    ],
+    "array_return": [
+      "dep/Methods",
+      "arrayResult",
+      "(I)[I"
+    ],
+    "final_allowed": [
+      "dep/Methods",
+      "finalMethod",
+      "(I)I"
+    ],
+    "sync_allowed": [
+      "dep/Methods",
+      "syncMethod",
+      "(I)I"
+    ],
+    "native_allowed": [
+      "dep/Methods",
+      "nativeMethod",
+      "(I)I"
+    ],
+    "abstract_allowed": [
+      "dep/AbstractOwner",
+      "abstractMethod",
+      "(I)I"
+    ],
+    "nested_binary": [
+      "dep/Outer$Inner",
+      "ping",
+      "(I)I"
+    ],
+    "void_allowed": [
+      "dep/Methods",
+      "finish",
+      "(I)V"
+    ]
+  },
+  "navigation_calls": {
+    "type": [],
+    "field": []
+  },
+  "method_queries": {
+    "zero": "zero",
+    "intIdentity": "int_identity",
+    "longIdentity": "long_identity",
+    "byteSpecificity": "byte_specificity",
+    "tokenIdentity": "token_identity",
+    "arrayReturn": "array_return",
+    "finalAllowed": "final_allowed",
+    "syncAllowed": "sync_allowed",
+    "nativeAllowed": "native_allowed",
+    "abstractAllowed": "abstract_allowed",
+    "nestedBinary": "nested_binary",
+    "staticRefusal": "static_refusal",
+    "varargRefusal": "vararg_refusal",
+    "genericRefusal": "generic_refusal",
+    "arrayFormalRefusal": "array_formal_refusal",
+    "ancestorRefusal": "ancestor_refusal",
+    "interfaceRefusal": "interface_refusal",
+    "genericOwnerRefusal": "generic_owner_refusal",
+    "bridgeRefusal": "bridge_refusal",
+    "staticFieldRefusal": "static_field_refusal",
+    "returnReceiverRefusal": "return_receiver_refusal",
+    "voidAllowed": "void_allowed"
+  }
+}

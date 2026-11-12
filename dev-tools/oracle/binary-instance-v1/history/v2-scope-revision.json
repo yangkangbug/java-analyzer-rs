@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "reason": "The unchanged nested-type lookup already refuses Outer.Inner. This slice does not expand it. Preserve its exact ReceiverNotBound control; add legal top-level Dollar$Owner as the raw-dollar method identity positive, before any candidate execution.",
+  "history": {
+    "history/v1-Probe.java.txt": "56a29ebe452cfb5639d528650b79bb33837ca1843ae967802b149d49bedcd3a9",
+    "history/v1-baseline-records.json": "e83d2251adc771e512e67f6f100af42a0f710db03a800c41de3813fec35ac5b0",
+    "history/v1-compiler-expected.json": "ebfa5b291202c0f1e1fcf2dce916f1866be926cda516a93cd73745f8cca3f9af",
+    "history/v1-flags-expected.json": "fbe47cc1b9a7d95abad60f2dfc25ea283446abfb2e50dbab953343c40e64e659"
+  },
+  "removed_positive": "nested_binary",
+  "added_positive": "dollar_binary"
+}

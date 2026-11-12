@@ -321,7 +321,7 @@ fn definition(job: DefinitionJob) -> Result<(String, Value), Error> {
                 }
             } else {
                 // Preserve the existing binary provenance check, without fabricating a source location.
-                super::target_json(&workspace, &sources, target, resolved.status)?;
+                super::target_json(&workspace, &sources, target, resolved.status, false)?;
                 DefinitionResult::refused(job.generation, resolved.status, "binary_source_unavailable")
             }
         }
