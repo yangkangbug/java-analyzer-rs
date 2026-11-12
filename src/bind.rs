@@ -832,10 +832,11 @@ impl Index {
                 return Some(refused());
             }
             let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
-            let Some(owner) = proof.call_result_receiver(plain_receiver, plain_at) else {
+            let Some(StrictActual::Reference(value)) = proof.invocation_value(plain_receiver, plain_at, parens + 1)
+            else {
                 return Some(refused());
             };
-            return Some(match proof.select(owner, selector?, args, args_at) {
+            return Some(match proof.select(value.class, selector?, args, args_at, 0) {
                 Some(member) if !proof.exhausted => {
                     ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member))
                 }
@@ -967,7 +968,7 @@ impl Index {
         if !proof.expression(receiver, *receiver_at, 0).is_some_and(|c| same_class(c.class, owner)) {
             return Some(result);
         }
-        if let Some(member) = proof.select(owner, name, args, args_at)
+        if let Some(member) = proof.select(owner, name, args, args_at, 0)
             && !proof.exhausted
         {
             return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
@@ -2653,7 +2654,8 @@ struct SourceCall {
     varargs: bool,
     override_facts: Option<OverrideFacts>,
     // Only a strictly selected source member may expose this value. It is not
-    // part of Shape/MethodIdentity, receiver typing, or overload applicability.
+    // part of Shape/MethodIdentity. Shared invocation proof exposes the declared
+    // primitive only after strict selection; it is never a constant-value inference.
     scalar_return: Option<Primitive>,
     reference_return: Option<Vec<String>>,
 }
@@ -4472,7 +4474,40 @@ impl<'a> ReferenceCallProof<'a> {
         }
         if unknown { None } else { Some(false) }
     }
-    fn call_result_receiver(&mut self, node: &GreenNode, at: u32) -> Option<&'a ClassRec> {
+    fn check_depth(&mut self, depth: usize) -> Option<()> {
+        if depth > REFERENCE_PROOF_DEPTH {
+            self.work_left = 0;
+            self.exhausted = true;
+            None
+        } else {
+            Some(())
+        }
+    }
+
+    // One argument classifier and one selector serve both call arguments and receivers.
+    fn actual(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
+        self.check_depth(depth)?;
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let children = delimited_nodes(node, at)?;
+            let [(inner, at)] = children.as_slice() else { return None };
+            return self.actual(inner, *at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::CallExpr {
+            return self.invocation_value(node, at, depth + 1);
+        }
+        self.expression(node, at, depth)
+            .map(StrictActual::Reference)
+            .or_else(|| self.scalar_primitive_argument(node, at, depth).map(StrictActual::Primitive))
+            .or_else(|| self.null_argument(node, at, depth).map(|()| StrictActual::Null))
+            .or_else(|| self.cast_null_argument(node, at, depth).map(StrictActual::Reference))
+    }
+
+    fn invocation_value(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
+        self.check_depth(depth)?;
+        if node.kind() != SyntaxKind::CallExpr {
+            return None;
+        }
         self.charge(node.children().len().max(1))?;
         let (callee, callee_at) = child_kind(node, at, SyntaxKind::FieldExpr)?;
         let (args, args_at) = child_kind(node, at, SyntaxKind::ArgList)?;
@@ -4511,30 +4546,36 @@ impl<'a> ReferenceCallProof<'a> {
             return None;
         }
         let (mut base, mut base_at) = base?;
-        let mut depth = 0;
+        let mut depth = depth;
         while base.kind() == SyntaxKind::ParenExpr {
             self.charge(base.children().len().max(1))?;
-            if depth >= REFERENCE_PROOF_DEPTH {
-                return None;
-            }
+            self.check_depth(depth + 1)?;
             let children = delimited_nodes(base, base_at)?;
             let [(inner, at)] = children.as_slice() else { return None };
             base = inner;
             base_at = *at;
             depth += 1;
         }
-        // No constructor, field, static type, or another call as the base.
-        if base.kind() != SyntaxKind::ReferenceExpr {
-            return None;
+        // Only explicit local/parameter roots or another proved source invocation.
+        let owner = match base.kind() {
+            SyntaxKind::ReferenceExpr => self.expression(base, base_at, depth + 1)?.class,
+            SyntaxKind::CallExpr => match self.invocation_value(base, base_at, depth + 1)? {
+                StrictActual::Reference(value) => value.class,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let selected = self.select(owner, name?, args, args_at, depth + 1)?;
+        let source = selected.member.source_call.as_ref()?;
+        if let Some(primitive) = source.scalar_return {
+            return Some(StrictActual::Primitive(PrimitiveValue { primitive, rank: 0 }));
         }
-        let owner = self.expression(base, base_at, depth)?.class;
-        let member = self.select(owner, name?, args, args_at)?;
-        let parts = member.member.source_call.as_ref()?.reference_return.as_ref()?;
-        let declaring = member.declaring;
+        let parts = source.reference_return.as_ref()?;
+        let declaring = selected.declaring;
         let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
-        // Resolve in declaration context, then enforce caller accessibility and
-        // complete hierarchy using the same bounded proof as both selections.
-        self.reference_type(file, parts, member.member.start)
+        // Return names belong to the selected declaration, not the consuming caller.
+        let class = self.reference_type(file, parts, selected.member.start)?;
+        Some(StrictActual::Reference(ReferenceValue { class }))
     }
 
     // Validate each ancestor pair before removing any candidate. A nearer node
@@ -4597,7 +4638,9 @@ impl<'a> ReferenceCallProof<'a> {
         name: &str,
         args: &GreenNode,
         at: u32,
+        depth: usize,
     ) -> Option<SelectedSourceMethod<'a>> {
+        self.check_depth(depth)?;
         if owner.binary || owner.is_interface || owner.reference_generic {
             return None;
         }
@@ -4628,16 +4671,7 @@ impl<'a> ReferenceCallProof<'a> {
         }
         self.charge(args.children().len())?;
         let args = delimited_nodes(args, at)?;
-        let actuals = args
-            .iter()
-            .map(|(node, at)| {
-                self.expression(node, *at, 0)
-                    .map(StrictActual::Reference)
-                    .or_else(|| self.scalar_primitive_argument(node, *at, 0).map(StrictActual::Primitive))
-                    .or_else(|| self.null_argument(node, *at, 0).map(|()| StrictActual::Null))
-                    .or_else(|| self.cast_null_argument(node, *at, 0).map(StrictActual::Reference))
-            })
-            .collect::<Option<Vec<_>>>()?;
+        let actuals = args.iter().map(|(node, at)| self.actual(node, *at, depth + 1)).collect::<Option<Vec<_>>>()?;
         let mut members = Vec::new();
         for declaring in if inherited { graph.as_slice() } else { std::slice::from_ref(&owner) } {
             if inherited {
@@ -5082,3 +5116,54 @@ mod binary_actual_tests;
 
 #[cfg(test)]
 mod inherited_scope_tests;
+
+#[cfg(test)]
+mod invocation_budget_tests {
+    use super::*;
+    fn call_at(node: &GreenNode, start: u32, wanted: u32) -> Option<(&GreenNode, u32)> {
+        if start == wanted && node.kind() == SyntaxKind::CallExpr {
+            return Some((node, start));
+        }
+        let mut at = start;
+        for child in node.children() {
+            if let Some(inner) = child.as_node()
+                && let Some(found) = call_at(inner, at, wanted)
+            {
+                return Some(found);
+            }
+            at += child.utf8_len();
+        }
+        None
+    }
+    #[test]
+    fn shallow_invocation_tree_reports_shared_work_exhaustion() {
+        for count in [2, 200] {
+            let params = (0..count).map(|i| format!("int p{i}")).collect::<Vec<_>>().join(",");
+            let args = std::iter::repeat_n("b.size()", count).collect::<Vec<_>>().join(",");
+            let text = format!(
+                "class Box {{ public int size() {{ return 1; }} public void take({params}) {{}} }} class Calls {{ void run(Box b) {{ b.take({args}); }} }}"
+            );
+            let mut project = Project::new();
+            project.insert("Calls.java", &text);
+            let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+            object.extend(b"java/lang/Object");
+            object.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+            project.add_class_bytes("Object.class", &object).unwrap();
+            let parsed = project.file("Calls.java").unwrap();
+            let wanted = text.rfind("b.take(").unwrap() as u32;
+            let (_, caller_start, caller_end) = direct_caller(parsed.root(), wanted).unwrap();
+            let index = Index::build(&project.files, &project.binaries);
+            let file = &index.files[0];
+            let mut proof = ReferenceCallProof::new(&index, file, caller_start, caller_end);
+            let (node, at) = call_at(parsed.root(), 0, wanted).unwrap();
+            let (args, args_at) = child_kind(node, at, SyntaxKind::ArgList).unwrap();
+            let owner = file.classes.iter().find(|class| class.dotted() == "Box").unwrap();
+            let selected = proof.select(owner, "take", args, args_at, 0);
+            assert_eq!(selected.is_some(), count == 2);
+            assert_eq!(proof.exhausted, count == 200);
+            if count == 200 {
+                assert_eq!(proof.work_left, 0);
+            }
+        }
+    }
+}

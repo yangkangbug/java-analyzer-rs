@@ -1,0 +1,96 @@
+{
+  "source": {
+    "reference_actual": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|accept|83|89"
+    ],
+    "nested_actual": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|accept|83|89"
+    ],
+    "primitive_actual": [
+      "OverloadNotResolved",
+      "2",
+      "api/Sink.java|Method|api.Sink|take|138|142",
+      "api/Sink.java|Method|api.Sink|take|188|192"
+    ],
+    "nested_primitive": [
+      "OverloadNotResolved",
+      "2",
+      "api/Sink.java|Method|api.Sink|take|138|142",
+      "api/Sink.java|Method|api.Sink|take|188|192"
+    ],
+    "mixed_tree": [
+      "OverloadNotResolved",
+      "2",
+      "api/Sink.java|Method|api.Sink|take|138|142",
+      "api/Sink.java|Method|api.Sink|take|188|192"
+    ],
+    "sibling_actuals": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|pair|234|238"
+    ],
+    "multi_receiver": [
+      "ReceiverNotBound",
+      "0"
+    ],
+    "actual_and_receiver": [
+      "ReceiverNotBound",
+      "0"
+    ],
+    "static_declared_control": [
+      "Resolved",
+      "1",
+      "model/Product.java|Method|model.Product|value|115|120"
+    ],
+    "generic_refusal": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|accept|83|89"
+    ],
+    "array_refusal": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|accept|83|89"
+    ],
+    "binary_refusal": [
+      "OverloadNotResolved",
+      "2",
+      "api/Sink.java|Method|api.Sink|take|138|142",
+      "api/Sink.java|Method|api.Sink|take|188|192"
+    ],
+    "field_refusal": [
+      "CallNotResolved",
+      "1",
+      "api/Sink.java|Method|api.Sink|accept|83|89"
+    ],
+    "depth_refusal": [
+      "ReceiverNotBound",
+      "0"
+    ]
+  },
+  "budget": {
+    "work_refusal": [
+      "CallNotResolved",
+      "1",
+      "Work.java|Method|budget.Sink|take|140831|140835"
+    ]
+  },
+  "unknown": {
+    "invalid_unknown": [
+      "CallNotResolved",
+      "1",
+      "Use.java|Method|invalid.Sink|accept|114|120"
+    ]
+  },
+  "void": {
+    "invalid_void": [
+      "CallNotResolved",
+      "1",
+      "Use.java|Method|invalid.Sink|accept|114|120"
+    ]
+  }
+}

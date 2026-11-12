@@ -31,16 +31,16 @@ def run(native, fixture, capture_baseline=False):
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
-    preservation = strict.string.run(native, fixture, proof_stage='reference_return' if capture_baseline else 'source_override', parser_stage='current')
+    preservation = strict.string.run(native, fixture, proof_stage='reference_return' if capture_baseline else 'source_invocation', parser_stage='current')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
-        'comparison_stage': 'null_baseline_66486e21' if capture_baseline else 'source_override_current',
+        'comparison_stage': 'null_baseline_66486e21' if capture_baseline else 'source_invocation_current',
         'historical_null_scope_revision': strict.nulls.load_plan(second)['scope_revision'],
         'deferred_queries': ['null_add'] if capture_baseline else [],
-        'plan_sha256': strict.nulls.PLAN_SHA256 if capture_baseline else strict.OVERRIDE_PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': strict.nulls.PLAN_SHA256 if capture_baseline else strict.INVOCATION_PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture), 'preservation': preservation,
         'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

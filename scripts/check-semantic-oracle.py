@@ -961,6 +961,81 @@ def source_override_suite(jdk, native_binary, env, work, helper, empty, platform
     print("PASS: source override; seven static targets, five valid refusals, six invalid refusals; baseline=" + str(baseline), flush=True)
 
 
+def source_invocation_fixture():
+    root = ORACLE / "source-invocation-v1"
+    data = (root / "fixture-manifest.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == "91e25ac0101162feb81639784fa38fddf5b975b3be23a36555978fa5a550b957", "source invocation fixture pin"
+    pinned = json.loads(data)["files"]
+    assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*")
+                  if p.is_file() and p.name not in ("README.md", "fixture-manifest.json")) == sorted(pinned)
+    for name, digest in pinned.items(): assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+    ds, qs, req = fixture_markers(root / "source", (root / "files.tsv").read_text().splitlines())
+    contracts = []
+    for filename in ("expected.tsv", "baseline.tsv"):
+        expected = {}
+        for q, status, selected, candidates in rows(root / filename, 4):
+            assert q not in expected; expected[q] = status, selected, candidates
+        assert set(expected) == set(qs) and len(qs) == 14
+        contracts.append(expected)
+    assert sum(v[0] == "Resolved" for v in contracts[0].values()) == 9
+    return root, ds, qs, req, contracts[0], contracts[1]
+
+
+def current_source_invocation_expectations(suite, expected, queries, declarations):
+    root, _, _, _, _, _ = source_invocation_fixture()
+    plan = json.loads((root / "prior-invocation-updates.json").read_text())
+    assert suite in plan["suites"]
+    for name, digest in plan["artifacts"].items():
+        assert hashlib.sha256((ORACLE / name).read_bytes()).hexdigest() == digest, name
+    update = plan["suites"][suite]
+    assert {k: list(v) for k, v in queries.items()} == update["queries"]
+    assert {k: list(v) for k, v in declarations.items()} == update["declarations"]
+    assert {k: list(v) for k, v in expected.items()} == update["previous_current"]
+    result = dict(expected)
+    for q, after in update["changes"].items():
+        assert after == ["Resolved", expected[q][1], expected[q][1]]
+        result[q] = tuple(after)
+    return result
+
+
+def source_invocation_suite(jdk, native_binary, env, work, helper, empty, platform, baseline=False):
+    """Bounded source call types compose as actuals/receivers, never runtime types."""
+    assert type(baseline) is bool
+    root, ds, qs, req, current, old = source_invocation_fixture()
+    expected = old if baseline else current
+    request = work / "source-invocation-requests.tsv"; request.write_text(req)
+    compiler = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle", root / "source", request, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, platform], {"PATH": "/nonexistent"}).stdout)
+    for q in sorted(expected): print(q + "\tjavac=" + "|".join(compiler[q]) + "\tnative=" + "|".join(native[q]), flush=True)
+    compare_reference(expected, qs, ds, compiler, native, platform)
+    for q, (_, selected, _) in expected.items():
+        path, start, _, _ = ds[selected.split("@")[0]]; data = (root / "source" / path).read_bytes()
+        begin = data.rfind(b"\n", 0, start) + 1; end = data.find(b"\n", start)
+        begin += len(data[begin:end]) - len(data[begin:end].lstrip())
+        assert tuple(map(int, compiler[q][4:])) == (begin, end), q + ": whole compiler range"
+    if baseline:
+        must_reject(lambda: compare_reference(current, qs, ds, compiler, native, platform), "invocation baseline must fail new selections")
+    # Three distinct large source owners avoid attributing cached graph re-use
+    # to repeated cost. Exact exhaustion is unit-tested in Rust, not inferred
+    # solely from this conservative end-to-end refusal.
+    budget = root / "budget"; ids, queries, req = fixture_markers(budget, ("Work.java",))
+    assert set(queries) == {"work_refusal"}; request.write_text(req)
+    budget_expected = {q: (st, sel, cs) for q, st, sel, cs in rows(budget / "expected.tsv", 4)}
+    compiled = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle", budget, request, empty], env).stdout)
+    actual = records(run([native_binary, budget, request, platform], {"PATH": "/nonexistent"}).stdout)
+    compare_reference(budget_expected, queries, ids, compiled, actual, platform)
+    invalid = rows(root / "invalid.tsv", 4)
+    assert {row[0] for row in invalid} == {"unknown", "void"}
+    for case, q, status, candidates in invalid:
+        source = root / "invalid" / case; ids, queries, req = fixture_markers(source, ("Use.java",))
+        assert set(queries) == {q}; request.write_text(req)
+        rejected = run([jdk / "bin/java", "-cp", helper, "BindingOracle", source, request, empty], env, False)
+        assert rejected.returncode == 2 and "compiler.err." in rejected.stderr and not rejected.stdout
+        result = records(run([native_binary, source, request, platform], {"PATH": "/nonexistent"}).stdout)
+        assert set(result) == {q}; check_reference_candidates(q, status, candidates, ids, result[q], platform)
+    print("PASS: source invocation; eight new/nine total static targets, five valid expression refusals, one large-work refusal, two invalid refusals; baseline=" + str(baseline), flush=True)
+
+
 def main():
     if sys.flags.optimize:
         raise RuntimeError("oracle validation requires Python without -O/PYTHONOPTIMIZE")
@@ -1084,6 +1159,7 @@ def main():
         reference_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         inherited_source_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         source_override_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        source_invocation_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

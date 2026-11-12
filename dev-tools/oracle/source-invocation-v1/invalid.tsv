@@ -1,0 +1,2 @@
+unknown	invalid_unknown	CallNotResolved	accept@invalid.Sink
+void	invalid_void	CallNotResolved	accept@invalid.Sink

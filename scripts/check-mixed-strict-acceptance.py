@@ -31,14 +31,14 @@ def run(native, fixture, capture_baseline=False):
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
-    preservation = strict.string.run(native, fixture, proof_stage='single_primitive' if capture_baseline else 'source_override', parser_stage='current')
+    preservation = strict.string.run(native, fixture, proof_stage='single_primitive' if capture_baseline else 'source_invocation', parser_stage='current')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'mixed_baseline_6208877' if capture_baseline else 'mixed_current',
-        'plan_sha256': strict.mixed.PLAN_SHA256 if capture_baseline else strict.OVERRIDE_PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': strict.mixed.PLAN_SHA256 if capture_baseline else strict.INVOCATION_PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture), 'preservation': preservation,
         'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

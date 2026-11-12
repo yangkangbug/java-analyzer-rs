@@ -51,8 +51,9 @@ class InheritedControls(unittest.TestCase):
                     changed=copy.deepcopy(original);rows=changed['result']['queries']
                     if action=='omit':rows.pop(i)
                     elif action=='duplicate':rows.append(copy.deepcopy(rows[i]))
-                    elif action=='target_omit':rows[i]['targets'].pop()
-                    else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]))
+                    elif action=='target_omit':
+                        rows[i]['targets'].pop() if rows[i]['targets'] else rows[i]['targets'].append({})
+                    else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]) if rows[i]['targets'] else {})
                     with self.assertRaises(second.AcceptanceError):self.check(changed,mode)
                 for j,t in enumerate(original['result']['queries'][i]['targets']):
                     for key in ('path','owner','name','kind','origin'):
@@ -138,7 +139,7 @@ class SourceOverrideControls(unittest.TestCase):
         with self.assertRaises(second.AcceptanceError):s.override_plan(path)
     def test_new_capture_uses_previous_proof_current_parser(self):
         with mock.patch.object(second,'digest',return_value=self.plan['baseline_native_sha256']), \
-             mock.patch.object(s,'current_probes',return_value=self.queries), \
+             mock.patch.object(s,'frozen_override_probes',return_value=self.queries), \
              mock.patch.object(second,'all_source_hashes',return_value={}), \
              mock.patch.object(second,'document',return_value=Path('requests')), \
              mock.patch.object(second,'successful',return_value=self.response_for('baseline')), \
@@ -148,6 +149,57 @@ class SourceOverrideControls(unittest.TestCase):
             keep.assert_called_once_with(Path('native'),self.fixture,proof_stage='inherited_source',parser_stage='current')
         with mock.patch.object(second,'digest',return_value='wrong'),mock.patch.object(second,'successful') as execute:
             with self.assertRaises(second.AcceptanceError):s.capture_proof_stage(Path('native'),self.fixture,'source_override')
+            execute.assert_not_called()
+
+class SourceInvocationControls(unittest.TestCase):
+    response_for = InheritedControls.response_for
+    check = InheritedControls.check
+    test_all_rows_candidates_identity_and_positions = InheritedControls.test_all_rows_candidates_identity_and_positions
+    def setUp(self):
+        SourceOverrideControls.setUp(self)
+        self.historical=self.queries
+        self.plan=s.invocation_plan();self.queries=self.plan['queries']
+        buffers={p:bytearray(b) for p,b in self.fixture.sources.items()}
+        for name in self.plan['source_sha256']:
+            if name not in buffers:buffers[name]=bytearray(b' '*20000)
+            self.fixture.owner[name]='gson/test' if '/src/test/' in name else 'gson/main'
+        for q in self.queries:
+            expression=q['expression'].encode();buffers[q['file']][q['byte']:q['byte']+len(expression)]=expression
+            for target in q['baseline']['targets']+q['expected']['targets']:
+                if target['origin']=='source':buffers[target['path']][target['start']:target['end']]=target['name'].encode()
+        self.fixture.sources={p:bytes(b) for p,b in buffers.items()}
+        for p,b in self.fixture.sources.items():
+            dest=self.fixture.source_root/p;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(b)
+        self.response=self.response_for('expected')
+    def test_eight_improvements_with_every_previous_record_unchanged(self):
+        self.check(self.response);self.check(self.response_for('baseline'),True)
+        for response,mode in [(self.response,True),(self.response_for('baseline'),False)]:
+            with self.assertRaises(second.AcceptanceError):self.check(response,mode)
+        self.assertEqual([2405,1473,1543,1613,3188,3246,6826,6888],[q['byte'] for q in self.queries if q['baseline']!=q['expected']])
+        self.assertEqual(self.queries[35]['baseline'],self.queries[35]['expected'])
+    def test_exact_predecessor_and_frozen_plan(self):
+        plan=copy.deepcopy(self.plan);plan['source_sha256']={p:hashlib.sha256(b).hexdigest() for p,b in self.fixture.sources.items()}
+        with mock.patch.object(s,'invocation_plan',return_value=plan):
+            self.assertEqual(self.queries,s.invocation_probes(self.fixture,self.historical))
+            for index in range(36):
+                old=copy.deepcopy(self.historical);old[index]['expected']['status']='Wrong'
+                with self.assertRaises(second.AcceptanceError):s.invocation_probes(self.fixture,old)
+            old=copy.deepcopy(self.historical);old.pop()
+            with self.assertRaises(second.AcceptanceError):s.invocation_probes(self.fixture,old)
+        path=self.fixture.workdir/'bad-invocation.json';path.write_text(json.dumps(self.plan))
+        with self.assertRaises(second.AcceptanceError):s.invocation_plan(path)
+    def test_capture_stage_and_binary_are_explicit(self):
+        with mock.patch.object(second,'digest',return_value=self.plan['baseline_native_sha256']), \
+             mock.patch.object(s,'current_probes',return_value=self.queries), \
+             mock.patch.object(second,'all_source_hashes',return_value={}), \
+             mock.patch.object(second,'document',return_value=Path('requests')), \
+             mock.patch.object(second,'successful',return_value=self.response_for('baseline')), \
+             mock.patch.object(s.string,'run',return_value={'source_sha256_after':{}}) as keep:
+            report=s.capture_proof_stage(Path('native'),self.fixture,'source_invocation')
+            self.assertEqual(report['validation'],'baseline_verified_not_acceptance')
+            keep.assert_called_once_with(Path('native'),self.fixture,proof_stage='source_override',parser_stage='current')
+        with mock.patch.object(second,'digest',return_value='wrong'),mock.patch.object(second,'successful') as execute:
+            with self.assertRaises(second.AcceptanceError):s.capture_proof_stage(Path('native'),self.fixture,'source_invocation')
             execute.assert_not_called()
 
 class CommonsPreservationControls(unittest.TestCase):
@@ -175,7 +227,7 @@ class CommonsPreservationControls(unittest.TestCase):
                 changed=copy.deepcopy(self.response);rows=changed['result']['queries']
                 if action=='omit':rows.pop(i)
                 elif action=='extra':rows.append(copy.deepcopy(rows[i]))
-                else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]))
+                else:rows[i]['targets'].append(copy.deepcopy(rows[i]['targets'][0]) if rows[i]['targets'] else {})
                 with self.assertRaises(ValueError):self.c.check_inherited_preservation(changed,self.plan,self.root)
 
 if __name__=='__main__':unittest.main()

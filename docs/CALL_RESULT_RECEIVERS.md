@@ -1,4 +1,10 @@
-# One-layer source call-result receivers
+# One-layer source call-result receivers (historical slice)
+
+This document records the original one-layer contract and frozen evidence.
+Current bounded chains, call-result arguments and primitive argument results are
+described in [composable source invocation values](COMPOSED_SOURCE_INVOCATIONS.md).
+Later inherited/override selection also extends the original candidate boundary;
+the limitations below describe this historical stage, not the entire current engine.
 
 This bounded extension composes two existing strict source-instance selections.
 For `local.inner(arguments).outer(arguments)`, the inner receiver must be an

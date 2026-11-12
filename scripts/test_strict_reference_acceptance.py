@@ -195,7 +195,7 @@ class StrictReferenceControls(unittest.TestCase):
                     mock.patch.object(second, 'portable_queries', return_value=[]), \
                     mock.patch.object(second, 'digest', return_value='binary'):
                 report = gate.run(Path('native'), self.fixture, baseline)
-                keep.assert_called_once_with(Path('native'), self.fixture, proof_stage='pre_primitive' if baseline else 'source_override',
+                keep.assert_called_once_with(Path('native'), self.fixture, proof_stage='pre_primitive' if baseline else 'source_invocation',
                                              parser_stage='baseline' if baseline else 'current')
                 self.assertEqual('baseline_verified_not_acceptance' if baseline else 'passed', report['validation'])
                 with mock.patch.object(second, 'all_source_hashes', side_effect=[inventory, {'extra.java': 'changed'}]):

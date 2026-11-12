@@ -299,5 +299,83 @@ class SourceOverrideContractTests(unittest.TestCase):
             else: args[2]['child_override'] = ('wrong', 0, 1, 'over')
             with self.assertRaises(AssertionError): oracle.current_source_override_expectations(*args)
 
+
+class SourceInvocationContractTests(unittest.TestCase):
+    def setUp(self):
+        self.root, self.ds, self.qs, self.req, self.current, self.old = oracle.source_invocation_fixture()
+        self.platform = Path('/unused')
+        self.javac = {}
+        for q, (_, selected, _) in self.current.items():
+            marker, owner = selected.split('@'); path, start, end, name = self.ds[marker]
+            self.javac[q] = [path, 'METHOD', owner, name, str(start), str(end)]
+
+    def native(self, contract):
+        result = {}
+        for q, (status, _, names) in contract.items():
+            targets = [] if names == '-' else [oracle.reference_target(self.ds, n, self.platform) for n in names.split(',')]
+            result[q] = [status, str(len(targets)), *targets]
+        return result
+
+    def compare(self, contract, native):
+        oracle.compare_reference(contract, self.qs, self.ds, self.javac, native, self.platform)
+
+    def test_exact_stages_static_return_owner_and_eight_changes(self):
+        current, old = self.native(self.current), self.native(self.old)
+        self.compare(self.current, current); self.compare(self.old, old)
+        with self.assertRaises(AssertionError): self.compare(self.current, old)
+        with self.assertRaises(AssertionError): self.compare(self.old, current)
+        self.assertEqual(sum(current[q] != old[q] for q in current), 8)
+        self.assertEqual(current['static_declared_control'], old['static_declared_control'])
+        for marker, owner in [('child_value', 'model.Child'), ('decoy_value', 'shadow.Product')]:
+            bad = copy.deepcopy(current)
+            bad['multi_receiver'] = ['Resolved', '1', oracle.reference_target(self.ds, marker+'@'+owner, self.platform)]
+            with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_complete_targets_empty_refusals_and_inventory_mutations(self):
+        rows = self.native(self.current)
+        for q, row in rows.items():
+            bad = copy.deepcopy(rows); bad[q][0] = 'Resolved' if row[0] != 'Resolved' else 'CallNotResolved'
+            with self.assertRaises(AssertionError): self.compare(self.current, bad)
+            for i in range(2, len(row)):
+                for field in range(6):
+                    bad = copy.deepcopy(rows); cells = bad[q][i].split('|'); cells[field] += 'wrong'; bad[q][i] = '|'.join(cells)
+                    with self.assertRaises(AssertionError): self.compare(self.current, bad)
+                bad = copy.deepcopy(rows); bad[q].append(row[i]); bad[q][1] = str(int(row[1])+1)
+                with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad['depth_refusal'] = rows['multi_receiver']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad.pop('nested_actual')
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad['extra'] = rows['nested_actual']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_pinned_expression_budget_and_stage_inputs(self):
+        for name in ('source/shadow/Use.java', 'source/model/Product.java', 'expected.tsv', 'baseline.tsv', 'baseline-records.json',
+                     'invalid/unknown/Use.java', 'invalid/void/Use.java', 'budget/Work.java', 'budget/expected.tsv',
+                     'prior-invocation-updates.json', 'fixture-manifest.json'):
+            with tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); root = base/'source-invocation-v1'; shutil.copytree(self.root, root)
+                p = root/name; p.write_bytes(p.read_bytes()+b'changed')
+                with patch.object(oracle, 'ORACLE', base), self.assertRaises(AssertionError): oracle.source_invocation_fixture()
+
+    def test_whole_old_suite_forecast_only_two_explicit_changes(self):
+        import json
+        plan = json.loads((self.root/'prior-invocation-updates.json').read_text())
+        self.assertEqual(len(plan['suites']), 6)
+        for suite, update in plan['suites'].items():
+            expected = {k:tuple(v) for k,v in update['previous_current'].items()}
+            queries = {k:tuple(v) for k,v in update['queries'].items()}
+            declarations = {k:tuple(v) for k,v in update['declarations'].items()}
+            actual = oracle.current_source_invocation_expectations(suite, expected, queries, declarations)
+            changed = {q for q in expected if expected[q] != actual[q]}
+            self.assertEqual(changed, {'return_deep', 'return_argument'} if suite == 'reference-return-v1' else set())
+            if changed:
+                with self.assertRaises(AssertionError): oracle.current_source_invocation_expectations(suite, actual, queries, declarations)
+            for index in range(3):
+                args = [copy.deepcopy(expected), copy.deepcopy(queries), copy.deepcopy(declarations)]
+                key = next(iter(args[index])); args[index][key] = ('wrong',)
+                with self.assertRaises(AssertionError): oracle.current_source_invocation_expectations(suite, *args)
+        with self.assertRaises(AssertionError): oracle.current_source_invocation_expectations('unknown-suite', {}, {}, {})
+
 if __name__ == "__main__":
     unittest.main()

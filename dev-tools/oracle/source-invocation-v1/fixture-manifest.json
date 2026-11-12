@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "files": {
+    "baseline-records.json": "a9ef92202ccfe52134ded95a98ee686505481ce9ebd3670c688f6462f93245d9",
+    "baseline.tsv": "b270e215845ac84410dd2706ff9e2d19008bd4f0345bd80b610000fbdcab6397",
+    "budget/Work.java": "9671478e74d85095060054ab5bf0f73d9b9de8715ebcd71f2d6671edc098be2b",
+    "budget/expected.tsv": "c7e678de86232bbe6fc88073c8b2cecb7a8afb22021cf4bdc97963e324ef15fb",
+    "expected.tsv": "cdf4c8ab1b49c12399ec726af00bcd949bd8c4f3fbcb32ca2cdac08edca5d51a",
+    "files.tsv": "39ff07579d12fb82630e389c030ff8700c3d8f691c5bcd38daad0fd4268f5586",
+    "invalid/unknown/Use.java": "162e8e3a3426c376a16a7aed0d62315e17b60cc9f6c15966d33fd1b5376676bb",
+    "invalid/void/Use.java": "ec3f7958096adf563bd8c88a6ff133f77bbe5a3390c887176e5bed5093be9d2d",
+    "invalid.tsv": "02a86d809c8e17dbb4d44c61ea7252bbb9867c5eec80e8fadc7be67795da5acb",
+    "prior-invocation-updates.json": "922869a8d89f4e8cf83c7d154542e192c701f59b976b197967186c54a9dd3b5e",
+    "source/api/Factory.java": "23c3d11660e6ee6b078badd597db5eda6678f301feadd82f20d12325e16fa6c3",
+    "source/api/Sink.java": "b2174f0c7dc9d2fbf8c171343692e5afc483a8e3591776c124286cf04c332dc4",
+    "source/model/Child.java": "39b6b0a96c9e1a5dd905f080cdcec735bb5ddfaa5b96b52c1a80d3131c173599",
+    "source/model/Product.java": "22430000884f94ab9a676731c3f4533399580465139e0d24255f8bc07fef410d",
+    "source/shadow/Product.java": "5419055bbc44160cd66c2c08211378cda6cd44bcebc51a7b94c7784ba4b0cb29",
+    "source/shadow/Use.java": "7bb9b9880937c5a9f1ecbc196490965a9fb5980d0ffe1b576b372a951e3a6305"
+  }
+}

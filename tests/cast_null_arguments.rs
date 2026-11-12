@@ -162,9 +162,12 @@ fn cast_null_uses_caller_import_and_requires_access_and_unique_type() {
 }
 
 #[test]
-fn cast_null_composes_with_existing_inner_call_but_not_call_arguments() {
+fn cast_null_composes_with_source_call_arguments() {
     let source = "class Token { public void next() {} } class Box { public Token pick(Token x) { return x; } public Token pick(int x) { return null; } } class Calls { void run(Box box) { box.pick((Token)null).next(); box.pick(box.pick((Token)null)); } }";
     let p = project(source);
     assert_eq!(query(&p, "next();").status, ResolveStatus::Resolved);
-    assert_ne!(query(&p, "pick(box.pick").status, ResolveStatus::Resolved);
+    let result = query(&p, "pick(box.pick");
+    assert_eq!(result.status, ResolveStatus::Resolved);
+    assert_eq!(result.targets[0].owner, "Box");
+    assert_eq!(result.targets[0].start_byte, source.find("pick(Token").unwrap() as u32);
 }

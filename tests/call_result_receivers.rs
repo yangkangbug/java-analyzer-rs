@@ -46,7 +46,7 @@ fn one_selected_call_propagates_declared_reference_not_runtime_override() {
 
 #[test]
 fn unsupported_call_receivers_never_fall_back_to_same_named_values() {
-    for receiver in ["box.missing()", "box.take(null)", "box.take(1).again()", "make()"] {
+    for receiver in ["box.missing()", "box.take(null)", "box.take(1).missing()", "make()"] {
         let source = format!(
             "class Result {{ public Result again() {{ return null; }} public void next() {{}} }} class Box {{ public Result take(int i) {{ return null; }} }} class Calls {{ Result make() {{ return null; }} void run(Box box, int next) {{ {receiver}.next(); }} }}"
         );
@@ -93,14 +93,17 @@ fn unsupported_returns_and_unproven_inner_calls_remain_refused() {
 }
 
 #[test]
-fn return_typing_composes_with_inherited_outer_selection_but_not_call_arguments() {
+fn return_typing_composes_with_inherited_outer_selection_and_call_arguments() {
     let source = "class Result { public void next() {} } class Sub extends Result {} class Box { public Sub take(int i) { return null; } public void accept(Result r) {} } class Calls { void run(Box box) { box.take(1).next(); box.accept(box.take(1)); } }";
     let inherited = query(&project(source), "next();");
     assert_eq!(inherited.status, ResolveStatus::Resolved);
     assert_eq!(inherited.targets.len(), 1);
     assert_eq!(inherited.targets[0].owner, "Result");
     assert_eq!(inherited.targets[0].start_byte, source.find("next()").unwrap() as u32);
-    assert_ne!(query(&project(source), "accept(box").status, ResolveStatus::Resolved);
+    let accepted = query(&project(source), "accept(box");
+    assert_eq!(accepted.status, ResolveStatus::Resolved);
+    assert_eq!(accepted.targets[0].owner, "Box");
+    assert_eq!(accepted.targets[0].start_byte, source.find("accept(Result").unwrap() as u32);
     let override_source =
         source.replace("class Sub extends Result {}", "class Sub extends Result { public void next() {} }");
     let selected = query(&project(&override_source), "next();");
@@ -166,11 +169,14 @@ fn inner_complete_competitors_and_explicit_local_scope_are_required() {
 }
 
 #[test]
-fn method_references_and_deep_chains_remain_refused_without_breaking_inner_queries() {
+fn bounded_chains_resolve_but_method_references_remain_refused() {
     let source = "class Result { public Result next() { return null; } } class Box { public Result take(int i) { return null; } } class Calls { void run(Box box, int next) { box.take(1).next().next(); box.take(1)::next; } }";
     let p = project(source);
     assert_eq!(query(&p, "next;").status, ResolveStatus::ReceiverNotBound);
-    assert_eq!(query(&p, "next();").status, ResolveStatus::ReceiverNotBound);
+    let outer = query(&p, "next();");
+    assert_eq!(outer.status, ResolveStatus::Resolved);
+    assert_eq!(outer.targets[0].owner, "Result");
+    assert_eq!(outer.targets[0].start_byte, source.find("next()").unwrap() as u32);
     let at = source.find("next().next").unwrap() as u32;
     let result = p.resolve_at("Calls.java", at);
     assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
@@ -181,9 +187,10 @@ fn method_references_and_deep_chains_remain_refused_without_breaking_inner_queri
 fn a_call_in_arguments_does_not_activate_receiver_guard() {
     let source = "class Result {} class Box { public Result take(int i) { return null; } public void accept(Result r) {} } class Calls { void run(Box box) { box.accept(box.take(1)); } }";
     let result = query(&project(source), "accept(box");
-    assert_eq!(result.status, ResolveStatus::CallNotResolved);
+    assert_eq!(result.status, ResolveStatus::Resolved);
     assert_eq!(result.targets.len(), 1);
-    assert_eq!(result.targets[0].name, "accept");
+    assert_eq!(result.targets[0].owner, "Box");
+    assert_eq!(result.targets[0].start_byte, source.find("accept(Result").unwrap() as u32);
 }
 
 #[test]

@@ -63,8 +63,9 @@ inference, conversion scoring or call-result receiver propagation.
 
 The later [one-layer call-result receiver proof](docs/CALL_RESULT_RECEIVERS.md)
 composes those strict calls through an explicit nongeneric reference return,
-with declaration-context lookup and one shared budget. Call-result arguments,
-general expression inference and deeper chains remain unsupported.
+with declaration-context lookup and one shared budget. That historical one-layer
+boundary is now extended by [composable source invocation values](docs/COMPOSED_SOURCE_INVOCATIONS.md)
+to bounded nested arguments and receiver chains; general expression inference remains unsupported.
 The subsequent [plain-null strict-argument proof](docs/NULL_STRICT_CALLS.md)
 adds the null invocation conversion to validated reference formals only. Formal
 specificity and complete competitor checks remain unchanged; unknown arguments,
@@ -516,3 +517,11 @@ boundaries. Three real Gson deepCopy queries now select their source subclass.
 The fourth predicted JsonNull query remains deferred because its annotated local
 receiver has no supported type evidence; the original forecast and failure are
 preserved alongside an explicit V2 contract.
+
+### Composable source invocation evidence
+
+[Bounded source invocation values](docs/COMPOSED_SOURCE_INVOCATIONS.md) unify
+receiver chains and nested actual arguments through the same strict selector,
+with declared reference/primitive results and shared work/path-depth limits.
+Binary method selection and descriptor target identity remain high-priority
+separate work; this does not introduce generic or general expression inference.

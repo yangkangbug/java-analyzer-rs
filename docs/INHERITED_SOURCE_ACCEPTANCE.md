@@ -90,7 +90,7 @@ is no old-or-new union. The 36-row count is unchanged. **Three real Gson calls**
 are improved (3001, 6712, 10817); JsonNull is not reported as solved. All other
 prior results, including binary Object.toString at 6612, remain identical.
 
-Current source-selection is exactly 68 rows in groups (16,3,5,8,36). The earlier
+The frozen source-override stage has exactly 68 source-selection rows in groups (16,3,5,8,36). The earlier
 35-query capture still uses `--capture-proof-stage inherited_source`; the new
 36-query capture uses `--capture-proof-stage source_override`. Each checks its
 own binary SHA and complete predecessor expectations. Their prior proof stages
@@ -112,3 +112,43 @@ calls. Rust snapshot regressions own edit/rebuild checks. Original baseline
 records and RED observations are retained under
 `evidence/source-override-20261112/`; candidate acceptance requires the unchanged
 expectations, historical captures, complete optional oracle and aggregate gates.
+
+## Bounded source invocation composition
+
+The next shared stage is `source_invocation`, with predecessor `68d12d9c`.
+`source-invocation-probes.json` retains every one of the 36 override-V2 query
+records (including the deferred annotated-local JsonNull) and adds eight records
+across four real Gson files. All eight were queried on the exact frozen binary:
+
+- JsonArray.java 2405: `result.add(element.deepCopy())` was OverloadNotResolved
+  with five source candidates; expected declaration is JsonArray.add(JsonElement)
+  3703..3706. The enhanced-for local element and the inner abstract source method
+  already resolve; this is not a foreach-binding or runtime-dispatch promise.
+- JsonParserTest 1473, 1543, 1613: final getAsString in three-call receiver chains
+  was ReceiverNotBound; expected declaration is JsonElement 6434..6445.
+- JsonArrayTest 3188, 3246 and JsonObjectTest 6826, 6888: final size in three-call
+  receiver chains was ReceiverNotBound; expected declaration is JsonArray
+  6003..6007. Each preceding call was independently observed as resolved.
+
+These expectations were frozen before the implementation, not inferred as
+successes from syntax. The final candidate was then observed to pass all 44
+complete records, including all eight new selections. Nine actual predecessor
+binary captures also passed their own frozen stages; this does not claim that
+the unavailable ancient strict/parser-baseline binary was executed.
+The 44 complete baseline records, exact source/target hashes and eight true RED
+observations are preserved in `evidence/source-invocation-20261112/`. The shared
+source-selection count is 76 in exact groups (16,3,5,8,44). Current mode requires
+all eight new results and every old record unchanged. The explicit capture
+`--capture-proof-stage source_invocation` pins the old binary and uses the prior
+source_override proof stage with the independent current parser stage. Earlier
+35- and 36-record captures keep their frozen loaders and own binary hashes.
+
+The handwritten suite reuses the existing semantic oracle. It checks source
+invocation types consumed as arguments and receivers, reference and primitive
+returns, static receiver/declaration context, and strict unknown/void/depth/work
+boundaries. Binary method overload selection and descriptor-bearing binary
+identity are separate work, not silently admitted by composing source calls.
+Generic returns, unsupported field/static inputs and arbitrary expressions are
+not counted as improvements merely because their syntax contains a method call.
+Previously frozen oracle refusals can change only through exact hash-pinned
+current-stage overlays, preserving old fixture bytes and explicit baselines.
