@@ -285,6 +285,8 @@ struct ClassPayload {
     // Syntax-only eligibility, never inferred from a same-named method.
     reference_constructor_work: Option<usize>,
     reference_edges: Option<Vec<(Vec<String>, bool)>>,
+    // Scope-independent JVM edge spellings; None marks a dotted-name collision.
+    binary_ancestor_names: BTreeMap<String, Option<String>>,
     binary_root: bool,
     fields: Vec<Member>,
     methods: Vec<Member>,
@@ -2205,6 +2207,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             .is_some_and(|(n, _)| tokens(n, 0).iter().any(|t| t.0 == SyntaxKind::Final)),
         reference_constructor_work: reference_constructor_work(node, start),
         reference_edges: reference_source_edges(node, start),
+        binary_ancestor_names: BTreeMap::new(),
         binary_root: false,
         fields: Vec::new(),
         methods: Vec::new(),
@@ -2667,6 +2670,15 @@ fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
 }
 
 fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
+    let mut binary_ancestor_names = BTreeMap::new();
+    for name in sig.binary_super_class.iter().chain(&sig.binary_interfaces) {
+        let dotted = name.replace(['/', '$'], ".");
+        let slot = binary_ancestor_names.entry(dotted).or_insert_with(|| Some(name.clone()));
+        if slot.as_ref().is_some_and(|prior| prior != name) {
+            *slot = None;
+        }
+    }
+
     #[cfg(test)]
     BINARY_PAYLOAD_BUILDS.with(|count| count.set(count.get() + 1));
     ClassPayload {
@@ -2685,7 +2697,13 @@ fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
         type_variables: Vec::new(),
         primitive_owner: false,
         access: sig.access,
-        reference_inventory: sig.methods.iter().all(|m| descriptor_parameters(&m.descriptor).is_some()),
+        reference_inventory: sig.methods.iter().all(|m| descriptor_parameters(&m.descriptor).is_some())
+            && sig.binary_super_class.as_ref().map(|name| name.replace(['/', '$'], ".")) == sig.super_class
+            && sig
+                .binary_interfaces
+                .iter()
+                .map(|name| name.replace(['/', '$'], "."))
+                .eq(sig.interfaces.iter().cloned()),
         reference_generic: sig.signature.as_ref().is_some_and(|signature| signature.starts_with('<')),
         reference_final: sig.is_final,
         reference_constructor_work: None,
@@ -2696,7 +2714,9 @@ fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
                 .map(|name| (name.split('.').map(str::to_string).collect(), sig.signature.is_none()))
                 .collect(),
         ),
-        binary_root: sig.dotted_name == "java.lang.Object"
+        binary_ancestor_names,
+        binary_root: sig.binary_name == "java/lang/Object"
+            && sig.dotted_name == "java.lang.Object"
             && !sig.is_interface
             && sig.signature.is_none()
             && sig.super_class.is_none()
@@ -3869,6 +3889,8 @@ struct ReferenceCallProof<'a> {
     work_left: usize,
     exhausted: bool,
     graphs: BTreeMap<ClassIdentity, Vec<&'a ClassRec>>,
+    // A bounded declaration subset for this fixed caller, not cached type evidence.
+    caller_locals: Option<Vec<&'a LocalRec>>,
     failure: Option<ResolveResult>,
 }
 impl<'a> ReferenceCallProof<'a> {
@@ -3881,6 +3903,7 @@ impl<'a> ReferenceCallProof<'a> {
             work_left: REFERENCE_PROOF_WORK,
             exhausted: false,
             graphs: BTreeMap::new(),
+            caller_locals: None,
             failure: None,
         }
     }
@@ -4237,7 +4260,28 @@ impl<'a> ReferenceCallProof<'a> {
     fn edge(&mut self, owner: &'a ClassRec, parts: &[String]) -> Option<&'a ClassRec> {
         self.charge(1)?;
         if owner.binary {
-            self.unique_named(owner.scope, &parts.join("."))
+            let dotted = parts.join(".");
+            self.charge(dotted.len().max(1))?;
+            let raw = owner.binary_ancestor_names.get(&dotted)?.as_ref()?;
+            self.charge(raw.len().max(1))?;
+            let target = self.unique_named(owner.scope, &dotted)?;
+            if let Some(signature) = &target.binary_signature {
+                self.charge(signature.binary_name.len().max(1))?;
+                if signature.binary_name != *raw {
+                    return None;
+                }
+            } else {
+                self.charge(target.package.len() + target.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+                let mut binary = target.package.replace('.', "/");
+                if !binary.is_empty() {
+                    binary.push('/');
+                }
+                binary.push_str(&target.nesting.join("$"));
+                if binary != *raw {
+                    return None;
+                }
+            }
+            Some(target)
         } else {
             let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
             self.raw_type(file, parts, owner.name_start)
@@ -4500,12 +4544,21 @@ impl<'a> ReferenceCallProof<'a> {
             // Charge every variable-length part before comparing its contents.
             // Distinct copies too large for this proof conservatively refuse.
             for sig in [a, b] {
-                self.charge(sig.nesting.len() + sig.interfaces.len() + sig.fields.len() + sig.methods.len() + 1)?;
+                self.charge(
+                    sig.nesting.len()
+                        + sig.interfaces.len()
+                        + sig.binary_interfaces.len()
+                        + sig.fields.len()
+                        + sig.methods.len()
+                        + 1,
+                )?;
                 for text in [&sig.origin, &sig.binary_name, &sig.dotted_name, &sig.package]
                     .into_iter()
                     .chain(sig.nesting.iter())
                     .chain(sig.interfaces.iter())
                     .chain(sig.super_class.iter())
+                    .chain(sig.binary_interfaces.iter())
+                    .chain(sig.binary_super_class.iter())
                     .chain(sig.signature.iter())
                 {
                     self.charge(text.len())?;
@@ -4572,20 +4625,34 @@ impl<'a> ReferenceCallProof<'a> {
     // One bounded lookup shared by reference and primitive local evidence.
     // No persistent cache: overlapping, expired or untyped declarations still refuse.
     fn visible_argument_local(&mut self, name: &str, at: u32) -> Option<&'a LocalRec> {
-        self.charge(self.file.locals.len())?;
-        let mut locals = self.file.locals.iter().filter(|local| {
-            local.name == name
-                && local.start >= self.caller_start
-                && local.end <= self.caller_end
-                && local.scope_start <= at
-                && at < local.scope_end
-                && local.visible_from <= at
-        });
-        let local = locals.next()?;
-        if locals.next().is_some() || !matches!(local.kind, TargetKind::Local | TargetKind::Parameter) {
-            return None;
+        let mut found = None;
+        let mut count = 0;
+        let mut consider = |local: &'a LocalRec| {
+            if local.name == name && local.scope_start <= at && at < local.scope_end && local.visible_from <= at {
+                found = Some(local);
+                count += 1;
+            }
+        };
+        if self.caller_locals.is_none() {
+            self.charge(self.file.locals.len())?;
+            let mut subset = Vec::new();
+            for local in &self.file.locals {
+                if local.start >= self.caller_start && local.end <= self.caller_end {
+                    subset.push(local);
+                    // The initial full scan also answers this lookup. Do not
+                    // immediately scan the newly collected subset a second time.
+                    consider(local);
+                }
+            }
+            self.caller_locals = Some(subset);
+        } else {
+            self.charge(self.caller_locals.as_ref()?.len().max(1))?;
+            for local in self.caller_locals.as_ref()? {
+                consider(local);
+            }
         }
-        Some(local)
+        let local = found?;
+        (count == 1 && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)).then_some(local)
     }
 
     fn actual(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {

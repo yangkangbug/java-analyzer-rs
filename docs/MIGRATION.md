@@ -73,3 +73,21 @@ compilations. Default CLI v1 target serialization remains its old projection;
 `declaration --target-details` opts into versioned detail. See
 [BINARY_METHOD_CALLS.md](BINARY_METHOD_CALLS.md) for scope and conservative
 contractions, including no binary return propagation or source location.
+
+## Raw binary ancestor identity
+
+`ClassSignature` now retains `binary_super_class: Option<String>` and
+`binary_interfaces: Vec<String>` in original class-file order. These are JVM
+internal names, preserving `/` and `$`; existing `super_class` and `interfaces`
+remain dotted projections for compatibility with readers. Code constructing a
+`ClassSignature` literal must supply both new fields consistently with the dotted
+fields. Prefer `parse_class_bytes` for actual class-file inputs.
+
+Strict reference proofs require the selected ancestor's original binary name to
+match the recorded edge. Source replacements use their package and nesting to
+construct the corresponding JVM name. Missing or ambiguous raw identities refuse
+the proof rather than substituting a same-dotted-name declaration. Exact Object
+root evidence requires `java/lang/Object`, not just its dotted spelling. This
+corrects previously unsupported success for a missing `Outer$Inner` ancestor
+replaced by the unrelated package-level `Outer/Inner`. It does not add nested-type
+selection, inherited binary calls, generic substitution or a persistent identity.

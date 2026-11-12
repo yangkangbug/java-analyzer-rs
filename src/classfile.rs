@@ -61,8 +61,14 @@ pub struct ClassSignature {
     pub dotted_name: String,
     pub package: String,
     pub nesting: Vec<String>,
+    /// Legacy dotted superclass projection. Use `binary_super_class` for JVM identity.
     pub super_class: Option<String>,
+    /// Legacy dotted interface projections, in class-file order.
     pub interfaces: Vec<String>,
+    /// Original JVM superclass name, preserving `/` and `$`.
+    pub binary_super_class: Option<String>,
+    /// Original JVM interface names, preserving `/` and `$`, in class-file order.
+    pub binary_interfaces: Vec<String>,
     pub signature: Option<String>,
     pub major: u16,
     pub minor: u16,
@@ -272,6 +278,8 @@ fn signature_from(
         nesting,
         super_class: class.super_class.as_ref().map(|name| dotted_binary(name)),
         interfaces: class.interfaces.iter().map(|name| dotted_binary(name)).collect(),
+        binary_super_class: class.super_class.as_ref().map(|name| name.to_string()),
+        binary_interfaces: class.interfaces.iter().map(|name| name.to_string()).collect(),
         signature: signature_attr(&class.attributes),
         major: class.major_version,
         minor: class.minor_version,

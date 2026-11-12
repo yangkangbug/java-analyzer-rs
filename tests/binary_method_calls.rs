@@ -378,3 +378,129 @@ fn protected_failure_hints_cannot_walk_unbounded_caller_inheritance() {
     assert_eq!(result.status, ResolveStatus::ReceiverNotBound);
     assert!(result.targets.is_empty());
 }
+
+fn ancestor_identity_project(raw: &str, interface: bool) -> Project {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    let interfaces = if interface { vec![raw] } else { vec![] };
+    p.add_class_bytes(
+        "Lib.class",
+        &class_bytes(
+            "lib/Lib",
+            Some(if interface { "java/lang/Object" } else { raw }),
+            0x21,
+            &interfaces,
+            &[],
+            &[member(1, "pick", "(I)V")],
+            None,
+        ),
+    )
+    .unwrap();
+    p
+}
+
+#[test]
+fn raw_binary_ancestor_names_do_not_accept_dotted_aliases() {
+    for interface in [true, false] {
+        let mut p = ancestor_identity_project("lib/Outer$Inner", interface);
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+        p.add_class_bytes(
+            "Alias.class",
+            &class_bytes(
+                "lib/Outer/Inner",
+                Some("java/lang/Object"),
+                if interface { 0x601 } else { 0x21 },
+                &[],
+                &[],
+                &[],
+                None,
+            ),
+        )
+        .unwrap();
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "interface={interface}");
+    }
+}
+
+#[test]
+fn exact_raw_binary_ancestor_names_preserve_closed_graphs() {
+    for interface in [true, false] {
+        let mut p = ancestor_identity_project("lib/Outer$Inner", interface);
+        p.add_class_bytes(
+            "Actual.class",
+            &class_bytes(
+                "lib/Outer$Inner",
+                Some("java/lang/Object"),
+                if interface { 0x601 } else { 0x21 },
+                &[],
+                &[],
+                &[],
+                None,
+            ),
+        )
+        .unwrap();
+        assert_eq!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "interface={interface}");
+        // Both spelling aliases present remain ambiguous, never choose the raw
+        // match by silently dropping another indexed declaration.
+        p.add_class_bytes(
+            "Alias.class",
+            &class_bytes(
+                "lib/Outer/Inner",
+                Some("java/lang/Object"),
+                if interface { 0x601 } else { 0x21 },
+                &[],
+                &[],
+                &[],
+                None,
+            ),
+        )
+        .unwrap();
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    }
+}
+
+#[test]
+fn source_replacement_must_match_the_raw_binary_ancestor_identity() {
+    let mut wrong = ancestor_identity_project("lib/Outer$Inner", false);
+    wrong.insert("Alias.java", "package lib.Outer; public class Inner {}");
+    assert_ne!(query(&wrong, "pick(1)").status, ResolveStatus::Resolved);
+    let mut exact = ancestor_identity_project("lib/Parent", false);
+    exact.insert("Parent.java", "package lib; public class Parent {}");
+    assert_eq!(query(&exact, "pick(1)").status, ResolveStatus::Resolved);
+    let mut nested = ancestor_identity_project("lib/Outer$Inner", false);
+    nested.insert("Outer.java", "package lib; public class Outer { public static class Inner {} }");
+    // Static source member classes retain their existing unsupported inventory.
+    assert_ne!(query(&nested, "pick(1)").status, ResolveStatus::Resolved);
+    nested.insert("Outer.java", "package lib; public class Outer { public class Inner {} }");
+    assert_eq!(query(&nested, "pick(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn distinct_raw_ancestor_edges_with_one_dotted_name_never_collapse() {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.pick(1); } }", &[]);
+    p.add_class_bytes("I.class", &class_bytes("lib/Outer/Inner", Some("java/lang/Object"), 0x601, &[], &[], &[], None))
+        .unwrap();
+    p.add_class_bytes(
+        "Lib.class",
+        &class_bytes(
+            "lib/Lib",
+            Some("java/lang/Object"),
+            0x21,
+            &["lib/Outer$Inner", "lib/Outer/Inner"],
+            &[],
+            &[member(1, "pick", "(I)V")],
+            None,
+        ),
+    )
+    .unwrap();
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn class_signatures_preserve_raw_ancestor_order_beside_legacy_projections() {
+    let bytes =
+        class_bytes("lib/Lib", Some("lib/Outer$Base"), 0x21, &["lib/Outer$First", "lib/Outer/Second"], &[], &[], None);
+    let signature = java_engine::parse_class_bytes("Lib.class", &bytes).unwrap();
+    assert_eq!(signature.binary_super_class.as_deref(), Some("lib/Outer$Base"));
+    assert_eq!(signature.super_class.as_deref(), Some("lib.Outer.Base"));
+    assert_eq!(signature.binary_interfaces, ["lib/Outer$First", "lib/Outer/Second"]);
+    assert_eq!(signature.interfaces, ["lib.Outer.First", "lib.Outer.Second"]);
+}

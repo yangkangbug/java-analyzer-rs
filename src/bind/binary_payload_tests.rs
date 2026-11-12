@@ -10,6 +10,8 @@ fn signature(origin: &str, name: &str, parent: Option<&str>) -> Arc<ClassSignatu
         nesting: vec![simple.into()],
         super_class: parent.map(str::to_string),
         interfaces: Vec::new(),
+        binary_super_class: parent.map(|name| name.replace('.', "/")),
+        binary_interfaces: Vec::new(),
         signature: None,
         major: 61,
         minor: 0,
@@ -422,4 +424,67 @@ fn method_identity_preserves_raw_dollar_name_without_claiming_nested_lookup() {
     assert_eq!(identity.descriptor, "()I");
     assert_eq!(identity.linking_context, BinaryLinkingContext::Standalone);
     assert_eq!(target.owner, "lib.Outer.Inner");
+}
+
+#[test]
+fn raw_ancestor_payloads_require_consistent_projections_and_exact_object_root() {
+    let mut sig = signature("Object.class", "java.lang.Object", None);
+    assert!(class_from_signature(&sig).binary_root);
+    Arc::make_mut(&mut sig).binary_name = "java/lang$Object".into();
+    assert!(!class_from_signature(&sig).binary_root);
+
+    let mut sig = signature("Lib.class", "lib.Lib", Some("java.lang.Object"));
+    assert!(class_from_signature(&sig).reference_inventory);
+    Arc::make_mut(&mut sig).binary_super_class = None;
+    assert!(!class_from_signature(&sig).reference_inventory);
+    Arc::make_mut(&mut sig).binary_super_class = Some("lib/Other".into());
+    assert!(!class_from_signature(&sig).reference_inventory);
+    Arc::make_mut(&mut sig).binary_super_class = Some("java/lang/Object".into());
+    Arc::make_mut(&mut sig).interfaces = vec!["lib.I".into()];
+    assert!(!class_from_signature(&sig).reference_inventory);
+    Arc::make_mut(&mut sig).binary_interfaces = vec!["lib/I".into()];
+    assert!(class_from_signature(&sig).reference_inventory);
+    Arc::make_mut(&mut sig).binary_interfaces.push("lib/Extra".into());
+    assert!(!class_from_signature(&sig).reference_inventory);
+}
+
+#[test]
+fn repeated_raw_ancestor_cannot_revive_a_dotted_collision() {
+    let mut sig = signature("Lib.class", "lib.Lib", Some("java.lang.Object"));
+    let data = Arc::make_mut(&mut sig);
+    data.interfaces = vec!["lib.Outer.I".into(); 3];
+    data.binary_interfaces = vec!["lib/Outer$I".into(), "lib/Outer/I".into(), "lib/Outer$I".into()];
+    let payload = class_from_signature(&sig);
+    assert!(payload.reference_inventory);
+    assert_eq!(payload.binary_ancestor_names.get("lib.Outer.I"), Some(&None));
+}
+
+#[test]
+fn caller_local_subset_reuses_only_scanned_declarations_and_keeps_scope_checks() {
+    let text = "class Use { void run(int x) { int y = x; { int x = 0; y = x; } } void other(int z) {} }";
+    let mut project = Project::new();
+    project.insert("Use.java", text);
+    let index = Index::build(&project.files, &project.binaries);
+    let file = &index.files[0];
+    let start = text.find("void run").unwrap() as u32;
+    let end = text.find("void other").unwrap() as u32;
+    let at = text.find("x;").unwrap() as u32;
+    let mut proof = ReferenceCallProof::new(&index, file, start, end);
+    assert!(proof.visible_argument_local("x", at).is_some());
+    let remaining = proof.work_left;
+    let count = proof.caller_locals.as_ref().unwrap().len();
+    assert_eq!(count, 3);
+    assert_eq!(remaining, REFERENCE_PROOF_WORK - file.locals.len());
+    assert!(proof.visible_argument_local("x", at).is_some());
+    assert_eq!(proof.work_left, remaining - count);
+    assert!(proof.visible_argument_local("x", text.rfind("x;").unwrap() as u32).is_none(), "overlap still refuses");
+    assert!(proof.visible_argument_local("z", at).is_none(), "other caller cannot leak");
+    assert!(proof.visible_argument_local("x", end + 1).is_none(), "scope still expires");
+    proof.work_left = 0;
+    assert!(proof.visible_argument_local("x", at).is_none(), "cache cannot bypass exhaustion");
+    assert!(proof.exhausted);
+    let mut fresh = ReferenceCallProof::new(&index, file, start, end);
+    fresh.work_left = file.locals.len() - 1;
+    assert!(fresh.visible_argument_local("x", at).is_none());
+    assert!(fresh.caller_locals.is_none(), "incomplete scan cannot populate subset");
 }
