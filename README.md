@@ -498,3 +498,11 @@ Gson coverage adds Number and JsonElement cases only; eighteen other cast-null
 probes, including String/Boolean/Character overload sets, remain conservative
 refusals. No general casts, receivers, generic conversion or cross-scope widening
 are enabled.
+
+### Declaring-aware inherited source calls
+
+The [bounded inherited-source proof](docs/INHERITED_SOURCE_CALLS.md) collects
+plain source-parent candidates and applies existing strict invocation selection.
+Unique inherited methods and different-signature parent/child overloads retain
+the actual declaring class and its type context. Same-signature overrides,
+interface/default methods and binary/generic parent selection remain unsupported.

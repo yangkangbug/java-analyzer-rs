@@ -105,8 +105,72 @@ casts = importlib.util.module_from_spec(_cast_spec)
 _cast_spec.loader.exec_module(casts)
 
 
-def current_probes(fixture):
+def frozen_cast_probes(fixture):
     return casts.overlay(second, fixture, frozen_binary_probes(fixture))
+
+
+INHERITED_PLAN_SHA256 = '1b40aa2f447a11ebfcdda3d74015634316b071b80da0f801dba8e981208463bc'
+
+
+def inherited_plan(path=None):
+    path = second.CORPUS / 'inherited-source-probes.json' if path is None else path
+    second.reject_symlinks(path.absolute())
+    data = path.read_bytes()
+    second.same(hashlib.sha256(data).hexdigest(), INHERITED_PLAN_SHA256, 'complete inherited-source plan')
+    return json.loads(data, object_pairs_hook=second.unique_json_object)
+
+
+def inherited_probes(fixture, historical):
+    plan = inherited_plan()
+    second.same(plan['source_archive_sha256'], fixture.metadata['inputs']['sources']['sha256'], 'inherited source archive')
+    for name, checksum in plan['historical_artifact_sha256'].items():
+        second.same(second.digest(second.CORPUS / name), checksum, 'preserved inherited-stage artifact ' + name)
+    for name, checksum in plan['source_sha256'].items():
+        data = fixture.sources[name]
+        second.same(hashlib.sha256(data).hexdigest(), checksum, 'inherited source bytes ' + name)
+        second.reject_symlinks(fixture.source_root / name)
+        second.same((fixture.source_root / name).read_bytes(), data, 'unchanged extracted inherited source')
+    queries = plan['queries']
+    second.same(len(queries), 35, 'exact inherited-stage query count')
+    second.same(len(historical), 29, 'exact cast predecessor count')
+    for q, old in zip(queries[:29], historical):
+        second.same(q, dict(old, baseline=old['expected']), 'complete preserved predecessor query')
+    second.same([q['byte'] for q in queries[29:]], [5305,2883,3001,6712,10817,6612], 'exact inherited additions')
+    second.same([q['byte'] for q in queries if q['baseline'] != q['expected']], [5305,2883], 'only two inherited improvements')
+    second.same(len({q['id'] for q in queries}), 35, 'unique inherited query IDs')
+    for q in queries:
+        expression = q['expression'].encode()
+        second.same(fixture.sources[q['file']][q['byte']:q['byte']+len(expression)], expression, 'exact inherited expression')
+        for stage in ('baseline','expected'):
+            for target in q[stage]['targets']:
+                second.expected_target(target, fixture)  # validates owner compilation and UTF-16 materialization
+                if target['origin'] == 'source':
+                    second.same(fixture.sources[target['path']][target['start']:target['end']], target['name'].encode(), 'exact inherited declaration')
+    return queries
+
+
+def current_probes(fixture):
+    return inherited_probes(fixture, frozen_cast_probes(fixture))
+
+
+def capture_proof_stage(native, fixture, stage):
+    """Explicit additive capture; legacy feature captures retain their old entry points."""
+    second.same(stage, 'inherited_source', 'supported additive capture stage')
+    second.same(second.digest(native), inherited_plan()['baseline_native_sha256'], 'exact 39fa8de8 predecessor binary')
+    queries = current_probes(fixture)
+    before = second.all_source_hashes(fixture)
+    request = second.document(fixture, 'inherited-capture.json', {'schema_version':1, 'queries':[
+        {'compilation':q['compilation'], 'file':'sources/'+q['file'], 'position':{'encoding':'utf8','offset':q['byte']}} for q in queries]})
+    response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
+    second.check_reference_call_response(response, queries, fixture, 'baseline')
+    preservation = string.run(native, fixture, proof_stage='cast_null', parser_stage='current')
+    after = second.all_source_hashes(fixture)
+    second.same(before, after, 'capture sources unchanged')
+    second.same(after, preservation['source_sha256_after'], 'capture preservation sources')
+    return {'validation':'baseline_verified_not_acceptance', 'comparison_stage':'inherited_source_baseline_39fa8de8',
+            'plan_sha256':INHERITED_PLAN_SHA256, 'native_sha256':second.digest(native),
+            'queries':second.portable_queries(response,fixture), 'preservation':preservation,
+            'source_sha256_before':before, 'source_sha256_after':after, 'source_bytes_unchanged':True}
 
 
 def check_response(response, queries, fixture, capture_baseline=False):
@@ -133,7 +197,7 @@ def run(native, fixture, capture_baseline=False):
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
         'comparison_stage': 'baseline' if capture_baseline else 'expected',
-        'plan_sha256': PLAN_SHA256 if capture_baseline else casts.PLAN_SHA256,
+        'plan_sha256': PLAN_SHA256 if capture_baseline else INHERITED_PLAN_SHA256,
         'historical_strict_plan_sha256': PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture),
         'preservation': preservation, 'source_sha256_before': before, 'source_sha256_after': after,
@@ -148,13 +212,15 @@ def main():
     parser.add_argument('inputs_dir', type=Path)
     parser.add_argument('--native', type=Path, required=True)
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--capture-baseline', action='store_true')
+    captures = parser.add_mutually_exclusive_group()
+    captures.add_argument('--capture-baseline', action='store_true')
+    captures.add_argument('--capture-proof-stage', choices=['inherited_source'])
     args = parser.parse_args()
     native = args.native.resolve()
     second.require(native.is_file(), 'native executable must exist')
     with tempfile.TemporaryDirectory(prefix='strict-reference-') as tmp:
         fixture = second.prepare_fixture(args.inputs_dir, Path(tmp) / 'fixture')
-        report = run(native, fixture, args.capture_baseline)
+        report = capture_proof_stage(native, fixture, args.capture_proof_stage) if args.capture_proof_stage else run(native, fixture, args.capture_baseline)
         text = json.dumps(report, indent=2) + '\n'
         if args.output:
             second.reject_symlinks(args.output.absolute())

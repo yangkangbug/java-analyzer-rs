@@ -104,7 +104,7 @@ fn unsupported_competitors_and_incomplete_platform_do_not_manufacture_a_winner()
             true,
         ),
         (
-            "class Base { public void pick(long x) {} } class Box extends Base { public void pick(int x) {} } class Calls { void run(Box box) { box.pick(1); } }",
+            "class Base { public void pick(int x) {} } class Box extends Base { public void pick(int x) {} } class Calls { void run(Box box) { box.pick(1); } }",
             true,
         ),
         (
@@ -120,6 +120,8 @@ fn unsupported_competitors_and_incomplete_platform_do_not_manufacture_a_winner()
 
 #[test]
 fn mixed_actuals_and_one_return_receiver_are_additive() {
+    let inherited = "class Base { public void pick(long x) {} } class Box extends Base { public void pick(int x) {} } class Calls { void run(Box box) { box.pick(1); } }";
+    winner(&project(inherited, true), "pick(1)", "pick(int x)");
     let source = "class Value { public void later() {} } class Box { public Value pick(int x) { return null; } public Value pick(long x) { return null; } public void mixed(int x, Value v) {} } class Calls { void run(Box box, Value value) { box.pick(1).later(); box.mixed(0, value); } }";
     let p = project(source, true);
     winner(&p, "pick(1)", "pick(int x)");

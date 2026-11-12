@@ -1,0 +1,2 @@
+missing	missing_parent	CallNotResolved	child@broken.Child	compiler.err.cant.resolve
+unknown	unknown_signature	SignatureNotCompared	child@broken.Child,parent@broken.Parent	compiler.err.cant.resolve

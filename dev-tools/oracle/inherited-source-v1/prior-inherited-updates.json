@@ -1,0 +1,1717 @@
+{
+  "schema_version": 1,
+  "artifacts": {
+    "primitive-v1/expected.tsv": "47329ce0402e85c5419841a7038b47ab391dbe1954fceaeb716bba235db8c7ec",
+    "primitive-v1/source/SingletonCalls.java": "13bf36c53849d20961ae9e3eeb1d28eb8405efe5f45c56badb09b6063553d08f",
+    "primitive-v1/source/Boundaries.java": "60f8ceac1c150c890d9d3f36dd7c65b1bd206b205d9a82b4b54145b5d0259a74",
+    "primitive-v1/source/PrimitiveCalls.java": "6c548452811e158392a1712be7e5c4e69a09a473dd52c8a121abc75daa0ec79d",
+    "qualified-primitive-v1/expected.tsv": "e49164663e5c07787e852ff9494ea2d387f8efd85cf9cd73e6ecb5cb947e0f92",
+    "qualified-primitive-v1/source/Derived.java": "5daf4b8f3aa5de917372cf2199f1901879002fbede8b4a0e9ad0e1b47f1cccef",
+    "qualified-primitive-v1/source/Use.java": "d5d54e9ff239e3aae2116b5a53acb56a94d02876c47166e8c90131bc657905db",
+    "qualified-primitive-v1/source/Target.java": "de75b9bf0eac5ffef561af68353ca007d0d22f59f169997a7c0118e5815c82f9",
+    "qualified-primitive-v1/source/Base.java": "cc05634a85799e873b4e8e56f4443347f5094b806e3a852a536c27281c5d642e",
+    "reference-v1/expected.tsv": "4ff75571bafefa277a2f3308bec18536a996f6cd65c4d1a1c01e3bded57b65f3",
+    "reference-v1/source/model/Branch.java": "49873e2da5f2670ae2a195a02b75f8ccf01333ecae629f6a6ddf69de2d103490",
+    "reference-v1/source/model/Marker.java": "2156a84e83c1e34ebdb7c4b7b9ce607e5cf7ac9eea418c73808f6331e72db27b",
+    "reference-v1/source/model/Mid.java": "d9c179eb34bfc2dbd728cc59be42dcae7a6b3bdf0b477155362aaad461f6da5c",
+    "reference-v1/source/model/Leaf.java": "d550da82a4d4cde40731bebe27d67f98c45cb57723cd51a1065f7cea0e076e0d",
+    "reference-v1/source/model/BinaryReceiver.java": "f222b03cd51ad5ebe245eb967d148ad5906edba84feef2777a3e87c6c15ccd23",
+    "reference-v1/source/model/InheritedReceiver.java": "8c3c089b93463092422a9219d5c7e91b72bfe510c56a1d684739842a4acb32a4",
+    "reference-v1/source/model/Root.java": "c17649caf2e993199129464cdf79cae688065df5e779b1b52ba8606da8011ad1",
+    "reference-v1/source/model/Target.java": "b7efc41703e9c0f763b444c8747ea7ac022011fa843d4001fa762f0a1c689f3d",
+    "reference-v1/source/model/Parent.java": "eb141d1c8c2f9757268cabe76dba016b645372c09f9b198855183f8303de883f",
+    "reference-v1/source/model/GenericReceiver.java": "d729c6df044c4d8f04e178a83c460e47d11efa6136d799bf148fb90e8fdd580a",
+    "reference-v1/source/model/GenericMethods.java": "83f884497340d11a353d4d572b80af1ecb2191dba3711ee3d902289d6cb74dad",
+    "reference-v1/source/model/Other.java": "bcfd47293050110f2588b28cf098f9737f9222c05bc3a28e15117ce6902a197e",
+    "reference-v1/source/app/Use.java": "a69d5a4388e2a6d43db5ccacd22bad3b4728699ffd6ab44b165158572cae91f6",
+    "strict-reference-v1/expected.tsv": "7ac814de59f47eae5bfe378a716a5426e3e7b8e9d6348bff110f66004e7c2f16",
+    "strict-reference-v1/source/Derived.java": "2a9f577dbb5f45a3d80d5d83314c070b5a37bff728d32cba84f583e27078f665",
+    "strict-reference-v1/source/Use.java": "51f6e311f64f7bcef9c6655f3df369c80dd69173be569ecb04d3307c79854086",
+    "strict-reference-v1/source/Child.java": "462b313bf7a125185b84bfdfc2cb9c05def166bbe175c1ac4b1972140ae95385",
+    "strict-reference-v1/source/Target.java": "d01e7de7a06d6a4892bd0d0bcd20545b2e88d627cc13c0fc64260d0f990784ae",
+    "strict-reference-v1/source/Parent.java": "259e99972dd57fec70402c17336903d17f2a2f41c2d7c65bb3a9787c2304624b",
+    "strict-reference-v1/source/Base.java": "c2641fbdda5539f34d82f4770fd74781d424d9a7348b259ebc07173be9f661fd",
+    "return-v1/primitive-updates.tsv": "d870db06a0dcfb3fa584b1ffeb7e45c0c6e1cac508bb88b4588767e783375c8e",
+    "reference-return-v1/receiver-guard-updates.json": "67f7255a63062c94f08e3fb37332000bd5dac65bd81c2fd225b6a84d2938b10f",
+    "null-actual-v1/prior-null-updates.json": "e36c67d997df2a5a4d0258f559b2fc98bfbb9d47ed439b47dea402c0294d6e20"
+  },
+  "updates": {
+    "primitive-v1": {
+      "query": "inheritance_refusal",
+      "before": [
+        "OverloadNotResolved",
+        "inherited_float@oracle.InheritanceCalls",
+        "inherited_float@oracle.InheritanceCalls,inherited_double@oracle.Parent"
+      ],
+      "after": [
+        "Resolved",
+        "inherited_float@oracle.InheritanceCalls",
+        "inherited_float@oracle.InheritanceCalls"
+      ],
+      "queries": {
+        "generic_refusal": [
+          "Boundaries.java",
+          1722,
+          1729,
+          "generic"
+        ],
+        "varargs_refusal": [
+          "Boundaries.java",
+          1763,
+          1769,
+          "spread"
+        ],
+        "boxing_refusal": [
+          "Boundaries.java",
+          1805,
+          1810,
+          "boxed"
+        ],
+        "unboxing_refusal": [
+          "Boundaries.java",
+          1845,
+          1850,
+          "unbox"
+        ],
+        "null_refusal": [
+          "Boundaries.java",
+          1890,
+          1898,
+          "nullable"
+        ],
+        "call_expression_refusal": [
+          "Boundaries.java",
+          1943,
+          1950,
+          "unknown"
+        ],
+        "conditional_expression_refusal": [
+          "Boundaries.java",
+          2004,
+          2011,
+          "unknown"
+        ],
+        "lambda_refusal": [
+          "Boundaries.java",
+          2060,
+          2066,
+          "lambda"
+        ],
+        "receiver_refusal": [
+          "Boundaries.java",
+          2114,
+          2122,
+          "receiver"
+        ],
+        "generic_same_arity_refusal": [
+          "Boundaries.java",
+          2167,
+          2179,
+          "mixedGeneric"
+        ],
+        "instance_refusal": [
+          "Boundaries.java",
+          2244,
+          2252,
+          "instance"
+        ],
+        "inheritance_refusal": [
+          "Boundaries.java",
+          2428,
+          2437,
+          "inherited"
+        ],
+        "float_array": [
+          "PrimitiveCalls.java",
+          1267,
+          1271,
+          "pick"
+        ],
+        "double_array": [
+          "PrimitiveCalls.java",
+          1309,
+          1313,
+          "pick"
+        ],
+        "mixed_promote": [
+          "PrimitiveCalls.java",
+          1352,
+          1356,
+          "pick"
+        ],
+        "widen_byte": [
+          "PrimitiveCalls.java",
+          1388,
+          1393,
+          "widen"
+        ],
+        "widen_char": [
+          "PrimitiveCalls.java",
+          1422,
+          1427,
+          "widen"
+        ],
+        "identity_int": [
+          "PrimitiveCalls.java",
+          1458,
+          1464,
+          "choose"
+        ],
+        "identity_long": [
+          "PrimitiveCalls.java",
+          1496,
+          1502,
+          "choose"
+        ],
+        "arity_typed": [
+          "PrimitiveCalls.java",
+          1532,
+          1538,
+          "choose"
+        ],
+        "nested_outer_refusal": [
+          "PrimitiveCalls.java",
+          1580,
+          1584,
+          "pick"
+        ],
+        "nested_inner": [
+          "PrimitiveCalls.java",
+          1603,
+          1607,
+          "pick"
+        ],
+        "literal_index_refusal": [
+          "PrimitiveCalls.java",
+          1654,
+          1658,
+          "pick"
+        ],
+        "receiver_spine_inner": [
+          "PrimitiveCalls.java",
+          1704,
+          1709,
+          "chain"
+        ],
+        "receiver_spine_outer_refusal": [
+          "PrimitiveCalls.java",
+          1747,
+          1752,
+          "other"
+        ],
+        "enhanced_for_scope_refusal": [
+          "PrimitiveCalls.java",
+          2040,
+          2045,
+          "scope"
+        ],
+        "single_boxing_refusal": [
+          "SingletonCalls.java",
+          444,
+          447,
+          "box"
+        ],
+        "single_varargs_refusal": [
+          "SingletonCalls.java",
+          488,
+          494,
+          "spread"
+        ],
+        "single_zero_varargs_refusal": [
+          "SingletonCalls.java",
+          543,
+          549,
+          "spread"
+        ],
+        "single_result_refusal": [
+          "SingletonCalls.java",
+          588,
+          593,
+          "plain"
+        ],
+        "single_identity": [
+          "SingletonCalls.java",
+          634,
+          639,
+          "plain"
+        ],
+        "single_zero_arity": [
+          "SingletonCalls.java",
+          675,
+          680,
+          "empty"
+        ]
+      },
+      "declarations": {
+        "inherited_double": [
+          "Boundaries.java",
+          207,
+          216,
+          "inherited"
+        ],
+        "generic_one": [
+          "Boundaries.java",
+          296,
+          303,
+          "generic"
+        ],
+        "generic_two": [
+          "Boundaries.java",
+          356,
+          363,
+          "generic"
+        ],
+        "spread_float": [
+          "Boundaries.java",
+          429,
+          435,
+          "spread"
+        ],
+        "spread_double": [
+          "Boundaries.java",
+          502,
+          508,
+          "spread"
+        ],
+        "boxed_long": [
+          "Boundaries.java",
+          571,
+          576,
+          "boxed"
+        ],
+        "boxed_double": [
+          "Boundaries.java",
+          635,
+          640,
+          "boxed"
+        ],
+        "unbox_long": [
+          "Boundaries.java",
+          697,
+          702,
+          "unbox"
+        ],
+        "unbox_double": [
+          "Boundaries.java",
+          761,
+          766,
+          "unbox"
+        ],
+        "null_a": [
+          "Boundaries.java",
+          816,
+          824,
+          "nullable"
+        ],
+        "null_b": [
+          "Boundaries.java",
+          869,
+          877,
+          "nullable"
+        ],
+        "unknown_float": [
+          "Boundaries.java",
+          933,
+          940,
+          "unknown"
+        ],
+        "unknown_double": [
+          "Boundaries.java",
+          1002,
+          1009,
+          "unknown"
+        ],
+        "lambda_task": [
+          "Boundaries.java",
+          1105,
+          1111,
+          "lambda"
+        ],
+        "lambda_long": [
+          "Boundaries.java",
+          1159,
+          1165,
+          "lambda"
+        ],
+        "receiver_float": [
+          "Boundaries.java",
+          1218,
+          1226,
+          "receiver"
+        ],
+        "receiver_double": [
+          "Boundaries.java",
+          1289,
+          1297,
+          "receiver"
+        ],
+        "instance_float": [
+          "Boundaries.java",
+          1352,
+          1360,
+          "instance"
+        ],
+        "instance_double": [
+          "Boundaries.java",
+          1416,
+          1424,
+          "instance"
+        ],
+        "generic_same_t": [
+          "Boundaries.java",
+          1486,
+          1498,
+          "mixedGeneric"
+        ],
+        "generic_same_float": [
+          "Boundaries.java",
+          1559,
+          1571,
+          "mixedGeneric"
+        ],
+        "inherited_float": [
+          "Boundaries.java",
+          2339,
+          2348,
+          "inherited"
+        ],
+        "carrier_other": [
+          "PrimitiveCalls.java",
+          209,
+          214,
+          "other"
+        ],
+        "pick_float": [
+          "PrimitiveCalls.java",
+          290,
+          294,
+          "pick"
+        ],
+        "pick_double": [
+          "PrimitiveCalls.java",
+          362,
+          366,
+          "pick"
+        ],
+        "pick_three": [
+          "PrimitiveCalls.java",
+          435,
+          439,
+          "pick"
+        ],
+        "pick_float_varargs": [
+          "PrimitiveCalls.java",
+          525,
+          529,
+          "pick"
+        ],
+        "pick_double_varargs": [
+          "PrimitiveCalls.java",
+          602,
+          606,
+          "pick"
+        ],
+        "widen_long": [
+          "PrimitiveCalls.java",
+          669,
+          674,
+          "widen"
+        ],
+        "widen_double": [
+          "PrimitiveCalls.java",
+          741,
+          746,
+          "widen"
+        ],
+        "choose_int": [
+          "PrimitiveCalls.java",
+          810,
+          816,
+          "choose"
+        ],
+        "choose_long": [
+          "PrimitiveCalls.java",
+          879,
+          885,
+          "choose"
+        ],
+        "choose_two": [
+          "PrimitiveCalls.java",
+          947,
+          953,
+          "choose"
+        ],
+        "chain_float": [
+          "PrimitiveCalls.java",
+          1028,
+          1033,
+          "chain"
+        ],
+        "chain_double": [
+          "PrimitiveCalls.java",
+          1101,
+          1106,
+          "chain"
+        ],
+        "loop_scope_float": [
+          "PrimitiveCalls.java",
+          1846,
+          1851,
+          "scope"
+        ],
+        "loop_scope_double": [
+          "PrimitiveCalls.java",
+          1924,
+          1929,
+          "scope"
+        ],
+        "single_box": [
+          "SingletonCalls.java",
+          148,
+          151,
+          "box"
+        ],
+        "single_spread": [
+          "SingletonCalls.java",
+          202,
+          208,
+          "spread"
+        ],
+        "single_plain": [
+          "SingletonCalls.java",
+          263,
+          268,
+          "plain"
+        ],
+        "single_empty": [
+          "SingletonCalls.java",
+          319,
+          324,
+          "empty"
+        ]
+      },
+      "previous_current": {
+        "float_array": [
+          "Resolved",
+          "pick_float@oracle.PrimitiveCalls",
+          "pick_float@oracle.PrimitiveCalls"
+        ],
+        "double_array": [
+          "Resolved",
+          "pick_double@oracle.PrimitiveCalls",
+          "pick_double@oracle.PrimitiveCalls"
+        ],
+        "mixed_promote": [
+          "Resolved",
+          "pick_double@oracle.PrimitiveCalls",
+          "pick_double@oracle.PrimitiveCalls"
+        ],
+        "widen_byte": [
+          "Resolved",
+          "widen_long@oracle.PrimitiveCalls",
+          "widen_long@oracle.PrimitiveCalls"
+        ],
+        "widen_char": [
+          "Resolved",
+          "widen_long@oracle.PrimitiveCalls",
+          "widen_long@oracle.PrimitiveCalls"
+        ],
+        "identity_int": [
+          "Resolved",
+          "choose_int@oracle.PrimitiveCalls",
+          "choose_int@oracle.PrimitiveCalls"
+        ],
+        "identity_long": [
+          "Resolved",
+          "choose_long@oracle.PrimitiveCalls",
+          "choose_long@oracle.PrimitiveCalls"
+        ],
+        "arity_typed": [
+          "Resolved",
+          "choose_two@oracle.PrimitiveCalls",
+          "choose_two@oracle.PrimitiveCalls"
+        ],
+        "generic_refusal": [
+          "OverloadNotResolved",
+          "generic_one@oracle.Boundaries",
+          "generic_one@oracle.Boundaries,generic_two@oracle.Boundaries"
+        ],
+        "varargs_refusal": [
+          "OverloadNotResolved",
+          "spread_float@oracle.Boundaries",
+          "spread_float@oracle.Boundaries,spread_double@oracle.Boundaries"
+        ],
+        "boxing_refusal": [
+          "SignatureNotCompared",
+          "boxed_long@oracle.Boundaries",
+          "boxed_long@oracle.Boundaries,boxed_double@oracle.Boundaries"
+        ],
+        "unboxing_refusal": [
+          "OverloadNotResolved",
+          "unbox_long@oracle.Boundaries",
+          "unbox_long@oracle.Boundaries,unbox_double@oracle.Boundaries"
+        ],
+        "null_refusal": [
+          "OverloadNotResolved",
+          "null_b@oracle.Boundaries",
+          "null_a@oracle.Boundaries,null_b@oracle.Boundaries"
+        ],
+        "call_expression_refusal": [
+          "Resolved",
+          "unknown_float@oracle.Boundaries",
+          "unknown_float@oracle.Boundaries"
+        ],
+        "conditional_expression_refusal": [
+          "OverloadNotResolved",
+          "unknown_float@oracle.Boundaries",
+          "unknown_float@oracle.Boundaries,unknown_double@oracle.Boundaries"
+        ],
+        "lambda_refusal": [
+          "OverloadNotResolved",
+          "lambda_task@oracle.Boundaries",
+          "lambda_task@oracle.Boundaries,lambda_long@oracle.Boundaries"
+        ],
+        "receiver_refusal": [
+          "OverloadNotResolved",
+          "receiver_float@oracle.Boundaries",
+          "receiver_float@oracle.Boundaries,receiver_double@oracle.Boundaries"
+        ],
+        "instance_refusal": [
+          "OverloadNotResolved",
+          "instance_float@oracle.Boundaries",
+          "instance_float@oracle.Boundaries,instance_double@oracle.Boundaries"
+        ],
+        "inheritance_refusal": [
+          "OverloadNotResolved",
+          "inherited_float@oracle.InheritanceCalls",
+          "inherited_float@oracle.InheritanceCalls,inherited_double@oracle.Parent"
+        ],
+        "nested_outer_refusal": [
+          "Resolved",
+          "pick_float@oracle.PrimitiveCalls",
+          "pick_float@oracle.PrimitiveCalls"
+        ],
+        "nested_inner": [
+          "Resolved",
+          "pick_float@oracle.PrimitiveCalls",
+          "pick_float@oracle.PrimitiveCalls"
+        ],
+        "generic_same_arity_refusal": [
+          "SignatureNotCompared",
+          "generic_same_float@oracle.Boundaries",
+          "generic_same_t@oracle.Boundaries,generic_same_float@oracle.Boundaries"
+        ],
+        "single_boxing_refusal": [
+          "CallNotResolved",
+          "single_box@oracle.SingletonCalls",
+          "single_box@oracle.SingletonCalls"
+        ],
+        "single_varargs_refusal": [
+          "CallNotResolved",
+          "single_spread@oracle.SingletonCalls",
+          "single_spread@oracle.SingletonCalls"
+        ],
+        "single_zero_varargs_refusal": [
+          "CallNotResolved",
+          "single_spread@oracle.SingletonCalls",
+          "single_spread@oracle.SingletonCalls"
+        ],
+        "single_result_refusal": [
+          "Resolved",
+          "single_plain@oracle.SingletonCalls",
+          "single_plain@oracle.SingletonCalls"
+        ],
+        "single_identity": [
+          "Resolved",
+          "single_plain@oracle.SingletonCalls",
+          "single_plain@oracle.SingletonCalls"
+        ],
+        "single_zero_arity": [
+          "Resolved",
+          "single_empty@oracle.SingletonCalls",
+          "single_empty@oracle.SingletonCalls"
+        ],
+        "literal_index_refusal": [
+          "OverloadNotResolved",
+          "pick_float@oracle.PrimitiveCalls",
+          "pick_float@oracle.PrimitiveCalls,pick_double@oracle.PrimitiveCalls,pick_three@oracle.PrimitiveCalls,pick_float_varargs@oracle.PrimitiveCalls,pick_double_varargs@oracle.PrimitiveCalls"
+        ],
+        "receiver_spine_inner": [
+          "Resolved",
+          "chain_float@oracle.PrimitiveCalls",
+          "chain_float@oracle.PrimitiveCalls"
+        ],
+        "receiver_spine_outer_refusal": [
+          "ReceiverNotBound",
+          "carrier_other@oracle.Carrier",
+          "-"
+        ],
+        "enhanced_for_scope_refusal": [
+          "OverloadNotResolved",
+          "loop_scope_double@oracle.LoopScope",
+          "loop_scope_float@oracle.LoopScope,loop_scope_double@oracle.LoopScope"
+        ]
+      }
+    },
+    "qualified-primitive-v1": {
+      "query": "primitive_inherited",
+      "before": [
+        "OverloadNotResolved",
+        "inherited_int@qualified.Base",
+        "inherited_int@qualified.Base,inherited_long@qualified.Derived"
+      ],
+      "after": [
+        "Resolved",
+        "inherited_int@qualified.Base",
+        "inherited_int@qualified.Base"
+      ],
+      "queries": {
+        "primitive_literal": [
+          "Use.java",
+          287,
+          291,
+          "pick"
+        ],
+        "primitive_int": [
+          "Use.java",
+          319,
+          323,
+          "pick"
+        ],
+        "primitive_byte": [
+          "Use.java",
+          352,
+          356,
+          "pick"
+        ],
+        "primitive_reverse": [
+          "Use.java",
+          388,
+          395,
+          "reverse"
+        ],
+        "primitive_widen": [
+          "Use.java",
+          425,
+          430,
+          "widen"
+        ],
+        "primitive_char": [
+          "Use.java",
+          459,
+          464,
+          "chars"
+        ],
+        "primitive_boolean": [
+          "Use.java",
+          496,
+          500,
+          "bool"
+        ],
+        "primitive_unknown": [
+          "Use.java",
+          534,
+          538,
+          "pick"
+        ],
+        "primitive_long_suffix": [
+          "Use.java",
+          580,
+          584,
+          "pick"
+        ],
+        "primitive_boxed": [
+          "Use.java",
+          615,
+          620,
+          "boxed"
+        ],
+        "primitive_varargs": [
+          "Use.java",
+          652,
+          659,
+          "varargs"
+        ],
+        "primitive_generic": [
+          "Use.java",
+          691,
+          698,
+          "generic"
+        ],
+        "primitive_inherited": [
+          "Use.java",
+          732,
+          741,
+          "inherited"
+        ],
+        "primitive_mixed": [
+          "Use.java",
+          771,
+          776,
+          "mixed"
+        ]
+      },
+      "declarations": {
+        "inherited_int": [
+          "Base.java",
+          148,
+          157,
+          "inherited"
+        ],
+        "inherited_long": [
+          "Derived.java",
+          165,
+          174,
+          "inherited"
+        ],
+        "pick_int": [
+          "Target.java",
+          145,
+          149,
+          "pick"
+        ],
+        "pick_long": [
+          "Target.java",
+          188,
+          192,
+          "pick"
+        ],
+        "reverse_long": [
+          "Target.java",
+          235,
+          242,
+          "reverse"
+        ],
+        "reverse_int": [
+          "Target.java",
+          284,
+          291,
+          "reverse"
+        ],
+        "widen_int": [
+          "Target.java",
+          330,
+          335,
+          "widen"
+        ],
+        "widen_short": [
+          "Target.java",
+          376,
+          381,
+          "widen"
+        ],
+        "chars_int": [
+          "Target.java",
+          422,
+          427,
+          "chars"
+        ],
+        "chars_char": [
+          "Target.java",
+          467,
+          472,
+          "chars"
+        ],
+        "bool_int": [
+          "Target.java",
+          511,
+          515,
+          "bool"
+        ],
+        "bool_boolean": [
+          "Target.java",
+          557,
+          561,
+          "bool"
+        ],
+        "boxed": [
+          "Target.java",
+          600,
+          605,
+          "boxed"
+        ],
+        "varargs": [
+          "Target.java",
+          646,
+          653,
+          "varargs"
+        ],
+        "generic_ref": [
+          "Target.java",
+          701,
+          708,
+          "generic"
+        ],
+        "generic_int": [
+          "Target.java",
+          747,
+          754,
+          "generic"
+        ],
+        "mixed_int": [
+          "Target.java",
+          793,
+          798,
+          "mixed"
+        ],
+        "mixed_long": [
+          "Target.java",
+          848,
+          853,
+          "mixed"
+        ]
+      },
+      "previous_current": {
+        "primitive_literal": [
+          "Resolved",
+          "pick_int@qualified.Target",
+          "pick_int@qualified.Target"
+        ],
+        "primitive_int": [
+          "Resolved",
+          "pick_int@qualified.Target",
+          "pick_int@qualified.Target"
+        ],
+        "primitive_byte": [
+          "Resolved",
+          "pick_int@qualified.Target",
+          "pick_int@qualified.Target"
+        ],
+        "primitive_reverse": [
+          "Resolved",
+          "reverse_int@qualified.Target",
+          "reverse_int@qualified.Target"
+        ],
+        "primitive_widen": [
+          "Resolved",
+          "widen_short@qualified.Target",
+          "widen_short@qualified.Target"
+        ],
+        "primitive_char": [
+          "Resolved",
+          "chars_char@qualified.Target",
+          "chars_char@qualified.Target"
+        ],
+        "primitive_boolean": [
+          "Resolved",
+          "bool_boolean@qualified.Target",
+          "bool_boolean@qualified.Target"
+        ],
+        "primitive_unknown": [
+          "OverloadNotResolved",
+          "pick_int@qualified.Target",
+          "pick_int@qualified.Target,pick_long@qualified.Target"
+        ],
+        "primitive_long_suffix": [
+          "OverloadNotResolved",
+          "pick_long@qualified.Target",
+          "pick_int@qualified.Target,pick_long@qualified.Target"
+        ],
+        "primitive_boxed": [
+          "CallNotResolved",
+          "boxed@qualified.Target",
+          "boxed@qualified.Target"
+        ],
+        "primitive_varargs": [
+          "CallNotResolved",
+          "varargs@qualified.Target",
+          "varargs@qualified.Target"
+        ],
+        "primitive_generic": [
+          "SignatureNotCompared",
+          "generic_int@qualified.Target",
+          "generic_ref@qualified.Target,generic_int@qualified.Target"
+        ],
+        "primitive_inherited": [
+          "OverloadNotResolved",
+          "inherited_int@qualified.Base",
+          "inherited_int@qualified.Base,inherited_long@qualified.Derived"
+        ],
+        "primitive_mixed": [
+          "Resolved",
+          "mixed_int@qualified.Target",
+          "mixed_int@qualified.Target"
+        ]
+      }
+    },
+    "reference-v1": {
+      "query": "reference_inherited_refusal",
+      "before": [
+        "OverloadNotResolved",
+        "inherited_mid@model.InheritedReceiver",
+        "inherited_mid@model.InheritedReceiver,parent_root@model.Parent"
+      ],
+      "after": [
+        "Resolved",
+        "inherited_mid@model.InheritedReceiver",
+        "inherited_mid@model.InheritedReceiver"
+      ],
+      "queries": {
+        "reference_identity": [
+          "app/Use.java",
+          841,
+          846,
+          "exact"
+        ],
+        "reference_mid_identity": [
+          "app/Use.java",
+          899,
+          903,
+          "pick"
+        ],
+        "reference_root_identity": [
+          "app/Use.java",
+          956,
+          960,
+          "pick"
+        ],
+        "reference_unrelated": [
+          "app/Use.java",
+          1010,
+          1014,
+          "pick"
+        ],
+        "reference_multihop": [
+          "app/Use.java",
+          1064,
+          1068,
+          "only"
+        ],
+        "reference_specificity": [
+          "app/Use.java",
+          1120,
+          1124,
+          "pick"
+        ],
+        "reference_local_receiver": [
+          "app/Use.java",
+          1236,
+          1241,
+          "exact"
+        ],
+        "reference_two_arguments": [
+          "app/Use.java",
+          1296,
+          1301,
+          "cross"
+        ],
+        "reference_binary_endpoint": [
+          "app/Use.java",
+          1363,
+          1369,
+          "binary"
+        ],
+        "reference_to_object": [
+          "app/Use.java",
+          1421,
+          1427,
+          "binary"
+        ],
+        "reference_interface": [
+          "app/Use.java",
+          1477,
+          1483,
+          "marker"
+        ],
+        "reference_one_arity": [
+          "app/Use.java",
+          1535,
+          1540,
+          "arity"
+        ],
+        "reference_two_arity": [
+          "app/Use.java",
+          1590,
+          1595,
+          "arity"
+        ],
+        "reference_zero_arity": [
+          "app/Use.java",
+          1652,
+          1657,
+          "empty"
+        ],
+        "reference_generic_ancestor": [
+          "app/Use.java",
+          1710,
+          1714,
+          "pick"
+        ],
+        "reference_inherited_refusal": [
+          "app/Use.java",
+          1773,
+          1777,
+          "pick"
+        ],
+        "reference_generic_refusal": [
+          "app/Use.java",
+          1832,
+          1836,
+          "pick"
+        ],
+        "reference_binary_refusal": [
+          "app/Use.java",
+          1889,
+          1893,
+          "pick"
+        ],
+        "reference_new_argument_refusal": [
+          "app/Use.java",
+          1954,
+          1958,
+          "pick"
+        ],
+        "reference_null_refusal": [
+          "app/Use.java",
+          2017,
+          2021,
+          "only"
+        ],
+        "reference_field_refusal": [
+          "app/Use.java",
+          2075,
+          2079,
+          "pick"
+        ],
+        "reference_return_refusal": [
+          "app/Use.java",
+          2135,
+          2139,
+          "pick"
+        ],
+        "reference_new_receiver_refusal": [
+          "app/Use.java",
+          2206,
+          2211,
+          "exact"
+        ],
+        "reference_receiver_return_refusal": [
+          "app/Use.java",
+          2275,
+          2280,
+          "exact"
+        ]
+      },
+      "declarations": {
+        "binary_leaf": [
+          "model/BinaryReceiver.java",
+          180,
+          184,
+          "pick"
+        ],
+        "generic_t": [
+          "model/GenericMethods.java",
+          157,
+          161,
+          "pick"
+        ],
+        "generic_leaf": [
+          "model/GenericMethods.java",
+          208,
+          212,
+          "pick"
+        ],
+        "iterable_root": [
+          "model/GenericReceiver.java",
+          248,
+          252,
+          "pick"
+        ],
+        "iterable_mid": [
+          "model/GenericReceiver.java",
+          302,
+          306,
+          "pick"
+        ],
+        "inherited_mid": [
+          "model/InheritedReceiver.java",
+          175,
+          179,
+          "pick"
+        ],
+        "parent_root": [
+          "model/Parent.java",
+          147,
+          151,
+          "pick"
+        ],
+        "pick_root": [
+          "model/Target.java",
+          145,
+          149,
+          "pick"
+        ],
+        "pick_mid": [
+          "model/Target.java",
+          195,
+          199,
+          "pick"
+        ],
+        "pick_other": [
+          "model/Target.java",
+          246,
+          250,
+          "pick"
+        ],
+        "exact_leaf": [
+          "model/Target.java",
+          299,
+          304,
+          "exact"
+        ],
+        "exact_other": [
+          "model/Target.java",
+          353,
+          358,
+          "exact"
+        ],
+        "only_root": [
+          "model/Target.java",
+          406,
+          410,
+          "only"
+        ],
+        "empty": [
+          "model/Target.java",
+          453,
+          458,
+          "empty"
+        ],
+        "arity_one": [
+          "model/Target.java",
+          495,
+          500,
+          "arity"
+        ],
+        "arity_two": [
+          "model/Target.java",
+          547,
+          552,
+          "arity"
+        ],
+        "binary_object": [
+          "model/Target.java",
+          616,
+          622,
+          "binary"
+        ],
+        "binary_other": [
+          "model/Target.java",
+          674,
+          680,
+          "binary"
+        ],
+        "marker_interface": [
+          "model/Target.java",
+          735,
+          741,
+          "marker"
+        ],
+        "marker_other": [
+          "model/Target.java",
+          793,
+          799,
+          "marker"
+        ],
+        "cross_root": [
+          "model/Target.java",
+          848,
+          853,
+          "cross"
+        ],
+        "cross_mid": [
+          "model/Target.java",
+          913,
+          918,
+          "cross"
+        ]
+      },
+      "previous_current": {
+        "reference_identity": [
+          "Resolved",
+          "exact_leaf@model.Target",
+          "exact_leaf@model.Target"
+        ],
+        "reference_mid_identity": [
+          "Resolved",
+          "pick_mid@model.Target",
+          "pick_mid@model.Target"
+        ],
+        "reference_root_identity": [
+          "Resolved",
+          "pick_root@model.Target",
+          "pick_root@model.Target"
+        ],
+        "reference_unrelated": [
+          "Resolved",
+          "pick_other@model.Target",
+          "pick_other@model.Target"
+        ],
+        "reference_multihop": [
+          "Resolved",
+          "only_root@model.Target",
+          "only_root@model.Target"
+        ],
+        "reference_specificity": [
+          "Resolved",
+          "pick_mid@model.Target",
+          "pick_mid@model.Target"
+        ],
+        "reference_local_receiver": [
+          "Resolved",
+          "exact_leaf@model.Target",
+          "exact_leaf@model.Target"
+        ],
+        "reference_two_arguments": [
+          "Resolved",
+          "cross_mid@model.Target",
+          "cross_mid@model.Target"
+        ],
+        "reference_binary_endpoint": [
+          "Resolved",
+          "binary_object@model.Target",
+          "binary_object@model.Target"
+        ],
+        "reference_to_object": [
+          "Resolved",
+          "binary_object@model.Target",
+          "binary_object@model.Target"
+        ],
+        "reference_interface": [
+          "Resolved",
+          "marker_interface@model.Target",
+          "marker_interface@model.Target"
+        ],
+        "reference_one_arity": [
+          "Resolved",
+          "arity_one@model.Target",
+          "arity_one@model.Target"
+        ],
+        "reference_two_arity": [
+          "Resolved",
+          "arity_two@model.Target",
+          "arity_two@model.Target"
+        ],
+        "reference_zero_arity": [
+          "Resolved",
+          "empty@model.Target",
+          "empty@model.Target"
+        ],
+        "reference_generic_ancestor": [
+          "Resolved",
+          "iterable_mid@model.GenericReceiver",
+          "iterable_mid@model.GenericReceiver"
+        ],
+        "reference_inherited_refusal": [
+          "OverloadNotResolved",
+          "inherited_mid@model.InheritedReceiver",
+          "inherited_mid@model.InheritedReceiver,parent_root@model.Parent"
+        ],
+        "reference_generic_refusal": [
+          "SignatureNotCompared",
+          "generic_leaf@model.GenericMethods",
+          "generic_t@model.GenericMethods,generic_leaf@model.GenericMethods"
+        ],
+        "reference_binary_refusal": [
+          "OverloadNotResolved",
+          "binary_leaf@model.BinaryReceiver",
+          "binary_leaf@model.BinaryReceiver,class:dep/BinaryParent.class@dep.BinaryParent#pick"
+        ],
+        "reference_new_argument_refusal": [
+          "OverloadNotResolved",
+          "pick_mid@model.Target",
+          "pick_root@model.Target,pick_mid@model.Target,pick_other@model.Target"
+        ],
+        "reference_null_refusal": [
+          "Resolved",
+          "only_root@model.Target",
+          "only_root@model.Target"
+        ],
+        "reference_field_refusal": [
+          "OverloadNotResolved",
+          "pick_mid@model.Target",
+          "pick_root@model.Target,pick_mid@model.Target,pick_other@model.Target"
+        ],
+        "reference_return_refusal": [
+          "OverloadNotResolved",
+          "pick_mid@model.Target",
+          "pick_root@model.Target,pick_mid@model.Target,pick_other@model.Target"
+        ],
+        "reference_new_receiver_refusal": [
+          "Unresolved",
+          "exact_leaf@model.Target",
+          "-"
+        ],
+        "reference_receiver_return_refusal": [
+          "ReceiverNotBound",
+          "exact_leaf@model.Target",
+          "-"
+        ]
+      }
+    },
+    "strict-reference-v1": {
+      "query": "strict_inherited",
+      "before": [
+        "OverloadNotResolved",
+        "inherited_parent@strict.Derived",
+        "inherited_parent@strict.Derived,inherited_scalar@strict.Base"
+      ],
+      "after": [
+        "Resolved",
+        "inherited_parent@strict.Derived",
+        "inherited_parent@strict.Derived"
+      ],
+      "queries": {
+        "strict_string": [
+          "Use.java",
+          235,
+          242,
+          "literal"
+        ],
+        "strict_child": [
+          "Use.java",
+          275,
+          279,
+          "pick"
+        ],
+        "strict_identity": [
+          "Use.java",
+          309,
+          313,
+          "pick"
+        ],
+        "strict_specific": [
+          "Use.java",
+          343,
+          351,
+          "specific"
+        ],
+        "strict_reverse": [
+          "Use.java",
+          380,
+          387,
+          "reverse"
+        ],
+        "strict_mixed": [
+          "Use.java",
+          414,
+          419,
+          "mixed"
+        ],
+        "strict_wrapper": [
+          "Use.java",
+          450,
+          457,
+          "wrapper"
+        ],
+        "strict_loose": [
+          "Use.java",
+          484,
+          489,
+          "loose"
+        ],
+        "strict_array": [
+          "Use.java",
+          516,
+          521,
+          "array"
+        ],
+        "strict_unknown": [
+          "Use.java",
+          550,
+          557,
+          "unknown"
+        ],
+        "strict_static": [
+          "Use.java",
+          588,
+          592,
+          "stat"
+        ],
+        "strict_private": [
+          "Use.java",
+          621,
+          625,
+          "priv"
+        ],
+        "strict_generic": [
+          "Use.java",
+          654,
+          661,
+          "generic"
+        ],
+        "strict_varargs": [
+          "Use.java",
+          692,
+          699,
+          "varargs"
+        ],
+        "strict_inherited": [
+          "Use.java",
+          730,
+          739,
+          "inherited"
+        ]
+      },
+      "declarations": {
+        "inherited_scalar": [
+          "Base.java",
+          148,
+          157,
+          "inherited"
+        ],
+        "inherited_parent": [
+          "Derived.java",
+          164,
+          173,
+          "inherited"
+        ],
+        "string_ref": [
+          "Target.java",
+          190,
+          197,
+          "literal"
+        ],
+        "string_scalar": [
+          "Target.java",
+          243,
+          250,
+          "literal"
+        ],
+        "parent": [
+          "Target.java",
+          286,
+          290,
+          "pick"
+        ],
+        "scalar": [
+          "Target.java",
+          329,
+          333,
+          "pick"
+        ],
+        "object": [
+          "Target.java",
+          369,
+          377,
+          "specific"
+        ],
+        "specific_scalar": [
+          "Target.java",
+          425,
+          433,
+          "specific"
+        ],
+        "specific_parent": [
+          "Target.java",
+          478,
+          486,
+          "specific"
+        ],
+        "reverse_parent": [
+          "Target.java",
+          533,
+          540,
+          "reverse"
+        ],
+        "reverse_scalar": [
+          "Target.java",
+          587,
+          594,
+          "reverse"
+        ],
+        "reverse_object": [
+          "Target.java",
+          638,
+          645,
+          "reverse"
+        ],
+        "mixed_ref": [
+          "Target.java",
+          687,
+          692,
+          "mixed"
+        ],
+        "mixed_scalar": [
+          "Target.java",
+          747,
+          752,
+          "mixed"
+        ],
+        "mixed_other": [
+          "Target.java",
+          803,
+          808,
+          "mixed"
+        ],
+        "wrapper_object": [
+          "Target.java",
+          862,
+          869,
+          "wrapper"
+        ],
+        "wrapper_scalar": [
+          "Target.java",
+          916,
+          923,
+          "wrapper"
+        ],
+        "loose_scalar": [
+          "Target.java",
+          965,
+          970,
+          "loose"
+        ],
+        "array_parent": [
+          "Target.java",
+          1012,
+          1017,
+          "array"
+        ],
+        "array_primitive": [
+          "Target.java",
+          1065,
+          1070,
+          "array"
+        ],
+        "unknown_parent": [
+          "Target.java",
+          1116,
+          1123,
+          "unknown"
+        ],
+        "unknown_scalar": [
+          "Target.java",
+          1170,
+          1177,
+          "unknown"
+        ],
+        "static_parent": [
+          "Target.java",
+          1220,
+          1224,
+          "stat"
+        ],
+        "static_scalar": [
+          "Target.java",
+          1277,
+          1281,
+          "stat"
+        ],
+        "private_scalar": [
+          "Target.java",
+          1326,
+          1330,
+          "priv"
+        ],
+        "private_parent": [
+          "Target.java",
+          1374,
+          1378,
+          "priv"
+        ],
+        "generic_scalar": [
+          "Target.java",
+          1429,
+          1436,
+          "generic"
+        ],
+        "generic_parent": [
+          "Target.java",
+          1485,
+          1492,
+          "generic"
+        ],
+        "varargs_scalar": [
+          "Target.java",
+          1549,
+          1556,
+          "varargs"
+        ],
+        "varargs_parent": [
+          "Target.java",
+          1603,
+          1610,
+          "varargs"
+        ]
+      },
+      "previous_current": {
+        "strict_child": [
+          "Resolved",
+          "parent@strict.Target",
+          "parent@strict.Target"
+        ],
+        "strict_identity": [
+          "Resolved",
+          "parent@strict.Target",
+          "parent@strict.Target"
+        ],
+        "strict_specific": [
+          "Resolved",
+          "specific_parent@strict.Target",
+          "specific_parent@strict.Target"
+        ],
+        "strict_reverse": [
+          "Resolved",
+          "reverse_parent@strict.Target",
+          "reverse_parent@strict.Target"
+        ],
+        "strict_mixed": [
+          "Resolved",
+          "mixed_ref@strict.Target",
+          "mixed_ref@strict.Target"
+        ],
+        "strict_wrapper": [
+          "OverloadNotResolved",
+          "wrapper_object@strict.Target",
+          "wrapper_object@strict.Target,wrapper_scalar@strict.Target"
+        ],
+        "strict_loose": [
+          "CallNotResolved",
+          "loose_scalar@strict.Target",
+          "loose_scalar@strict.Target"
+        ],
+        "strict_array": [
+          "OverloadNotResolved",
+          "array_parent@strict.Target",
+          "array_parent@strict.Target,array_primitive@strict.Target"
+        ],
+        "strict_unknown": [
+          "Resolved",
+          "unknown_parent@strict.Target",
+          "unknown_parent@strict.Target"
+        ],
+        "strict_static": [
+          "OverloadNotResolved",
+          "static_parent@strict.Target",
+          "static_parent@strict.Target,static_scalar@strict.Target"
+        ],
+        "strict_private": [
+          "OverloadNotResolved",
+          "private_parent@strict.Target",
+          "private_parent@strict.Target,private_scalar@strict.Target"
+        ],
+        "strict_generic": [
+          "SignatureNotCompared",
+          "generic_parent@strict.Target",
+          "generic_parent@strict.Target,generic_scalar@strict.Target"
+        ],
+        "strict_varargs": [
+          "OverloadNotResolved",
+          "varargs_parent@strict.Target",
+          "varargs_parent@strict.Target,varargs_scalar@strict.Target"
+        ],
+        "strict_inherited": [
+          "OverloadNotResolved",
+          "inherited_parent@strict.Derived",
+          "inherited_parent@strict.Derived,inherited_scalar@strict.Base"
+        ],
+        "strict_string": [
+          "Resolved",
+          "string_ref@strict.Target",
+          "string_ref@strict.Target"
+        ]
+      }
+    }
+  }
+}

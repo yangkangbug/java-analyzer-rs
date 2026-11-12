@@ -93,10 +93,17 @@ fn unsupported_returns_and_unproven_inner_calls_remain_refused() {
 }
 
 #[test]
-fn return_typing_does_not_enable_call_arguments_or_inherited_outer_selection() {
+fn return_typing_composes_with_inherited_outer_selection_but_not_call_arguments() {
     let source = "class Result { public void next() {} } class Sub extends Result {} class Box { public Sub take(int i) { return null; } public void accept(Result r) {} } class Calls { void run(Box box) { box.take(1).next(); box.accept(box.take(1)); } }";
-    assert_ne!(query(&project(source), "next();").status, ResolveStatus::Resolved);
+    let inherited = query(&project(source), "next();");
+    assert_eq!(inherited.status, ResolveStatus::Resolved);
+    assert_eq!(inherited.targets.len(), 1);
+    assert_eq!(inherited.targets[0].owner, "Result");
+    assert_eq!(inherited.targets[0].start_byte, source.find("next()").unwrap() as u32);
     assert_ne!(query(&project(source), "accept(box").status, ResolveStatus::Resolved);
+    let override_source =
+        source.replace("class Sub extends Result {}", "class Sub extends Result { public void next() {} }");
+    assert_ne!(query(&project(&override_source), "next();").status, ResolveStatus::Resolved);
 }
 
 #[test]

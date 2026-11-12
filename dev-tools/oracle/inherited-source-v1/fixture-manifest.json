@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "files": {
+    "baseline.tsv": "047b8ba5fb8b610beb66fea608c9eac5a0a157f5f71803ec5c5480d576b679ba",
+    "expected.tsv": "7a7ec3af3028a488802f1ee9294e0f7ed50843124a6f12d4263fdd846cc33ff2",
+    "files.tsv": "f773a180e197aef472b29e05b7750785c417f273dd0e8d40d536dc72ecdf3b5c",
+    "invalid/missing/Use.java": "201abad80303fcf2fe1d180c95c1e3e60413aaff943e1f975e6e63e5f0e576ac",
+    "invalid/unknown/Use.java": "2b61edd73dcf5966c836efa2c865ae4e25502eb6adc8d2e6d967a071ade0a376",
+    "invalid.tsv": "37f457a1da7980ccf1d73491b955f986f60e9ef9b1c62fc2ab64e328d9478309",
+    "source/base/Parent.java": "789d6eaae3f509a7a73ea70037d3e5edc953be7ddebbe7b3e0dee7ba25173121",
+    "source/client/Child.java": "d0b7ce066e6362fc13da95d3636aa917971081757d49bca9115df548a708b5c8",
+    "source/client/Use.java": "eb88f3a838785e91d4ff718fd85da641d8d4d4913d5da004892bace137bdc565",
+    "source/client/Value.java": "9a1c9537aa5be913ea56a60aa7aca4f53fb5745f5c16e7e34f52963ed2ce0737",
+    "source/core/Use.java": "76066e2e967c4b2589cc729f86b9e8c38f3a899331b69f490cb81d096d099320",
+    "source/model/Value.java": "e037cf643a24f4932206fc36fd74882519e58aac0b89b6bef686dd9a2a12f809",
+    "prior-inherited-updates.json": "026ff82c7672ce6e7fd3ad05c9d5af52f0f16682fa38d679cecdfd3e1faa0bca"
+  }
+}

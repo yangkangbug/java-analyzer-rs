@@ -162,5 +162,75 @@ class ReferenceFixtureTests(unittest.TestCase):
                     oracle.reference_invalid_fixtures()
 
 
+
+class InheritedSourceContractTests(unittest.TestCase):
+    def setUp(self):
+        self.root, self.ds, self.qs, self.req, self.current, self.old = oracle.inherited_source_fixture()
+        self.platform = Path('/unused')
+        self.javac = {}
+        for q, (_, selected, _) in self.current.items():
+            marker, owner = selected.split('@'); path, start, end, name = self.ds[marker]
+            self.javac[q] = [path, 'METHOD', owner, name, str(start), str(end)]
+
+    def native(self, contract):
+        return {q: [status, str(len(names.split(','))), *[oracle.reference_target(self.ds, n, self.platform) for n in names.split(',')]]
+                for q, (status, _, names) in contract.items()}
+
+    def compare(self, contract, native):
+        oracle.compare_reference(contract, self.qs, self.ds, self.javac, native, self.platform)
+
+    def test_exact_stages_and_declaring_import_owner(self):
+        current, old = self.native(self.current), self.native(self.old)
+        self.compare(self.current, current); self.compare(self.old, old)
+        with self.assertRaises(AssertionError): self.compare(self.current, old)
+        with self.assertRaises(AssertionError): self.compare(self.old, current)
+        self.assertEqual(sum(current[q] != old[q] for q in current), 6)
+        bad = copy.deepcopy(current); bad['declaring_import'] = current['child_shadow']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_complete_candidate_metadata_and_inventory(self):
+        rows = self.native(self.current)
+        for q, row in rows.items():
+            bad = copy.deepcopy(rows); bad[q][0] = 'Resolved' if row[0] != 'Resolved' else 'CallNotResolved'
+            with self.assertRaises(AssertionError): self.compare(self.current, bad)
+            for i in range(2, len(row)):
+                for field in range(6):
+                    bad = copy.deepcopy(rows); cells = bad[q][i].split('|'); cells[field] += 'wrong'; bad[q][i] = '|'.join(cells)
+                    with self.assertRaises(AssertionError): self.compare(self.current, bad)
+                bad = copy.deepcopy(rows); bad[q].append(row[i]); bad[q][1] = str(int(row[1])+1)
+                with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad.pop('unique_parent')
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+        bad = copy.deepcopy(rows); bad['extra'] = rows['unique_parent']
+        with self.assertRaises(AssertionError): self.compare(self.current, bad)
+
+    def test_current_overlays_pin_entire_previous_stage(self):
+        import json
+        plan = json.loads((self.root/'prior-inherited-updates.json').read_text())
+        for suite in ('qualified-primitive-v1', 'reference-v1', 'strict-reference-v1'):
+            update = plan['updates'][suite]
+            expected = {k: tuple(v) for k, v in update['previous_current'].items()}
+            queries = {k: tuple(v) for k, v in update['queries'].items()}
+            declarations = {k: tuple(v) for k, v in update['declarations'].items()}
+            result = oracle.current_inherited_expectations(suite, expected, queries, declarations)
+            self.assertEqual([k for k in result if result[k] != expected[k]], [update['query']])
+            self.assertEqual(result[update['query']], tuple(update['after']))
+            with self.assertRaises(AssertionError): oracle.current_inherited_expectations(suite, result, queries, declarations)
+            for kind in ('expected', 'queries', 'declarations'):
+                args = [copy.deepcopy(expected), copy.deepcopy(queries), copy.deepcopy(declarations)]
+                position = ('expected', 'queries', 'declarations').index(kind)
+                key = next(iter(args[position])); args[position][key] = ('wrong',)
+                with self.assertRaises(AssertionError): oracle.current_inherited_expectations(suite, *args)
+        with self.assertRaises(AssertionError): oracle.current_inherited_expectations('primitive-v1', {}, {}, {})
+
+    def test_pinned_source_and_stage_forecast_reject_mutations(self):
+        for name in ('source/core/Use.java', 'source/base/Parent.java', 'source/client/Value.java',
+                     'expected.tsv', 'baseline.tsv', 'invalid/missing/Use.java', 'invalid/unknown/Use.java',
+                     'prior-inherited-updates.json', 'prior-inherited-revision.json', 'history/forecast-first-failure.log', 'fixture-manifest.json'):
+            with tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); root = base/'inherited-source-v1'; shutil.copytree(self.root, root)
+                p = root/name; p.write_bytes(p.read_bytes()+b'changed')
+                with patch.object(oracle, 'ORACLE', base), self.assertRaises(AssertionError): oracle.inherited_source_fixture()
+
 if __name__ == "__main__":
     unittest.main()

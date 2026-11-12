@@ -148,9 +148,11 @@ fn null_parentheses_keep_shared_depth_budget() {
 }
 
 #[test]
-fn null_does_not_enable_inherited_selection() {
+fn null_composes_with_inherited_selection_but_not_override() {
     let source = "class A {} class Base { public void pick(A a) {} } class Box extends Base {} class Calls { void run(Box box) { box.pick(null); } }";
-    refused(source, "pick(null)", 1);
+    winner(source, "pick(null)", "pick(A a)");
+    let overridden = source.replace("class Box extends Base {}", "class Box extends Base { public void pick(A a) {} }");
+    refused(&overridden, "pick(null)", 2);
 }
 
 #[test]

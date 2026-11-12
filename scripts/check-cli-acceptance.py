@@ -335,6 +335,34 @@ def check_declarations(response, queries, targets, source_root, platform, source
                 }, f"{identifier}: exact declaration range")
 
 
+INHERITED_PRESERVATION_SHA256 = '573cf8d3b94ac18a86bd9ffa5d69a988fee499ade0606662b4490995bfde3300'
+
+
+def inherited_preservation_plan(source_root, platform, path=None):
+    path = CORPUS / 'inherited-source-preservation.json' if path is None else path
+    input_helpers().reject_symlink_path(path)
+    same(sha256(path), INHERITED_PRESERVATION_SHA256, 'complete Commons inherited preservation plan')
+    plan = json.loads(path.read_text())
+    specs = json.loads((ROOT / 'scripts/acceptance-inputs.json').read_text())
+    same(plan['source_archive_sha256'], specs['sources']['sha256'], 'Commons inherited source archive')
+    same(plan['platform_sha256'], sha256(platform), 'Commons inherited platform')
+    for name, checksum in plan['source_sha256'].items():
+        same(sha256(source_root / name), checksum, 'Commons inherited source ' + name)
+    same(len(plan['queries']), 4, 'four preserved Commons inherited getters')
+    return plan
+
+
+def check_inherited_preservation(response, plan, source_root):
+    same(response['result']['index_builds'], 1, 'Commons inherited prepared index')
+    rows = copy.deepcopy(response['result']['queries'])
+    same(len(rows), 4, 'exact Commons inherited preservation row count')
+    for row in rows:
+        row['file'] = Path(row['file']).relative_to(source_root).as_posix()
+        for target in row['targets']:
+            target['path'] = Path(target['path']).relative_to(source_root).as_posix()
+    same(rows, plan['queries'], 'complete Commons inherited source records, already resolved before this slice')
+
+
 def comparator_controls(response, checker):
     """A missing result or a plausible wrong declaration must fail the gate."""
     missing_query = copy.deepcopy(response)
@@ -419,6 +447,13 @@ def main():
                 check_declarations(value, queries, targets, source_root, platform, sources)
             check(declarations)
             comparator_controls(declarations, check)
+            inheritance = inherited_preservation_plan(source_root, platform)
+            inherited_requests = stage / 'queries/inherited-preservation.json'
+            write_json(inherited_requests, {'schema_version':1, 'queries':[
+                {'compilation':q['compilation'], 'file':str(source_root/q['file']), 'position':q['position']}
+                for q in inheritance['queries']]})
+            check_inherited_preservation(invoke('declaration', selected_requests=inherited_requests), inheritance, source_root)
+            print('inherited_preservation=4 previously resolved Commons getters unchanged; no new-success claim')
             print("declarations=45 candidates=70 source_candidates=60 binary_candidates=10")
             print("statuses=" + json.dumps(dict(sorted(Counter(q[4] for q in queries).items()))))
             # Prove the JMOD changes real binding, not that absent Java means absent platform data.

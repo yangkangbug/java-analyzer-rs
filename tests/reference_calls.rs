@@ -227,7 +227,7 @@ fn inherited_candidates_cycles_and_ambiguous_parents_are_preserved() {
     let p = project(
         "class A {} class B extends A {} class Base { public void m(A a) {} } class C extends Base { public void m(B b) {} } class Calls { void run(C c, B b) { c.m(b); } }",
     );
-    refused(&p, "m(b)", &[("Calls.java", "m(B b)"), ("Calls.java", "m(A a)")]);
+    selected(&p, "m(b)", "Calls.java", "m(B b)");
     let p = project(
         "class A {} class Base { public void m(A a) {} } class C extends Base {} class Calls { void run(A a) { C.m(a); } }",
     );
@@ -519,7 +519,7 @@ fn construction_arguments_keep_all_method_competitors_and_shared_limits() {
     let p = project(
         "class Leaf { public Leaf() {} } class Parent { public void m(Leaf x) {} } class C extends Parent { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }",
     );
-    refused(&p, "m(new Leaf())", &[("Calls.java", "m(java.lang.Object x)"), ("Calls.java", "m(Leaf x)")]);
+    selected(&p, "m(new Leaf())", "Calls.java", "m(Leaf x)");
     for (body, argument) in [
         (format!("/*{}*/", "x".repeat(5000)), "new Leaf()".to_string()),
         (String::new(), format!("{}new Leaf(){}", "(".repeat(40), ")".repeat(40))),
@@ -761,7 +761,7 @@ fn string_literals_preserve_arity_and_declaration_site_imports() {
 #[test]
 fn string_literals_retain_inherited_and_incomparable_candidates() {
     let source = r#"class Base { public void m(Object x) {} } class C extends Base { public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
-    refused(&literal_project(source), r#"m("x")"#, &[("Calls.java", "m(String x)"), ("Calls.java", "m(Object x)")]);
+    selected(&literal_project(source), r#"m("x")"#, "Calls.java", "m(String x)");
     let source = r#"interface A {} interface B {} class C { public void m(A x) {} public void m(B x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
     let mut p = project(source);
     p.add_class_bytes("String.class", &literal_string_binary(0x31, None, &["A", "B"])).unwrap();
@@ -980,8 +980,12 @@ fn strict_reference_competitors_preserve_hierarchy_and_argument_guards() {
             "class A {{}} class Base {{ public void m(int x) {{}} }} class C {ancestry} {{ public void m(A x) {{}} public void m(long x) {{}} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
         );
         let result = query(&project(&source), "Calls.java", "m(a)");
-        assert_ne!(result.status, ResolveStatus::Resolved);
-        assert_eq!(result.targets.len(), if ancestry == "extends Base" { 3 } else { 2 });
+        if ancestry == "extends Base" {
+            selected(&project(&source), "m(a)", "Calls.java", "m(A x)");
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved);
+            assert_eq!(result.targets.len(), 2);
+        }
     }
     let source = "class A {} class C { public void m(A x) {} public void m(int x) {} } class Calls { void run(C c, A a) { c.m(a); } }";
     let mut p = project(source);

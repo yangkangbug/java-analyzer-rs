@@ -837,7 +837,7 @@ impl Index {
             };
             return Some(match proof.select(owner, selector?, args, args_at) {
                 Some(member) if !proof.exhausted => {
-                    ResolveResult::one(ResolveStatus::Resolved, member_target(owner, member))
+                    ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member))
                 }
                 _ => refused(),
             });
@@ -970,7 +970,7 @@ impl Index {
         if let Some(member) = proof.select(owner, name, args, args_at)
             && !proof.exhausted
         {
-            return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(owner, member)));
+            return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
         }
         Some(result)
     }
@@ -3651,6 +3651,11 @@ impl ReferenceFormal<'_> {
     }
 }
 
+struct SelectedSourceMethod<'a> {
+    declaring: &'a ClassRec,
+    member: &'a Member,
+}
+
 struct ReferenceCallProof<'a> {
     index: &'a Index,
     file: &'a FileRec,
@@ -4402,21 +4407,48 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let owner = self.expression(base, base_at, depth)?.class;
         let member = self.select(owner, name?, args, args_at)?;
-        let parts = member.source_call.as_ref()?.reference_return.as_ref()?;
-        let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+        let parts = member.member.source_call.as_ref()?.reference_return.as_ref()?;
+        let declaring = member.declaring;
+        let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
         // Resolve in declaration context, then enforce caller accessibility and
         // complete hierarchy using the same bounded proof as both selections.
-        self.reference_type(file, parts, member.start)
+        self.reference_type(file, parts, member.member.start)
     }
 
-    fn select(&mut self, owner: &'a ClassRec, name: &str, args: &GreenNode, at: u32) -> Option<&'a Member> {
+    fn select(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        args: &GreenNode,
+        at: u32,
+    ) -> Option<SelectedSourceMethod<'a>> {
         if owner.binary || owner.is_interface || owner.reference_generic {
             return None;
         }
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
-        if graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name)) {
-            return None;
+        let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
+        if inherited {
+            // A new inherited path needs a plain source superclass chain. Binary
+            // Object may close the graph, but cannot contribute a named method.
+            for class in &graph {
+                self.charge(1)?;
+                if class.is_interface {
+                    // The complete graph already proved every transitive
+                    // interface inventory. Generic substitution cannot erase
+                    // a method name, so absence is sufficient; selection is not.
+                    if class.methods.iter().any(|member| member.name == name) {
+                        return None;
+                    }
+                    continue;
+                }
+                if class.reference_generic
+                    || class.reference_edges.as_ref()?.first().is_some_and(|(_, plain)| !plain)
+                    || (class.binary && !class.binary_root)
+                {
+                    return None;
+                }
+            }
         }
         self.charge(args.children().len())?;
         let args = delimited_nodes(args, at)?;
@@ -4430,11 +4462,25 @@ impl<'a> ReferenceCallProof<'a> {
                     .or_else(|| self.cast_null_argument(node, *at, 0).map(StrictActual::Reference))
             })
             .collect::<Option<Vec<_>>>()?;
-        let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
-        let members: Vec<_> = owner.methods.iter().filter(|m| m.name == name).collect();
+        let mut members = Vec::new();
+        for declaring in if inherited { graph.as_slice() } else { std::slice::from_ref(&owner) } {
+            if inherited {
+                self.charge(declaring.methods.len().max(1))?;
+            }
+            for member in declaring.methods.iter().filter(|m| m.name == name) {
+                if declaring.binary || declaring.is_interface || declaring.reference_generic {
+                    return None;
+                }
+                if inherited {
+                    self.accessible(declaring)?;
+                }
+                members.push((*declaring, member));
+            }
+        }
         let mut formals = Vec::new();
-        for member in &members {
+        for (declaring, member) in &members {
             self.charge(1)?;
+            let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
             let source = member.source_call.as_ref()?;
             let Shape::Source { parameters, variables } = &member.shape else { return None };
             if member.access != Access::Public || source.is_static || source.varargs || !variables.is_empty() {
@@ -4456,8 +4502,35 @@ impl<'a> ReferenceCallProof<'a> {
         for (i, left) in formals.iter().enumerate() {
             for right in &formals[i + 1..] {
                 self.charge(left.len().max(1))?;
-                if left.len() == right.len() && left.iter().zip(right).all(|(a, b)| a.same_type(b)) {
-                    return None;
+                if left.len() == right.len() {
+                    if inherited {
+                        // Different scope identity is not proof of a different
+                        // signature: it may hide an unsupported override. One
+                        // definitely different slot suffices; equal/unknown
+                        // signatures both refuse rather than discard a parent.
+                        let mut different = false;
+                        for (a, b) in left.iter().zip(right) {
+                            self.charge(1)?;
+                            different |= match (a, b) {
+                                (ReferenceFormal::Primitive(a), ReferenceFormal::Primitive(b)) => a != b,
+                                (ReferenceFormal::Reference(a), ReferenceFormal::Reference(b)) => {
+                                    if a.scope == b.scope {
+                                        !same_class(a, b)
+                                    } else {
+                                        // Same logical name across scopes remains
+                                        // unknown even when selected origins match.
+                                        a.dotted() != b.dotted()
+                                    }
+                                }
+                                _ => true,
+                            };
+                        }
+                        if !different {
+                            return None;
+                        }
+                    } else if left.iter().zip(right).all(|(a, b)| a.same_type(b)) {
+                        return None;
+                    }
                 }
             }
         }
@@ -4543,7 +4616,7 @@ impl<'a> ReferenceCallProof<'a> {
                 if winner.is_some() {
                     return None;
                 }
-                winner = Some(members[i]);
+                winner = Some(SelectedSourceMethod { declaring: members[i].0, member: members[i].1 });
             }
         }
         winner
@@ -4817,3 +4890,6 @@ mod class_literal_receiver_tests {
 
 #[cfg(test)]
 mod binary_actual_tests;
+
+#[cfg(test)]
+mod inherited_scope_tests;

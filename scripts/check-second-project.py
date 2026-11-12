@@ -305,7 +305,7 @@ def check_parser(result, fixture):
     same(result['report_count'], count, 'parser total count')
 
 
-def check_response(command, response, fixture, historical_constructor=False, *, proof_stage='cast_null'):
+def check_response(command, response, fixture, historical_constructor=False, *, proof_stage='inherited_source'):
     """Validate full actual response, not just an exit code or a resolution ratio."""
     check_envelope(command, response, fixture)
     result = response['result']
@@ -739,10 +739,10 @@ def portable_queries(response, fixture):
 def proof_stages(capture_baseline, proof_stage=None, parser_stage=None):
     require(type(capture_baseline) is bool, 'capture mode must be boolean')
     if proof_stage is None:
-        proof_stage = 'pre_primitive' if capture_baseline else 'cast_null'
+        proof_stage = 'pre_primitive' if capture_baseline else 'inherited_source'
     if parser_stage is None:
         parser_stage = 'baseline' if capture_baseline else 'current'
-    require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return', 'null_actual', 'binary_argument', 'cast_null'), 'unknown proof stage')
+    require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return', 'null_actual', 'binary_argument', 'cast_null', 'inherited_source'), 'unknown proof stage')
     require(parser_stage in ('baseline', 'current'), 'parser proof stage')
     return proof_stage, parser_stage
 
@@ -863,10 +863,10 @@ def reference_return_contract():
     return module
 
 
-def current_original_expectations(fixture, proof_stage='cast_null'):
+def current_original_expectations(fixture, proof_stage='inherited_source'):
     proof_stages(False, proof_stage)
     expected = constructor_expectations(fixture)
-    if proof_stage not in ('reference_return', 'null_actual', 'binary_argument', 'cast_null'):
+    if proof_stage not in ('reference_return', 'null_actual', 'binary_argument', 'cast_null', 'inherited_source'):
         return expected
     from types import SimpleNamespace
     api = SimpleNamespace(CORPUS=CORPUS, reject_symlinks=reject_symlinks, same=same,

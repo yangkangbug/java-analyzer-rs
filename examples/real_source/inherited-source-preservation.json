@@ -1,0 +1,164 @@
+{
+  "format_version": 1,
+  "purpose": "Already-resolved Commons inherited this getters: preservation only, not new capability",
+  "source_archive_sha256": "5fdcac21ad329766054a95367d7583dfcdca737d221d5e01a5f2a198c04c6b18",
+  "platform_sha256": "fad51abeafe6a1ecb0c2696a88684dc417cc534b74b5d865042df7381d9d0e91",
+  "source_sha256": {
+    "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java": "cc871c98f37536182105ec3de73237bc93f4f19605b0d8bf3b114d83c263f41d",
+    "org/apache/commons/lang3/builder/ToStringBuilder.java": "b7673dbd6e20f75f230959d18be45a1b1ff4472aef205c4b09aadd26775335af"
+  },
+  "queries": [
+    {
+      "byte_offset": 24240,
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "file": "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 24240
+      },
+      "query_index": 0,
+      "source_compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "status": "Resolved",
+      "targets": [
+        {
+          "compilation": {
+            "project": "commons-lang",
+            "source_set": "main"
+          },
+          "kind": "Method",
+          "name": "getObject",
+          "origin": "source",
+          "owner": "org.apache.commons.lang3.builder.ToStringBuilder",
+          "path": "org/apache/commons/lang3/builder/ToStringBuilder.java",
+          "range": {
+            "end_byte": 32801,
+            "end_utf16": 32801,
+            "start_byte": 32792,
+            "start_utf16": 32792
+          },
+          "source_available": true
+        }
+      ]
+    },
+    {
+      "byte_offset": 26630,
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "file": "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 26630
+      },
+      "query_index": 1,
+      "source_compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "status": "Resolved",
+      "targets": [
+        {
+          "compilation": {
+            "project": "commons-lang",
+            "source_set": "main"
+          },
+          "kind": "Method",
+          "name": "getObject",
+          "origin": "source",
+          "owner": "org.apache.commons.lang3.builder.ToStringBuilder",
+          "path": "org/apache/commons/lang3/builder/ToStringBuilder.java",
+          "range": {
+            "end_byte": 32801,
+            "end_utf16": 32801,
+            "start_byte": 32792,
+            "start_utf16": 32792
+          },
+          "source_available": true
+        }
+      ]
+    },
+    {
+      "byte_offset": 27668,
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "file": "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 27668
+      },
+      "query_index": 2,
+      "source_compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "status": "Resolved",
+      "targets": [
+        {
+          "compilation": {
+            "project": "commons-lang",
+            "source_set": "main"
+          },
+          "kind": "Method",
+          "name": "getStyle",
+          "origin": "source",
+          "owner": "org.apache.commons.lang3.builder.ToStringBuilder",
+          "path": "org/apache/commons/lang3/builder/ToStringBuilder.java",
+          "range": {
+            "end_byte": 33219,
+            "end_utf16": 33219,
+            "start_byte": 33211,
+            "start_utf16": 33211
+          },
+          "source_available": true
+        }
+      ]
+    },
+    {
+      "byte_offset": 27712,
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "file": "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java",
+      "position": {
+        "encoding": "utf8",
+        "offset": 27712
+      },
+      "query_index": 3,
+      "source_compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "status": "Resolved",
+      "targets": [
+        {
+          "compilation": {
+            "project": "commons-lang",
+            "source_set": "main"
+          },
+          "kind": "Method",
+          "name": "getStringBuffer",
+          "origin": "source",
+          "owner": "org.apache.commons.lang3.builder.ToStringBuilder",
+          "path": "org/apache/commons/lang3/builder/ToStringBuilder.java",
+          "range": {
+            "end_byte": 33008,
+            "end_utf16": 33008,
+            "start_byte": 32993,
+            "start_utf16": 32993
+          },
+          "source_available": true
+        }
+      ]
+    }
+  ]
+}

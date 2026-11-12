@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "original_forecast_sha256": "026ff82c7672ce6e7fd3ad05c9d5af52f0f16682fa38d679cecdfd3e1faa0bca",
+  "active_suites": [
+    "qualified-primitive-v1",
+    "reference-v1",
+    "strict-reference-v1"
+  ],
+  "deferred_unchanged": [
+    "primitive-v1"
+  ],
+  "reason": "Primitive unqualified invocation is outside the qualified inherited source receiver slice. Keep original refusal exactly; three qualified suites alone receive the predicted exact singleton selections. reference_generic_ancestor remains its previous Resolved contract and cannot be downgraded.",
+  "evidence": {
+    "history/forecast-first-failure.log": "3bd34afc33ed971d64651c4d0780da1cdefe8e8fae1ccc893b08c05686221642"
+  }
+}

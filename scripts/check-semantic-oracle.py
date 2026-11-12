@@ -627,6 +627,7 @@ def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
     declarations, queries, requests, expected = reference_fixture()
     expected = current_receiver_guard_expectations("reference-v1", expected, queries, declarations)
     expected = current_null_expectations("reference-v1", expected, queries, declarations)
+    expected = current_inherited_expectations("reference-v1", expected, queries, declarations)
     binaries = work / "reference-classes"
     binaries.mkdir()
     dependency = root / "dependency"
@@ -805,6 +806,94 @@ def real_primitive_suite(jdk, native_binary, env, work, helper, empty, platform,
           "249 unchanged source files analyzed; no upstream class generation/execution")
 
 
+def inherited_source_fixture():
+    """Frozen additive contract; never rewrites historical inherited refusals."""
+    root = ORACLE / "inherited-source-v1"
+    data = (root / "fixture-manifest.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == "609376e0c8fdda7ac437ba5e78fcd7dfe1fcc75d7fdf7e5d09b8ca04859f0e97", "inherited source fixture pin"
+    pinned = json.loads(data)["files"]
+    revision_data = (root / "prior-inherited-revision.json").read_bytes()
+    assert hashlib.sha256(revision_data).hexdigest() == "63cf804783563664165363d5d1b1a71881583c7673095ab26e814defdd813c1d", "inherited revision pin"
+    revision = json.loads(revision_data)
+    assert revision["original_forecast_sha256"] == pinned["prior-inherited-updates.json"]
+    for name, digest in revision["evidence"].items():
+        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+    assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*")
+                  if p.is_file() and p.name not in ("README.md", "fixture-manifest.json")) == sorted(list(pinned) + ["prior-inherited-revision.json"] + list(revision["evidence"]))
+    for name, digest in pinned.items():
+        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+    files = (root / "files.tsv").read_text().splitlines()
+    ds, qs, req = fixture_markers(root / "source", files)
+    contracts = []
+    for filename in ("expected.tsv", "baseline.tsv"):
+        expected = {}
+        for q, status, selected, candidates in rows(root / filename, 4):
+            assert q not in expected
+            expected[q] = status, selected, candidates
+        assert set(expected) == set(qs) and len(qs) == 9
+        contracts.append(expected)
+    assert sum(v[0] == "Resolved" for v in contracts[0].values()) == 6
+    return root, ds, qs, req, contracts[0], contracts[1]
+
+
+def current_inherited_expectations(suite, expected, queries, declarations):
+    """Exact v2 current overlay; old capture modes must not invoke it."""
+    root, _, _, _, _, _ = inherited_source_fixture()
+    plan = json.loads((root / "prior-inherited-updates.json").read_text())
+    revision = json.loads((root / "prior-inherited-revision.json").read_text())
+    assert suite in revision["active_suites"], "not an activated inherited overlay"
+    for name, digest in plan["artifacts"].items():
+        assert hashlib.sha256((ORACLE / name).read_bytes()).hexdigest() == digest, name
+    update = plan["updates"][suite]
+    assert {k: list(v) for k, v in queries.items()} == update["queries"], "complete query metadata"
+    assert {k: list(v) for k, v in declarations.items()} == update["declarations"], "complete declaration metadata"
+    assert {k: list(v) for k, v in expected.items()} == update["previous_current"], "complete previous stage"
+    q = update["query"]
+    assert list(expected[q]) == update["before"]
+    assert update["after"] == ["Resolved", expected[q][1], expected[q][1]]
+    result = dict(expected); result[q] = tuple(update["after"])
+    return result
+
+
+def inherited_source_suite(jdk, native_binary, env, work, helper, empty, platform, baseline=False):
+    """Source superclass candidates; complete inherited sets, no override support."""
+    assert type(baseline) is bool
+    root, ds, qs, req, current, old = inherited_source_fixture()
+    expected = old if baseline else current
+    request = work / "inherited-source-requests.tsv"; request.write_text(req)
+    compiler = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle", root / "source", request, empty], env).stdout)
+    native = records(run([native_binary, root / "source", request, platform], {"PATH": "/nonexistent"}).stdout)
+    for q in sorted(expected):
+        print(q + "\tjavac=" + "|".join(compiler[q]) + "\tnative=" + "|".join(native[q]), flush=True)
+    compare_reference(expected, qs, ds, compiler, native, platform)
+    # Whole compiler declaration spans, in addition to exact native name spans.
+    for q, (_, selected, _) in expected.items():
+        path, start, _, _ = ds[selected.split("@")[0]]
+        data = (root / "source" / path).read_bytes()
+        begin = data.rfind(b"\n", 0, start) + 1; end = data.find(b"\n", start)
+        begin += len(data[begin:end]) - len(data[begin:end].lstrip())
+        # Single-line nested-class methods begin after the opening class brace.
+        if b"class " in data[begin:start] or b"interface " in data[begin:start]:
+            begin = data.rfind(b"{", begin, start) + 1
+            while data[begin:begin+1].isspace(): begin += 1
+            end = data.index(b"}", start) + 1
+        assert tuple(map(int, compiler[q][4:])) == (begin, end), q + ": compiler whole range"
+    if baseline:
+        must_reject(lambda: compare_reference(current, qs, ds, compiler, native, platform), "inherited baseline must fail new selections")
+    invalid = rows(root / "invalid.tsv", 5)
+    assert {row[0] for row in invalid} == {"missing", "unknown"}
+    for case, q, status, names, diagnostic in invalid:
+        source = root / "invalid" / case
+        ids, queries, req = fixture_markers(source, ("Use.java",))
+        assert set(queries) == {q}; request.write_text(req)
+        bad = run([jdk / "bin/java", "-cp", helper, "BindingOracle", source, request, empty], env, False)
+        assert bad.returncode == 2 and diagnostic in bad.stderr and not bad.stdout
+        actual = records(run([native_binary, source, request, platform], {"PATH": "/nonexistent"}).stdout)
+        assert set(actual) == {q}
+        check_reference_candidates(q, status, names, ids, actual[q], platform)
+    print("PASS: inherited source candidates; six selections, three valid refusals, two compiler-invalid refusals; baseline=" + str(baseline), flush=True)
+
+
 def main():
     if sys.flags.optimize:
         raise RuntimeError("oracle validation requires Python without -O/PYTHONOPTIMIZE")
@@ -926,6 +1015,7 @@ def main():
         primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         return_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         reference_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
+        inherited_source_suite(jdk, args.native.resolve(), env, work, classes, empty, platform)
         if args.sources_jar is not None:
             real_primitive_suite(jdk, args.native.resolve(), env, work, classes, empty, platform,
                                  args.sources_jar.resolve(strict=True))

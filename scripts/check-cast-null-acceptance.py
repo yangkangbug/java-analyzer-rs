@@ -20,7 +20,7 @@ def check_response(response, queries, fixture, capture_baseline=False):
 
 def run(native, fixture, capture_baseline=False):
     second.require(type(capture_baseline) is bool, 'comparison mode must be boolean')
-    queries = strict.current_probes(fixture)
+    queries = strict.frozen_cast_probes(fixture) if capture_baseline else strict.current_probes(fixture)
     if capture_baseline:
         second.same(second.digest(native), strict.casts.load_plan(second)['baseline_native_sha256'],
                     'exact frozen a8429ed3 baseline binary')
@@ -31,15 +31,15 @@ def run(native, fixture, capture_baseline=False):
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
-    preservation = strict.string.run(native, fixture, proof_stage='binary_argument' if capture_baseline else 'cast_null', parser_stage='current')
+    preservation = strict.string.run(native, fixture, proof_stage='binary_argument' if capture_baseline else 'inherited_source', parser_stage='current')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')
     return {
         'validation': 'baseline_verified_not_acceptance' if capture_baseline else 'passed',
-        'comparison_stage': 'cast_null_baseline_a8429ed3' if capture_baseline else 'cast_null_current',
+        'comparison_stage': 'cast_null_baseline_a8429ed3' if capture_baseline else 'inherited_source_current',
         'deferred_queries': [],
-        'plan_sha256': strict.casts.PLAN_SHA256, 'native_sha256': second.digest(native),
+        'plan_sha256': strict.casts.PLAN_SHA256 if capture_baseline else strict.INHERITED_PLAN_SHA256, 'native_sha256': second.digest(native),
         'queries': second.portable_queries(response, fixture), 'preservation': preservation,
         'source_sha256_before': before, 'source_sha256_after': after,
         'source_bytes_unchanged': True, 'javac_real_gson_equivalence': False,

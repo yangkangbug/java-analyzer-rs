@@ -124,7 +124,7 @@ def run_suite(jdk, native, work, baseline=False):
     native_rows = o.records(o.run([native, ROOT / 'source', request, platform], env).stdout)
     for q in sorted(expected):
         print(q + '\tjavac=' + '|'.join(compiler[q]) + '\tnative=' + '|'.join(native_rows[q]), flush=True)
-    compare(baseline_expectations(expected) if baseline else o.current_null_expectations('strict-reference-v1', expected, qs, ds), qs, ds, compiler, native_rows, platform)
+    compare(baseline_expectations(expected) if baseline else o.current_inherited_expectations('strict-reference-v1', o.current_null_expectations('strict-reference-v1', expected, qs, ds), qs, ds), qs, ds, compiler, native_rows, platform)
     if baseline:
         o.must_reject(lambda: compare(expected, qs, ds, compiler, native_rows, platform), 'baseline must fail new selected goldens')
     for case, status, candidates, diagnostic, ids, contents in invalid_fixtures():
