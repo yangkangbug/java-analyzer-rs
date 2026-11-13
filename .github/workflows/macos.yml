@@ -47,6 +47,7 @@ jobs:
       - name: Native library examples without a Java environment
         run: |
           env -i PATH=/nonexistent "$GITHUB_WORKSPACE/target/debug/examples/resolve"
+          env -i PATH=/nonexistent "$GITHUB_WORKSPACE/target/debug/examples/load_session"
           sh scripts/check-native-runtime.sh
       - run: cargo build --features cli --bin java-analyzer --locked
       - name: Debug CLI source and binary declarations without Java

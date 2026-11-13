@@ -45,7 +45,7 @@ mod workspace;
 pub use workspace::{
     AnalysisScope, AnalysisSnapshot, CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope,
     PreparedWorkspace, SourceOverlay, SourceOverlayError, SourceOverlayErrorKind, WorkspaceConfig, WorkspaceLoadError,
-    WorkspaceLoadErrorKind, WorkspaceSnapshot,
+    WorkspaceLoadErrorKind, WorkspaceLoadSession, WorkspaceSnapshot,
 };
 
 pub use position::{LineIndex, Utf16Position};

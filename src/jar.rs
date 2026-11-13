@@ -166,7 +166,7 @@ struct CachedArchive {
     read: SharedArchiveRead,
 }
 
-/// Private to one workspace load. Caps cover retained raw bytes/records, not
+/// Private to a workspace load or caller-owned load session. Caps cover retained raw bytes/records, not
 /// parsed signatures, fresh captures, ZIP metadata, or independently built indexes.
 /// FIFO eviction and oversized-input bypass affect work only, never acceptance.
 pub(crate) struct ArchiveReads {
@@ -200,6 +200,8 @@ impl ArchiveReads {
         format: ArchiveFormat,
     ) -> Result<SharedArchiveRead, JarError> {
         let bytes = capture_archive(path, options.max_archive_bytes)?;
+        #[cfg(test)]
+        test_support::after_capture();
         if let Some(index) = self.entries.iter().position(|entry| {
             entry.path == path && entry.format == format && entry.target_release == options.target_release
         }) {
@@ -511,6 +513,7 @@ pub(crate) mod test_support {
         paths: Vec<PathBuf>,
         captures: Vec<PathBuf>,
         after_read: Option<Box<dyn FnOnce()>>,
+        after_capture: Option<Box<dyn FnOnce()>>,
     }
     thread_local! {
         static OBSERVATION: RefCell<Option<Observation>> = const { RefCell::new(None) };
@@ -529,6 +532,9 @@ pub(crate) mod test_support {
         }
         pub(crate) fn captures(&self) -> Vec<PathBuf> {
             OBSERVATION.with(|state| state.borrow().as_ref().unwrap().captures.clone())
+        }
+        pub(crate) fn after_capture(&self, callback: impl FnOnce() + 'static) {
+            OBSERVATION.with(|state| state.borrow_mut().as_mut().unwrap().after_capture = Some(Box::new(callback)));
         }
         pub(crate) fn after_read(&self, callback: impl FnOnce() + 'static) {
             OBSERVATION.with(|state| state.borrow_mut().as_mut().unwrap().after_read = Some(Box::new(callback)));
@@ -552,6 +558,13 @@ pub(crate) mod test_support {
                 state.paths.push(path.to_owned());
             }
         });
+    }
+    pub(super) fn after_capture() {
+        let callback =
+            OBSERVATION.with(|state| state.borrow_mut().as_mut().and_then(|state| state.after_capture.take()));
+        if let Some(callback) = callback {
+            callback();
+        }
     }
     pub(super) fn after_read() {
         let callback = OBSERVATION.with(|state| state.borrow_mut().as_mut().and_then(|state| state.after_read.take()));

@@ -563,3 +563,9 @@ successes. [Scope and CLI opt-in details](docs/BINARY_METHOD_CALLS.md) describe 
 three revised StringUtils selection targets, three ClassUtils deferrals and
 three conservative controls; original
 historical records remain intact.
+
+### Caller-owned archive decoding reuse
+
+[Workspace load sessions](docs/WORKSPACE_LOAD_SESSIONS.md) retain bounded archive
+decoding across explicit fresh loads. Default loading and LSP behavior stay
+unchanged; source admission, budgets, graph and index construction still run.

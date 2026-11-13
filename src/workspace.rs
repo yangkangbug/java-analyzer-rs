@@ -156,6 +156,12 @@ impl WorkspaceSnapshot {
     /// records. Nothing is retained for the next load. This is not an atomic view of
     /// concurrently modified files or a persistent/incremental query cache.
     pub fn load(config: &WorkspaceConfig) -> Result<Self, WorkspaceLoadError> {
+        Self::load_reusing_archives(config, &mut crate::jar::ArchiveReads::default())
+    }
+    fn load_reusing_archives(
+        config: &WorkspaceConfig,
+        archives: &mut crate::jar::ArchiveReads,
+    ) -> Result<Self, WorkspaceLoadError> {
         use WorkspaceLoadErrorKind as K;
         if config.compilations.len() > config.max_compilations {
             return Err(error(K::LimitExceeded, "too many compilations"));
@@ -219,7 +225,6 @@ impl WorkspaceSnapshot {
             })?;
         }
         let mut inputs = Vec::new();
-        let mut archives = crate::jar::ArchiveReads::default();
         let mut owners = BTreeSet::new();
         let (mut entries, mut bytes, mut expanded) = (0, 0, 0);
         for compilation in configs {
@@ -228,13 +233,12 @@ impl WorkspaceSnapshot {
             bounded.limits.max_input_bytes = bounded.limits.max_input_bytes.min(config.max_input_bytes - bytes);
             bounded.limits.max_archive_expanded_bytes =
                 bounded.limits.max_archive_expanded_bytes.min(config.max_archive_expanded_bytes - expanded);
-            let mut loaded = ProjectSnapshot::load_with_archives(&bounded, Some(&mut archives)).map_err(|input| {
-                WorkspaceLoadError {
+            let mut loaded =
+                ProjectSnapshot::load_with_archives(&bounded, Some(archives)).map_err(|input| WorkspaceLoadError {
                     kind: K::Input,
                     detail: format!("{:?}: {input}", compilation.id),
                     input: Some(input),
-                }
-            })?;
+                })?;
             // The remaining workspace allowance constrains this load, but is not
             // the compilation's limit for a later whole-batch source replacement.
             loaded.limits = compilation.inputs.limits.clone();
@@ -456,3 +460,35 @@ mod archive_reuse_tests;
 
 mod analysis;
 pub use analysis::{AnalysisScope, AnalysisSnapshot};
+
+/// Caller-owned, bounded reuse of successfully decoded archive signatures.
+///
+/// Every load still discovers and reads all inputs and validates current graph,
+/// paths, identities and budgets. Exact archive bytes at the same canonical path,
+/// format and target release may reuse immutable signatures. Source parsing and
+/// workspace/index construction are not cached. Failed loads publish no snapshot.
+///
+/// At most 16 archive entries and 64 MiB of raw archive bytes are retained.
+/// These bounds exclude parsed signatures, current captures and returned snapshots;
+/// they are not an RSS quota. Drop this session to release its retained entries.
+/// Existing snapshots remain valid independently.
+///
+/// This is not a filesystem watcher, atomic disk snapshot, frozen-inventory
+/// policy or LSP session. Callers that freeze source inventory must still compare
+/// each successful load's inventory before accepting it. The ordinary
+/// [WorkspaceSnapshot::load] keeps its per-call cache lifetime unchanged.
+#[derive(Default)]
+pub struct WorkspaceLoadSession {
+    archives: crate::jar::ArchiveReads,
+}
+impl WorkspaceLoadSession {
+    /// Load fresh inputs, reusing only eligible archive decoding from this session.
+    ///
+    /// Every archive occurrence captures bytes once. A miss decodes that same
+    /// capture; a hit must satisfy current limits and still incurs full accounting.
+    /// Successful entries from a later-failing load may remain reusable, but are
+    /// freshly read and validated again on the next call.
+    pub fn load(&mut self, config: &WorkspaceConfig) -> Result<WorkspaceSnapshot, WorkspaceLoadError> {
+        WorkspaceSnapshot::load_reusing_archives(config, &mut self.archives)
+    }
+}

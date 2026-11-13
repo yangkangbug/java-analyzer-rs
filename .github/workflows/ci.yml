@@ -29,6 +29,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run --locked --example resolve
       - run: cargo build --examples --locked
+      - run: cargo run --example load_session --locked
       - run: sh scripts/check-native-runtime.sh
       - run: cargo build --features cli --bin java-analyzer --locked
       - run: sh scripts/check-cli-runtime.sh

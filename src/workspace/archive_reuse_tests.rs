@@ -480,3 +480,127 @@ fn reload_and_overlay_sharing_preserve_old_source_and_binary_snapshots() {
     assert!(WorkspaceSnapshot::load(&config).is_err());
     assert_eq!(prepared.scope(&id("scope0")).unwrap().resolve_at(&path, byte).status, ResolveStatus::Resolved);
 }
+
+#[test]
+fn load_session_recaptures_reuses_and_rejects_tighter_limits() {
+    let f = Fixture::new();
+    let jar = f.write("cache.jar", archive(&[("lib/Lib.class", LIB)], false));
+    let cfg = ProjectConfig { classpath: vec![ClasspathEntry::Jar(jar.clone())], ..Default::default() };
+    let config = workspace(&[cfg]);
+    let mut session = WorkspaceLoadSession::default();
+    let probe = ArchiveProbe::new();
+    let first = session.load(&config).unwrap();
+    let second = session.load(&config).unwrap();
+    assert_eq!(probe.captures().len(), 2);
+    assert_eq!(probe.paths().len(), 1);
+    assert_eq!(input(&first, 0).usage, input(&second, 0).usage);
+    let mut tight = config.clone();
+    tight.max_input_bytes = 1;
+    assert!(session.load(&tight).is_err());
+    assert!(WorkspaceSnapshot::load(&tight).is_err());
+    fs::write(&jar, archive(&[("lib/Lib.class", &renamed_lib())], false)).unwrap();
+    let changed = session.load(&config).unwrap();
+    let fresh = WorkspaceSnapshot::load(&config).unwrap();
+    assert_eq!(input(&changed, 0).usage, input(&fresh, 0).usage);
+    let origin = &input(&first, 0).class_origins()[0];
+    assert!(!std::ptr::eq(
+        input(&first, 0).project().class_signature(origin).unwrap(),
+        input(&changed, 0).project().class_signature(origin).unwrap()
+    ));
+    fs::write(&jar, b"not an archive").unwrap();
+    assert!(session.load(&config).is_err());
+    fs::write(&jar, archive(&[("lib/Lib.class", LIB)], false)).unwrap();
+    assert!(session.load(&config).is_ok());
+}
+
+#[test]
+fn load_session_miss_parses_captured_bytes_not_mutated_disk() {
+    let f = Fixture::new();
+    let jar = f.write("changing.jar", archive(&[("lib/Lib.class", LIB)], false));
+    let config =
+        workspace(&[ProjectConfig { classpath: vec![ClasspathEntry::Jar(jar.clone())], ..Default::default() }]);
+    let mut session = WorkspaceLoadSession::default();
+    let old = session.load(&config).unwrap();
+    fs::write(&jar, archive(&[("lib/Lib.class", &renamed_lib())], false)).unwrap();
+    let probe = ArchiveProbe::new();
+    let changed_path = jar.clone();
+    probe.after_capture(move || fs::write(changed_path, b"corrupted after capture").unwrap());
+    let captured = session.load(&config).unwrap();
+    assert_eq!(probe.captures().len(), 1);
+    let origin = &input(&old, 0).class_origins()[0];
+    assert_ne!(
+        format!("{:?}", input(&old, 0).project().class_signature(origin)),
+        format!("{:?}", input(&captured, 0).project().class_signature(origin))
+    );
+    assert!(session.load(&config).is_err());
+}
+#[test]
+fn load_session_does_not_hide_source_inventory_drift() {
+    let f = Fixture::new();
+    let path = f.write("src/A.java", "class A {}");
+    let config =
+        workspace(&[ProjectConfig { source_roots: vec![path.parent().unwrap().to_owned()], ..Default::default() }]);
+    let mut session = WorkspaceLoadSession::default();
+    let old = session.load(&config).unwrap();
+    let frozen = input(&old, 0).source_paths().to_vec();
+    f.write("src/B.java", "class B {}");
+    let next = session.load(&config).unwrap();
+    assert_ne!(input(&next, 0).source_paths(), frozen.as_slice());
+    // Existing editor compares this inventory and refuses drift, unchanged.
+}
+
+#[test]
+fn load_session_warm_identity_budget_and_partial_failure_match_fresh() {
+    let f = Fixture::new();
+    let jar = f.write("a.jar", archive(&[("lib/Lib.class", LIB)], false));
+    let other = f.write("b.jar", archive(&[("lib/Lib.class", &renamed_lib())], false));
+    let src = f.write("src/A.java", "class A {}");
+    let base = workspace(&[ProjectConfig {
+        source_roots: vec![src.parent().unwrap().into()],
+        classpath: vec![ClasspathEntry::Jar(jar.clone()), ClasspathEntry::Jar(other.clone())],
+        ..Default::default()
+    }]);
+    let mut session = WorkspaceLoadSession::default();
+    let original = session.load(&base).unwrap();
+    fn fingerprint(w: &WorkspaceSnapshot) -> String {
+        let mut parts = Vec::new();
+        for (i, id) in w.ids.iter().enumerate() {
+            let p = &w.inputs[i];
+            parts.push(format!("{id:?}:{:?}:{:?}:{:?}", p.usage, p.class_origins(), p.shadowed_classes()));
+            for path in p.source_paths() {
+                parts.push(format!("{path}:{}", p.project().file(path).unwrap().text()));
+            }
+            for path in p.class_origins() {
+                parts.push(format!("{:?}", p.project().class_signature(path)));
+            }
+        }
+        format!("{parts:?}:{:?}", w.visibility)
+    }
+    let original_record = fingerprint(&original);
+    let mut variants = Vec::new();
+    for n in 0..8 {
+        let mut c = base.clone();
+        match n {
+            0 => c.compilations[0].inputs.jar_options.max_entries = 0,
+            1 => c.compilations[0].inputs.jar_options.max_entry_bytes = 1,
+            2 => c.compilations[0].inputs.jar_options.max_total_uncompressed_bytes = 1,
+            3 => c.max_archive_expanded_bytes = LIB.len() as u64,
+            4 => c.compilations[0].inputs.jar_options.target_release = 8,
+            5 => c.compilations[0].inputs.classpath.reverse(),
+            6 => c.compilations[0].id = id("other-scope"),
+            _ => c.compilations[0].inputs.platform = vec![PlatformEntry::Jmod(jar.clone())],
+        }
+        variants.push(c);
+    }
+    for c in variants {
+        let a = session.load(&c).map(|w| fingerprint(&w)).map_err(|e| format!("{e:?}"));
+        let b = WorkspaceSnapshot::load(&c).map(|w| fingerprint(&w)).map_err(|e| format!("{e:?}"));
+        assert_eq!(a, b);
+    }
+    fs::write(&other, b"corrupt later archive").unwrap();
+    assert!(session.load(&base).is_err());
+    fs::write(&other, archive(&[("lib/Lib.class", LIB)], false)).unwrap();
+    fs::write(&src, "class A { int changed; }").unwrap();
+    assert_eq!(fingerprint(&session.load(&base).unwrap()), fingerprint(&WorkspaceSnapshot::load(&base).unwrap()));
+    assert_eq!(fingerprint(&original), original_record);
+}
