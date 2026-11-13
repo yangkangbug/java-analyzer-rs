@@ -237,6 +237,7 @@ struct QualName {
 
 #[derive(Clone, Debug)]
 struct Member {
+    source_enum_constant: bool,
     name: String,
     kind: TargetKind,
     start: u32,
@@ -373,6 +374,7 @@ struct FileRec {
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
     local_types: Vec<LocalTypeRec>,
+    opaque_enum_bodies: Vec<(u32, u32)>,
     call_inventory_valid: bool,
 }
 
@@ -545,7 +547,9 @@ impl Index {
         let Some(file) = self.files.iter().find(|file| file.path == path) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
-        if file.local_types.iter().any(|local| local.start <= byte && byte < local.end) {
+        if file.opaque_enum_bodies.iter().any(|&(start, end)| start <= byte && byte < end)
+            || file.local_types.iter().any(|local| local.start <= byte && byte < local.end)
+        {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
         if let Some(hit) = innermost_ref(parsed.root(), 0, byte, false) {
@@ -1500,6 +1504,9 @@ impl Index {
         site: &FileRec,
         byte: u32,
     ) -> Result<bool, WalkError> {
+        if member.source_enum_constant && !self.enum_owner_accessible(declaring, site, byte) {
+            return Ok(false);
+        }
         match member.access {
             Access::Public | Access::Unspecified => Ok(true),
             Access::Package => Ok(site.package == declaring.package),
@@ -1521,6 +1528,41 @@ impl Index {
                 Ok(false)
             }
         }
+    }
+
+    // The new implicit public fields must not bypass inaccessible enclosing
+    // source types. This is deliberately scoped to enum constants: legacy
+    // member lookup and general protected nested-type rules are unchanged.
+    fn enum_owner_accessible(&self, owner: &ClassRec, site: &FileRec, byte: u32) -> bool {
+        let Some(file) = self.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path) else {
+            return false;
+        };
+        let mut parent_interface = false;
+        for depth in 1..=owner.nesting.len() {
+            let mut matches = file.classes.iter().filter(|c| c.nesting == owner.nesting[..depth]);
+            let Some(class) = matches.next() else { return false };
+            if matches.next().is_some() {
+                return false;
+            }
+            let allowed = match class.access {
+                Access::Public => true,
+                Access::Package => parent_interface || class.package == site.package,
+                Access::Protected => class.package == site.package,
+                Access::Private => {
+                    site.scope == owner.scope
+                        && site.path == owner.path
+                        && enclosing_classes(site, byte)
+                            .iter()
+                            .any(|caller| caller.nesting.first() == owner.nesting.first())
+                }
+                Access::Unspecified => false,
+            };
+            if !allowed {
+                return false;
+            }
+            parent_interface = class.is_interface;
+        }
+        true
     }
 
     fn resolve_edge<'a>(&'a self, class: &ClassRec, parts: &[String]) -> Named<'a> {
@@ -2117,9 +2159,14 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         classes: Vec::new(),
         locals: Vec::new(),
         local_types: Vec::new(),
+        opaque_enum_bodies: Vec::new(),
         call_inventory_valid: parsed.errors().is_empty() && valid_call_inventory(parsed.root(), 0),
     };
-    index_node(parsed.root(), 0, &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new() });
+    index_node(
+        parsed.root(),
+        0,
+        &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new(), enum_constant_depth: 0 },
+    );
     file
 }
 
@@ -2127,6 +2174,7 @@ struct IndexCtx<'a> {
     file: &'a mut FileRec,
     class_stack: Vec<usize>,
     scope_stack: Vec<(u32, u32, ScopeKind)>,
+    enum_constant_depth: usize,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -2139,9 +2187,19 @@ enum ScopeKind {
 }
 
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
+    // Include anonymous bodies nested in constructor arguments, without
+    // changing general NewExpr behavior outside enum constants.
+    if ctx.enum_constant_depth > 0 && node.kind() == SyntaxKind::ClassBody {
+        ctx.file.opaque_enum_bodies.push((start, start + node.utf8_len()));
+        return;
+    }
     match node.kind() {
         // Labels have no modeled enum/constant semantics or declarations.
         SyntaxKind::SwitchLabel => return,
+        SyntaxKind::EnumConstant => {
+            index_enum_constant(node, start, ctx);
+            return;
+        }
         SyntaxKind::LocalType => {
             let mut header =
                 node.children().iter().filter_map(|child| child.as_token()).filter(|token| !token.kind().is_trivia());
@@ -2293,6 +2351,41 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     ctx.class_stack.pop();
 }
 
+// A constant denotes a public field of its enum, not the members of its
+// anonymous constant-specific subclass. Those bodies are deliberately opaque
+// for both indexing and queries until anonymous-subclass semantics are modeled.
+fn index_enum_constant(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
+    if let Some(&class_index) = ctx.class_stack.last()
+        && crate::green::collect_errors(node).is_empty()
+        && let Some((name, name_start, name_end)) = direct_ident(node, start)
+    {
+        let declared = QualName {
+            parts: ctx.file.classes[class_index].dotted().split('.').map(str::to_owned).collect(),
+            array_rank: 0,
+        };
+        ctx.file.classes[class_index].source_data_mut().fields.push(Member {
+            source_enum_constant: true,
+            name,
+            kind: TargetKind::Field,
+            start: name_start,
+            end: name_end,
+            declared: Some(declared),
+            access: Access::Public,
+            shape: Shape::Unknown,
+            source_call: None,
+        });
+    }
+    ctx.enum_constant_depth += 1;
+    let mut at = start;
+    for child in node.children() {
+        if let Some(child) = child.as_node() {
+            index_node(child, at, ctx);
+        }
+        at += child.utf8_len();
+    }
+    ctx.enum_constant_depth -= 1;
+}
+
 fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_index: usize) {
     let mut offset = start;
     for child in params.children() {
@@ -2301,6 +2394,7 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
             && let Some((name, name_start, name_end)) = direct_ident(child, offset)
         {
             ctx.file.classes[class_index].source_data_mut().fields.push(Member {
+                source_enum_constant: false,
                 name,
                 kind: TargetKind::Field,
                 start: name_start,
@@ -2323,6 +2417,7 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
     };
     for (name, name_start, name_end, declared) in declarations {
         let member = Member {
+            source_enum_constant: false,
             name,
             kind,
             start: name_start,
@@ -2798,6 +2893,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
     #[cfg(test)]
     BINARY_MEMBER_BUILDS.with(|count| count.set(count.get() + 1));
     Member {
+        source_enum_constant: false,
         name: member.name.clone(),
         kind,
         start: 0,

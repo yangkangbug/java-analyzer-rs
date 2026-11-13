@@ -1,0 +1,9 @@
+{
+  "invalid/duplicate_constant/Bad.java": "f0b109f38193fa3e968a767b8187b5f5b412ed529d62f07fe7372a8c893f9b3d",
+  "invalid/hidden_field/Bad.java": "197844c245830a71b402951f5a7f2b10d854294cbe028c8704e05308f8932fa3",
+  "invalid/hidden_method/Bad.java": "415547fd43fddc6e0e6d53c62813edd9e3470852739382abbd2a340f540b0355",
+  "predictions.json": "c4f92a48a09e23d96bcedbbc69c970e801a1e3ad507142841607c5b929b915fa",
+  "source/p/E.java": "26dbb775358e7e83970352c49142002f874875b358dc572cda25ac0a26a5ee01",
+  "source/p/Owner.java": "3c7e71815a0f572085d0f074838eb0adc694687e028d41912ba602477915afdf",
+  "source/use/Use.java": "06cc123b7e2e1e25d4ee72858ba485bed09f8897d0d105cf525f004592d1ad87"
+}

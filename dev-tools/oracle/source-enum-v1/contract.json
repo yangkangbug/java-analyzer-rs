@@ -1,0 +1,276 @@
+{
+  "baseline_sha256": "0936049af68e09b7220229fd01f6078110350c57a3ec3d315ec79830c8638669",
+  "baseline": {
+    "argument": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|CODE|257|261"
+    ],
+    "body_outer": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|CODE|257|261"
+    ],
+    "body_hidden": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|hidden|88|94"
+    ],
+    "unqualified": [
+      "Unresolved",
+      "0"
+    ],
+    "qualified": [
+      "Unresolved",
+      "0"
+    ],
+    "instance_constant": [
+      "Unresolved",
+      "0"
+    ],
+    "fully_qualified": [
+      "Unresolved",
+      "0"
+    ],
+    "regular": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|ordinary|296|304"
+    ],
+    "chain_constant": [
+      "Unresolved",
+      "0"
+    ],
+    "chain_field": [
+      "ReceiverNotBound",
+      "0"
+    ],
+    "shadowed": [
+      "Resolved",
+      "1",
+      "use/Use.java|Parameter||A|410|411"
+    ],
+    "nested_constant": [
+      "Unresolved",
+      "0"
+    ],
+    "nested_prefix": [
+      "ReceiverNotBound",
+      "0"
+    ],
+    "unicode_constant": [
+      "Unresolved",
+      "0"
+    ],
+    "case_label": [
+      "Unresolved",
+      "0"
+    ]
+  },
+  "candidate": {
+    "argument": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|CODE|257|261"
+    ],
+    "body_outer": [
+      "Unresolved",
+      "0"
+    ],
+    "body_hidden": [
+      "Unresolved",
+      "0"
+    ],
+    "unqualified": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|A|38|39"
+    ],
+    "qualified": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|A|38|39"
+    ],
+    "instance_constant": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|B|192|193"
+    ],
+    "fully_qualified": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|B|192|193"
+    ],
+    "regular": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|ordinary|296|304"
+    ],
+    "chain_constant": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|A|38|39"
+    ],
+    "chain_field": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|ordinary|296|304"
+    ],
+    "shadowed": [
+      "Resolved",
+      "1",
+      "use/Use.java|Parameter||A|410|411"
+    ],
+    "nested_constant": [
+      "Resolved",
+      "1",
+      "p/Owner.java|Field|p.Owner.Nested|C|69|70"
+    ],
+    "unicode_constant": [
+      "Resolved",
+      "1",
+      "p/E.java|Field|p.E|\u96ea|211|214"
+    ],
+    "case_label": [
+      "Unresolved",
+      "0"
+    ],
+    "nested_prefix": [
+      "ReceiverNotBound",
+      "0"
+    ]
+  },
+  "compiler": {
+    "argument": [
+      "p/E.java",
+      "FIELD",
+      "p.E",
+      "CODE",
+      "223",
+      "266"
+    ],
+    "body_outer": [
+      "p/E.java",
+      "FIELD",
+      "p.E",
+      "CODE",
+      "223",
+      "266"
+    ],
+    "body_hidden": [
+      "p/E.java",
+      "FIELD",
+      "",
+      "hidden",
+      "72",
+      "95"
+    ],
+    "unqualified": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "A",
+      "38",
+      "179"
+    ],
+    "qualified": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "A",
+      "38",
+      "179"
+    ],
+    "instance_constant": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "B",
+      "192",
+      "196"
+    ],
+    "fully_qualified": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "B",
+      "192",
+      "196"
+    ],
+    "regular": [
+      "p/E.java",
+      "FIELD",
+      "p.E",
+      "ordinary",
+      "271",
+      "305"
+    ],
+    "chain_field": [
+      "p/E.java",
+      "FIELD",
+      "p.E",
+      "ordinary",
+      "271",
+      "305"
+    ],
+    "chain_constant": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "A",
+      "38",
+      "179"
+    ],
+    "shadowed": [
+      "use/Use.java",
+      "PARAMETER",
+      "use.Use",
+      "A",
+      "391",
+      "411"
+    ],
+    "nested_constant": [
+      "p/Owner.java",
+      "ENUM_CONSTANT",
+      "p.Owner.Nested",
+      "C",
+      "69",
+      "70"
+    ],
+    "nested_prefix": [
+      "p/Owner.java",
+      "ENUM_CONSTANT",
+      "p.Owner.Nested",
+      "C",
+      "69",
+      "70"
+    ],
+    "unicode_constant": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "\u96ea",
+      "211",
+      "217"
+    ],
+    "case_label": [
+      "p/E.java",
+      "ENUM_CONSTANT",
+      "p.E",
+      "A",
+      "38",
+      "179"
+    ]
+  },
+  "compiler_rejections": {
+    "hidden_field": [
+      "compiler.err.cant.resolve.location"
+    ],
+    "hidden_method": [
+      "compiler.err.cant.resolve.location.args"
+    ],
+    "duplicate_constant": [
+      "compiler.err.already.defined"
+    ]
+  }
+}

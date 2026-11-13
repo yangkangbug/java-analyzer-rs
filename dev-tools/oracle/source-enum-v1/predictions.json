@@ -1,0 +1,92 @@
+{
+  "argument": [
+    "Resolved",
+    "code",
+    "FIELD",
+    "p.E"
+  ],
+  "body_outer": [
+    "Unresolved",
+    "code",
+    "FIELD",
+    "p.E"
+  ],
+  "body_hidden": [
+    "Unresolved",
+    "hidden",
+    "FIELD",
+    ""
+  ],
+  "unqualified": [
+    "Resolved",
+    "a",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "qualified": [
+    "Resolved",
+    "a",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "instance_constant": [
+    "Resolved",
+    "b",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "fully_qualified": [
+    "Resolved",
+    "b",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "regular": [
+    "Resolved",
+    "ordinary",
+    "FIELD",
+    "p.E"
+  ],
+  "chain_constant": [
+    "Resolved",
+    "a",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "chain_field": [
+    "Resolved",
+    "ordinary",
+    "FIELD",
+    "p.E"
+  ],
+  "shadowed": [
+    "Resolved",
+    "parameter_a",
+    "PARAMETER",
+    "use.Use"
+  ],
+  "nested_constant": [
+    "Resolved",
+    "nested",
+    "ENUM_CONSTANT",
+    "p.Owner.Nested"
+  ],
+  "unicode_constant": [
+    "Resolved",
+    "han",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "case_label": [
+    "Unresolved",
+    "a",
+    "ENUM_CONSTANT",
+    "p.E"
+  ],
+  "nested_prefix": [
+    "ReceiverNotBound",
+    "nested",
+    "ENUM_CONSTANT",
+    "p.Owner.Nested"
+  ]
+}

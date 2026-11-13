@@ -27,6 +27,13 @@ name directory rather than scanning all source/platform classes. Candidate order
 duplicates and visibility remain unchanged; no additional Java semantics or
 incremental cache is introduced. See [boundary and evidence](docs/EXACT_NAME_DIRECTORY.md).
 
+## Source enum constant navigation
+
+Explicit source constants are fields of their enum; anonymous constant-specific
+bodies remain opaque rather than leaking members. Owner visibility is bounded,
+with cross-package protected nested types deferred. Enum constructors, synthetic
+methods and case-label semantics remain unsupported. See [scope and checks](docs/SOURCE_ENUM_CONSTANTS.md).
+
 ## Current measured baseline
 
 The source started as a Java syntax/name-binding subset, not a language server.

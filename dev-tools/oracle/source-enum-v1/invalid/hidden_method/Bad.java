@@ -1,0 +1,1 @@
+enum Bad { A { void hidden() {} }; void call() { A.hidden(); } }

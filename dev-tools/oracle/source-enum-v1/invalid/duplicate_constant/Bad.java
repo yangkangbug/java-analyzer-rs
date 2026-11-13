@@ -1,0 +1,1 @@
+enum Bad { A, A }

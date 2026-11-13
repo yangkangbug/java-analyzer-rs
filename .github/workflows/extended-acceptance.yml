@@ -92,6 +92,8 @@ on:
       - 'scripts/traditional-switch-parser-contract.py'
       - 'scripts/test_traditional_switch_parser_contract.py'
       - 'examples/traditional_switch/**'
+      - 'scripts/check-source-enum-oracle.py'
+      - 'scripts/test_source_enum_oracle.py'
       - 'scripts/check-traditional-switch-oracle.py'
       - 'scripts/test_traditional_switch_oracle.py'
       - 'dev-tools/oracle/traditional-switch-v1/**'
@@ -344,6 +346,13 @@ jobs:
         run: |
           jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
           python3 scripts/check-traditional-switch-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
+      - name: Source enum constant scope oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-source-enum-oracle.py \
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/examples/oracle_bindings

@@ -27,6 +27,9 @@ Traditional colon-label switch statements now preserve structure and one shared
 lexical scope. Switch expressions, arrow/pattern labels, label binding and
 control-flow validation remain unsupported; see [switch boundaries](docs/TRADITIONAL_SWITCH.md).
 
+Source enum constants now retain exact field navigation targets while constant-specific
+anonymous bodies stay isolated; see [enum boundaries](docs/SOURCE_ENUM_CONSTANTS.md).
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

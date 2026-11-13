@@ -1,0 +1,1 @@
+enum Bad { A { int hidden; }; int read() { return A.hidden; } }
