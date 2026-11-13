@@ -31,7 +31,7 @@ def run(native, fixture, capture_baseline=False):
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in queries]})
     response = second.successful(native, fixture, 'declaration', requests=request, strict_json=True)
     check_response(response, queries, fixture, capture_baseline)
-    preservation = strict.string.run(native, fixture, proof_stage='null_actual' if capture_baseline else 'source_invocation', parser_stage='current')
+    preservation = strict.string.run(native, fixture, proof_stage='null_actual' if capture_baseline else 'source_invocation', parser_stage='current' if capture_baseline else 'switch')
     after = second.all_source_hashes(fixture)
     second.same(before, after, 'all source bytes unchanged')
     second.same(after, preservation['source_sha256_after'], 'complete preservation inventory')

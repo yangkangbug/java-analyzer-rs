@@ -356,13 +356,14 @@ def preservation(runner, fixture, label):
         report[name] = second.portable_queries(response, fixture)
     configure_gate.missing_generated(report['original_16'], fixture)
     parser = runner.success(label + '-parser', 'parser-report', fixture)['result']
-    second.check_reference_parser(parser, fixture, historical, parser_digest)
+    second.check_reference_parser(parser, fixture, historical, parser_digest, stage="switch")
     portable = copy.deepcopy(parser)
     for file in portable['files']:
         file['path'] = Path(file['path']).relative_to(fixture.source_root).as_posix()
     report['parser'] = portable
-    same(portable['report_count'], 166, 'integer parser count')
-    same(portable['files_with_reports'], 44, 'integer parser affected count')
+    _, _, count, affected = second.switch_parser_contract(fixture)
+    same(portable['report_count'], count, 'switch parser count')
+    same(portable['files_with_reports'], affected, 'switch parser affected count')
     return report
 
 
@@ -499,7 +500,9 @@ def run(native, inputs, evidence, baseline=False):
                               manifest_sha256=hashlib.sha256(raw).hexdigest(),
                               binary_only_projections=binaries, detail_refusals=details,
                               preservation=preserved['generated'], exact_historical_manual_generated_equality=True,
-                              query_count=CURRENT_QUERY_COUNT, parser_report_count=166, parser_files_with_reports=44,
+                              query_count=CURRENT_QUERY_COUNT,
+                              parser_report_count=preserved['generated']['parser']['report_count'],
+                              parser_files_with_reports=preserved['generated']['parser']['files_with_reports'],
                               controls=controls, lsp_sessions=sessions)
             after, _ = check_inventory(fixture)
             same(after, before, 'all original source hashes after entire run')

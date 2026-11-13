@@ -162,6 +162,12 @@ pub enum SyntaxKind {
     Resource,
     EmptyStmt,
     IfStmt,
+    /// Traditional colon switch statement; expression switches remain unsupported.
+    SwitchStmt,
+    /// One lexical scope shared by all traditional switch labels.
+    SwitchBody,
+    /// Label expressions have no modeled constant/enum binding.
+    SwitchLabel,
     WhileStmt,
     DoStmt,
     ForStmt,

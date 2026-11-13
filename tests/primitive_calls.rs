@@ -521,3 +521,13 @@ fn workspace_platform_proof_stays_in_the_declaration_compilation() {
         assert_eq!(before.scope(id).unwrap().resolve_at(&path, at).status, ResolveStatus::OverloadNotResolved);
     }
 }
+
+#[test]
+fn switch_structure_does_not_expand_the_strict_call_proof_inventory() {
+    let source = "class Calls { static void m(Token[] x, long y) {} static void test(Token[] tokens) { switch(0) { default: break; } m(tokens, 0); } }";
+    selected(source, "m(tokens", "m(Token");
+    let no_switch = source.replace("switch(0) { default: break; }", "");
+    refused(&no_switch, "m(tokens", ResolveStatus::CallNotResolved, 1);
+    let wrong_arity = source.replace("m(tokens, 0);", "m(tokens);");
+    refused(&wrong_arity, "m(tokens", ResolveStatus::CallNotResolved, 1);
+}

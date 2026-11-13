@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
             SyntaxKind::Continue => self.parse_jump(SyntaxKind::ContinueStmt, false),
             SyntaxKind::Assert => self.parse_assert(),
             SyntaxKind::Try => self.parse_try(),
-            SyntaxKind::Switch => self.recover_switch(),
+            SyntaxKind::Switch => self.parse_switch(),
             _ if self.looks_like_local_type_decl() => self.parse_local_type(),
             _ if self.looks_like_decl() => self.parse_local(true),
             _ if self.can_start_expr() => {
@@ -1163,17 +1163,123 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_switch(&mut self) {
+        // Commit only a traditional colon statement. Unsupported labels remain
+        // one opaque recovery node, never ordinary declarations in the caller.
+        self.drain();
+        let pos = self.pos;
+        let depth = self.stack.len();
+        let children = self.stack.last().map_or(0, |frame| frame.children.len());
+        if !self.parse_switch_colon() {
+            self.stack.truncate(depth);
+            if let Some(parent) = self.stack.last_mut() {
+                parent.children.truncate(children);
+            }
+            self.pos = pos;
+            self.recover_switch();
+        }
+    }
+
+    fn parse_switch_colon(&mut self) -> bool {
+        self.open(SyntaxKind::SwitchStmt);
+        self.bump();
+        if !self.eat(SyntaxKind::LParen) {
+            return false;
+        }
+        self.parse_expr();
+        if !self.eat(SyntaxKind::RParen) || !self.at(SyntaxKind::LBrace) {
+            return false;
+        }
+        if self
+            .stack
+            .last()
+            .unwrap()
+            .children
+            .iter()
+            .filter_map(|c| c.as_node())
+            .any(|n| !crate::green::collect_errors(n).is_empty())
+        {
+            return false;
+        }
+        self.open(SyntaxKind::SwitchBody);
+        self.bump();
+        let mut labeled = false;
+        while !self.eof() && !self.at(SyntaxKind::RBrace) {
+            let before = self.pos;
+            match self.kind() {
+                SyntaxKind::Case | SyntaxKind::Default => {
+                    self.open(SyntaxKind::SwitchLabel);
+                    let default = self.at(SyntaxKind::Default);
+                    self.bump();
+                    if !default {
+                        if self.at(SyntaxKind::Null) || !self.can_start_expr() {
+                            return false;
+                        }
+                        self.parse_expr();
+                    }
+                    if !self.eat(SyntaxKind::Colon) {
+                        return false;
+                    }
+                    let label = self.finish();
+                    if !crate::green::collect_errors(&label).is_empty() || !Self::traditional_switch_label(&label) {
+                        return false;
+                    }
+                    labeled = true;
+                }
+                _ if labeled => self.parse_stmt(),
+                _ => return false,
+            }
+            if self.pos == before {
+                return false;
+            }
+        }
+        if !self.eat(SyntaxKind::RBrace) {
+            return false;
+        }
+        self.finish();
+        self.finish();
+        true
+    }
+
+    fn traditional_switch_label(node: &GreenNode) -> bool {
+        // No modern rule/pattern/null labels are silently reinterpreted as an
+        // old constant label, even when nested inside an expression node.
+        node.children().iter().all(|child| {
+            if let Some(node) = child.as_node() {
+                Self::traditional_switch_label(node)
+            } else {
+                child.as_token().is_none_or(|token| {
+                    !matches!(token.kind(), SyntaxKind::Arrow | SyntaxKind::Null | SyntaxKind::When | SyntaxKind::Comma)
+                })
+            }
+        })
+    }
+
     fn recover_switch(&mut self) {
         self.open(SyntaxKind::Error);
-        self.set_message("switch is not parsed in this subset");
+        self.set_message("unsupported or malformed switch");
         self.bump();
         let mut depth = 0i32;
         let mut saw_brace = false;
+        let mut parens = 0usize;
         while !self.eof() {
             match self.kind() {
+                SyntaxKind::LParen if !saw_brace => {
+                    parens += 1;
+                    self.bump();
+                }
+                SyntaxKind::RParen if !saw_brace => {
+                    parens = parens.saturating_sub(1);
+                    self.bump();
+                }
                 SyntaxKind::LBrace => {
+                    // A selector may itself contain an anonymous-class/array
+                    // initializer body. Only a brace outside its parentheses
+                    // begins the switch body.
+                    if depth == 0 && parens == 0 {
+                        saw_brace = true;
+                    }
                     depth += 1;
-                    saw_brace = true;
                     self.bump();
                 }
                 SyntaxKind::RBrace => {
@@ -1249,6 +1355,7 @@ impl<'a> Parser<'a> {
 
     fn can_start_expr(&self) -> bool {
         can_start_unary(self.kind())
+            || self.at(SyntaxKind::Switch)
             || self.at(SyntaxKind::LBrace)
             || self.type_then_colon_colon()
             || Look::from(self).scan_primitive_class_literal()
@@ -1511,6 +1618,7 @@ impl<'a> Parser<'a> {
                 self.expect(SyntaxKind::RParen, "expected ')'");
                 self.finish();
             }
+            SyntaxKind::Switch => self.recover_switch(),
             SyntaxKind::New => self.parse_new(),
             SyntaxKind::LBrace => self.parse_array_init(),
             _ => {

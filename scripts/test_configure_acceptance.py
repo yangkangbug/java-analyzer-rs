@@ -290,22 +290,34 @@ class InvocationControls(unittest.TestCase):
             with self.assertRaises(gate.AcceptanceError):
                 gate.missing_generated(rows, f)
 
-    def test_commons_historical_parser_gaps_cannot_be_erased_or_invented(self):
+    def test_commons_exact_parser_stages_cannot_be_swapped_erased_or_invented(self):
         root = Path('/sources')
-        expected = {p: int(n) for p, n in gate.commons.rows(gate.commons.CORPUS / 'parser-errors.tsv', 2)}
-        parser = {'files': [{'path': str(root / p), 'reports': [{}] * n} for p, n in expected.items()],
-                  'report_count': sum(expected.values()), 'files_with_reports': len(expected)}
-        gate.preserve_commons_parser(parser, root)
-        for operation in ['omit', 'add', 'summary']:
-            changed = copy.deepcopy(parser)
-            if operation == 'omit':
-                changed['files'].pop()
-            elif operation == 'add':
-                changed['files'][0]['reports'].append({})
-            else:
-                changed['report_count'] += 1
-            with self.subTest(operation=operation), self.assertRaises(gate.AcceptanceError):
-                gate.preserve_commons_parser(changed, root)
+        contract = gate.load_tool('traditional-switch-parser-contract')
+        for stage in ('baseline', 'switch'):
+            parser, _ = contract.load('commons', 'baseline' if stage == 'baseline' else 'candidate')
+            for row in parser['files']:
+                row['path'] = str(root / row['path'])
+            gate.preserve_commons_parser(parser, root, stage)
+            wrong = 'switch' if stage == 'baseline' else 'baseline'
+            with self.assertRaises(gate.AcceptanceError):
+                gate.preserve_commons_parser(parser, root, wrong)
+            gap_index = next(i for i, row in enumerate(parser['files']) if row['reports'])
+            for operation in ('omit', 'add', 'summary', 'message', 'range', 'extra'):
+                changed = copy.deepcopy(parser)
+                if operation == 'omit':
+                    changed['files'].pop()
+                elif operation == 'add':
+                    changed['files'][gap_index]['reports'].append({})
+                elif operation == 'summary':
+                    changed['report_count'] += 1
+                elif operation == 'message':
+                    changed['files'][gap_index]['reports'][0]['message'] += 'unexpected'
+                elif operation == 'range':
+                    changed['files'][gap_index]['reports'][0]['range']['end_byte'] += 1
+                else:
+                    changed['extra'] = True
+                with self.subTest(stage=stage, operation=operation), self.assertRaises(gate.AcceptanceError):
+                    gate.preserve_commons_parser(changed, root, stage)
 
     def test_reports_never_overwrite_old_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:

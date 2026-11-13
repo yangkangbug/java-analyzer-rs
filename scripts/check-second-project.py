@@ -709,11 +709,25 @@ def class_literal_parser_contract(fixture, historical, baseline_digest):
     return after, spec['current']['parser_result_canonical_sha256']
 
 
+def switch_parser_contract(fixture):
+    spec = importlib.util.spec_from_file_location("switch_parser_contract",
+        ROOT / "scripts/traditional-switch-parser-contract.py")
+    contract = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(contract)
+    expected, hashes = contract.load("gson")
+    same(all_source_hashes(fixture), hashes, "frozen complete switch source hashes")
+    inventory = {row["path"]: len(row["reports"]) for row in expected["files"]}
+    checksum = hashlib.sha256(canonical_json(expected).encode()).hexdigest()
+    return inventory, checksum, expected["report_count"], expected["files_with_reports"]
+
+
 def check_reference_parser(parser, fixture, historical, expected_digest, stage='current'):
-    require(stage in ('baseline', 'current'), 'unknown parser comparison stage')
+    require(stage in ('baseline', 'current', 'switch'), 'unknown parser comparison stage')
     check_parser(parser, fixture)
     if stage == 'baseline':
         expected_inventory, count, affected = historical['parser_after'], 331, 58
+    elif stage == 'switch':
+        expected_inventory, expected_digest, count, affected = switch_parser_contract(fixture)
     else:
         expected_inventory, expected_digest = class_literal_parser_contract(fixture, historical, expected_digest)
         count, affected = 166, 44
@@ -741,9 +755,9 @@ def proof_stages(capture_baseline, proof_stage=None, parser_stage=None):
     if proof_stage is None:
         proof_stage = 'pre_primitive' if capture_baseline else 'source_invocation'
     if parser_stage is None:
-        parser_stage = 'baseline' if capture_baseline else 'current'
+        parser_stage = 'baseline' if capture_baseline else 'switch'
     require(proof_stage in ('pre_primitive', 'single_primitive', 'mixed', 'reference_return', 'null_actual', 'binary_argument', 'cast_null', 'inherited_source', 'source_override', 'source_invocation'), 'unknown proof stage')
-    require(parser_stage in ('baseline', 'current'), 'parser proof stage')
+    require(parser_stage in ('baseline', 'current', 'switch'), 'parser proof stage')
     return proof_stage, parser_stage
 
 

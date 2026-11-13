@@ -395,7 +395,7 @@ fn overloaded_ambiguous_and_package_results_are_not_fabricated_declarations() {
 #[test]
 fn parser_reports_never_claim_semantic_errors_and_filter_owned_sources() {
     let f = Fixture::new();
-    f.write("src/A.java", "class A { void f(int n) { switch(n) { default: break; } } }");
+    f.write("src/A.java", "class A { void f(int n) { switch(n) { default -> n++; } } }");
     let manifest = f.manifest();
     let output = f.run(
         &["parser-report", "--manifest", manifest.to_str().unwrap(), "--project", "app", "--source-set", "main"],
@@ -774,4 +774,20 @@ fn target_details_option_is_single_and_declaration_only() {
         let result = f.run(&args, false);
         assert_eq!(result["error"]["code"], "usage");
     }
+}
+
+#[test]
+fn traditional_switch_structure_has_no_unsupported_parser_report() {
+    let f = Fixture::new();
+    f.write("src/A.java", "class A { void f(int n) { switch(n) { case 0: n++; break; default: break; } } }");
+    let manifest = f.manifest();
+    let output = f.run(
+        &["parser-report", "--manifest", manifest.to_str().unwrap(), "--project", "app", "--source-set", "main"],
+        true,
+    );
+    let result = &output["result"];
+    assert_eq!(result["java_semantic_diagnostics"], false);
+    assert_eq!(result["source_count"], 1);
+    assert_eq!(result["files_with_reports"], 0);
+    assert_eq!(result["report_count"], 0);
 }

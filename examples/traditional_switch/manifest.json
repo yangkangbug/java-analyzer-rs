@@ -1,0 +1,13 @@
+{
+  "commons-baseline-parser.json": "b2ca51610f1a9f1345c4eff7627c51e31a6d397dea5c2e2488335963cd6b1e2f",
+  "commons-baseline-source-sha256.json": "ad5701e0ab4ed821ef7cd869e96f84c5aa8f84370f5a01a0a91cbd750a58e40e",
+  "commons-candidate-parser.json": "a9e7c5835107bf894e7abef33bb84730304847d989c88bf030f0a7f97a50869f",
+  "commons-candidate-source-sha256.json": "ad5701e0ab4ed821ef7cd869e96f84c5aa8f84370f5a01a0a91cbd750a58e40e",
+  "commons-predicted-parser.json": "b9d91c3d72749c4e3d2afd1a74f99a469a3a1a48fc6b33af5ea47b7ebcafc58b",
+  "gson-baseline-parser.json": "c212b4375d12a4b566353ab2f6d4f311894ea24febc52647d98c53ab79b337df",
+  "gson-baseline-source-sha256.json": "b8dfa8503cdc1bbf7493fa113c54b6ebcb516679969ff3a6bd3025c1ea38fa21",
+  "gson-candidate-parser.json": "01ad5b8050afdaae29c586cd3562d5e755ac839b1d3c46da85f58aae02361505",
+  "gson-candidate-source-sha256.json": "b8dfa8503cdc1bbf7493fa113c54b6ebcb516679969ff3a6bd3025c1ea38fa21",
+  "gson-predicted-parser.json": "01ad5b8050afdaae29c586cd3562d5e755ac839b1d3c46da85f58aae02361505",
+  "commons-calls.tsv": "1c7720aa775fce713b102641c7fb21e706ce3b164aa32ed11894ab1821527a8f"
+}

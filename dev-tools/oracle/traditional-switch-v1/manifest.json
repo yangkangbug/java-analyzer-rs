@@ -1,0 +1,9 @@
+{
+  "invalid/duplicate_case/Bad.java": "cf06df484fda3a306a6c547edd49a5827d91bcc7b6a317c86efc5bb0023bed27",
+  "invalid/duplicate_local/Bad.java": "b11278ac90d171735aee900a1ac5be889897f09d12d8b7386532a8554f22bac3",
+  "invalid/leak/Bad.java": "54017eb4b69c7dbd70be39911c9eb737bf2cd908d6d7689fd690732cc26208b0",
+  "source/Containment.java": "1c206a3a650761d9af625a30ddbe379dfd6695fb1a2b2f4b15e4bb0c32d19441",
+  "source/Enums.java": "bd5c92ce6abaf8b7acd4f43ab933be9517369b8a9f8060220d3bef72080263ab",
+  "source/Flow.java": "45457e4bf322d5c0efef0ec9cd56b60e3c435d16919c5c60e405cc0c2f9f3276",
+  "predictions.json": "167a4363a7209af96fc0fa621059415e7e9a6704d2f2e2a9330ca0e755ba187e"
+}

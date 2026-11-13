@@ -42,7 +42,9 @@ completion and semantic diagnostics. A narrow definition-only LSP adapter is
 available, with the limitations described below. Unqualified invocation
 names now use the method namespace independently of
 same-spelled local/parameter/field values. The parser still
-omits switch/pattern/module support and some parameter/type-annotation syntax.
+supports traditional colon-label switch structure and shared lexical scope, but
+omits switch expressions, arrow rules, patterns, switch semantic validation, module
+support and some parameter/type-annotation syntax. See [switch boundaries](docs/TRADITIONAL_SWITCH.md).
 Local type declarations have an opaque containment boundary; their bindings
 remain unsupported rather than being indexed as ordinary members.
 

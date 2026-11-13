@@ -26,6 +26,11 @@ class MixedStageControls(unittest.TestCase):
         for paths in self.f.owned.values(): paths.sort()
         self.parsers = {stage: self.parser(inv) for stage, inv in [('baseline', self.old), ('current', self.new)]}
 
+        self.parsers['switch'] = copy.deepcopy(self.parsers['current'])
+        for row in self.parsers['switch']['files']:
+            for report in row['reports']:
+                report['message'] = 'synthetic switch stage'
+
     def parser(self, inventory):
         report = {'classification': 'parser_limit_or_invalid_syntax', 'message': 'synthetic',
                   'range': dict(start_byte=0, end_byte=1, start_utf16=0, end_utf16=1)}
@@ -42,6 +47,9 @@ class MixedStageControls(unittest.TestCase):
         with ExitStack() as stack:
             patch = lambda obj, name, **kw: stack.enter_context(mock.patch.object(obj, name, **kw))
             patch(second, 'class_literal_parser_contract', return_value=(self.new, current_digest))
+            patch(second, 'switch_parser_contract',
+                  return_value=(self.new, second.parser_result_digest(self.parsers['switch'], self.f),
+                                sum(self.new.values()), sum(bool(n) for n in self.new.values())))
             patch(second, 'reference_call_probes', return_value=([], {'parser_after': self.old}, old_digest))
             patch(second, 'constructor_expectations', return_value=[])
             original = patch(second, 'current_original_expectations', return_value=[])
@@ -73,11 +81,12 @@ class MixedStageControls(unittest.TestCase):
         for caller in [second.run_reference_call_acceptance, second.run_constructor_call_acceptance,
                        gate.strict.string.run, gate.strict.run, gate.run]:
             for baseline in [False, True]:
-                expected = 'baseline' if baseline and caller is not gate.run else 'current'
+                expected = ('baseline' if caller is not gate.run else 'current') if baseline else 'switch'
                 with self.subTest(caller=caller.__module__, baseline=baseline):
                     self.run_chain(caller, baseline, expected)
-                    with self.assertRaises(second.AcceptanceError):
-                        self.run_chain(caller, baseline, 'current' if expected == 'baseline' else 'baseline')
+                    for wrong_stage in {'baseline', 'current', 'switch'} - {expected}:
+                        with self.assertRaises(second.AcceptanceError):
+                            self.run_chain(caller, baseline, wrong_stage)
 
     def test_invalid_stage_parameters_fail_closed(self):
         for args in [(False, 1, 'current'), (False, 'mixed', 'both'), (1, 'pre_primitive', 'baseline'), (False, 'auto', 'current')]:

@@ -1,0 +1,3113 @@
+{
+  "classification": "parser_limit_or_invalid_syntax",
+  "files": [
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1840,
+            "end_utf16": 1840,
+            "start_byte": 1840,
+            "start_utf16": 1840
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/interceptors/Intercept.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1829,
+            "end_utf16": 1829,
+            "start_byte": 1829,
+            "start_utf16": 1829
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/interceptors/JsonPostDeserializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "path": "extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "path": "extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "path": "extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "path": "extras/src/test/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactoryTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "extras",
+        "source_set": "test"
+      },
+      "path": "extras/src/test/java/com/google/gson/typeadapters/UtcDateTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/ExclusionStrategy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/FieldAttributes.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/FieldNamingPolicy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/FieldNamingStrategy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/Gson.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 11911,
+            "end_utf16": 11911,
+            "start_byte": 11911,
+            "start_utf16": 11911
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 11935,
+            "end_utf16": 11935,
+            "start_byte": 11934,
+            "start_utf16": 11934
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 12293,
+            "end_utf16": 12293,
+            "start_byte": 12293,
+            "start_utf16": 12293
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 12338,
+            "end_utf16": 12338,
+            "start_byte": 12338,
+            "start_utf16": 12338
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 12391,
+            "end_utf16": 12391,
+            "start_byte": 12391,
+            "start_utf16": 12391
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 12514,
+            "end_utf16": 12514,
+            "start_byte": 12514,
+            "start_utf16": 12514
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/InstanceCreator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonArray.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonDeserializationContext.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonDeserializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonIOException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonNull.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonObject.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonParseException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonParser.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonPrimitive.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonSerializationContext.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonSerializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonStreamParser.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 3456,
+            "end_utf16": 3456,
+            "start_byte": 3444,
+            "start_utf16": 3444
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3464,
+            "end_utf16": 3464,
+            "start_byte": 3464,
+            "start_utf16": 3464
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/JsonSyntaxException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/LongSerializationPolicy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/ReflectionAccessFilter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/ToNumberPolicy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/ToNumberStrategy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/TypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/Expose.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2887,
+            "end_utf16": 2887,
+            "start_byte": 2887,
+            "start_utf16": 2887
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3203,
+            "end_utf16": 3203,
+            "start_byte": 3203,
+            "start_utf16": 3203
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3215,
+            "end_utf16": 3215,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3496,
+            "end_utf16": 3496,
+            "start_byte": 3496,
+            "start_utf16": 3496
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3508,
+            "end_utf16": 3508,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/JsonAdapter.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3655,
+            "end_utf16": 3655,
+            "start_byte": 3655,
+            "start_utf16": 3655
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3961,
+            "end_utf16": 3961,
+            "start_byte": 3961,
+            "start_utf16": 3961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3973,
+            "end_utf16": 3973,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/SerializedName.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2912,
+            "end_utf16": 2912,
+            "start_byte": 2912,
+            "start_utf16": 2912
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3158,
+            "end_utf16": 3158,
+            "start_byte": 3158,
+            "start_utf16": 3158
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/Since.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2215,
+            "end_utf16": 2215,
+            "start_byte": 2215,
+            "start_utf16": 2215
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/Until.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2538,
+            "end_utf16": 2538,
+            "start_byte": 2538,
+            "start_utf16": 2538
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/annotations/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/$Gson$Preconditions.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/$Gson$Types.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/Excluder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/JavaVersion.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/JsonReaderInternalAccess.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/LazilyParsedNumber.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/LinkedTreeMap.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/NonNullElementWrapperList.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/ObjectConstructor.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/PreJava9DateFormatProvider.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/Primitives.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/Streams.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/DateTypeAdapter.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 3036,
+            "end_utf16": 3036,
+            "start_byte": 3024,
+            "start_utf16": 3024
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3051,
+            "end_utf16": 3051,
+            "start_byte": 3051,
+            "start_utf16": 3051
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 3679,
+            "end_utf16": 3679,
+            "start_byte": 3667,
+            "start_utf16": 3667
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3694,
+            "end_utf16": 3694,
+            "start_byte": 3694,
+            "start_utf16": 3694
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/DefaultDateTypeAdapter.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 4801,
+            "end_utf16": 4801,
+            "start_byte": 4789,
+            "start_utf16": 4789
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 4816,
+            "end_utf16": 4816,
+            "start_byte": 4816,
+            "start_utf16": 4816
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 5266,
+            "end_utf16": 5266,
+            "start_byte": 5254,
+            "start_utf16": 5254
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 5281,
+            "end_utf16": 5281,
+            "start_byte": 5281,
+            "start_utf16": 5281
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/NumberTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/ObjectTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/SerializationDelegatingTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/bind/util/ISO8601Utils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 2192,
+            "end_utf16": 2192,
+            "start_byte": 2180,
+            "start_utf16": 2180
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2200,
+            "end_utf16": 2200,
+            "start_byte": 2200,
+            "start_utf16": 2200
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 2654,
+            "end_utf16": 2654,
+            "start_byte": 2642,
+            "start_utf16": 2642
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2662,
+            "end_utf16": 2662,
+            "start_byte": 2662,
+            "start_utf16": 2662
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/sql/SqlTimeTypeAdapter.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 2153,
+            "end_utf16": 2153,
+            "start_byte": 2141,
+            "start_utf16": 2141
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2161,
+            "end_utf16": 2161,
+            "start_byte": 2161,
+            "start_utf16": 2161
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 2594,
+            "end_utf16": 2594,
+            "start_byte": 2582,
+            "start_utf16": 2582
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2602,
+            "end_utf16": 2602,
+            "start_byte": 2602,
+            "start_utf16": 2602
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7679,
+            "end_utf16": 7679,
+            "start_byte": 7678,
+            "start_utf16": 7678
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7684,
+            "end_utf16": 7684,
+            "start_byte": 7681,
+            "start_utf16": 7681
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7882,
+            "end_utf16": 7882,
+            "start_byte": 7879,
+            "start_utf16": 7879
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/reflect/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 22453,
+            "end_utf16": 22453,
+            "start_byte": 22453,
+            "start_utf16": 22453
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 22454,
+            "end_utf16": 22454,
+            "start_byte": 22453,
+            "start_utf16": 22453
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 34910,
+            "end_utf16": 34910,
+            "start_byte": 34910,
+            "start_utf16": 34910
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 34911,
+            "end_utf16": 34911,
+            "start_byte": 34910,
+            "start_utf16": 34910
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 47629,
+            "end_utf16": 47629,
+            "start_byte": 47629,
+            "start_utf16": 47629
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 47630,
+            "end_utf16": 47630,
+            "start_byte": 47629,
+            "start_utf16": 47629
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/JsonScope.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/JsonToken.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/MalformedJsonException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "path": "gson/src/main/java/com/google/gson/stream/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/CommentsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/DefaultMapJsonSerializerTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ExposeAnnotationExclusionStrategyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 1772,
+            "end_utf16": 1772,
+            "start_byte": 1706,
+            "start_utf16": 1706
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 2913,
+            "end_utf16": 2913,
+            "start_byte": 2847,
+            "start_utf16": 2847
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/GenericArrayTypeTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/GsonBuilderTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2641,
+            "end_utf16": 2641,
+            "start_byte": 2641,
+            "start_utf16": 2641
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3460,
+            "end_utf16": 3460,
+            "start_byte": 3460,
+            "start_utf16": 3460
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 4624,
+            "end_utf16": 4624,
+            "start_byte": 4285,
+            "start_utf16": 4285
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 7731,
+            "end_utf16": 7731,
+            "start_byte": 6910,
+            "start_utf16": 6910
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/GsonTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/InnerClassExclusionStrategyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JavaSerializationTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonArrayAsListTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2275,
+            "end_utf16": 2275,
+            "start_byte": 2275,
+            "start_utf16": 2275
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3298,
+            "end_utf16": 3298,
+            "start_byte": 3298,
+            "start_utf16": 3298
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3497,
+            "end_utf16": 3497,
+            "start_byte": 3497,
+            "start_utf16": 3497
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3695,
+            "end_utf16": 3695,
+            "start_byte": 3695,
+            "start_utf16": 3695
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonNullTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonObjectAsMapTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3948,
+            "end_utf16": 3948,
+            "start_byte": 3948,
+            "start_utf16": 3948
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 4162,
+            "end_utf16": 4162,
+            "start_byte": 4162,
+            "start_utf16": 4162
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 6257,
+            "end_utf16": 6257,
+            "start_byte": 6257,
+            "start_utf16": 6257
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 6265,
+            "end_utf16": 6265,
+            "start_byte": 6264,
+            "start_utf16": 6264
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 6267,
+            "end_utf16": 6267,
+            "start_byte": 6267,
+            "start_utf16": 6267
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 6267,
+            "end_utf16": 6267,
+            "start_byte": 6267,
+            "start_utf16": 6267
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 6268,
+            "end_utf16": 6268,
+            "start_byte": 6267,
+            "start_utf16": 6267
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 6270,
+            "end_utf16": 6270,
+            "start_byte": 6268,
+            "start_utf16": 6268
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonParserTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonPrimitiveTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/JsonStreamParserTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/LongSerializationPolicyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/MixedStreamTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/MockExclusionStrategy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ObjectTypeAdapterParameterizedTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ObjectTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/OverrideCoreTypeAdaptersTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ParameterizedTypeFixtures.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ParameterizedTypeTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/PrimitiveTypeAdapter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/ToNumberPolicyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/TypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/VersionExclusionStrategyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/common/MoreAsserts.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/common/TestTypes.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ArrayTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/CircularReferenceTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/CollectionTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ConcurrencyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/CustomDeserializerTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/CustomTypeAdaptersTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 19089,
+            "end_utf16": 19089,
+            "start_byte": 19089,
+            "start_utf16": 19089
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/DelegateTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/EnumTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/EnumWithObfuscatedTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/EscapingTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ExclusionStrategyFunctionalTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 6849,
+            "end_utf16": 6849,
+            "start_byte": 6849,
+            "start_utf16": 6849
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ExposeFieldsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1355,
+            "end_utf16": 1355,
+            "start_byte": 1355,
+            "start_utf16": 1355
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1355,
+            "end_utf16": 1355,
+            "start_byte": 1355,
+            "start_utf16": 1355
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1516,
+            "end_utf16": 1516,
+            "start_byte": 1516,
+            "start_utf16": 1516
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1516,
+            "end_utf16": 1516,
+            "start_byte": 1516,
+            "start_utf16": 1516
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1791,
+            "end_utf16": 1791,
+            "start_byte": 1791,
+            "start_utf16": 1791
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1791,
+            "end_utf16": 1791,
+            "start_byte": 1791,
+            "start_utf16": 1791
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2028,
+            "end_utf16": 2028,
+            "start_byte": 2028,
+            "start_utf16": 2028
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2028,
+            "end_utf16": 2028,
+            "start_byte": 2028,
+            "start_utf16": 2028
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2189,
+            "end_utf16": 2189,
+            "start_byte": 2189,
+            "start_utf16": 2189
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2189,
+            "end_utf16": 2189,
+            "start_byte": 2189,
+            "start_utf16": 2189
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/FieldNamingTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/GsonVersionDiagnosticsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/InheritanceTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/InstanceCreatorTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 3188,
+            "end_utf16": 3188,
+            "start_byte": 3111,
+            "start_utf16": 3111
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 3896,
+            "end_utf16": 3896,
+            "start_byte": 3823,
+            "start_utf16": 3823
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/InterfaceTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/InternationalizationTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/Java17RecordTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 3354,
+            "end_utf16": 3354,
+            "start_byte": 3229,
+            "start_utf16": 3229
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 3680,
+            "end_utf16": 3680,
+            "start_byte": 3652,
+            "start_utf16": 3652
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 4048,
+            "end_utf16": 4048,
+            "start_byte": 4020,
+            "start_utf16": 4020
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 4295,
+            "end_utf16": 4295,
+            "start_byte": 4252,
+            "start_utf16": 4252
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 4631,
+            "end_utf16": 4631,
+            "start_byte": 4540,
+            "start_utf16": 4540
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 5181,
+            "end_utf16": 5181,
+            "start_byte": 4955,
+            "start_utf16": 4955
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 5762,
+            "end_utf16": 5762,
+            "start_byte": 5643,
+            "start_utf16": 5643
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 6192,
+            "end_utf16": 6192,
+            "start_byte": 5978,
+            "start_utf16": 5978
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 6613,
+            "end_utf16": 6613,
+            "start_byte": 6590,
+            "start_utf16": 6590
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 6994,
+            "end_utf16": 6994,
+            "start_byte": 6966,
+            "start_utf16": 6966
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 9086,
+            "end_utf16": 9086,
+            "start_byte": 9048,
+            "start_utf16": 9048
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 10947,
+            "end_utf16": 10947,
+            "start_byte": 10877,
+            "start_utf16": 10877
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 11235,
+            "end_utf16": 11235,
+            "start_byte": 11190,
+            "start_utf16": 11190
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 12175,
+            "end_utf16": 12175,
+            "start_byte": 11745,
+            "start_utf16": 11745
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 12253,
+            "end_utf16": 12253,
+            "start_byte": 12180,
+            "start_utf16": 12180
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 12525,
+            "end_utf16": 12525,
+            "start_byte": 12501,
+            "start_utf16": 12501
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 12554,
+            "end_utf16": 12554,
+            "start_byte": 12530,
+            "start_utf16": 12530
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 14708,
+            "end_utf16": 14708,
+            "start_byte": 14680,
+            "start_utf16": 14680
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JavaUtilConcurrentAtomicTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JavaUtilTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnClassesTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JsonAdapterSerializerDeserializerTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JsonParserTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/JsonTreeTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/LeniencyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/MapAsArrayTypeAdapterTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1600,
+            "end_utf16": 1600,
+            "start_byte": 1600,
+            "start_utf16": 1600
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2097,
+            "end_utf16": 2097,
+            "start_byte": 2097,
+            "start_utf16": 2097
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3688,
+            "end_utf16": 3688,
+            "start_byte": 3688,
+            "start_utf16": 3688
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/MapTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/MoreSpecificTypeSerializationTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/NamingPolicyTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/NullObjectAndFieldTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ObjectTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 13961,
+            "end_utf16": 13961,
+            "start_byte": 13961,
+            "start_utf16": 13961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 13961,
+            "end_utf16": 13961,
+            "start_byte": 13961,
+            "start_utf16": 13961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 14389,
+            "end_utf16": 14389,
+            "start_byte": 14389,
+            "start_utf16": 14389
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 14389,
+            "end_utf16": 14389,
+            "start_byte": 14389,
+            "start_utf16": 14389
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 4778,
+            "end_utf16": 4778,
+            "start_byte": 4778,
+            "start_utf16": 4778
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5000,
+            "end_utf16": 5000,
+            "start_byte": 5000,
+            "start_utf16": 5000
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5809,
+            "end_utf16": 5809,
+            "start_byte": 5809,
+            "start_utf16": 5809
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 6085,
+            "end_utf16": 6085,
+            "start_byte": 6085,
+            "start_utf16": 6085
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/PrettyPrintingTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/PrimitiveCharacterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/PrimitiveTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 34276,
+            "end_utf16": 34276,
+            "start_byte": 34276,
+            "start_utf16": 34276
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/PrintFormattingTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/RawSerializationTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ReadersWritersTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 6315,
+            "end_utf16": 6315,
+            "start_byte": 5368,
+            "start_utf16": 5368
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ReflectionAccessFilterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ReflectionAccessTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ReusedTypeVariablesFullyResolveTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/RuntimeTypeAdapterFactoryFunctionalTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/SecurityTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/SerializedNameTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/StringTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/ToNumberPolicyFunctionalTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/TreeTypeAdaptersTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/TypeAdapterPrecedenceTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/TypeAdapterRuntimeTypeWrapperTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/TypeHierarchyAdapterTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 7125,
+            "end_utf16": 7125,
+            "start_byte": 7125,
+            "start_utf16": 7125
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/TypeVariableTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2043,
+            "end_utf16": 2043,
+            "start_byte": 2043,
+            "start_utf16": 2043
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/UncategorizedTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/functional/VersioningTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/ConstructorConstructorTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 478,
+            "end_utf16": 478,
+            "start_byte": 478,
+            "start_utf16": 478
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 502,
+            "end_utf16": 502,
+            "start_byte": 501,
+            "start_utf16": 501
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 540,
+            "end_utf16": 540,
+            "start_byte": 540,
+            "start_utf16": 540
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/GsonBuildConfigTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/GsonTypesTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 1383,
+            "end_utf16": 1383,
+            "start_byte": 1362,
+            "start_utf16": 1362
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/JavaVersionTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/StreamsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/UnsafeAllocatorInstantiationTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/DefaultDateTypeAdapterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 4120,
+            "end_utf16": 4120,
+            "start_byte": 3926,
+            "start_utf16": 3926
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/JsonTreeWriterTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/RecursiveTypesResolveTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/bind/util/ISO8601UtilsTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/sql/SqlTypesGsonTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/internal/sql/SqlTypesSupportTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/metrics/PerformanceTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 9230,
+            "end_utf16": 9230,
+            "start_byte": 9180,
+            "start_utf16": 9180
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 9287,
+            "end_utf16": 9287,
+            "start_byte": 9235,
+            "start_utf16": 9235
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "local type bindings are unsupported",
+          "range": {
+            "end_byte": 9347,
+            "end_utf16": 9347,
+            "start_byte": 9292,
+            "start_utf16": 9292
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/regression/JsonAdapterNullSafeTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/regression/OSGiTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/stream/JsonReaderPathTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/stream/JsonReaderTest.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "path": "gson/src/test/java/com/google/gson/stream/JsonWriterTest.java",
+      "reports": []
+    }
+  ],
+  "files_with_reports": 35,
+  "java_semantic_diagnostics": false,
+  "report_count": 138,
+  "scope": "owned_sources_only",
+  "source_count": 211
+}

@@ -1880,7 +1880,7 @@ struct Hit<'a> {
 
 fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Option<Hit<'_>> {
     let end = start + node.utf8_len();
-    if byte < start || byte >= end {
+    if node.kind() == SyntaxKind::SwitchLabel || byte < start || byte >= end {
         return None;
     }
     let mut child_at = start;
@@ -2140,6 +2140,8 @@ enum ScopeKind {
 
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     match node.kind() {
+        // Labels have no modeled enum/constant semantics or declarations.
+        SyntaxKind::SwitchLabel => return,
         SyntaxKind::LocalType => {
             let mut header =
                 node.children().iter().filter_map(|child| child.as_token()).filter(|token| !token.kind().is_trivia());
@@ -2465,7 +2467,7 @@ fn scope_of(node: &GreenNode, start: u32) -> Option<(u32, u32, ScopeKind)> {
         return Some((start, body_end, ScopeKind::Try));
     }
     let kind = match node.kind() {
-        SyntaxKind::Block | SyntaxKind::ForStmt => ScopeKind::Other,
+        SyntaxKind::Block | SyntaxKind::SwitchBody | SyntaxKind::ForStmt => ScopeKind::Other,
         SyntaxKind::LambdaExpr => ScopeKind::Lambda,
         SyntaxKind::CatchClause => ScopeKind::Catch,
         SyntaxKind::TryStmt => ScopeKind::Try,
@@ -3260,7 +3262,10 @@ fn plain_reference_type(node: &GreenNode) -> bool {
 }
 
 fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
-    if node.kind() == SyntaxKind::LocalType {
+    // Traditional switches add syntax and lexical scope, not strict call-proof
+    // coverage. Preserve the previous opaque-switch inventory boundary rather
+    // than enabling unrelated strict proofs just because parser errors vanish.
+    if matches!(node.kind(), SyntaxKind::LocalType | SyntaxKind::SwitchStmt) {
         return false;
     }
     if matches!(node.kind(), SyntaxKind::Method | SyntaxKind::Constructor) && source_call(node, start).is_none() {

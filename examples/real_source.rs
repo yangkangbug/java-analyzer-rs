@@ -16,7 +16,10 @@ struct Query {
 
 // Audit only direct unqualified invocation names, not arguments, value receivers,
 // or method references. Refused/ambiguous methods are not semantic successes.
-fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>) {
+fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>, skip_switch: bool) {
+    if skip_switch && node.kind() == SyntaxKind::SwitchStmt {
+        return;
+    }
     if node.kind() == SyntaxKind::CallExpr {
         let mut offset = start;
         for child in node.children() {
@@ -40,7 +43,7 @@ fn unqualified_callees(node: &GreenNode, start: u32, out: &mut Vec<u32>) {
     let mut offset = start;
     for child in node.children() {
         if let Some(child) = child.as_node() {
-            unqualified_callees(child, offset, out);
+            unqualified_callees(child, offset, out, skip_switch);
         }
         offset += child.utf8_len();
     }
@@ -174,13 +177,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let prepared = snapshot.project().prepare();
     let prepare_ns = started.elapsed().as_nanos();
     let mut calls = 0;
+    let mut historical_calls = 0;
+    let mut complete_calls = Vec::new();
     let mut wrong_namespace = 0;
     for path in snapshot.source_paths() {
         let file = snapshot.project().file(path).ok_or("missing parsed source")?;
         let mut callees = Vec::new();
-        unqualified_callees(file.root(), 0, &mut callees);
+        unqualified_callees(file.root(), 0, &mut callees, false);
+        let mut old_callees = Vec::new();
+        unqualified_callees(file.root(), 0, &mut old_callees, true);
+        historical_calls += old_callees.len();
         for byte in callees {
             calls += 1;
+            let relative = std::path::Path::new(path).strip_prefix(&root)?.to_str().ok_or("invalid path")?;
+            let spelling: String = file.text()[byte as usize..]
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
+                .collect();
+            let stage = if old_callees.contains(&byte) { "historical" } else { "switch" };
+            let record = format!("{relative}\t{byte}\t{spelling}\t{stage}");
+            println!("call_inventory\t{record}");
+            complete_calls.push(record);
             let result = prepared.resolve_at(path, byte);
             if result.targets.iter().any(|target| target.kind != TargetKind::Method) {
                 wrong_namespace += 1;
@@ -189,7 +206,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("unqualified_call_namespace_audit: calls={calls} wrong_namespace={wrong_namespace}");
-    assert_eq!(calls, 3030, "review pinned call inventory when parser/walker coverage changes");
+    assert_eq!(historical_calls, 3030, "historical calls outside newly structured switches");
+    assert_eq!(calls, 3077, "review pinned call inventory when parser/walker coverage changes");
+    complete_calls.sort();
+    // Freeze and review complete records before publication; never a count-only gate.
+    let expected_calls: Vec<_> = include_str!("traditional_switch/commons-calls.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(complete_calls, expected_calls, "complete call inventory including historical and switch rows");
     assert_eq!(wrong_namespace, 0, "method invocations must never resolve to variable/type declarations");
     let mut expected = Vec::new();
     for query in &queries {

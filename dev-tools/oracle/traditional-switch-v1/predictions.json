@@ -1,0 +1,116 @@
+{
+  "selector_use": [
+    "Resolved",
+    "selector",
+    "PARAMETER",
+    "oracle.Flow"
+  ],
+  "first_shared": [
+    "Resolved",
+    "shared",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "later_shared": [
+    "Resolved",
+    "shared",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "nested_selector": [
+    "Resolved",
+    "selector",
+    "PARAMETER",
+    "oracle.Flow"
+  ],
+  "nested_use": [
+    "Resolved",
+    "nested",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "constant_label": [
+    "Unresolved",
+    "code",
+    "FIELD",
+    "oracle.Flow"
+  ],
+  "constant_body": [
+    "Resolved",
+    "selector",
+    "PARAMETER",
+    "oracle.Flow"
+  ],
+  "inner_selector": [
+    "Resolved",
+    "selector",
+    "PARAMETER",
+    "oracle.Flow"
+  ],
+  "inner_use": [
+    "Resolved",
+    "inner",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "inner_default": [
+    "Resolved",
+    "selector",
+    "PARAMETER",
+    "oracle.Flow"
+  ],
+  "after_use": [
+    "Resolved",
+    "after_shared",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "after_result": [
+    "Resolved",
+    "result",
+    "LOCAL_VARIABLE",
+    "oracle.Flow"
+  ],
+  "enum_selector": [
+    "Resolved",
+    "mode",
+    "PARAMETER",
+    "oracle.Enums"
+  ],
+  "enum_label": [
+    "Unresolved",
+    "one",
+    "ENUM_CONSTANT",
+    "oracle.Enums.Mode"
+  ],
+  "enum_after": [
+    "Resolved",
+    "enum_result",
+    "LOCAL_VARIABLE",
+    "oracle.Enums"
+  ],
+  "local_selector_use": [
+    "Resolved",
+    "local_selector",
+    "PARAMETER",
+    "oracle.Containment"
+  ],
+  "hidden_use": [
+    "Unresolved",
+    "hidden_value",
+    "FIELD",
+    "Hidden"
+  ],
+  "outside_hidden": [
+    "Resolved",
+    "local_selector",
+    "PARAMETER",
+    "oracle.Containment"
+  ],
+  "after_hidden": [
+    "Resolved",
+    "local_result",
+    "LOCAL_VARIABLE",
+    "oracle.Containment"
+  ]
+}

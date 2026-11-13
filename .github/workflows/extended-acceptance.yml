@@ -88,6 +88,13 @@ on:
       - 'tests/positions.rs'
       - 'examples/second_project/**'
       - 'scripts/check-cli-runtime.sh'
+      - 'scripts/check-traditional-switch-acceptance.py'
+      - 'scripts/traditional-switch-parser-contract.py'
+      - 'scripts/test_traditional_switch_parser_contract.py'
+      - 'examples/traditional_switch/**'
+      - 'scripts/check-traditional-switch-oracle.py'
+      - 'scripts/test_traditional_switch_oracle.py'
+      - 'dev-tools/oracle/traditional-switch-v1/**'
       - 'scripts/check-semantic-oracle.py'
       - 'scripts/check-header-inventory-oracle.py'
       - 'scripts/check-effective-binary-oracle.py'
@@ -327,6 +334,19 @@ jobs:
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/java-analyzer
+      - name: Complete traditional switch parser preservation (native only)
+        run: |
+          python3 scripts/check-traditional-switch-acceptance.py \
+            "$RUNNER_TEMP/acceptance/sources.jar" \
+            "$RUNNER_TEMP/acceptance/java.base.jmod" \
+            "$RUNNER_TEMP/second-project" --native target/debug/java-analyzer
+      - name: Traditional switch scope oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-traditional-switch-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/examples/oracle_bindings
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

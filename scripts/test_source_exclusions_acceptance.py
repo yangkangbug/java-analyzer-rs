@@ -361,6 +361,26 @@ class InvocationControls(unittest.TestCase):
 
 
 class ResultControls(unittest.TestCase):
+    def test_preservation_explicitly_selects_switch_stage(self):
+        from types import SimpleNamespace
+        parser = {'files': [{'path': '/fixture/A.java', 'reports': []}],
+                  'report_count': 138, 'files_with_reports': 38}
+        fixture = SimpleNamespace(workdir=Path('/unused'), source_root=Path('/fixture'))
+        runner = mock.Mock()
+        runner.success.side_effect = [{'result': {'queries': []}}, {'result': parser}]
+        with mock.patch.object(gate, 'probe_groups', return_value=([('original_16', [])], {}, 'old-digest')), \
+             mock.patch.object(gate, 'write_new'), \
+             mock.patch.object(gate.second, 'check_reference_call_response'), \
+             mock.patch.object(gate.second, 'portable_queries', return_value=[]), \
+             mock.patch.object(gate.configure_gate, 'missing_generated'), \
+             mock.patch.object(gate.second, 'check_reference_parser') as validate, \
+             mock.patch.object(gate.second, 'switch_parser_contract', return_value=({}, 'digest', 138, 38)):
+            report = gate.preservation(runner, fixture, 'generated')
+            validate.assert_called_once_with(parser, fixture, {}, 'old-digest', stage='switch')
+            self.assertEqual(report['parser']['files'][0]['path'], 'A.java')
+            self.assertEqual(report['parser']['report_count'], 138)
+
+
     def test_exact_record_comparison_rejects_target_refusal_scope_type_and_parser_mutations(self):
         original = {'queries': [{'query_index': 0, 'compilation': {'project': 'gson', 'source_set': 'test'},
                     'status': 'Resolved', 'targets': [{'origin': 'source', 'name': 'remove',

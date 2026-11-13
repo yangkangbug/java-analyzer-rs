@@ -192,9 +192,11 @@ fn deleting_a_string_quote_matches_a_full_parse() {
 }
 
 #[test]
-fn switch_is_skipped_and_the_next_statement_remains() {
+fn traditional_switch_is_structured_and_the_next_statement_remains() {
     let file = parse("class C { void m() { switch (x) { case 1: break; } int y = 1; } }");
-    assert!(file.errors().iter().any(|error| error.message.contains("switch")));
+    assert!(file.errors().is_empty(), "{}", file.dump());
+    assert!(file.dump().contains("SwitchStmt"));
+    assert!(file.dump().contains("SwitchLabel"));
     assert!(file.dump().contains("Ident[y]"), "{}", file.dump());
 }
 

@@ -23,6 +23,10 @@ selected nongeneric binary calls as existing qualified receivers and arguments.
 The [exact-name directory](docs/EXACT_NAME_DIRECTORY.md) reuses prepared declaration
 locations for legacy type lookup while retaining candidate order and ambiguity.
 
+Traditional colon-label switch statements now preserve structure and one shared
+lexical scope. Switch expressions, arrow/pattern labels, label binding and
+control-flow validation remain unsupported; see [switch boundaries](docs/TRADITIONAL_SWITCH.md).
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

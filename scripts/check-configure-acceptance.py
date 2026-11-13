@@ -287,16 +287,17 @@ def gson_arguments(fixture, cwd):
     ]
 
 
-def preserve_commons_parser(parser, source_root):
-    # The historical helper reports inventory changes without failing. This gate
-    # adds strict preservation for this configuration-only change.
-    expected = {p: int(n) for p, n in commons.rows(commons.CORPUS / 'parser-errors.tsv', 2)}
-    actual = {Path(row['path']).relative_to(source_root).as_posix(): len(row['reports'])
-              for row in parser['files'] if row['reports']}
-    same(actual, expected, 'unchanged historical Commons parser gap inventory')
-    same(parser['report_count'], sum(expected.values()), 'unchanged Commons parser report count')
-    same(parser['files_with_reports'], len(expected), 'unchanged Commons parser affected-file count')
-    return actual
+def preserve_commons_parser(parser, source_root, stage='switch'):
+    # Configuration changes must preserve the exact explicitly selected parser
+    # stage, including every message/range, not merely its historical counts.
+    require(stage in ('baseline', 'switch'), 'explicit Commons parser stage')
+    contract = load_tool('traditional-switch-parser-contract')
+    expected, _ = contract.load('commons', 'baseline' if stage == 'baseline' else 'candidate')
+    actual = copy.deepcopy(parser)
+    for row in actual['files']:
+        row['path'] = Path(row['path']).relative_to(source_root).as_posix()
+    same(actual, expected, stage + ' complete Commons parser records')
+    return {row['path']: len(row['reports']) for row in actual['files'] if row['reports']}
 
 
 def run_commons(native, source, platform, stage):

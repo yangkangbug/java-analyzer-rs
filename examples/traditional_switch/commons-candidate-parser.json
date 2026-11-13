@@ -1,0 +1,2617 @@
+{
+  "classification": "parser_limit_or_invalid_syntax",
+  "files": [
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/AnnotationUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/AppendableJoiner.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ArchUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ArrayFill.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ArraySorter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ArrayUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/BitField.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/BooleanUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CachedRandomBits.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharEncoding.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharRange.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharSequenceUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharSet.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 7638,
+            "end_utf16": 7638,
+            "start_byte": 7626,
+            "start_utf16": 7626
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 7645,
+            "end_utf16": 7645,
+            "start_byte": 7645,
+            "start_utf16": 7645
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharSetUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/CharUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Charsets.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ClassLoaderUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ClassPathUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ClassUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Conversion.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/DoubleRange.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/EnumUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Functions.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/IntegerRange.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/JavaVersion.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5071,
+            "end_utf16": 5071,
+            "start_byte": 5071,
+            "start_utf16": 5071
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5075,
+            "end_utf16": 5075,
+            "start_byte": 5075,
+            "start_utf16": 5075
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/LocaleUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/LongRange.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/NotImplementedException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/NumberRange.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ObjectUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/RandomStringUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/RandomUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Range.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/RegExUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/RuntimeEnvironment.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/SerializationException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/SerializationUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Streams.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/StringEscapeUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/StringUtils.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 125269,
+            "end_utf16": 125269,
+            "start_byte": 125269,
+            "start_utf16": 125269
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 125270,
+            "end_utf16": 125270,
+            "start_byte": 125269,
+            "start_utf16": 125269
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/SystemProperties.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/SystemUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/ThreadUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/Validate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/arch/Processor.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/arch/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/AbstractSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/Builder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/CompareToBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/Diff.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/DiffBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/DiffExclude.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1182,
+            "end_utf16": 1182,
+            "start_byte": 1182,
+            "start_utf16": 1182
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/DiffResult.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/Diffable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/EqualsBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/EqualsExclude.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1223,
+            "end_utf16": 1223,
+            "start_byte": 1223,
+            "start_utf16": 1223
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/HashCodeBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/HashCodeExclude.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1226,
+            "end_utf16": 1226,
+            "start_byte": 1226,
+            "start_utf16": 1226
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/IDKey.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/MultilineRecursiveToStringStyle.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/RecursiveToStringStyle.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/Reflection.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ReflectionDiffBuilder.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5979,
+            "end_utf16": 5979,
+            "start_byte": 5979,
+            "start_utf16": 5979
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ReflectionToStringBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/StandardToStringStyle.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ToStringBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ToStringExclude.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1183,
+            "end_utf16": 1183,
+            "start_byte": 1183,
+            "start_utf16": 1183
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ToStringStyle.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/ToStringSummary.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1362,
+            "end_utf16": 1362,
+            "start_byte": 1362,
+            "start_utf16": 1362
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/builder/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/compare/ComparableUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/compare/ObjectToStringComparator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/compare/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/AbstractCircuitBreaker.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/AbstractConcurrentInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/AbstractFutureProxy.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/AtomicInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/AtomicSafeInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/BackgroundInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/BasicThreadFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/CallableBackgroundInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/CircuitBreaker.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/CircuitBreakingException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/Computable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ConcurrentException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ConcurrentInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ConcurrentRuntimeException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ConcurrentUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ConstantInitializer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/EventCountCircuitBreaker.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/FutureTasks.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/LazyInitializer.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 5651,
+            "end_utf16": 5651,
+            "start_byte": 5639,
+            "start_utf16": 5639
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 5659,
+            "end_utf16": 5659,
+            "start_byte": 5659,
+            "start_utf16": 5659
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/Memoizer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 12123,
+            "end_utf16": 12123,
+            "start_byte": 12111,
+            "start_utf16": 12111
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 12131,
+            "end_utf16": 12131,
+            "start_byte": 12131,
+            "start_utf16": 12131
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 14840,
+            "end_utf16": 14840,
+            "start_byte": 14828,
+            "start_utf16": 14828
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 14848,
+            "end_utf16": 14848,
+            "start_byte": 14848,
+            "start_utf16": 14848
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/ThresholdCircuitBreaker.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/TimedSemaphore.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/UncheckedExecutionException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/UncheckedFuture.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/UncheckedFutureImpl.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/UncheckedTimeoutException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/locks/LockingVisitors.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/locks/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/concurrent/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/event/EventListenerSupport.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/event/EventUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/event/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/CloneFailedException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/ContextedException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/ContextedRuntimeException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/DefaultExceptionContext.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/ExceptionContext.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/ExceptionUtils.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5388,
+            "end_utf16": 5388,
+            "start_byte": 5388,
+            "start_utf16": 5388
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 5390,
+            "end_utf16": 5390,
+            "start_byte": 5390,
+            "start_utf16": 5390
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 5391,
+            "end_utf16": 5391,
+            "start_byte": 5390,
+            "start_utf16": 5390
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 36093,
+            "end_utf16": 36093,
+            "start_byte": 36093,
+            "start_utf16": 36093
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 36095,
+            "end_utf16": 36095,
+            "start_byte": 36095,
+            "start_utf16": 36095
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 36096,
+            "end_utf16": 36096,
+            "start_byte": 36095,
+            "start_utf16": 36095
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/UncheckedException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/UncheckedIllegalAccessException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/UncheckedInterruptedException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/UncheckedReflectiveOperationException.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/exception/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/BooleanConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/Consumers.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/Failable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableBiConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableBiFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableBiPredicate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableBooleanSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableCallable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleBinaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoublePredicate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleToIntFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleToLongFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableDoubleUnaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntBinaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntPredicate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntToDoubleFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntToLongFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableIntUnaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongBinaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongPredicate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongToDoubleFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongToIntFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableLongUnaryOperator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableObjDoubleConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableObjIntConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableObjLongConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailablePredicate.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableRunnable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableShortSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableSupplier.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToDoubleBiFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToDoubleFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToIntBiFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToIntFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToLongBiFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/FailableToLongFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/Functions.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/IntToCharFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/MethodInvokers.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/Suppliers.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/ToBooleanBiFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/TriConsumer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/TriFunction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/function/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/math/Fraction.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/math/IEEE754rUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/math/NumberUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/math/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/Mutable.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableBoolean.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableByte.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableDouble.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableFloat.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableInt.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableLong.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableObject.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/MutableShort.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/mutable/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/ConstructorUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/FieldUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/InheritanceUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/MemberUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/MethodUtils.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 24832,
+            "end_utf16": 24832,
+            "start_byte": 24832,
+            "start_utf16": 24832
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 24833,
+            "end_utf16": 24833,
+            "start_byte": 24832,
+            "start_utf16": 24832
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/TypeLiteral.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/TypeUtils.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 7995,
+            "end_utf16": 7995,
+            "start_byte": 7995,
+            "start_utf16": 7995
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 8331,
+            "end_utf16": 8331,
+            "start_byte": 8331,
+            "start_utf16": 8331
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 8352,
+            "end_utf16": 8352,
+            "start_byte": 8351,
+            "start_utf16": 8351
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ')'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18847,
+            "end_utf16": 18847,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18862,
+            "end_utf16": 18862,
+            "start_byte": 18861,
+            "start_utf16": 18861
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18867,
+            "end_utf16": 18867,
+            "start_byte": 18864,
+            "start_utf16": 18864
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18868,
+            "end_utf16": 18868,
+            "start_byte": 18868,
+            "start_utf16": 18868
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18869,
+            "end_utf16": 18869,
+            "start_byte": 18868,
+            "start_utf16": 18868
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18879,
+            "end_utf16": 18879,
+            "start_byte": 18879,
+            "start_utf16": 18879
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18880,
+            "end_utf16": 18880,
+            "start_byte": 18879,
+            "start_utf16": 18879
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18935,
+            "end_utf16": 18935,
+            "start_byte": 18932,
+            "start_utf16": 18932
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18985,
+            "end_utf16": 18985,
+            "start_byte": 18982,
+            "start_utf16": 18982
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 19035,
+            "end_utf16": 19035,
+            "start_byte": 19032,
+            "start_utf16": 19032
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ')'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45385,
+            "end_utf16": 45385,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45400,
+            "end_utf16": 45400,
+            "start_byte": 45399,
+            "start_utf16": 45399
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45405,
+            "end_utf16": 45405,
+            "start_byte": 45402,
+            "start_utf16": 45402
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45406,
+            "end_utf16": 45406,
+            "start_byte": 45406,
+            "start_utf16": 45406
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45407,
+            "end_utf16": 45407,
+            "start_byte": 45406,
+            "start_utf16": 45406
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45433,
+            "end_utf16": 45433,
+            "start_byte": 45433,
+            "start_utf16": 45433
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45434,
+            "end_utf16": 45434,
+            "start_byte": 45433,
+            "start_utf16": 45433
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45501,
+            "end_utf16": 45501,
+            "start_byte": 45498,
+            "start_utf16": 45498
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45588,
+            "end_utf16": 45588,
+            "start_byte": 45585,
+            "start_utf16": 45585
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/Typed.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/reflect/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/stream/IntStreams.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/stream/LangCollectors.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/stream/Streams.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/stream/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/CompositeFormat.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/ExtendedMessageFormat.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/FormatFactory.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/FormattableUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/StrBuilder.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/StrLookup.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/StrMatcher.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/StrSubstitutor.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/StrTokenizer.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/WordUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/AggregateTranslator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/CharSequenceTranslator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/CodePointTranslator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/EntityArrays.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/JavaUnicodeEscaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/LookupTranslator.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/NumericEntityEscaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/NumericEntityUnescaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/OctalUnescaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/UnicodeEscaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/UnicodeUnescaper.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/UnicodeUnpairedSurrogateRemover.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/text/translate/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/AbstractFormatCache.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/CalendarUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DateFormatUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DateParser.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DatePrinter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DateUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DurationFormatUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/DurationUtils.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/FastDateFormat.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/FastDateParser.java",
+      "reports": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 25611,
+            "end_utf16": 25611,
+            "start_byte": 25599,
+            "start_utf16": 25599
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 25621,
+            "end_utf16": 25621,
+            "start_byte": 25621,
+            "start_utf16": 25621
+          }
+        }
+      ]
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/FastDatePrinter.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/FastTimeZone.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/GmtTimeZone.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/StopWatch.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/TimeZones.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/time/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/ImmutablePair.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/ImmutableTriple.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/MutablePair.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/MutableTriple.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/Pair.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/Triple.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/tuple/package-info.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/util/FluentBitSet.java",
+      "reports": []
+    },
+    {
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "path": "org/apache/commons/lang3/util/package-info.java",
+      "reports": []
+    }
+  ],
+  "files_with_reports": 15,
+  "java_semantic_diagnostics": false,
+  "report_count": 60,
+  "scope": "owned_sources_only",
+  "source_count": 249
+}

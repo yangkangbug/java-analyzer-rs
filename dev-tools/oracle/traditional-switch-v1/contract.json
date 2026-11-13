@@ -1,0 +1,344 @@
+{
+  "baseline_sha256": "47c1724ac3a59c537047f6ef14adf31d019ea578a7660288353f6ee0d69f7e5a",
+  "baseline": {
+    "local_selector_use": [
+      "Unresolved",
+      "0"
+    ],
+    "hidden_use": [
+      "Unresolved",
+      "0"
+    ],
+    "outside_hidden": [
+      "Unresolved",
+      "0"
+    ],
+    "after_hidden": [
+      "Resolved",
+      "1",
+      "Containment.java|Local||result|191|197"
+    ],
+    "enum_selector": [
+      "Unresolved",
+      "0"
+    ],
+    "enum_label": [
+      "Unresolved",
+      "0"
+    ],
+    "enum_after": [
+      "Resolved",
+      "1",
+      "Enums.java|Local||result|207|213"
+    ],
+    "selector_use": [
+      "Unresolved",
+      "0"
+    ],
+    "first_shared": [
+      "Unresolved",
+      "0"
+    ],
+    "later_shared": [
+      "Unresolved",
+      "0"
+    ],
+    "nested_selector": [
+      "Unresolved",
+      "0"
+    ],
+    "nested_use": [
+      "Unresolved",
+      "0"
+    ],
+    "constant_label": [
+      "Unresolved",
+      "0"
+    ],
+    "constant_body": [
+      "Unresolved",
+      "0"
+    ],
+    "inner_selector": [
+      "Unresolved",
+      "0"
+    ],
+    "inner_use": [
+      "Unresolved",
+      "0"
+    ],
+    "inner_default": [
+      "Unresolved",
+      "0"
+    ],
+    "after_use": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||shared|1228|1234"
+    ],
+    "after_result": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||result|213|219"
+    ]
+  },
+  "candidate": {
+    "selector_use": [
+      "Resolved",
+      "1",
+      "Flow.java|Parameter||selector|177|185"
+    ],
+    "first_shared": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||shared|353|359"
+    ],
+    "later_shared": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||shared|353|359"
+    ],
+    "nested_selector": [
+      "Resolved",
+      "1",
+      "Flow.java|Parameter||selector|177|185"
+    ],
+    "nested_use": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||nested|592|598"
+    ],
+    "constant_label": [
+      "Unresolved",
+      "0"
+    ],
+    "constant_body": [
+      "Resolved",
+      "1",
+      "Flow.java|Parameter||selector|177|185"
+    ],
+    "inner_selector": [
+      "Resolved",
+      "1",
+      "Flow.java|Parameter||selector|177|185"
+    ],
+    "inner_use": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||inner|982|987"
+    ],
+    "inner_default": [
+      "Resolved",
+      "1",
+      "Flow.java|Parameter||selector|177|185"
+    ],
+    "after_use": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||shared|1228|1234"
+    ],
+    "after_result": [
+      "Resolved",
+      "1",
+      "Flow.java|Local||result|213|219"
+    ],
+    "enum_selector": [
+      "Resolved",
+      "1",
+      "Enums.java|Parameter||mode|170|174"
+    ],
+    "enum_label": [
+      "Unresolved",
+      "0"
+    ],
+    "enum_after": [
+      "Resolved",
+      "1",
+      "Enums.java|Local||result|207|213"
+    ],
+    "local_selector_use": [
+      "Resolved",
+      "1",
+      "Containment.java|Parameter||selector|149|157"
+    ],
+    "hidden_use": [
+      "Unresolved",
+      "0"
+    ],
+    "outside_hidden": [
+      "Resolved",
+      "1",
+      "Containment.java|Parameter||selector|149|157"
+    ],
+    "after_hidden": [
+      "Resolved",
+      "1",
+      "Containment.java|Local||result|191|197"
+    ]
+  },
+  "compiler": {
+    "local_selector_use": [
+      "Containment.java",
+      "PARAMETER",
+      "oracle.Containment",
+      "selector",
+      "125",
+      "157"
+    ],
+    "hidden_use": [
+      "Containment.java",
+      "FIELD",
+      "Hidden",
+      "value",
+      "326",
+      "354"
+    ],
+    "outside_hidden": [
+      "Containment.java",
+      "PARAMETER",
+      "oracle.Containment",
+      "selector",
+      "125",
+      "157"
+    ],
+    "after_hidden": [
+      "Containment.java",
+      "LOCAL_VARIABLE",
+      "oracle.Containment",
+      "result",
+      "169",
+      "202"
+    ],
+    "enum_selector": [
+      "Enums.java",
+      "PARAMETER",
+      "oracle.Enums",
+      "mode",
+      "155",
+      "174"
+    ],
+    "enum_label": [
+      "Enums.java",
+      "ENUM_CONSTANT",
+      "oracle.Enums.Mode",
+      "ONE",
+      "132",
+      "135"
+    ],
+    "enum_after": [
+      "Enums.java",
+      "LOCAL_VARIABLE",
+      "oracle.Enums",
+      "result",
+      "186",
+      "218"
+    ],
+    "selector_use": [
+      "Flow.java",
+      "PARAMETER",
+      "oracle.Flow",
+      "selector",
+      "159",
+      "185"
+    ],
+    "first_shared": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "shared",
+      "337",
+      "364"
+    ],
+    "later_shared": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "shared",
+      "337",
+      "364"
+    ],
+    "nested_selector": [
+      "Flow.java",
+      "PARAMETER",
+      "oracle.Flow",
+      "selector",
+      "159",
+      "185"
+    ],
+    "nested_use": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "nested",
+      "576",
+      "631"
+    ],
+    "constant_label": [
+      "Flow.java",
+      "FIELD",
+      "oracle.Flow",
+      "CODE",
+      "110",
+      "146"
+    ],
+    "constant_body": [
+      "Flow.java",
+      "PARAMETER",
+      "oracle.Flow",
+      "selector",
+      "159",
+      "185"
+    ],
+    "inner_selector": [
+      "Flow.java",
+      "PARAMETER",
+      "oracle.Flow",
+      "selector",
+      "159",
+      "185"
+    ],
+    "inner_use": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "inner",
+      "967",
+      "992"
+    ],
+    "inner_default": [
+      "Flow.java",
+      "PARAMETER",
+      "oracle.Flow",
+      "selector",
+      "159",
+      "185"
+    ],
+    "after_use": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "shared",
+      "1206",
+      "1239"
+    ],
+    "after_result": [
+      "Flow.java",
+      "LOCAL_VARIABLE",
+      "oracle.Flow",
+      "result",
+      "197",
+      "224"
+    ]
+  },
+  "compiler_rejections": {
+    "leak": [
+      "compiler.err.cant.resolve.location"
+    ],
+    "duplicate_local": [
+      "compiler.err.already.defined"
+    ],
+    "duplicate_case": [
+      "compiler.err.duplicate.case.label"
+    ]
+  }
+}
