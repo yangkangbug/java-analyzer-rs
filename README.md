@@ -20,6 +20,9 @@ existing strict selector without generic substitution.
 The [binary invocation result proof](docs/BINARY_CALL_RETURNS.md) composes strictly
 selected nongeneric binary calls as existing qualified receivers and arguments.
 
+The [exact-name directory](docs/EXACT_NAME_DIRECTORY.md) reuses prepared declaration
+locations for legacy type lookup while retaining candidate order and ambiguity.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

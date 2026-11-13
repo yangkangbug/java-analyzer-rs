@@ -20,6 +20,13 @@ return typing remain separate, with exact declaration linking context and shared
 proof limits. Arrays, generic substitution and arbitrary expression inference
 remain deferred. See [binary call results](docs/BINARY_CALL_RETURNS.md).
 
+## Exact-name directory reuse
+
+Four legacy exact-name lookup paths reuse the existing immutable scope-qualified
+name directory rather than scanning all source/platform classes. Candidate order,
+duplicates and visibility remain unchanged; no additional Java semantics or
+incremental cache is introduced. See [boundary and evidence](docs/EXACT_NAME_DIRECTORY.md).
+
 ## Current measured baseline
 
 The source started as a Java syntax/name-binding subset, not a language server.

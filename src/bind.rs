@@ -378,6 +378,7 @@ struct FileRec {
 
 #[cfg(test)]
 thread_local! {
+    static LEGACY_NAME_BUCKET_ENTRIES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static INDEX_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static BINARY_PAYLOAD_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static BINARY_MEMBER_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -487,6 +488,49 @@ impl Index {
             }
         }
         out
+    }
+
+    fn legacy_named(&self, scope: usize, name: &str) -> Vec<&ClassRec> {
+        // Reuse immutable name buckets, but preserve the legacy global order:
+        // all visible source declarations first, then this scope's binaries.
+        // reference_named has a different scope-interleaved order and stays separate.
+        let mut locations = Vec::new();
+        let mut key = (scope, name.to_owned());
+        for visible in &self.visibility[scope] {
+            key.0 = *visible;
+            if let Some(bucket) = self.reference_names.get(&key) {
+                for &(file, class) in bucket {
+                    #[cfg(test)]
+                    LEGACY_NAME_BUCKET_ENTRIES.with(|count| count.set(count.get() + 1));
+                    if file != usize::MAX || *visible == scope {
+                        locations.push((file, class));
+                    }
+                }
+            }
+        }
+        // Legacy classes() always includes own binaries, even when a private
+        // Index caller supplies visibility without its own scope.
+        if !self.visibility[scope].contains(&scope) {
+            key.0 = scope;
+            if let Some(bucket) = self.reference_names.get(&key) {
+                for &(file, class) in bucket {
+                    #[cfg(test)]
+                    LEGACY_NAME_BUCKET_ENTRIES.with(|count| count.set(count.get() + 1));
+                    if file == usize::MAX {
+                        locations.push((file, class));
+                    }
+                }
+            }
+        }
+        locations.sort_unstable();
+        locations
+            .into_iter()
+            .map(
+                |(file, class)| {
+                    if file == usize::MAX { &self.binaries[class] } else { &self.files[file].classes[class] }
+                },
+            )
+            .collect()
     }
 
     fn classes(&self, scope: usize) -> impl Iterator<Item = &ClassRec> {
@@ -707,7 +751,7 @@ impl Index {
             return TypeLookup::One(member);
         }
         if let Some((_, full)) = file.singles.iter().find(|(simple, _)| simple == name) {
-            let imported = self.classes(file.scope).filter(|class| class.dotted() == *full).collect::<Vec<_>>();
+            let imported = self.legacy_named(file.scope, full);
             let same_unit = file
                 .classes
                 .iter()
@@ -1157,7 +1201,7 @@ impl Index {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
         for length in (1..=parts.len()).rev() {
-            let found = class_by_parts(self.classes(file.scope), &parts[..length]);
+            let found = self.legacy_named(file.scope, &parts[..length].join("."));
             if found.is_empty() {
                 continue;
             }
@@ -1209,7 +1253,7 @@ impl Index {
         if parts.len() == 1 {
             return self.simple_type(file, &parts[0], byte);
         }
-        let found = class_by_parts(self.classes(file.scope), parts);
+        let found = self.legacy_named(file.scope, &parts.join("."));
         match found.len() {
             0 => TypeLookup::None,
             1 => TypeLookup::One(found[0]),
@@ -1494,7 +1538,7 @@ impl Index {
     }
 
     fn class_named<'a>(&'a self, scope: usize, dotted: &str) -> Named<'a> {
-        let found: Vec<_> = self.classes(scope).filter(|class| class.dotted() == dotted).collect();
+        let found = self.legacy_named(scope, dotted);
         match found.len() {
             0 => Named::None,
             1 => Named::One(found[0]),
@@ -1813,11 +1857,6 @@ fn member_type_here<'a>(file: &'a FileRec, byte: u32, name: &str) -> Option<&'a 
         }
     }
     None
-}
-
-fn class_by_parts<'a>(classes: impl Iterator<Item = &'a ClassRec>, parts: &[String]) -> Vec<&'a ClassRec> {
-    let dotted = parts.join(".");
-    classes.filter(|class| class.dotted() == dotted).collect()
 }
 
 fn is_package_prefix<'a>(classes: impl Iterator<Item = &'a ClassRec>, parts: &[String]) -> bool {
@@ -5580,3 +5619,6 @@ mod invocation_budget_tests {
 mod header_inventory_tests;
 
 mod header_type;
+
+#[cfg(test)]
+mod legacy_name_index_tests;
