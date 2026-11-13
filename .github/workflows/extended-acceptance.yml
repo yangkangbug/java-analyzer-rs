@@ -315,6 +315,18 @@ jobs:
             --jdk "$RUNNER_TEMP/acceptance/jdk" \
             --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
             --native target/debug/java-analyzer
+      - name: Fixed Commons binary return composition (no Java)
+        run: |
+          python3 scripts/check-binary-return-acceptance.py \
+            "$RUNNER_TEMP/acceptance/sources.jar" "$RUNNER_TEMP/acceptance/jdk/jmods/java.base.jmod" \
+            --native target/debug/java-analyzer
+      - name: Independent binary invocation result oracle (optional Java)
+        run: |
+          jdk_sha="$(python3 -c 'import json; print(json.load(open("scripts/acceptance-inputs.json"))["jdk"]["sha256"])')"
+          python3 scripts/check-binary-return-oracle.py \
+            --jdk "$RUNNER_TEMP/acceptance/jdk" \
+            --jdk-archive "$RUNNER_TEMP/acceptance-cache/$jdk_sha" \
+            --native target/debug/java-analyzer
       - name: Remove external inputs (never uploaded or redistributed)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/acceptance" "$RUNNER_TEMP/second-project" "$RUNNER_TEMP/acceptance-cache"

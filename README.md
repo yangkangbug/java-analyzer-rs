@@ -15,7 +15,10 @@ adding generic inference or discarding unsupported same-name competitors.
 
 The [effective binary declaration view](docs/EFFECTIVE_BINARY_METHODS.md) adds bounded
 inherited binary methods, exact overrides and abstract interface calls to the
-existing strict selector, without generic substitution or binary return propagation.
+existing strict selector without generic substitution.
+
+The [binary invocation result proof](docs/BINARY_CALL_RETURNS.md) composes strictly
+selected nongeneric binary calls as existing qualified receivers and arguments.
 
 ## Build and try it
 
@@ -539,8 +542,8 @@ expression inference.
 ### Direct binary instance selection
 
 The shared strict selector supports bounded direct binary instance declarations
-with complete JVM method descriptors and explicit declaration contexts. This is
-not binary override selection or binary return propagation. Unsupported ancestors
+with complete JVM method descriptors and explicit declaration contexts. That initial slice did not add binary override selection or return propagation;
+subsequent bounded effective-method and binary-result proofs are described above. Unsupported ancestors
 and flags fail closed, including deliberate contractions of legacy name-only
 successes. [Scope and CLI opt-in details](docs/BINARY_METHOD_CALLS.md) describe the
 three revised StringUtils selection targets, three ClassUtils deferrals and

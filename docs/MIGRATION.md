@@ -72,7 +72,8 @@ Do not populate a workspace context by guessing from an origin shared by several
 compilations. Default CLI v1 target serialization remains its old projection;
 `declaration --target-details` opts into versioned detail. See
 [BINARY_METHOD_CALLS.md](BINARY_METHOD_CALLS.md) for scope and conservative
-contractions, including no binary return propagation or source location.
+contractions and absent source locations. The later [binary-result proof](BINARY_CALL_RETURNS.md)
+adds bounded result composition without changing target serialization.
 
 ## Raw binary ancestor identity
 

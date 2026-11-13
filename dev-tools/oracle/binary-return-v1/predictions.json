@@ -1,0 +1,143 @@
+{
+  "compiler": {
+    "boolean_actual": [
+      "dep/Sink",
+      "pick",
+      "(Z)Z"
+    ],
+    "byte_actual": [
+      "dep/Sink",
+      "pick",
+      "(B)B"
+    ],
+    "char_actual": [
+      "dep/Sink",
+      "pick",
+      "(C)C"
+    ],
+    "short_actual": [
+      "dep/Sink",
+      "pick",
+      "(S)S"
+    ],
+    "int_actual": [
+      "dep/Sink",
+      "pick",
+      "(I)I"
+    ],
+    "long_actual": [
+      "dep/Sink",
+      "pick",
+      "(J)J"
+    ],
+    "float_actual": [
+      "dep/Sink",
+      "pick",
+      "(F)F"
+    ],
+    "double_actual": [
+      "dep/Sink",
+      "pick",
+      "(D)D"
+    ],
+    "reference_receiver": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "reference_chain": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "reference_actual": [
+      "dep/Sink",
+      "accept",
+      "(Ldep/Product;)I"
+    ],
+    "inherited_return": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "selected_overload_return": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "string_return": [
+      "java/lang/String",
+      "length",
+      "()I"
+    ],
+    "array_refusal": [
+      "dep/Sink",
+      "takeObject",
+      "(Ljava/lang/Object;)I"
+    ],
+    "nested_refusal": [
+      "dep/Nested$Item",
+      "ping",
+      "()I"
+    ],
+    "generic_refusal": [
+      "dep/Box",
+      "ping",
+      "()I"
+    ],
+    "static_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "competitor_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "depth_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ]
+  },
+  "native_positive": [
+    "boolean_actual",
+    "byte_actual",
+    "char_actual",
+    "short_actual",
+    "int_actual",
+    "long_actual",
+    "float_actual",
+    "double_actual",
+    "reference_receiver",
+    "reference_chain",
+    "reference_actual",
+    "inherited_return",
+    "selected_overload_return",
+    "string_return"
+  ],
+  "native_refusal": [
+    "array_refusal",
+    "nested_refusal",
+    "generic_refusal",
+    "static_refusal",
+    "competitor_refusal",
+    "depth_refusal"
+  ],
+  "compiled_classes": [
+    "dep/Base.class",
+    "dep/Box.class",
+    "dep/Child.class",
+    "dep/Factory.class",
+    "dep/Nested$Item.class",
+    "dep/Nested.class",
+    "dep/Other.class",
+    "dep/Product.class",
+    "dep/Sink.class"
+  ],
+  "invalid": [
+    "void_actual",
+    "wrong_arity"
+  ]
+}

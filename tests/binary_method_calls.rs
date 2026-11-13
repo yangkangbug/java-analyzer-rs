@@ -223,14 +223,16 @@ fn legal_native_abstract_final_synchronized_declarations_and_return_only_collisi
     assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
 }
 #[test]
-fn binary_return_values_are_not_propagated_by_source_invocation_proof() {
+fn binary_return_values_use_strict_invocation_proof() {
     let p = project(
         "class Use { void run(lib.Lib lib,int pick) { lib.self().pick(1); } }",
         &[member(1, "self", "()Llib/Lib;"), member(1, "pick", "(I)V")],
     );
     let r = query(&p, "pick(1)");
-    assert_eq!(r.status, ResolveStatus::ReceiverNotBound);
-    assert!(r.targets.is_empty());
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets.len(), 1);
+    assert_eq!(r.targets[0].binary.as_ref().unwrap().binary_name, "lib/Lib");
+    assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "(I)V");
 }
 #[test]
 fn inherited_binary_overload_keeps_the_parent_competitor() {
@@ -267,7 +269,7 @@ fn class_initializer_filter_does_not_shift_raw_method_flags() {
 }
 
 #[test]
-fn proven_source_reference_return_can_select_binary_terminal_but_not_return_it() {
+fn proven_source_reference_return_composes_with_binary_return() {
     let p = project(
         "class Maker { public lib.Lib make() { return null; } } class Use { void run(Maker maker,int pick) { maker.make().pick(1); maker.make().self().pick(1); } }",
         &[member(1, "pick", "(I)V"), member(1, "pick", "(J)V"), member(1, "self", "()Llib/Lib;")],
@@ -278,7 +280,7 @@ fn proven_source_reference_return_can_select_binary_terminal_but_not_return_it()
     assert_eq!(r.status, ResolveStatus::Resolved);
     assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "(I)V");
     assert_eq!(r, p.prepare().resolve_at("Use.java", at));
-    assert_eq!(query(&p, "pick(1)").status, ResolveStatus::ReceiverNotBound);
+    assert_eq!(query(&p, "pick(1)"), r);
 }
 
 #[test]
@@ -698,4 +700,267 @@ fn effective_binary_interface_diamond_retains_one_actual_declaration() {
     }
     effective_class(&mut p, "lib/D", "java/lang/Object", &["lib/J", "lib/K"], true, &[]);
     exact_effective_target(&p, "lib/I", "(I)V");
+}
+
+#[test]
+fn binary_return_primitive_scalars_feed_existing_strict_selector() {
+    for tag in ['Z', 'B', 'C', 'S', 'I', 'J', 'F', 'D'] {
+        let p = project(
+            "class Use { void run(lib.Lib lib) { lib.consume(lib.value()); } }",
+            &[member(1, "value", &format!("(){tag}")), member(1, "consume", &format!("({tag})V"))],
+        );
+        let result = query(&p, "consume(lib.value())");
+        assert_eq!(result.status, ResolveStatus::Resolved, "{tag}: {result:?}");
+        assert_eq!(result.targets[0].binary.as_ref().unwrap().descriptor, format!("({tag})V"));
+    }
+}
+
+#[test]
+fn binary_return_reference_chains_and_argument_targets_are_exact() {
+    let ptext = "class Use { void run(lib.Lib lib) { lib.value().hit(1); lib.consume(lib.value()); } }";
+    let mut p = project(ptext, &[member(1, "value", "()Llib/Result;"), member(1, "consume", "(Llib/Result;)V")]);
+    effective_class(&mut p, "lib/Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
+    let result = query(&p, "hit(1)");
+    assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+    assert_eq!(result.targets[0].binary.as_ref().unwrap().binary_name, "lib/Result");
+    assert_eq!(query(&p, "consume(lib.value())").status, ResolveStatus::Resolved);
+    p.insert("Sink.java", "public class Sink { public void take(lib.Result value) {} }");
+    p.insert("Use.java", "class Use { void run(lib.Lib lib, Sink sink) { sink.take(lib.value()); } }");
+    let result = query(&p, "take(lib.value())");
+    assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+    assert_eq!(result.targets[0].path, "Sink.java");
+}
+
+#[test]
+fn binary_return_uses_selected_overload_not_result_type_or_receiver() {
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.value(1).hit(1); } }", &[]);
+    effective_class(
+        &mut p,
+        "lib/Base",
+        "java/lang/Object",
+        &[],
+        false,
+        &[member(1, "value", "(I)Llib/Result;"), member(1, "value", "(J)Llib/Other;")],
+    );
+    effective_class(&mut p, "lib/Lib", "lib/Base", &[], false, &[]);
+    effective_class(&mut p, "lib/Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
+    effective_class(&mut p, "lib/Other", "java/lang/Object", &[], false, &[member(1, "hit", "(J)V")]);
+    let result = query(&p, "hit(1)");
+    assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+    assert_eq!(result.targets[0].binary.as_ref().unwrap().binary_name, "lib/Result");
+    effective_class(
+        &mut p,
+        "lib/Base",
+        "java/lang/Object",
+        &[],
+        false,
+        &[member(1, "value", "(I)Llib/Result;"), member(1, "value", "(I)Llib/Other;")],
+    );
+    assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn binary_return_void_arrays_missing_nested_and_generic_types_refuse() {
+    for descriptor in ["()V", "()[I", "()[Llib/Result;", "()Lmissing/Result;", "()Llib/Outer$Result;"] {
+        let mut p =
+            project("class Use { void run(lib.Lib lib) { lib.value().hit(1); } }", &[member(1, "value", descriptor)]);
+        effective_class(&mut p, "lib/Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
+        effective_class(&mut p, "lib/Outer/Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
+        assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved, "{descriptor}");
+    }
+    for (access, signature, parent) in [
+        (0x21, Some("<T:Ljava/lang/Object;>Ljava/lang/Object;"), "java/lang/Object"),
+        (0x20, None, "java/lang/Object"),
+        (0x21, None, "missing/Base"),
+    ] {
+        let mut p = project(
+            "class Use { void run(lib.Lib lib) { lib.value().hit(1); } }",
+            &[member(1, "value", "()Llib/Result;")],
+        );
+        p.add_class_bytes(
+            "Result.class",
+            &class_bytes("lib/Result", Some(parent), access, &[], &[], &[member(1, "hit", "(I)V")], signature),
+        )
+        .unwrap();
+        assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved);
+    }
+}
+
+#[test]
+fn binary_return_source_replacement_requires_exact_raw_identity() {
+    for (descriptor, source, expected) in [
+        ("()Llib/Result;", "package lib; public class Result { public void hit(int n) {} }", true),
+        ("()Llib/Outer$Result;", "package lib.Outer; public class Result { public void hit(int n) {} }", false),
+        // No '$' in the descriptor: lookup finds the same dotted source name,
+        // but its actual JVM name is lib/Outer$Result, not lib/Outer/Result.
+        (
+            "()Llib/Outer/Result;",
+            "package lib; public class Outer { public static class Result { public void hit(int n) {} } }",
+            false,
+        ),
+    ] {
+        let mut p =
+            project("class Use { void run(lib.Lib lib) { lib.value().hit(1); } }", &[member(1, "value", descriptor)]);
+        p.insert("Result.java", source);
+        assert_eq!(query(&p, "hit(1)").status == ResolveStatus::Resolved, expected);
+    }
+}
+
+#[test]
+fn binary_return_inner_candidates_and_hidden_ancestors_remain_checked() {
+    for flags in [0x9, 0x41, 0x81, 0x1001] {
+        let p = project(
+            "class Use { void run(lib.Lib lib) { lib.consume(lib.value()); } }",
+            &[member(1, "value", "()I"), member(flags, "value", "(I)I"), member(1, "consume", "(I)V")],
+        );
+        assert_ne!(query(&p, "consume(lib.value())").status, ResolveStatus::Resolved);
+    }
+    let mut p = project("class Use { void run(lib.Lib lib) { lib.consume(lib.value()); } }", &[]);
+    effective_class(&mut p, "lib/Grand", "java/lang/Object", &[], false, &[member(0x11, "value", "()I")]);
+    effective_class(&mut p, "lib/Base", "lib/Grand", &[], false, &[member(1, "value", "()I")]);
+    effective_class(
+        &mut p,
+        "lib/Lib",
+        "lib/Base",
+        &[],
+        false,
+        &[member(1, "value", "()I"), member(1, "consume", "(I)V")],
+    );
+    assert_ne!(query(&p, "consume(lib.value())").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn binary_return_chains_share_depth_and_work_limits() {
+    for (calls, width, expected) in [(2, 0, true), (40, 0, false), (2, 5000, false)] {
+        let text = format!("class Use {{ void run(lib.Lib lib) {{ lib{}.hit(1); }} }}", ".next()".repeat(calls));
+        let mut methods = vec![member(1, "next", "()Llib/Lib;"), member(1, "hit", "(I)V")];
+        methods.extend((0..width).map(|i| member(1, &format!("other{i}"), "()V")));
+        let p = project(&text, &methods);
+        assert_eq!(query(&p, "hit(1)").status == ResolveStatus::Resolved, expected, "calls={calls}, width={width}");
+    }
+}
+
+#[test]
+fn binary_return_declaring_scope_cannot_be_replaced_by_caller_scope() {
+    use java_engine::{
+        ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig, WorkspaceSnapshot,
+    };
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    struct Fixture(std::path::PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    let root = Fixture(std::env::temp_dir().join(format!(
+        "binary-return-scopes-{}-{}",
+        std::process::id(),
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+    )));
+    for dir in ["lib", "app", "libclasses/dep", "appclasses/dep", "platform/java/lang"] {
+        fs::create_dir_all(root.0.join(dir)).unwrap();
+    }
+    fs::write(
+        root.0.join("platform/java/lang/Object.class"),
+        class_bytes("java/lang/Object", None, 0x21, &[], &[], &[], None),
+    )
+    .unwrap();
+    fs::write(
+        root.0.join("lib/Provider.java"),
+        "package api; public class Provider { public dep.Factory factory() { return null; } }",
+    )
+    .unwrap();
+    let caller = "package app; public class Use { void run(api.Provider p) { p.factory().value().hit(1); } }";
+    fs::write(root.0.join("app/Use.java"), caller).unwrap();
+    fs::write(
+        root.0.join("libclasses/dep/Factory.class"),
+        class_bytes(
+            "dep/Factory",
+            Some("java/lang/Object"),
+            0x21,
+            &[],
+            &[],
+            &[member(1, "value", "()Ldep/Token;")],
+            None,
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.0.join("appclasses/dep/Token.class"),
+        class_bytes("dep/Token", Some("java/lang/Object"), 0x21, &[], &[], &[member(1, "hit", "(J)V")], None),
+    )
+    .unwrap();
+    let lib = CompilationId::new("lib", "main");
+    let app = CompilationId::new("app", "main");
+    let inputs = |name: &str| ProjectConfig {
+        source_roots: vec![root.0.join(name)],
+        classpath: vec![
+            ClasspathEntry::Directory(root.0.join(format!("{name}classes"))),
+            ClasspathEntry::Directory(root.0.join("platform")),
+        ],
+        ..Default::default()
+    };
+    let config = WorkspaceConfig {
+        compilations: vec![
+            CompilationConfig { id: lib.clone(), dependencies: vec![], inputs: inputs("lib") },
+            CompilationConfig { id: app.clone(), dependencies: vec![lib.clone()], inputs: inputs("app") },
+        ],
+        ..Default::default()
+    };
+    let path = root.0.join("app/Use.java").canonicalize().unwrap().to_str().unwrap().to_owned();
+    for present in [false, true] {
+        if present {
+            fs::write(
+                root.0.join("libclasses/dep/Token.class"),
+                class_bytes("dep/Token", Some("java/lang/Object"), 0x21, &[], &[], &[member(1, "hit", "(I)V")], None),
+            )
+            .unwrap();
+        }
+        let snapshot = WorkspaceSnapshot::load(&config).unwrap();
+        let at = caller.find("hit(1)").unwrap() as u32;
+        let result = snapshot.scope(&app).unwrap().resolve_at(&path, at);
+        assert_eq!(result, snapshot.prepare().scope(&app).unwrap().resolve_at(&path, at));
+        if present {
+            assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+            assert_eq!(result.targets[0].binary.as_ref().unwrap().descriptor, "(I)V");
+            assert_eq!(
+                result.targets[0].binary.as_ref().unwrap().linking_context,
+                java_engine::BinaryLinkingContext::Compilation(lib.clone())
+            );
+            assert!(result.targets[0].path.contains("libclasses"));
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved, "caller-only Token must not fill declaration-scope gap");
+        }
+    }
+}
+
+#[test]
+fn binary_return_unsupported_values_do_not_change_terminal_navigation() {
+    for descriptor in ["()V", "()[I", "()[Llib/Result;", "()Lmissing/Result;"] {
+        let p = project(
+            "class Use { void run(lib.Lib lib) { lib.consume(lib.value()); } }",
+            &[member(1, "value", descriptor), member(1, "consume", "(I)V"), member(1, "consume", "(J)V")],
+        );
+        assert_eq!(query(&p, "value()").status, ResolveStatus::Resolved, "terminal {descriptor}");
+        assert_ne!(query(&p, "consume(lib.value())").status, ResolveStatus::Resolved, "outer {descriptor}");
+    }
+}
+
+#[test]
+fn binary_return_ambiguous_types_and_dotted_raw_aliases_never_supply_values() {
+    let mut p =
+        project("class Use { void run(lib.Lib lib) { lib.value().hit(1); } }", &[member(1, "value", "()Llib/Result;")]);
+    for file in ["First.java", "Second.java"] {
+        p.insert(file, "package lib; public class Result { public void hit(int n) {} }");
+    }
+    assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved);
+    let mut p = project(
+        "class Use { void run(lib.Lib lib) { lib.value().hit(1); } }",
+        &[member(1, "value", "()Llib/Outer/Result;")],
+    );
+    effective_class(&mut p, "lib/Outer$Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
+    assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved);
 }

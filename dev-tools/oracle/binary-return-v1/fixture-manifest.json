@@ -1,0 +1,17 @@
+{
+  "files": {
+    "BinaryDeclarationOracle.java": "78287b4a9dca62fd98ab7f6abf26d2f693ed703c1aef30006e4feea400ece16e",
+    "dependency/dep/Base.java": "536849a93875101a674e3c76dac3ce5d90bb8ce1831a9d20f890c4797113b541",
+    "dependency/dep/Box.java": "33759360b20308ee06bba6a5de9e0e855a61a22671533163761495257f8ba3a8",
+    "dependency/dep/Child.java": "6081fda59347d2c1438d464941680eb3d7c7fb57c79230f020e78a5ce9de3f25",
+    "dependency/dep/Factory.java": "ab4c93fee447cab7aa8585bc4a8426b8103d433a81a945c4bf63e97bbc109488",
+    "dependency/dep/Nested.java": "91c923a9805f3c2ad6bec5a728a18ade5ba8d1878d5e03e5ce6656f34a5bc07b",
+    "dependency/dep/Other.java": "b0a2a372417d4fedab1453f3053d3bac4335b422c9c0127e2773254e076532a0",
+    "dependency/dep/Product.java": "9db682c79b77be77b3fef32c4be89c9e5e1b561352972184fc11c56ffc7798f5",
+    "dependency/dep/Sink.java": "64783a810ccada883c979696206cd3e4c6350f31ddace99cea4299e6d45ba0f1",
+    "invalid/void_actual/Bad.java": "71e7411625ed67e0af945b4ccaf441acafcc59002d97797859c6405d992bad56",
+    "invalid/wrong_arity/Bad.java": "d8ba5a1738e9c7c08b741713b7d854774d7369a5c529d6224e55d7f1be7ecd40",
+    "predictions.json": "396c9b2f89bdcb7508372b823c5bd75dcc30129b9b1760fd06a927617ba79b10",
+    "source/app/Use.java": "e4bc4c5b86685208037c120cb21496eb1c3978ea913ffef632d9cd8e3afc0d47"
+  }
+}

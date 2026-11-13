@@ -1,0 +1,2654 @@
+{
+  "baseline": {
+    "index_builds": 1,
+    "queries": [
+      {
+        "byte_offset": 160,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 160
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 216,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 216
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 269,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 269
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 323,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 323
+        },
+        "query_index": 3,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 376,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 376
+        },
+        "query_index": 4,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 428,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 428
+        },
+        "query_index": 5,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 482,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 482
+        },
+        "query_index": 6,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 538,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 538
+        },
+        "query_index": 7,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 611,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 611
+        },
+        "query_index": 8,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 674,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 674
+        },
+        "query_index": 9,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 713,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 713
+        },
+        "query_index": 10,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "OverloadNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Ldep/Product;)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "accept",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          },
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Ljava/lang/Object;)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "accept",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 782,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 782
+        },
+        "query_index": 11,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 845,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 845
+        },
+        "query_index": 12,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 890,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 890
+        },
+        "query_index": 13,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 928,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 928
+        },
+        "query_index": 14,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Ljava/lang/Object;)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "takeObject",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 998,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 998
+        },
+        "query_index": 15,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1045,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1045
+        },
+        "query_index": 16,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1099,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1099
+        },
+        "query_index": 17,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1150,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1150
+        },
+        "query_index": 18,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1477,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1477
+        },
+        "query_index": 19,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      }
+    ],
+    "target_details_version": 1
+  },
+  "baseline_sha256": "af124cee9bfb662152b7ec32fa0b2d9939dee3d081a44b6d75893fdced4400a1",
+  "candidate": {
+    "index_builds": 1,
+    "queries": [
+      {
+        "byte_offset": 160,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 160
+        },
+        "query_index": 0,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Z)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 216,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 216
+        },
+        "query_index": 1,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(B)B",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 269,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 269
+        },
+        "query_index": 2,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(C)C",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 323,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 323
+        },
+        "query_index": 3,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(S)S",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 376,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 376
+        },
+        "query_index": 4,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(I)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 428,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 428
+        },
+        "query_index": 5,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(J)J",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 482,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 482
+        },
+        "query_index": 6,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(F)F",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 538,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 538
+        },
+        "query_index": 7,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(D)D",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "pick",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 611,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 611
+        },
+        "query_index": 8,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Product",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "ping",
+            "origin": "binary",
+            "owner": "dep.Product",
+            "path": "@DEPENDENCY@/dep/Product.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 674,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 674
+        },
+        "query_index": 9,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Product",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "ping",
+            "origin": "binary",
+            "owner": "dep.Product",
+            "path": "@DEPENDENCY@/dep/Product.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 713,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 713
+        },
+        "query_index": 10,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Ldep/Product;)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "accept",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 782,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 782
+        },
+        "query_index": 11,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Product",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "ping",
+            "origin": "binary",
+            "owner": "dep.Product",
+            "path": "@DEPENDENCY@/dep/Product.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 845,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 845
+        },
+        "query_index": 12,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "dep/Product",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "ping",
+            "origin": "binary",
+            "owner": "dep.Product",
+            "path": "@DEPENDENCY@/dep/Product.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 890,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 890
+        },
+        "query_index": 13,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "Resolved",
+        "targets": [
+          {
+            "binary_name": "java/lang/String",
+            "descriptor": "()I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "length",
+            "origin": "binary",
+            "owner": "java.lang.String",
+            "path": "@PLATFORM@!/classes/java/lang/String.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 928,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 928
+        },
+        "query_index": 14,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "CallNotResolved",
+        "targets": [
+          {
+            "binary_name": "dep/Sink",
+            "descriptor": "(Ljava/lang/Object;)I",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method",
+            "linking_context": {
+              "project": "fixture",
+              "source_set": "main"
+            },
+            "loaded_contexts": [
+              {
+                "project": "fixture",
+                "source_set": "main"
+              }
+            ],
+            "name": "takeObject",
+            "origin": "binary",
+            "owner": "dep.Sink",
+            "path": "@DEPENDENCY@/dep/Sink.class",
+            "source_available": false
+          }
+        ]
+      },
+      {
+        "byte_offset": 998,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 998
+        },
+        "query_index": 15,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1045,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1045
+        },
+        "query_index": 16,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1099,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1099
+        },
+        "query_index": 17,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1150,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1150
+        },
+        "query_index": 18,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      },
+      {
+        "byte_offset": 1477,
+        "compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "file": "@SOURCE@/app/Use.java",
+        "position": {
+          "encoding": "utf8",
+          "offset": 1477
+        },
+        "query_index": 19,
+        "source_compilation": {
+          "project": "fixture",
+          "source_set": "main"
+        },
+        "status": "ReceiverNotBound",
+        "targets": []
+      }
+    ],
+    "target_details_version": 1
+  },
+  "compiler": {
+    "array_refusal": [
+      "dep/Sink",
+      "takeObject",
+      "(Ljava/lang/Object;)I"
+    ],
+    "boolean_actual": [
+      "dep/Sink",
+      "pick",
+      "(Z)Z"
+    ],
+    "byte_actual": [
+      "dep/Sink",
+      "pick",
+      "(B)B"
+    ],
+    "char_actual": [
+      "dep/Sink",
+      "pick",
+      "(C)C"
+    ],
+    "competitor_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "depth_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "double_actual": [
+      "dep/Sink",
+      "pick",
+      "(D)D"
+    ],
+    "float_actual": [
+      "dep/Sink",
+      "pick",
+      "(F)F"
+    ],
+    "generic_refusal": [
+      "dep/Box",
+      "ping",
+      "()I"
+    ],
+    "inherited_return": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "int_actual": [
+      "dep/Sink",
+      "pick",
+      "(I)I"
+    ],
+    "long_actual": [
+      "dep/Sink",
+      "pick",
+      "(J)J"
+    ],
+    "nested_refusal": [
+      "dep/Nested$Item",
+      "ping",
+      "()I"
+    ],
+    "reference_actual": [
+      "dep/Sink",
+      "accept",
+      "(Ldep/Product;)I"
+    ],
+    "reference_chain": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "reference_receiver": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "selected_overload_return": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "short_actual": [
+      "dep/Sink",
+      "pick",
+      "(S)S"
+    ],
+    "static_refusal": [
+      "dep/Product",
+      "ping",
+      "()I"
+    ],
+    "string_return": [
+      "java/lang/String",
+      "length",
+      "()I"
+    ]
+  },
+  "invalid_diagnostics": {
+    "void_actual": [
+      "Bad.java:1:69: compiler.err.void.not.allowed.here"
+    ],
+    "wrong_arity": [
+      "Bad.java:1:40: compiler.err.cant.apply.symbol: kindname.method, intValue, compiler.misc.no.args, int, kindname.class, dep.Factory, (compiler.misc.arg.length.mismatch)"
+    ]
+  },
+  "query_order": [
+    "boolean_actual",
+    "byte_actual",
+    "char_actual",
+    "short_actual",
+    "int_actual",
+    "long_actual",
+    "float_actual",
+    "double_actual",
+    "reference_receiver",
+    "reference_chain",
+    "reference_actual",
+    "inherited_return",
+    "selected_overload_return",
+    "string_return",
+    "array_refusal",
+    "nested_refusal",
+    "generic_refusal",
+    "static_refusal",
+    "competitor_refusal",
+    "depth_refusal"
+  ]
+}

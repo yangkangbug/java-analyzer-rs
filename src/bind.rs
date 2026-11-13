@@ -2603,9 +2603,11 @@ fn primitive_type(node: &GreenNode, start: u32) -> Option<String> {
     })
 }
 
-// Parse the entire JVMS method descriptor, including the discarded return.
-// This is independent of cafebabe's permissiveness and never compares raw text.
-fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
+// Parse the entire JVMS method descriptor. Void is a validated absent result;
+// scalar/reference/array results retain their own descriptor type evidence.
+// This is independent of cafebabe's permissiveness and never splits on ')',
+// which is legal inside a JVM class name.
+fn descriptor_parts(descriptor: &str) -> Option<(Vec<ParameterType>, Option<ParameterType>)> {
     fn field(bytes: &[u8], at: &mut usize) -> Option<ParameterType> {
         let mut rank = 0;
         while bytes.get(*at) == Some(&b'[') {
@@ -2676,12 +2678,17 @@ fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
         parameters.push(parameter);
     }
     at += 1;
-    if bytes.get(at) == Some(&b'V') {
+    let result = if bytes.get(at) == Some(&b'V') {
         at += 1;
+        None
     } else {
-        field(bytes, &mut at)?;
-    }
-    (at == bytes.len()).then_some(parameters)
+        Some(field(bytes, &mut at)?)
+    };
+    (at == bytes.len()).then_some((parameters, result))
+}
+
+fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
+    descriptor_parts(descriptor).map(|(parameters, _)| parameters)
 }
 
 fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
@@ -4752,7 +4759,7 @@ impl<'a> ReferenceCallProof<'a> {
             base_at = *at;
             depth += 1;
         }
-        // Only explicit local/parameter roots or another proved source invocation.
+        // Only explicit local/parameter roots or another strictly proved invocation.
         let owner = match base.kind() {
             SyntaxKind::ReferenceExpr => self.expression(base, base_at, depth + 1)?.class,
             SyntaxKind::CallExpr => match self.invocation_value(base, base_at, depth + 1)? {
@@ -4762,6 +4769,9 @@ impl<'a> ReferenceCallProof<'a> {
             _ => return None,
         };
         let selected = self.select(owner, name?, args, args_at, depth + 1)?;
+        if selected.declaring.binary {
+            return self.binary_invocation_value(&selected);
+        }
         let source = selected.member.source_call.as_ref()?;
         if let Some(primitive) = source.scalar_return {
             return Some(StrictActual::Primitive(PrimitiveValue { primitive, rank: 0 }));
@@ -4771,6 +4781,51 @@ impl<'a> ReferenceCallProof<'a> {
         let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
         // Return names belong to the selected declaration, not the consuming caller.
         let class = self.reference_type(file, parts, selected.member.start)?;
+        Some(StrictActual::Reference(ReferenceValue { class }))
+    }
+
+    // A strict selected declaration, never a legacy name-navigation result,
+    // supplies its return only after complete overload/override validation.
+    fn binary_invocation_value(&mut self, selected: &SelectedMethod<'a>) -> Option<StrictActual<'a>> {
+        let Shape::Binary { descriptor, .. } = &selected.member.shape else { return None };
+        self.charge(descriptor.len().max(1))?;
+        let (_, result) = descriptor_parts(descriptor)?;
+        let result = result?; // void supplies no expression type
+        if result.unsupported || result.array_rank != 0 {
+            return None;
+        }
+        if let Some(primitive) = result.primitive {
+            return Some(StrictActual::Primitive(PrimitiveValue { primitive, rank: 0 }));
+        }
+        let raw = result.binary_name.as_ref()?;
+        if raw.contains('$') {
+            return None; // nested/dollar return identity/access is not modeled
+        }
+        self.charge(raw.len().max(1))?;
+        // Descriptor names are owned by the selected declaration's linking
+        // context, not by caller imports, locals or a same-named caller class.
+        let class = self.unique_named(selected.declaring.scope, &result.name.join("."))?;
+        if let Some(signature) = &class.binary_signature {
+            self.charge(signature.binary_name.len().max(1))?;
+            if signature.binary_name != *raw {
+                return None;
+            }
+        } else {
+            self.charge(class.package.len() + class.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+            let mut binary = class.package.replace('.', "/");
+            if !binary.is_empty() {
+                binary.push('/');
+            }
+            binary.push_str(&class.nesting.join("$"));
+            if binary != *raw {
+                return None;
+            }
+        }
+        if class.reference_generic {
+            return None;
+        }
+        self.accessible(class)?;
+        self.graph(class)?;
         Some(StrictActual::Reference(ReferenceValue { class }))
     }
 
@@ -4830,7 +4885,8 @@ impl<'a> ReferenceCallProof<'a> {
 
     // Full candidate legality and parameter identities are checked before this
     // pairwise step. Exact descriptors suffice for equal returns only within
-    // one linking scope; no covariance, substitution or return propagation.
+    // one linking scope. This override check performs no covariance, substitution
+    // or return propagation; a selected invocation proves its result separately.
     fn binary_override(&mut self, child: (&'a ClassRec, &'a Member), parent: (&'a ClassRec, &'a Member)) -> Option<()> {
         if !child.0.binary
             || !parent.0.binary
@@ -5344,6 +5400,34 @@ mod declarator_tests {
 #[cfg(test)]
 mod method_descriptor_tests {
     use super::*;
+
+    #[test]
+    fn descriptor_results_are_complete_and_keep_raw_names() {
+        for (tag, primitive) in [
+            ('Z', Primitive::Boolean),
+            ('B', Primitive::Byte),
+            ('C', Primitive::Char),
+            ('S', Primitive::Short),
+            ('I', Primitive::Int),
+            ('J', Primitive::Long),
+            ('F', Primitive::Float),
+            ('D', Primitive::Double),
+        ] {
+            let (_, result) = descriptor_parts(&format!("(){tag}")).unwrap();
+            let result = result.unwrap();
+            assert_eq!(result.primitive, Some(primitive));
+            assert_eq!(result.array_rank, 0);
+        }
+        assert!(descriptor_parts("()V").unwrap().1.is_none());
+        let (parameters, result) = descriptor_parts("(Llegal/)Name;)Lreturn/)Name;").unwrap();
+        assert_eq!(parameters[0].binary_name.as_deref(), Some("legal/)Name"));
+        assert_eq!(result.unwrap().binary_name.as_deref(), Some("return/)Name"));
+        assert_eq!(descriptor_parts("()[[I").unwrap().1.unwrap().array_rank, 2);
+        for invalid in ["()Vx", "()Ljava/lang/X;x", "()L;", "()Lx//Y;", "()Lx.Y;", "()[V", "()"] {
+            assert!(descriptor_parts(invalid).is_none(), "{invalid}");
+        }
+        assert!(descriptor_parts(&format!("(){}I", "[".repeat(256))).is_none());
+    }
 
     #[test]
     fn validates_complete_descriptors_and_preserves_primitive_tags() {

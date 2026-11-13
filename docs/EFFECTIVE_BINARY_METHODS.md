@@ -24,9 +24,9 @@ Base as the target. Default CLI v1 serialization is unchanged; explicit
    effective declarations.
 
 Descriptor equality is a sufficient, deliberately narrow return-compatibility
-proof in this common linking scope. There is no covariance, generic erasure
-matching or binary return-value propagation. A reference-return method may be
-the terminal target without supplying a type for a chained call.
+proof in this common linking scope. There is no covariance or generic erasure matching. Return-value propagation is
+a separate [binary invocation result proof](BINARY_CALL_RETURNS.md); a terminal
+target alone does not supply a type for a chained call.
 
 Only public abstract interface candidates are supported. A generic ancestor
 without any declaration of the queried name remains part of graph inventory,

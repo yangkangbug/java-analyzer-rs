@@ -21,6 +21,10 @@ or static calls, fields/this/super, cast receivers and method references are not
 newly accepted. An unsupported call receiver cannot fall back to a same-named
 local variable; an unsupported argument call cannot become an unknown wildcard.
 
+The later [binary-result proof](BINARY_CALL_RETURNS.md) adds narrowly validated
+binary invocation results to this same composition path; the restrictions above
+describe the original source-only slice, not a second resolver.
+
 Frozen real targets cover eight gaps across four Gson files: JsonArray's
 `result.add(element.deepCopy())`, three JsonParserTest chained getAsString calls,
 and four JsonArrayTest/JsonObjectTest chained size calls. Exact candidate results

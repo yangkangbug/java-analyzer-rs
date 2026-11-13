@@ -12,7 +12,8 @@ resolver and no conversion-cost scoring.
 Receivers include explicitly typed local variables/parameters and existing
 bounded, proven **source** invocation reference results. A source factory's
 binary reference return may therefore supply the terminal receiver. Binary
-invocation return values are not propagated as receivers or arguments.
+invocation results are now handled by the separate bounded
+[result-composition proof](BINARY_CALL_RETURNS.md), not by terminal navigation alone.
 
 ## Evidence and refusal boundaries
 
@@ -36,7 +37,8 @@ validates the file; a checked framing walk recovers bits that its flags wrapper
 would otherwise truncate. Counts align before class-initializer filtering.
 
 The complete JVM descriptor is checked. A syntactically legal void or array
-return is allowed for **declaration selection only**, not return inference.
+return is allowed for **declaration selection** without necessarily supplying
+an expression type; the separate result proof has stricter return boundaries.
 Methods differing only in return descriptor cannot win an overload selection.
 All existing graph, accessibility, shared work and depth limits remain in force.
 

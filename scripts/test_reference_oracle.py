@@ -510,5 +510,35 @@ class EffectiveBinaryHistoricalProjection(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 oracle.binary_instance_effective_expected(wrong, 'valid')
 
+class BinaryReturnHistoricalProjection(unittest.TestCase):
+    def test_two_context_chain_upgrade_only(self):
+        _, contract = oracle.binary_instance_fixture()
+        before = json.dumps(contract, sort_keys=True)
+        for label in contract['current']:
+            old = oracle.binary_instance_effective_expected(contract, label)
+            current = oracle.binary_instance_return_expected(contract, label)
+            changed = [i for i, (a, b) in enumerate(zip(old['queries'], current['queries'])) if a != b]
+            self.assertEqual(changed, [24, 49] if label == 'valid' else [])
+            for i in changed:
+                row = old['queries'][i]
+                expected = dict(row, status='Resolved', targets=[oracle.binary_instance_target(
+                    'dep/Token', 'id', '()I', row['source_compilation']['project'])])
+                self.assertEqual(current['queries'][i], expected)
+        self.assertEqual(json.dumps(contract, sort_keys=True), before)
+
+    def test_wrong_compiler_or_old_query_rejected(self):
+        _, contract = oracle.binary_instance_fixture()
+        for mode in ('compiler', 'position', 'target'):
+            wrong = json.loads(json.dumps(contract))
+            if mode == 'compiler':
+                wrong['baseline']['compiler']['probe_calls']['returnReceiverRefusal'][1][1] = 'dep/Wrong'
+            elif mode == 'position':
+                wrong['current']['valid']['queries'][24]['byte_offset'] += 1
+            else:
+                wrong['current']['valid']['queries'][24]['targets'] = [{}]
+            with self.assertRaises(AssertionError):
+                oracle.binary_instance_return_expected(wrong, 'valid')
+
+
 if __name__ == "__main__":
     unittest.main()

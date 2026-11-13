@@ -1305,6 +1305,28 @@ def binary_instance_effective_expected(contract, label):
     return wanted
 
 
+def binary_instance_return_expected(contract, label):
+    """Compose only the frozen Token return-chain queries in both contexts."""
+    wanted = binary_instance_effective_expected(contract, label)
+    if label != 'valid':
+        return wanted
+    assert contract['baseline']['compiler']['probe_calls']['returnReceiverRefusal'] == [
+        ['invokevirtual', 'dep/Methods', 'token', '(Ldep/Token;)Ldep/Token;'],
+        ['invokevirtual', 'dep/Token', 'id', '()I']]
+    changed = []
+    for row in wanted['queries']:
+        if row['query_index'] not in (24, 49):
+            continue
+        assert row['status'] == 'ReceiverNotBound' and row['targets'] == []
+        assert row['byte_offset'] == 2259 and row['position'] == {'encoding': 'utf8', 'offset': 2259}
+        scope = row['source_compilation']['project']
+        row['status'] = 'Resolved'
+        row['targets'] = [binary_instance_target('dep/Token', 'id', '()I', scope)]
+        changed.append(scope)
+    assert changed == ['first', 'second']
+    return wanted
+
+
 def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
     """Two real linking contexts, source javap oracle, exact v1/opt-in contracts."""
     assert type(baseline) is bool
@@ -1327,7 +1349,7 @@ def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
             detailed = binary_instance_query(native_cli, batch, details=True)
             binary_instance_compare_modes(default, detailed)
             rich = binary_instance_normalize(detailed['result'], prepared)
-            binary_instance_compare_expected(rich, binary_instance_effective_expected(contract, label))
+            binary_instance_compare_expected(rich, binary_instance_return_expected(contract, label))
         total += len(normalized['queries'])
         print('binary-instance ' + label + ' contexts=2 queries=' + str(len(normalized['queries'])) + ' baseline=' + str(baseline), flush=True)
     if baseline:
