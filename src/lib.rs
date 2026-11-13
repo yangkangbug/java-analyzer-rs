@@ -43,9 +43,9 @@ mod project;
 mod reparse;
 mod workspace;
 pub use workspace::{
-    CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope, PreparedWorkspace, SourceOverlay,
-    SourceOverlayError, SourceOverlayErrorKind, WorkspaceConfig, WorkspaceLoadError, WorkspaceLoadErrorKind,
-    WorkspaceSnapshot,
+    AnalysisScope, AnalysisSnapshot, CompilationConfig, CompilationId, CompilationScope, PreparedCompilationScope,
+    PreparedWorkspace, SourceOverlay, SourceOverlayError, SourceOverlayErrorKind, WorkspaceConfig, WorkspaceLoadError,
+    WorkspaceLoadErrorKind, WorkspaceSnapshot,
 };
 
 pub use position::{LineIndex, Utf16Position};

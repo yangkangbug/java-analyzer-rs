@@ -30,6 +30,10 @@ control-flow validation remain unsupported; see [switch boundaries](docs/TRADITI
 Source enum constants now retain exact field navigation targets while constant-specific
 anonymous bodies stay isolated; see [enum boundaries](docs/SOURCE_ENUM_CONSTANTS.md).
 
+The [owned analysis snapshot](docs/ANALYSIS_SNAPSHOTS.md) API retains prepared
+workspace versions across clone, source updates and explicit reloads without
+self-referential borrowing. Existing CLI/LSP job lifetimes are unchanged.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

@@ -360,13 +360,13 @@ fn fresh_inputs_rebuild_payloads_while_old_prepared_queries_remain_valid() {
     old.insert_class_signature(Arc::clone(&shared));
     old.insert("Old.java", "class Old extends Lib { int get() { return value; } }");
     let old_prepared = PreparedScopedIndex::new(vec![&old], &isolated(1));
-    let old_payload = payload(&old_prepared.index.binaries[0]);
+    let old_payload = payload(&old_prepared.index.index.binaries[0]);
     let mut next = old.clone();
     let mut changed = (*shared).clone();
     changed.fields[0].name = "next".into();
     next.insert_class_signature(Arc::new(changed));
     let next_prepared = PreparedScopedIndex::new(vec![&next], &isolated(1));
-    assert!(!Arc::ptr_eq(old_payload, payload(&next_prepared.index.binaries[0])));
+    assert!(!Arc::ptr_eq(old_payload, payload(&next_prepared.index.index.binaries[0])));
     let byte = old.file("Old.java").unwrap().text().rfind("value").unwrap() as u32;
     assert_eq!(old_prepared.resolve_at(0, "Old.java", byte).status, ResolveStatus::Resolved);
     assert_eq!(next_prepared.resolve_at(0, "Old.java", byte).status, ResolveStatus::Unresolved);
@@ -376,7 +376,7 @@ fn fresh_inputs_rebuild_payloads_while_old_prepared_queries_remain_valid() {
     let mut overlay = old.clone();
     overlay.insert("Old.java", "class Old { int get() { return value; } }");
     let overlay_prepared = PreparedScopedIndex::new(vec![&overlay], &isolated(1));
-    assert!(!Arc::ptr_eq(old_payload, payload(&overlay_prepared.index.binaries[0])));
+    assert!(!Arc::ptr_eq(old_payload, payload(&overlay_prepared.index.index.binaries[0])));
     let overlay_byte = overlay.file("Old.java").unwrap().text().rfind("value").unwrap() as u32;
     assert_eq!(overlay_prepared.resolve_at(0, "Old.java", overlay_byte).status, ResolveStatus::Unresolved);
     std::thread::scope(|threads| {

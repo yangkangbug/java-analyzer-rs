@@ -375,6 +375,15 @@ hover acceptance surface before claiming IDE usability. Generic inference,
 incremental invalidation, completion, diagnostics, references and safe refactoring
 remain required work; do not replace that route with unrelated syntax cleanup.
 
+### Owned prepared analysis lifecycle
+
+`AnalysisSnapshot` now owns immutable inputs and their shared prepared index,
+with atomic validated source-overlay derivation and explicit fresh loading.
+Unchanged batches share the same state after validation; real changes still
+rebuild the complete index. Prior handles preserve old results. This prepares a
+long-lived embedding API, not fine-grained invalidation or a persistent editor
+worker. See [lifecycle and remaining integration gates](docs/ANALYSIS_SNAPSHOTS.md).
+
 ## M3: incremental query engine and cancellation
 
 Cache parsed units, symbol stubs, dependency edges, and semantic queries with

@@ -453,3 +453,6 @@ impl<'a> PreparedCompilationScope<'a> {
 
 #[cfg(test)]
 mod archive_reuse_tests;
+
+mod analysis;
+pub use analysis::{AnalysisScope, AnalysisSnapshot};

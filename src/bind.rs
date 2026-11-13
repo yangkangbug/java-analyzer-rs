@@ -5428,14 +5428,41 @@ pub(crate) fn resolve_scoped(
     index.resolve(path, parsed, byte)
 }
 
+/// Owned declaration index; source lookup is supplied by its exact snapshot.
+pub(crate) struct OwnedScopedIndex {
+    index: Index,
+}
+impl OwnedScopedIndex {
+    pub(crate) fn new(projects: &[&Project], visibility: &[BTreeSet<usize>]) -> Self {
+        Self { index: Index::scoped(projects, visibility) }
+    }
+    pub(crate) fn with_compilation_ids(mut self, ids: &[crate::workspace::CompilationId]) -> Self {
+        self.index = self.index.with_compilation_ids(ids);
+        self
+    }
+    pub(crate) fn resolve_at<'a>(
+        &self,
+        scope: usize,
+        path: &str,
+        byte: u32,
+        project: impl Fn(usize) -> &'a Project,
+    ) -> ResolveResult {
+        let parsed = self.index.visibility[scope].iter().find_map(|index| project(*index).file(path));
+        let Some(parsed) = parsed else {
+            return ResolveResult::none(ResolveStatus::Unresolved);
+        };
+        self.index.resolve(path, parsed, byte)
+    }
+}
+
 /// Validated workspace inputs, indexed once with declaration-owner contexts.
 pub(crate) struct PreparedScopedIndex<'a> {
     projects: Vec<&'a Project>,
-    index: Index,
+    index: OwnedScopedIndex,
 }
 impl<'a> PreparedScopedIndex<'a> {
     pub(crate) fn new(projects: Vec<&'a Project>, visibility: &[BTreeSet<usize>]) -> Self {
-        let index = Index::scoped(&projects, visibility);
+        let index = OwnedScopedIndex::new(&projects, visibility);
         Self { projects, index }
     }
     pub(crate) fn with_compilation_ids(mut self, ids: &[crate::workspace::CompilationId]) -> Self {
@@ -5443,12 +5470,13 @@ impl<'a> PreparedScopedIndex<'a> {
         self
     }
     pub(crate) fn resolve_at(&self, scope: usize, path: &str, byte: u32) -> ResolveResult {
-        let parsed = self.index.visibility[scope].iter().find_map(|index| self.projects[*index].file(path));
-        let Some(parsed) = parsed else {
-            return ResolveResult::none(ResolveStatus::Unresolved);
-        };
-        self.index.resolve(path, parsed, byte)
+        self.index.resolve_at(scope, path, byte, |index| self.projects[index])
     }
+}
+
+#[cfg(test)]
+pub(crate) fn observed_index_builds() -> usize {
+    INDEX_BUILDS.with(|count| count.get())
 }
 
 #[cfg(test)]
