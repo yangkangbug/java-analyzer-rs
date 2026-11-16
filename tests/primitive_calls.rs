@@ -301,10 +301,9 @@ fn constructor_records_cannot_become_ordinary_static_methods() {
     let source =
         "class Calls { static Calls(float a) {} static Calls(double a) {} static void test(float a){ Calls(a); } }";
     let result = query(&project(source), "Calls(a)");
-    assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{result:?}");
-    assert_eq!(result.targets.len(), 2);
-    assert_eq!(result.targets[0].start_byte, source.find("Calls(float a)").unwrap() as u32);
-    assert_eq!(result.targets[1].start_byte, source.find("Calls(double a)").unwrap() as u32);
+    // Preserve the invalid static-constructor input, but never offer constructors as method candidates.
+    assert_eq!(result.status, ResolveStatus::Unresolved, "{result:?}");
+    assert!(result.targets.is_empty());
 }
 
 #[test]

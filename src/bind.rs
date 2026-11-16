@@ -295,6 +295,8 @@ struct ClassPayload {
     binary_root: bool,
     fields: Vec<Member>,
     methods: Vec<Member>,
+    // Source constructor declarations are not ordinary or inherited methods.
+    constructors: Vec<Member>,
 }
 
 impl std::ops::Deref for ClassRec {
@@ -2245,7 +2247,7 @@ fn declaration_at(file: &FileRec, byte: u32) -> Option<Target> {
         if class.name_start <= byte && byte < class.name_end {
             return Some(class.target());
         }
-        for member in class.fields.iter().chain(class.methods.iter()) {
+        for member in class.fields.iter().chain(&class.methods).chain(&class.constructors) {
             if member.start <= byte && byte < member.end {
                 return Some(member_target(class, member));
             }
@@ -2452,6 +2454,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         binary_root: false,
         fields: Vec::new(),
         methods: Vec::new(),
+        constructors: Vec::new(),
     };
     let (super_parts, interface_parts) = declared_supers(node, start);
     data.super_parts = super_parts;
@@ -2566,6 +2569,8 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
         };
         if kind == TargetKind::Field {
             ctx.file.classes[class_index].source_data_mut().fields.push(member);
+        } else if node.kind() == SyntaxKind::Constructor {
+            ctx.file.classes[class_index].source_data_mut().constructors.push(member);
         } else {
             ctx.file.classes[class_index].source_data_mut().methods.push(member);
         }
@@ -3078,6 +3083,9 @@ fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
             .filter(|member| member.name != "<init>" && member.kind == MemberKind::Method)
             .map(|member| member_from_signature(member, TargetKind::Method))
             .collect(),
+        // Binary constructor selection is not modeled. Raw signatures remain
+        // available for complete declaration-inventory validation above.
+        constructors: Vec::new(),
     }
 }
 
@@ -5905,8 +5913,12 @@ impl<'a> ReferenceCallProof<'a> {
         if owner.binary || owner.nesting.len() != 1 || owner.is_interface || owner.reference_generic {
             return None;
         }
-        self.charge(owner.methods.len().max(1))?;
-        let mut callers = owner.methods.iter().filter(|m| m.start >= self.caller_start && m.end <= self.caller_end);
+        let declarations = match self.caller_kind? {
+            CallerKind::Method => &owner.methods,
+            CallerKind::Constructor => &owner.constructors,
+        };
+        self.charge(declarations.len().max(1))?;
+        let mut callers = declarations.iter().filter(|m| m.start >= self.caller_start && m.end <= self.caller_end);
         let caller = callers.next()?;
         if callers.next().is_some() {
             return None;

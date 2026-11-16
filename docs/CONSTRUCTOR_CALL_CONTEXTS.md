@@ -27,6 +27,23 @@ instance context. Ordinary implicit-super bodies are admitted. See
 and [8.8.7.1](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.8.7.1).
 This is not support for flexible/early-construction bodies in newer Java versions.
 
+## Constructor and method namespaces
+
+Source constructor declarations are stored separately from ordinary methods.
+Only methods enter method lookup, overload inventories and inheritance. This
+matches the binary path's existing exclusion of `<init>` and prevents both an
+invalid `C()` call resolving to a constructor and a legal same-named `void C()`
+method becoming ambiguous with `C(){}`. Caller identity explicitly chooses the
+method or constructor collection; neither gains the other's return semantics.
+
+Constructor declaration-token navigation retains its existing public `Method`
+target kind for compatibility. `new C()` still navigates to the Class target;
+this change does not implement constructor overload selection or introduce a
+new public target kind. Rebuilt/prepared and edit/update paths use the same
+partitioned index. Declaration-inventory validation still inspects constructors,
+including malformed ones; they are not silently dropped from class validation.
+See [JLS 8.8](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.8).
+
 ## Deliberate limits
 
 Generic constructors/owners, nested/local/anonymous classes, records, initializers
@@ -54,3 +71,9 @@ targets, eight compiler-valid deferred contexts and five compiler-invalid contro
 Native tests never invoke Java. The fixed 577-query and 30-query survey records
 are unchanged: this is a reusable caller capability, not a measured project-wide
 coverage increase.
+
+Six namespace regression groups additionally check same-named ordinary methods,
+constructor exclusion from calls/inheritance, source/binary inventory agreement,
+legacy declaration/new-expression targets and edit-time repartitioning. Four
+exact native targets agree with javac; four constructor-as-method declarations
+are compiler-rejected controls. The ordinary-constructor caller suite still passes.

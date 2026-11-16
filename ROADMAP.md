@@ -33,7 +33,9 @@ See [source field evidence and limits](docs/SOURCE_FIELD_VALUES.md).
 A separate caller-kind certificate lets ordinary top-level nongeneric constructors
 reuse parameter/local/own-field and helper invocation proofs without treating
 constructors as methods. Explicit delegation and early-construction contexts stay
-deferred. See [constructor caller boundaries](docs/CONSTRUCTOR_CALL_CONTEXTS.md).
+deferred. Source constructor declarations have a separate index inventory, so they
+never pollute ordinary method lookup or inheritance. Public declaration/new-expression
+navigation contracts remain unchanged. See [constructor caller boundaries](docs/CONSTRUCTOR_CALL_CONTEXTS.md).
 
 ## Bounded binary generic receivers
 
