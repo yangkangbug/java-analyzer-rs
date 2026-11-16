@@ -240,6 +240,8 @@ struct QualName {
 #[derive(Clone, Debug)]
 struct Member {
     source_enum_constant: bool,
+    // Navigation-only declaration fact, independent of strict call eligibility.
+    source_interface_declared_only: bool,
     name: String,
     kind: TargetKind,
     start: u32,
@@ -1541,6 +1543,9 @@ impl Index {
                 step.class.fields.iter().filter(|member| member.name == name).collect()
             };
             for member in members {
+                if call && step.depth > 0 && !navigation_method_inherited(step.class, member) {
+                    continue;
+                }
                 if !self.can_see(member, step.class, class, site, byte)? {
                     continue;
                 }
@@ -2495,6 +2500,7 @@ fn index_enum_constant(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         };
         ctx.file.classes[class_index].source_data_mut().fields.push(Member {
             source_enum_constant: true,
+            source_interface_declared_only: false,
             name,
             kind: TargetKind::Field,
             start: name_start,
@@ -2526,6 +2532,7 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
         {
             ctx.file.classes[class_index].source_data_mut().fields.push(Member {
                 source_enum_constant: false,
+                source_interface_declared_only: false,
                 name,
                 kind: TargetKind::Field,
                 start: name_start,
@@ -2550,6 +2557,8 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
     for (name, name_start, name_end, declared) in declarations {
         let member = Member {
             source_enum_constant: false,
+            source_interface_declared_only: ctx.file.classes[class_index].is_interface
+                && interface_declared_only(node, start),
             name,
             kind,
             start: name_start,
@@ -2781,6 +2790,70 @@ fn type_parts(node: &GreenNode, start: u32) -> Option<Vec<String>> {
     let (name, name_at) = child_kind(ty, at, SyntaxKind::Name)?;
     let parts = name_strings(name, name_at);
     if parts.is_empty() { None } else { Some(parts) }
+}
+
+// Interface declaration modifiers classify navigation even for signatures
+// outside the strict selector's subset. Unknown/contradictory modifiers do not
+// authorize exclusions. Annotations are separate syntax, not modifier tokens.
+fn interface_declared_only(node: &GreenNode, start: u32) -> bool {
+    if node.kind() != SyntaxKind::Method || child_kind(node, start, SyntaxKind::Block).is_none() {
+        return false;
+    }
+    let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) else { return false };
+    if !crate::green::collect_errors(mods).is_empty() {
+        return false;
+    }
+    let mut seen = Vec::new();
+    for child in mods.children() {
+        if let Some(node) = child.as_node() {
+            if node.kind() != SyntaxKind::Annotation {
+                return false;
+            }
+        } else if let Some(token) = child.as_token() {
+            let kind = token.kind();
+            if kind.is_trivia() {
+                continue;
+            }
+            if !matches!(
+                kind,
+                SyntaxKind::Public
+                    | SyntaxKind::Private
+                    | SyntaxKind::Static
+                    | SyntaxKind::Abstract
+                    | SyntaxKind::Default
+                    | SyntaxKind::Strictfp
+            ) || seen.contains(&kind)
+            {
+                return false;
+            }
+            seen.push(kind);
+        }
+    }
+    !(seen.contains(&SyntaxKind::Abstract)
+        || seen.contains(&SyntaxKind::Default)
+        || seen.contains(&SyntaxKind::Public) && seen.contains(&SyntaxKind::Private))
+        && (seen.contains(&SyntaxKind::Static) || seen.contains(&SyntaxKind::Private))
+}
+
+// This view is ONLY for navigation. Keep the raw member inventory, graph,
+// override relations and strict selector unchanged, including malformed entries.
+fn navigation_method_inherited(owner: &ClassRec, member: &Member) -> bool {
+    if !owner.is_interface {
+        return true;
+    }
+    if !owner.binary {
+        return !member.source_interface_declared_only;
+    }
+    let Shape::Binary { flags, .. } = &member.shape else { return true };
+    let Some(signature) = &owner.binary_signature else { return true };
+    let access = flags & 7;
+    let declared_only = matches!(access, 1 | 2)
+        && flags & (0x0008 | 0x0002) != 0
+        && flags & !0x18cb == 0 // no abstract/final/native/synchronized interface declaration
+        && signature.major >= 52
+        && (access != 2 || signature.major >= 53)
+        && (flags & 0x0800 == 0 || signature.major <= 60);
+    !declared_only
 }
 
 fn read_access(node: &GreenNode, start: u32) -> Access {
@@ -3094,6 +3167,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
     BINARY_MEMBER_BUILDS.with(|count| count.set(count.get() + 1));
     Member {
         source_enum_constant: false,
+        source_interface_declared_only: false,
         name: member.name.clone(),
         kind,
         start: 0,
@@ -4703,7 +4777,13 @@ impl<'a> ReferenceCallProof<'a> {
             return Some(());
         }
         gray.insert(id.clone());
-        out.extend(owner.methods.iter().filter(|m| m.name == name).map(|m| (owner, m)));
+        out.extend(
+            owner
+                .methods
+                .iter()
+                .filter(|m| m.name == name && (depth == 0 || navigation_method_inherited(owner, m)))
+                .map(|m| (owner, m)),
+        );
         if let Some(edges) = &owner.reference_edges {
             for (parts, _) in edges {
                 if let Some(parent) = self.edge(owner, parts) {

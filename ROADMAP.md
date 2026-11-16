@@ -47,6 +47,13 @@ single-parent certificate supports inherited members and identity-mapped exact
 overrides. Branching generic inheritance, source generic owners, wildcard capture
 and inference remain deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
 
+## Interface method navigation inheritance
+
+Navigation no longer inherits static/private interface methods through classes
+or subinterfaces. Source declaration facts and binary flags share one ancestor
+filter, while strict raw inventories stay unchanged. See
+[inheritance/navigation boundaries](docs/METHOD_INHERITANCE_NAVIGATION.md).
+
 ## Exact-name directory reuse
 
 Four legacy exact-name lookup paths reuse the existing immutable scope-qualified
