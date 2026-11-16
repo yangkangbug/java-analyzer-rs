@@ -972,7 +972,29 @@ impl Index {
             owner
         };
         if owner.binary && !is_value {
-            return if proof.exhausted { Some(ResolveResult::none(ResolveStatus::ReceiverNotBound)) } else { None };
+            if proof.exhausted {
+                return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+            }
+            // Keep legacy effective-declaration/access hints; they are not
+            // applicability evidence and never supply an invocation value.
+            let mut result = self.lookup_methods(owner, name, file, byte);
+            if result.status == ResolveStatus::Resolved {
+                result.status = ResolveStatus::CallNotResolved;
+            }
+            let Some((caller_node, _, _)) = caller else { return Some(result) };
+            if parens == 0
+                && reference_method_header(caller_node, caller_start)
+                && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
+                && !contains_kind(caller_node, SyntaxKind::LocalType)
+                && crate::green::collect_errors(caller_node).is_empty()
+                && proof.static_type_owner(&receiver_name, *receiver_at).is_some_and(|c| same_class(c, owner))
+                && let Some(selected) = proof.select_mode(owner, name, args, args_at, 0, InvocationMode::TypeStatic)
+                && !proof.exhausted
+            {
+                result =
+                    ResolveResult::one(ResolveStatus::Resolved, member_target(selected.declaring, selected.member));
+            }
+            return Some(result);
         }
         // Nested binary receiver lookup remains outside this proof. Raw dotted
         // name hints must not turn an unsupported receiver into a bound value.
@@ -4170,6 +4192,12 @@ fn conversion_signature_edges(text: &str) -> Option<Vec<(String, bool)>> {
     (!edges.is_empty()).then_some(edges)
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InvocationMode {
+    Instance,
+    TypeStatic,
+}
+
 const REFERENCE_PROOF_DEPTH: usize = 32;
 const REFERENCE_PROOF_WORK: usize = 4096;
 
@@ -5166,6 +5194,27 @@ impl<'a> ReferenceCallProof<'a> {
             .or_else(|| self.cast_null_argument(node, at, depth).map(StrictActual::Reference))
     }
 
+    // Shared by direct navigation and nested invocation typing. A failed value
+    // proof is never sufficient evidence that the same spelling is a type.
+    fn static_type_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
+        if !self.file.call_inventory_valid {
+            return None;
+        }
+        self.charge(self.file.locals.len().max(1))?;
+        if self.file.locals.iter().any(|local| {
+            local.name == name && local.scope_start <= at && at < local.scope_end && local.visible_from <= at
+        }) {
+            return None;
+        }
+        for enclosing in enclosing_classes(self.file, at) {
+            if self.has_field(enclosing, name, 0, &mut BTreeSet::new())? {
+                return None;
+            }
+        }
+        let owner = self.reference_type(self.file, &[name.to_owned()], at)?;
+        (owner.binary && !owner.is_interface && owner.nesting.len() == 1).then_some(owner)
+    }
+
     fn invocation_value(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
         self.check_depth(depth)?;
         if node.kind() != SyntaxKind::CallExpr {
@@ -5209,6 +5258,7 @@ impl<'a> ReferenceCallProof<'a> {
             return None;
         }
         let (mut base, mut base_at) = base?;
+        let type_qualifier_allowed = base.kind() == SyntaxKind::ReferenceExpr;
         let mut depth = depth;
         while base.kind() == SyntaxKind::ParenExpr {
             self.charge(base.children().len().max(1))?;
@@ -5219,16 +5269,23 @@ impl<'a> ReferenceCallProof<'a> {
             base_at = *at;
             depth += 1;
         }
-        // Only explicit local/parameter roots or another strictly proved invocation.
-        let owner = match base.kind() {
-            SyntaxKind::ReferenceExpr => self.expression(base, base_at, depth + 1)?.class,
+        let (owner, mode) = match base.kind() {
+            SyntaxKind::ReferenceExpr => {
+                if let Some(value) = self.expression(base, base_at, depth + 1) {
+                    (value.class, InvocationMode::Instance)
+                } else if type_qualifier_allowed {
+                    (self.static_type_owner(&token_name(base), base_at)?, InvocationMode::TypeStatic)
+                } else {
+                    return None;
+                }
+            }
             SyntaxKind::CallExpr => match self.invocation_value(base, base_at, depth + 1)? {
-                StrictActual::Reference(value) => value.class,
+                StrictActual::Reference(value) => (value.class, InvocationMode::Instance),
                 _ => return None,
             },
             _ => return None,
         };
-        let selected = self.select(owner, name?, args, args_at, depth + 1)?;
+        let selected = self.select_mode(owner, name?, args, args_at, depth + 1, mode)?;
         if selected.declaring.binary {
             return self.binary_invocation_value(&selected);
         }
@@ -5437,6 +5494,18 @@ impl<'a> ReferenceCallProof<'a> {
         at: u32,
         depth: usize,
     ) -> Option<SelectedMethod<'a>> {
+        self.select_mode(owner, name, args, at, depth, InvocationMode::Instance)
+    }
+
+    fn select_mode(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        args: &GreenNode,
+        at: u32,
+        depth: usize,
+        mode: InvocationMode,
+    ) -> Option<SelectedMethod<'a>> {
         self.check_depth(depth)?;
         if (owner.is_interface && !owner.binary) || owner.reference_generic {
             return None;
@@ -5444,6 +5513,9 @@ impl<'a> ReferenceCallProof<'a> {
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
+        if mode == InvocationMode::TypeStatic && (!owner.binary || owner.is_interface || inherited) {
+            return None;
+        }
         // A class-file interface's synthetic Object edge is inventory, not
         // ordinary interface inheritance. Object-name semantics remain refused.
         if owner.is_interface && graph.iter().any(|c| c.binary_root && c.methods.iter().any(|m| m.name == name)) {
@@ -5496,6 +5568,7 @@ impl<'a> ReferenceCallProof<'a> {
         // partitions a validated own-owner family; inherited names are tested
         // against the COMPLETE graph above, including inaccessible declarations.
         let members = if owner.binary
+            && mode == InvocationMode::Instance
             && !inherited
             && members
                 .iter()
@@ -5513,14 +5586,17 @@ impl<'a> ReferenceCallProof<'a> {
             if declaring.binary {
                 let Shape::Binary { descriptor, generic, flags } = &member.shape else { return None };
                 // Native/abstract/final/synchronized are valid invocation declarations.
-                // No bridge, synthetic, static or variable-arity candidate is silently filtered.
+                // No mixed invocation mode, bridge, synthetic or variable-arity
+                // candidate is silently filtered from the complete family.
                 if member.access != Access::Public
                     || (declaring.is_interface && flags & 0x0400 == 0)
                     || *generic
                     || flags & !0x1dff != 0
                     || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
                     || flags & 7 != 1
-                    || flags & (0x0008 | 0x0040 | 0x0080 | 0x1000) != 0
+                    || (flags & 0x0008 != 0) != (mode == InvocationMode::TypeStatic)
+                    || mode == InvocationMode::TypeStatic && flags & 0x0400 != 0
+                    || flags & (0x0040 | 0x0080 | 0x1000) != 0
                     || flags & 0x0400 != 0
                         && (flags & (0x0010 | 0x0020 | 0x0100 | 0x0800) != 0 || declaring.reference_final)
                 {
@@ -5537,9 +5613,9 @@ impl<'a> ReferenceCallProof<'a> {
                         }
                     })
                     .sum();
-                if slots > 254 {
+                if slots > if mode == InvocationMode::TypeStatic { 255 } else { 254 } {
                     return None;
-                } // instance receiver consumes one JVM parameter slot.
+                } // Only an instance receiver consumes a JVM parameter slot.
                 for parameter in parameters {
                     self.charge(1)?;
                     if parameter.unsupported || parameter.array_rank != 0 {

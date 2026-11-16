@@ -625,3 +625,16 @@ generic receiver support, generic arity/bounds validation or inference is added.
 Unsupported syntax, mismatched metadata and exhausted budgets fail closed.
 The certificate is local to conversions (including specificity and catch
 qualification); shared cast/override edge metadata is unchanged.
+
+### Explicit binary static invocation mode
+
+A simple type qualifier resolved in the caller's context can select a complete
+public, fixed-arity, nongeneric static binary method family through the existing
+strict selector. Invocation mode is explicit; static results can supply nested
+arguments and reference receiver chains only after strict selection, with return
+types linked in the selected declaration's context. Mixed static/instance families,
+ancestor same-name methods, interface owners, nested/full-package qualifiers and
+parenthesized type names remain unsupported. Local, field and type-variable
+shadowing cannot manufacture type-qualified return evidence. Existing legacy
+field navigation is not promoted to strict invocation proof. Strict selection
+shares the existing proof budget; legacy failure hints retain their old bounds.
