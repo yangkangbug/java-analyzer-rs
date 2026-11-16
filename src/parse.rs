@@ -730,6 +730,7 @@ impl<'a> Parser<'a> {
             SyntaxKind::Assert => self.parse_assert(),
             SyntaxKind::Try => self.parse_try(),
             SyntaxKind::Switch => self.parse_switch(),
+            SyntaxKind::Ident if self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
             _ if self.looks_like_local_type_decl() => self.parse_local_type(),
             _ if self.looks_like_decl() => self.parse_local(true),
             _ if self.can_start_expr() => {
@@ -739,6 +740,49 @@ impl<'a> Parser<'a> {
                 self.finish();
             }
             _ => self.recover_stmt(),
+        }
+    }
+
+    fn parse_labeled(&mut self) {
+        // Consecutive prefixes are iterative, with a local tree-depth bound.
+        // This is not a general statement/parser resource budget.
+        let mut labels = 0;
+        while self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Colon {
+            if labels == 32 {
+                self.set_message("consecutive label limit exceeded");
+                while self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Colon {
+                    self.bump();
+                    self.bump();
+                }
+                break;
+            }
+            self.open(SyntaxKind::LabeledStmt);
+            self.bump(); // label is a token, never a value/type reference
+            self.bump(); // colon (distinct from a method-reference :: token)
+            labels += 1;
+        }
+        if self.looks_like_local_type_decl() || self.looks_like_decl() {
+            // Block statements include declarations; a labeled Statement does
+            // not. Keep recovery contained without exporting its declarations.
+            self.set_message("declaration cannot be a labeled statement");
+            self.parse_stmt();
+        } else if matches!(
+            self.kind(),
+            SyntaxKind::RBrace
+                | SyntaxKind::Eof
+                | SyntaxKind::Else
+                | SyntaxKind::Catch
+                | SyntaxKind::Finally
+                | SyntaxKind::Case
+                | SyntaxKind::Default
+        ) {
+            self.set_message("expected labeled statement");
+            // Leave the enclosing block/if/switch delimiter for its owner.
+        } else {
+            self.parse_stmt();
+        }
+        for _ in 0..labels {
+            self.finish();
         }
     }
 

@@ -2222,6 +2222,11 @@ enum ScopeKind {
 }
 
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
+    // Invalid direct labeled declarations and bounded-chain recovery cannot
+    // introduce variables into the enclosing block. Valid labels add no scope.
+    if node.kind() == SyntaxKind::LabeledStmt && node.message().is_some() {
+        return;
+    }
     // Include anonymous bodies nested in constructor arguments, without
     // changing general NewExpr behavior outside enum constants.
     if ctx.enum_constant_depth > 0 && node.kind() == SyntaxKind::ClassBody {

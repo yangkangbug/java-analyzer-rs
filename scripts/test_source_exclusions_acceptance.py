@@ -374,9 +374,9 @@ class ResultControls(unittest.TestCase):
              mock.patch.object(gate.second, 'portable_queries', return_value=[]), \
              mock.patch.object(gate.configure_gate, 'missing_generated'), \
              mock.patch.object(gate.second, 'check_reference_parser') as validate, \
-             mock.patch.object(gate.second, 'switch_parser_contract', return_value=({}, 'digest', 138, 38)):
+             mock.patch.object(gate.second, 'labeled_parser_contract', return_value=({}, 'digest', 138, 38)):
             report = gate.preservation(runner, fixture, 'generated')
-            validate.assert_called_once_with(parser, fixture, {}, 'old-digest', stage='switch')
+            validate.assert_called_once_with(parser, fixture, {}, 'old-digest', stage='labels')
             self.assertEqual(report['parser']['files'][0]['path'], 'A.java')
             self.assertEqual(report['parser']['report_count'], 138)
 

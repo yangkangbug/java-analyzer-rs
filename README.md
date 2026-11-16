@@ -661,3 +661,16 @@ method. Parameter-slot limits follow each declaration, not the qualifier.
 Abstract or unsupported competitors still refuse proof. Value-qualified calls,
 method references, interfaces and ancestor same-name families are not expanded.
 This is not a general static/instance invocation implementation.
+
+### Labeled statement syntax
+
+Identifier labels now contain one statement without entering the value/type
+namespace or adding a variable scope. Existing block/for scopes remain intact;
+label names and break/continue label tokens have no navigation targets. Direct
+local declarations and missing bodies report syntax errors without exporting
+invalid declarations. Consecutive label chains are parsed iteratively up to 32
+nested labels, with lossless error recovery beyond that local bound; this is
+not a general parser resource guarantee. Incremental block reparsing remains
+consistent with full parsing. Duplicate labels, jump-target validity and control
+flow are not analyzed. Labels do not disable existing type-based call selection:
+valid labeled bodies preserve the normal statement and declaration semantics.

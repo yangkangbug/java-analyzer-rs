@@ -227,7 +227,9 @@ pub fn collect_errors(node: &GreenNode) -> Vec<SyntaxError> {
 }
 
 fn walk_errors(node: &GreenNode, byte: u32, utf16: u32, out: &mut Vec<SyntaxError>) {
-    if matches!(node.kind, SyntaxKind::Error | SyntaxKind::ErrorToken | SyntaxKind::LocalType) {
+    if matches!(node.kind, SyntaxKind::Error | SyntaxKind::ErrorToken | SyntaxKind::LocalType)
+        || node.kind == SyntaxKind::LabeledStmt && node.message.is_some()
+    {
         out.push(SyntaxError {
             message: node.message.unwrap_or("invalid syntax"),
             start_byte: byte,

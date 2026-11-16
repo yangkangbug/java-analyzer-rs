@@ -161,6 +161,8 @@ pub enum SyntaxKind {
     /// A variable declared in `try (...)`.
     Resource,
     EmptyStmt,
+    /// Identifier label and one statement; jump-target semantics remain unsupported.
+    LabeledStmt,
     IfStmt,
     /// Traditional colon switch statement; expression switches remain unsupported.
     SwitchStmt,
