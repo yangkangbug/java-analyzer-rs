@@ -5282,6 +5282,72 @@ impl<'a> ReferenceCallProof<'a> {
         (flags & 0x0010 == 0 && left == right).then_some(())
     }
 
+    // An opt-in certificate for one binary owner's complete overload inventory.
+    // It does not replace legacy hint visibility or general Java access control.
+    // Raw descriptors/flags and duplicates are checked BEFORE any exclusion.
+    fn foreign_package_exclusions(
+        &mut self,
+        owner: &'a ClassRec,
+        members: &[(&'a ClassRec, &'a Member)],
+    ) -> Option<Vec<bool>> {
+        if !self.file.call_inventory_valid || !owner.binary || owner.is_interface || owner.nesting.len() != 1 {
+            return None;
+        }
+        let mut parameters: Vec<(Vec<ParameterType>, usize)> = Vec::new();
+        let mut excluded = Vec::new();
+        for (declaring, member) in members {
+            if !same_class(owner, declaring) {
+                return None;
+            }
+            let Shape::Binary { descriptor, generic, flags } = &member.shape else { return None };
+            self.charge(descriptor.len().saturating_add(1))?;
+            let access = flags & 7;
+            if *generic
+                || !matches!((access, member.access), (0, Access::Package) | (1, Access::Public))
+                || flags & !0x1dff != 0
+                || flags & (0x0040 | 0x0080 | 0x0400 | 0x1000) != 0
+                || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
+            {
+                // Abstract-owner consistency is not modeled here. Unknown
+                // generic/bridge/synthetic/varargs/private/protected forms refuse.
+                return None;
+            }
+            let (params, result) = descriptor_parts(descriptor)?;
+            if params.iter().any(|p| p.unsupported) || result.as_ref().is_some_and(|r| r.unsupported) {
+                return None;
+            }
+            let slots: usize = params
+                .iter()
+                .map(|p| {
+                    if p.array_rank == 0 && matches!(p.primitive, Some(Primitive::Long | Primitive::Double)) {
+                        2
+                    } else {
+                        1
+                    }
+                })
+                .sum();
+            if slots > if flags & 0x0008 != 0 { 255 } else { 254 } {
+                return None;
+            }
+            for (previous, bytes) in &parameters {
+                // Raw-name equality may revisit long common prefixes per pair.
+                self.charge(descriptor.len().saturating_add(*bytes).max(1))?;
+                if previous.len() == params.len()
+                    && previous.iter().zip(&params).all(|(a, b)| {
+                        a.primitive == b.primitive && a.binary_name == b.binary_name && a.array_rank == b.array_rank
+                    })
+                {
+                    // Return type, static mode or visibility cannot distinguish
+                    // Java overloads, even if one declaration would be excluded.
+                    return None;
+                }
+            }
+            parameters.push((params, descriptor.len()));
+            excluded.push(access == 0 && declaring.package != self.file.package);
+        }
+        Some(excluded)
+    }
+
     fn select(
         &mut self,
         owner: &'a ClassRec,
@@ -5345,6 +5411,20 @@ impl<'a> ReferenceCallProof<'a> {
                 members.push((*declaring, member));
             }
         }
+        // Keep the immutable declaration inventory intact. Only this new path
+        // partitions a validated own-owner family; inherited names are tested
+        // against the COMPLETE graph above, including inaccessible declarations.
+        let members = if owner.binary
+            && !inherited
+            && members
+                .iter()
+                .any(|(declaring, member)| member.access == Access::Package && declaring.package != self.file.package)
+        {
+            let excluded = self.foreign_package_exclusions(owner, &members)?;
+            members.into_iter().zip(excluded).filter_map(|(member, excluded)| (!excluded).then_some(member)).collect()
+        } else {
+            members
+        };
         let mut formals = Vec::new();
         for (declaring, member) in &members {
             self.charge(1)?;

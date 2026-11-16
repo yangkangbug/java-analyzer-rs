@@ -602,3 +602,14 @@ arrays, malformed headers, incomplete hierarchies and captured uses stay refused
 Catch scope does not extend into `finally` or following statements. This is not
 exception-flow/reachability analysis and does not extend inherited method or
 string-concatenation support.
+
+### Conservative binary package-access candidates
+
+Reference-call proofs can exclude package-access binary overloads declared outside
+the caller's package after validating the complete named-method inventory. This
+permits, for example, public `String.indexOf(String)` calls despite unrelated
+package-private JDK helpers. It does not add general Java accessibility checking:
+same-package competition, private/protected candidates, inherited same-name
+methods, malformed or unsupported signatures, and exhausted proof budgets still
+fail closed. Generic reference conversions and type-qualified static calls are
+unchanged.
