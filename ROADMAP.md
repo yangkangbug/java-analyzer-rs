@@ -54,6 +54,14 @@ or subinterfaces. Source declaration facts and binary flags share one ancestor
 filter, while strict raw inventories stay unchanged. See
 [inheritance/navigation boundaries](docs/METHOD_INHERITANCE_NAVIGATION.md).
 
+## Field member navigation
+
+Field lookup constructs direct-edge effective member sets before caller access,
+replacing depth-based selection. Hidden inaccessible fields cannot expose ancestor
+fallbacks; unrelated paths remain ambiguous and same-declaration diamonds coalesce.
+Source interface fields carry implicit public access. Strict field typing stays
+separate. See [field navigation boundaries](docs/FIELD_MEMBER_NAVIGATION.md).
+
 ## Exact-name directory reuse
 
 Four legacy exact-name lookup paths reuse the existing immutable scope-qualified

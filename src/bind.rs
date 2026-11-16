@@ -615,7 +615,7 @@ impl Index {
         arguments: Option<(&GreenNode, u32)>,
     ) -> ResolveResult {
         for class in enclosing_classes(file, byte) {
-            let found = match self.collect(class, name, true, file, byte) {
+            let found = match self.collect(class, name, file, byte) {
                 Ok(found) => found,
                 Err(err) => return walk_error(err),
             };
@@ -1127,7 +1127,6 @@ impl Index {
                 .map(|(declaring, member)| Candidate {
                     member,
                     target: member_target(declaring, member),
-                    depth: 0,
                     signature: proof.hint_signature(declaring, member),
                     declaring: ClassIdentity::of(declaring),
                     ancestors: BTreeSet::new(),
@@ -1511,15 +1510,90 @@ impl Index {
     }
 
     fn lookup_fields(&self, class: &ClassRec, name: &str, site: &FileRec, byte: u32) -> ResolveResult {
-        let found = match self.collect(class, name, false, site, byte) {
-            Ok(found) => found,
+        let members = match self.field_members(class, name, &mut BTreeSet::new(), &mut BTreeMap::new()) {
+            Ok(members) => members,
             Err(err) => return walk_error(err),
         };
-        select_fields(found)
+        let mut targets = Vec::new();
+        let mut uncertain = false;
+        for field in members {
+            match self.can_see(field.member, field.owner, class, site, byte) {
+                Ok(true) => {
+                    uncertain |= field.member.access == Access::Unspecified;
+                    targets.push(member_target(field.owner, field.member));
+                }
+                Ok(false) => {}
+                Err(err) => return walk_error(err),
+            }
+        }
+        let status = if uncertain {
+            ResolveStatus::NotDetermined
+        } else {
+            match targets.len() {
+                0 => ResolveStatus::Unresolved,
+                1 => ResolveStatus::Resolved,
+                _ => ResolveStatus::Ambiguous,
+            }
+        };
+        ResolveResult::many(status, targets)
+    }
+
+    // JLS 8.3 / 9.3: inheritance is a direct-edge operation, not a nearest
+    // declaration or global ancestry ranking. A hidden field may still arrive
+    // through another parent. Cache member sets before caller access checks.
+    fn field_members<'a>(
+        &'a self,
+        class: &'a ClassRec,
+        name: &str,
+        active: &mut BTreeSet<ClassIdentity>,
+        memo: &mut BTreeMap<ClassIdentity, Vec<FieldMember<'a>>>,
+    ) -> Result<Vec<FieldMember<'a>>, WalkError> {
+        let identity = ClassIdentity::of(class);
+        if let Some(members) = memo.get(&identity) {
+            return Ok(members.clone());
+        }
+        if !active.insert(identity.clone()) {
+            return Err(WalkError::Cycle);
+        }
+        let mut inherited = BTreeMap::new();
+        // Interfaces do not inherit Object fields, even in class files whose
+        // super_class entry is Object. Traverse all real parents even when an
+        // own declaration exists, preserving cycle/ambiguous-edge reporting.
+        let edges = class.super_parts.iter().filter(|_| !class.is_interface).chain(&class.interface_parts);
+        for edge in edges {
+            let parent = match self.resolve_edge(class, edge) {
+                Named::None => continue,
+                Named::Many(classes) => {
+                    return Err(WalkError::Ambiguous(classes.into_iter().map(ClassRec::target).collect()));
+                }
+                Named::One(parent) => parent,
+            };
+            for field in self.field_members(parent, name, active, memo)? {
+                let eligible = match field.member.access {
+                    Access::Public | Access::Protected | Access::Unspecified => true,
+                    Access::Package => field.owner.package == class.package,
+                    Access::Private => false,
+                };
+                if eligible {
+                    inherited.insert((ClassIdentity::of(field.owner), field.ordinal), field);
+                }
+            }
+        }
+        let own: Vec<_> = class
+            .fields
+            .iter()
+            .enumerate()
+            .filter(|(_, member)| member.name == name)
+            .map(|(ordinal, member)| FieldMember { owner: class, member, ordinal })
+            .collect();
+        let members = if own.is_empty() { inherited.into_values().collect() } else { own };
+        active.remove(&identity);
+        memo.insert(identity, members.clone());
+        Ok(members)
     }
 
     fn lookup_methods(&self, class: &ClassRec, name: &str, site: &FileRec, byte: u32) -> ResolveResult {
-        let found = match self.collect(class, name, true, site, byte) {
+        let found = match self.collect(class, name, site, byte) {
             Ok(found) => found,
             Err(err) => return walk_error(err),
         };
@@ -1530,20 +1604,15 @@ impl Index {
         &'a self,
         class: &'a ClassRec,
         name: &str,
-        call: bool,
         site: &FileRec,
         byte: u32,
     ) -> Result<Vec<Candidate<'a>>, WalkError> {
         let steps = self.hierarchy(class)?;
         let mut found = Vec::new();
         for step in steps {
-            let members: Vec<&Member> = if call {
-                step.class.methods.iter().filter(|member| member.name == name).collect()
-            } else {
-                step.class.fields.iter().filter(|member| member.name == name).collect()
-            };
+            let members = step.class.methods.iter().filter(|member| member.name == name);
             for member in members {
-                if call && step.depth > 0 && !navigation_method_inherited(step.class, member) {
+                if step.depth > 0 && !navigation_method_inherited(step.class, member) {
                     continue;
                 }
                 if !self.can_see(member, step.class, class, site, byte)? {
@@ -1552,18 +1621,14 @@ impl Index {
                 found.push(Candidate {
                     member,
                     target: member_target(step.class, member),
-                    depth: step.depth,
-                    signature: if call { self.method_signature(step.class, member) } else { None },
+                    signature: self.method_signature(step.class, member),
                     declaring: ClassIdentity::of(step.class),
-                    ancestors: if call {
-                        self.method_hierarchy(step.class)?
-                            .into_iter()
-                            .skip(1)
-                            .map(|s| ClassIdentity::of(s.class))
-                            .collect()
-                    } else {
-                        BTreeSet::new()
-                    },
+                    ancestors: self
+                        .method_hierarchy(step.class)?
+                        .into_iter()
+                        .skip(1)
+                        .map(|s| ClassIdentity::of(s.class))
+                        .collect(),
                     unspecified: member.access == Access::Unspecified,
                 });
             }
@@ -1726,27 +1791,6 @@ fn walk_error(err: WalkError) -> ResolveResult {
     match err {
         WalkError::Cycle => ResolveResult::none(ResolveStatus::Cycle),
         WalkError::Ambiguous(targets) => ResolveResult::many(ResolveStatus::Ambiguous, targets),
-    }
-}
-
-fn select_fields(found: Vec<Candidate<'_>>) -> ResolveResult {
-    if found.is_empty() {
-        return ResolveResult::none(ResolveStatus::Unresolved);
-    }
-    if found.iter().all(|candidate| candidate.unspecified) {
-        return ResolveResult::many(
-            ResolveStatus::NotDetermined,
-            found.into_iter().map(|candidate| candidate.target).collect(),
-        );
-    }
-    let found: Vec<_> = found.into_iter().filter(|candidate| !candidate.unspecified).collect();
-    let min = found.iter().map(|candidate| candidate.depth).min().unwrap();
-    let nearest: Vec<_> =
-        found.into_iter().filter(|candidate| candidate.depth == min).map(|candidate| candidate.target).collect();
-    match nearest.len() {
-        0 => ResolveResult::none(ResolveStatus::Unresolved),
-        1 => ResolveResult::many(ResolveStatus::Resolved, nearest),
-        _ => ResolveResult::many(ResolveStatus::Ambiguous, nearest),
     }
 }
 
@@ -1915,11 +1959,19 @@ fn same_class(left: &ClassRec, right: &ClassRec) -> bool {
     ClassIdentity::of(left) == ClassIdentity::of(right)
 }
 
+#[derive(Clone, Copy)]
+struct FieldMember<'a> {
+    owner: &'a ClassRec,
+    member: &'a Member,
+    // Snapshot-local member ordinal keeps malformed duplicate declarations
+    // distinct while coalescing the same field reached along a diamond.
+    ordinal: usize,
+}
+
 #[derive(Clone)]
 struct Candidate<'a> {
     member: &'a Member,
     target: Target,
-    depth: u32,
     signature: Option<MethodIdentity>,
     declaring: ClassIdentity,
     ancestors: BTreeSet<ClassIdentity>,
@@ -2564,7 +2616,12 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
             start: name_start,
             end: name_end,
             declared,
-            access: read_access(node, start),
+            access: match read_access(node, start) {
+                Access::Package if kind == TargetKind::Field && ctx.file.classes[class_index].is_interface => {
+                    Access::Public
+                }
+                access => access,
+            },
             shape: if kind == TargetKind::Method {
                 source_method_shape(node, start)
             } else {
