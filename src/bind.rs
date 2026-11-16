@@ -377,6 +377,7 @@ struct FileRec {
     locals: Vec<LocalRec>,
     local_types: Vec<LocalTypeRec>,
     opaque_enum_bodies: Vec<(u32, u32)>,
+    syntax_valid: bool,
     call_inventory_valid: bool,
 }
 
@@ -971,18 +972,12 @@ impl Index {
             };
             owner
         };
-        if owner.binary && !is_value {
+        if !is_value {
             if proof.exhausted {
                 return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
             }
-            // Keep legacy effective-declaration/access hints; they are not
-            // applicability evidence and never supply an invocation value.
-            let mut result = self.lookup_methods(owner, name, file, byte);
-            if result.status == ResolveStatus::Resolved {
-                result.status = ResolveStatus::CallNotResolved;
-            }
-            let Some((caller_node, _, _)) = caller else { return Some(result) };
-            if parens == 0
+            if let Some((caller_node, _, _)) = caller
+                && parens == 0
                 && reference_method_header(caller_node, caller_start)
                 && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
                 && !contains_kind(caller_node, SyntaxKind::LocalType)
@@ -991,10 +986,24 @@ impl Index {
                 && let Some(selected) = proof.select_mode(owner, name, args, args_at, 0, InvocationMode::TypeStatic)
                 && !proof.exhausted
             {
-                result =
-                    ResolveResult::one(ResolveStatus::Resolved, member_target(selected.declaring, selected.member));
+                return Some(ResolveResult::one(
+                    ResolveStatus::Resolved,
+                    member_target(selected.declaring, selected.member),
+                ));
             }
-            return Some(result);
+            if owner.binary {
+                if proof.exhausted {
+                    return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
+                }
+                // Preserve effective legacy hints, never expression evidence.
+                let mut result = self.lookup_methods(owner, name, file, byte);
+                if result.status == ResolveStatus::Resolved {
+                    result.status = ResolveStatus::CallNotResolved;
+                }
+                return Some(result);
+            }
+            // Unsupported source type-qualified calls retain legacy navigation.
+            // Only the strict success above may supply nested invocation values.
         }
         // Nested binary receiver lookup remains outside this proof. Raw dotted
         // name hints must not turn an unsupported receiver into a bound value.
@@ -2173,6 +2182,7 @@ impl LocalRec {
 }
 
 fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
+    let syntax_valid = parsed.errors().is_empty();
     let mut file = FileRec {
         scope: 0,
         path: path.to_string(),
@@ -2184,7 +2194,8 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         locals: Vec::new(),
         local_types: Vec::new(),
         opaque_enum_bodies: Vec::new(),
-        call_inventory_valid: parsed.errors().is_empty() && valid_call_inventory(parsed.root(), 0),
+        syntax_valid,
+        call_inventory_valid: syntax_valid && valid_call_inventory(parsed.root(), 0),
     };
     index_node(
         parsed.root(),
@@ -5212,7 +5223,7 @@ impl<'a> ReferenceCallProof<'a> {
             }
         }
         let owner = self.reference_type(self.file, &[name.to_owned()], at)?;
-        (owner.binary && !owner.is_interface && owner.nesting.len() == 1).then_some(owner)
+        (!owner.is_interface && owner.nesting.len() == 1).then_some(owner)
     }
 
     fn invocation_value(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
@@ -5513,7 +5524,7 @@ impl<'a> ReferenceCallProof<'a> {
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
-        if mode == InvocationMode::TypeStatic && (!owner.binary || owner.is_interface || inherited) {
+        if mode == InvocationMode::TypeStatic && (owner.is_interface || inherited) {
             return None;
         }
         // A class-file interface's synthetic Object edge is inventory, not
@@ -5647,8 +5658,28 @@ impl<'a> ReferenceCallProof<'a> {
                 let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
                 let source = member.source_call.as_ref()?;
                 let Shape::Source { parameters, variables } = &member.shape else { return None };
-                if member.access != Access::Public || source.is_static || source.varargs || !variables.is_empty() {
+                if member.access != Access::Public
+                    || source.is_static != (mode == InvocationMode::TypeStatic)
+                    || source.varargs
+                    || !variables.is_empty()
+                    || mode == InvocationMode::TypeStatic && !file.syntax_valid
+                {
                     return None;
+                }
+                if mode == InvocationMode::TypeStatic {
+                    let slots: usize = parameters
+                        .iter()
+                        .map(|p| {
+                            if p.array_rank == 0 && matches!(p.primitive, Some(Primitive::Long | Primitive::Double)) {
+                                2
+                            } else {
+                                1
+                            }
+                        })
+                        .sum();
+                    if slots > 255 {
+                        return None;
+                    }
                 }
                 for parameter in parameters {
                     self.charge(1)?;

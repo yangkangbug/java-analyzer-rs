@@ -638,3 +638,15 @@ parenthesized type names remain unsupported. Local, field and type-variable
 shadowing cannot manufacture type-qualified return evidence. Existing legacy
 field navigation is not promoted to strict invocation proof. Strict selection
 shares the existing proof budget; legacy failure hints retain their old bounds.
+
+### Source static invocation parity
+
+The same explicit type-qualified mode also handles top-level, nongeneric source
+classes with a complete public/static/fixed-arity method family and no ancestor
+same-name methods. Declaring files must parse without errors and retain complete
+validated headers; unrelated legal switch bodies do not invalidate declaration
+types. The calling file retains its stricter call-proof boundary. Returns are
+resolved in the selected declaration's file and compilation context. Unsupported
+source calls may retain historical name navigation, but only a strict selection
+can supply a nested argument or receiver type. Mixed families, generic substitution,
+varargs and error recovery remain outside this slice.
