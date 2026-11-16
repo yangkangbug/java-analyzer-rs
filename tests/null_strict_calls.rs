@@ -112,6 +112,9 @@ fn null_never_matches_primitive_or_new_expression_shapes() {
         if arg == "give()" {
             // The declared A return is proven, not inferred as a null literal.
             winner(&source, "pick(give())", "pick(A a)");
+        } else if arg == "nulls[0]" {
+            // An explicitly declared A[] yields A, not a null-literal type.
+            winner(&source, "pick(nulls[0])", "pick(A a)");
         } else {
             refused(&source, &format!("pick({arg})"), 1);
         }

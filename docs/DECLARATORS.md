@@ -29,7 +29,9 @@ not supply dimensions to the declared variable.
   inherited from another source file whose imports differ from the caller's.
 - A named array remains navigable as a declaration, but member lookup through it
   returns `ReceiverNotBound` instead of pretending it is a scalar element object.
-  Indexed-array receiver expressions remain unsupported and may be `Unresolved`.
+  A later [reference-array element proof](REFERENCE_ARRAY_ELEMENTS.md) supports
+  bounded one-dimensional local/parameter element receivers. Other indexed-array
+  forms remain unsupported.
 
 No public API type changes are required. Legacy, prepared and compilation-scoped
 queries retain the same target conventions. Prepared handles still borrow an
@@ -48,7 +50,8 @@ The pinned Commons Lang corpus has six multi-local declarations but no multi-fie
 declarations in this syntax inventory. Its additional exact-target queries are
 regressions for existing behavior, not claimed new functionality on that project.
 
-This slice does not implement expression typing, inferred `var`, array indexing,
+The original declaration slice does not implement general expression typing,
+inferred `var`, general array indexing,
 array `length`/`clone`, definite assignment or illegal-forward-reference diagnostics.
 Recovery tests can intentionally use invalid Java and do not prove its legality.
 Postfix type annotations, full Java scope/access rules, stable symbol identities,

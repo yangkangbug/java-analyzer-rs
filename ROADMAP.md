@@ -79,6 +79,12 @@ within a proved current source class, including same-class nonpublic access.
 Inherited/mixed/generic families and unsupported caller contexts remain separate.
 See [boundaries and evidence](docs/IMPLICIT_INSTANCE_CALLS.md).
 
+### Explicit reference-array components
+
+One-dimensional plain reference local/parameter arrays now supply checked element
+types to invocation arguments and receivers without treating an array as a scalar.
+See [boundaries and validation](docs/REFERENCE_ARRAY_ELEMENTS.md).
+
 ## M0: reproducible independent project
 
 Gate: independent manifest/lockfile/toolchain; preserved licensing/provenance;

@@ -347,7 +347,8 @@ struct LocalRec {
     primitive: Option<PrimitiveValue>,
     postfix_after: Option<u32>,
     catch_origin: bool,
-    reference: Option<Vec<String>>,
+    // Strict plain-reference syntax, with dimensions; unlike legacy declared metadata.
+    reference: Option<QualName>,
     path: String,
 }
 
@@ -911,7 +912,7 @@ impl Index {
             plain_at = *at;
             parens += 1;
         }
-        if plain_receiver.kind() == SyntaxKind::CallExpr {
+        if matches!(plain_receiver.kind(), SyntaxKind::CallExpr | SyntaxKind::IndexExpr) {
             let refused = || ResolveResult::none(ResolveStatus::ReceiverNotBound);
             let Some((caller, caller_start, caller_end)) = direct_caller(parsed.root(), byte) else {
                 return Some(refused());
@@ -924,9 +925,16 @@ impl Index {
                 return Some(refused());
             }
             let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
-            let Some(StrictActual::Reference(value)) = proof.invocation_value(plain_receiver, plain_at, parens + 1)
-            else {
-                return Some(refused());
+            let value = if plain_receiver.kind() == SyntaxKind::CallExpr {
+                match proof.invocation_value(plain_receiver, plain_at, parens + 1) {
+                    Some(StrictActual::Reference(value)) => value,
+                    _ => return Some(refused()),
+                }
+            } else {
+                let Some(value) = proof.expression(plain_receiver, plain_at, parens + 1) else {
+                    return Some(refused());
+                };
+                value
             };
             return Some(match proof.select(value.class, selector?, args, args_at, 0) {
                 Some(member) if !proof.exhausted => {
@@ -2591,7 +2599,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         primitive: None,
         postfix_after: None,
         catch_origin: true,
-        reference: catch_reference_declaration(node, start, name_start),
+        reference: catch_reference_declaration(node, start, name_start).map(|parts| QualName { parts, array_rank: 0 }),
         path: ctx.file.path.clone(),
     });
 }
@@ -3366,6 +3374,32 @@ fn primitive_method_return(node: &GreenNode) -> Option<Primitive> {
     (state == 6).then_some(result).flatten()
 }
 
+fn index_operands(node: &GreenNode, start: u32) -> Option<[(&GreenNode, u32); 2]> {
+    let mut nodes = Vec::new();
+    let mut kinds = Vec::new();
+    let mut at = start;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                kinds.push(token.kind());
+            }
+        } else if let Some(child) = child.as_node() {
+            // Node positions distinguish base[index] from missing or
+            // reordered operands even when the parser has no errors.
+            if (nodes.is_empty() && !kinds.is_empty()) || (nodes.len() == 1 && kinds != [SyntaxKind::LBracket]) {
+                return None;
+            }
+            nodes.push((child.as_ref(), at));
+        }
+        at += child.utf8_len();
+    }
+    let [base, index] = nodes.as_slice() else { return None };
+    if kinds != [SyntaxKind::LBracket, SyntaxKind::RBracket] {
+        return None;
+    }
+    Some([*base, *index])
+}
+
 // This checks syntax, not Throwable inheritance. Unmodeled annotation/generic
 // and array forms cannot make a malformed throws header supply a return value.
 // A separate, complete-header proof; never reuse lossy Member.declared.
@@ -3410,23 +3444,27 @@ fn reference_method_return(node: &GreenNode) -> Option<Vec<String>> {
 // This checks syntax, not Throwable inheritance. Unmodeled annotation/generic
 // and array forms cannot make a malformed throws header supply a return value.
 fn plain_reference_type(node: &GreenNode) -> bool {
+    plain_reference_rank(node) == Some(0)
+}
+
+fn plain_reference_rank(node: &GreenNode) -> Option<usize> {
     let mut children = node.child_nodes();
-    let Some(name) = children.next() else { return false };
-    if children.next().is_some()
-        || name.kind() != SyntaxKind::Name
-        || name.child_nodes().next().is_some()
-        || tokens(node, 0).iter().any(|t| !t.0.is_trivia())
-    {
-        return false;
+    let name = children.next()?;
+    if children.next().is_some() || name.kind() != SyntaxKind::Name || name.child_nodes().next().is_some() {
+        return None;
     }
     let mut identifier = true;
     for (kind, _, _) in tokens(name, 0).into_iter().filter(|t| !t.0.is_trivia()) {
         if kind != if identifier { SyntaxKind::Ident } else { SyntaxKind::Dot } {
-            return false;
+            return None;
         }
         identifier = !identifier;
     }
-    !identifier
+    if identifier {
+        return None;
+    }
+    let brackets: Vec<_> = tokens(node, 0).iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
+    bracket_rank(&brackets).filter(|rank| *rank <= 255)
 }
 
 fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
@@ -3730,30 +3768,8 @@ impl<'a> PrimitiveProof<'a> {
                 self.expression(expression, *at, depth + 1)
             }
             SyntaxKind::IndexExpr => {
-                let mut nodes = Vec::new();
-                let mut kinds = Vec::new();
-                let mut at = start;
-                for child in node.children() {
-                    if let Some(token) = child.as_token() {
-                        if !token.kind().is_trivia() {
-                            kinds.push(token.kind());
-                        }
-                    } else if let Some(child) = child.as_node() {
-                        // Node positions distinguish base[index] from missing or
-                        // reordered operands even when the parser has no errors.
-                        if (nodes.is_empty() && !kinds.is_empty())
-                            || (nodes.len() == 1 && kinds != [SyntaxKind::LBracket])
-                        {
-                            return None;
-                        }
-                        nodes.push((child.as_ref(), at));
-                    }
-                    at += child.utf8_len();
-                }
-                let [(base, base_at), (index, index_at)] = nodes.as_slice() else { return None };
-                if kinds != [SyntaxKind::LBracket, SyntaxKind::RBracket] {
-                    return None;
-                }
+                let [base, index] = index_operands(node, start)?;
+                let ((base, base_at), (index, index_at)) = (&base, &index);
                 let mut base = self.expression(base, *base_at, depth + 1)?;
                 let index = self.expression(index, *index_at, depth + 1)?;
                 if base.rank == 0
@@ -4113,11 +4129,9 @@ fn catch_reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Op
     (state == 7).then_some(parts).flatten()
 }
 
-fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<Vec<String>> {
+fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<QualName> {
     let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
-    if !plain_reference_type(ty) {
-        return None;
-    }
+    let prefix_rank = plain_reference_rank(ty)?;
     if let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) {
         let kinds: Vec<_> = tokens(mods, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
         if !matches!(kinds.as_slice(), [] | [SyntaxKind::Final]) || mods.child_nodes().next().is_some() {
@@ -4129,10 +4143,13 @@ fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<V
     if name > 0 && direct[name - 1].0 == SyntaxKind::DotDotDot {
         return None;
     }
-    if direct.get(name + 1).is_some_and(|t| !matches!(t.0, SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::Semi)) {
-        return None;
-    }
-    type_parts(ty, at)
+    let suffix: Vec<_> = direct[name + 1..]
+        .iter()
+        .take_while(|t| !matches!(t.0, SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::Semi))
+        .map(|t| t.0)
+        .collect();
+    let array_rank = prefix_rank + bracket_rank(&suffix)?;
+    (array_rank <= 255).then_some(QualName { parts: type_parts(ty, at)?, array_rank })
 }
 
 // This is deliberately not Java Unicode preprocessing or text-block typing.
@@ -4703,7 +4720,11 @@ impl<'a> ReferenceCallProof<'a> {
         Some(class)
     }
     fn local_reference(&mut self, local: &'a LocalRec) -> Option<&'a ClassRec> {
-        let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
+        let declared = local.reference.as_ref()?;
+        if declared.array_rank != 0 {
+            return None;
+        }
+        let class = self.reference_type(self.file, &declared.parts, local.start)?;
         if local.catch_origin {
             if class.is_interface || class.reference_generic {
                 return None;
@@ -4769,6 +4790,37 @@ impl<'a> ReferenceCallProof<'a> {
             }
             self.accessible(class)?;
             self.graph(class)?;
+            return Some(ReferenceValue { class });
+        }
+        if node.kind() == SyntaxKind::IndexExpr {
+            let [(mut base, mut base_at), (index, index_at)] = index_operands(node, at)?;
+            let mut depth = depth;
+            while base.kind() == SyntaxKind::ParenExpr {
+                self.check_depth(depth + 1)?;
+                self.charge(base.children().len().max(1))?;
+                let children = delimited_nodes(base, base_at)?;
+                let [(inner, offset)] = children.as_slice() else { return None };
+                base = inner;
+                base_at = *offset;
+                depth += 1;
+            }
+            if base.kind() != SyntaxKind::ReferenceExpr {
+                return None;
+            }
+            let local = self.visible_argument_local(&token_name(base), base_at)?;
+            let declared = local.reference.as_ref()?;
+            if declared.array_rank != 1 || local.catch_origin {
+                return None;
+            }
+            let StrictActual::Primitive(index) = self.actual(index, index_at, depth + 1)? else { return None };
+            if index.rank != 0
+                || !matches!(index.primitive, Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int)
+            {
+                return None;
+            }
+            // An array is never a scalar receiver. Only one proved index into
+            // an explicitly one-dimensional declaration produces its element.
+            let class = self.reference_type(self.file, &declared.parts, local.start)?;
             return Some(ReferenceValue { class });
         }
         if node.kind() == SyntaxKind::NewExpr {
@@ -5351,6 +5403,7 @@ impl<'a> ReferenceCallProof<'a> {
                     return None;
                 }
             }
+            SyntaxKind::IndexExpr => (self.expression(base, base_at, depth + 1)?.class, InvocationMode::Instance),
             SyntaxKind::CallExpr => match self.invocation_value(base, base_at, depth + 1)? {
                 StrictActual::Reference(value) => (value.class, InvocationMode::Instance),
                 _ => return None,
