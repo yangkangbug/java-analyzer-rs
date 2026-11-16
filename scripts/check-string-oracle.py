@@ -95,10 +95,12 @@ def baseline_expectations(expected):
 
 def current_expectations(expected, queries, declarations):
     # Historical string/null fixtures stay frozen. Only the newly certified
-    # ordinary String parent edge changes these two current selections.
+    # ordinary String parent edges and own-instance return proof change only
+    # the explicitly asserted current selections below.
     result = o.current_null_expectations('string-v1', expected, queries, declarations)
     result = dict(result)
     prior = {
+        'string_result': ('CallNotResolved', 'exact@literal.Target', 'exact@literal.Target'),
         'string_object': ('CallNotResolved', 'object@literal.Target', 'object@literal.Target'),
         'string_choose': ('OverloadNotResolved', 'choose_string@literal.Target',
                           'choose_string@literal.Target,choose_object@literal.Target'),

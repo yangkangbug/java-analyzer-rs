@@ -109,7 +109,12 @@ fn null_never_matches_primitive_or_new_expression_shapes() {
         let source = format!(
             "class A {{}} class Box {{ public void pick(A a) {{}} }} class Calls {{ A value; A give() {{ return null; }} void run(Box box, A[] nulls) {{ box.pick({arg}); }} }}"
         );
-        refused(&source, &format!("pick({arg})"), 1);
+        if arg == "give()" {
+            // The declared A return is proven, not inferred as a null literal.
+            winner(&source, "pick(give())", "pick(A a)");
+        } else {
+            refused(&source, &format!("pick({arg})"), 1);
+        }
     }
 }
 

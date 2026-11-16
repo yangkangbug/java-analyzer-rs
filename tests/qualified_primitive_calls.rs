@@ -171,9 +171,14 @@ fn no_field_call_result_array_or_budget_escape_supplies_scalar_proof() {
         let source = format!(
             "class Box {{ public void pick(int x) {{}} public void pick(long x) {{}} }} class Calls {{ int value; int give() {{ return 1; }} void run(Box box, int value, int[] values) {{ box.pick({actual}); }} }}"
         );
-        let result = query(&project(&source, true), &format!("pick({actual})"));
-        assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{actual}: {result:?}");
-        assert_eq!(result.targets.len(), 2);
+        if actual == "give()" {
+            // A proven own-instance int return now participates in widening.
+            winner(&project(&source, true), "pick(give())", "pick(int x)");
+        } else {
+            let result = query(&project(&source, true), &format!("pick({actual})"));
+            assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{actual}: {result:?}");
+            assert_eq!(result.targets.len(), 2);
+        }
     }
 }
 

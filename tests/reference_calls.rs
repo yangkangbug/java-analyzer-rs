@@ -110,7 +110,12 @@ fn unique_unknown_arguments_never_become_applicability_evidence() {
         let source = format!(
             "class A {{ A value; }} class C {{ public void m(A x) {{}} }} class Calls {{ A give() {{ return null; }} void run(C c, A a) {{ c.m({actual}); }} }}"
         );
-        refused(&project(&source), &format!("m({actual})"), &[("Calls.java", "m(A x)")]);
+        if actual == "give()" {
+            // Own-instance declaration evidence supplies A, not an unknown call.
+            selected(&project(&source), "m(give())", "Calls.java", "m(A x)");
+        } else {
+            refused(&project(&source), &format!("m({actual})"), &[("Calls.java", "m(A x)")]);
+        }
     }
 }
 #[test]

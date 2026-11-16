@@ -69,6 +69,14 @@ def omission_expectations(expected):
             for q, row in expected.items()}
 
 
+def current_expectations(expected, queries, declarations):
+    result = o.current_source_invocation_expectations('reference-return-v1', expected, queries, declarations)
+    assert result['return_unknown_inner'] == ('ReceiverNotBound', 'product_value@model.Product', '-')
+    # The unchanged own-class unknown() declaration returns scalar int.
+    result['return_unknown_inner'] = ('Resolved', 'product_value@model.Product', 'product_value@model.Product')
+    return result
+
+
 def run_suite(jdk, native, work, baseline=False):
     env = {'PATH': '/nonexistent'}
     helper, empty = work / 'helper', work / 'empty'
@@ -81,7 +89,7 @@ def run_suite(jdk, native, work, baseline=False):
     native_rows = o.records(o.run([native, ROOT / 'source', request, platform], env).stdout)
     for q in sorted(expected):
         print(q + '\tjavac=' + '|'.join(compiler[q]) + '\tnative=' + '|'.join(native_rows[q]), flush=True)
-    compare(baseline_expectations(expected) if baseline else o.current_source_invocation_expectations('reference-return-v1', expected, qs, ds), qs, ds, compiler, native_rows, platform)
+    compare(baseline_expectations(expected) if baseline else current_expectations(expected, qs, ds), qs, ds, compiler, native_rows, platform)
     if baseline:
         o.must_reject(lambda: compare(expected, qs, ds, compiler, native_rows, platform), 'baseline must fail new selected goldens')
     for case, status, candidates, diagnostic, ids, contents in invalid_fixtures():
@@ -114,7 +122,7 @@ def run_suite(jdk, native, work, baseline=False):
             o.check_reference_candidates(q, row[0], row[2], ds, omitted[q], platform)
     finally:
         path.write_bytes(contents)
-    print('PASS: reference return oracle; explicit current invocation overlay selects 4, retains 3 valid refusals; historical baseline separate; 1 compiler-rejected case; Object omission exact refusals; baseline=' + str(baseline), flush=True)
+    print('PASS: reference return oracle; current invocation proofs select 5, retain 2 valid refusals; historical baseline separate; 1 compiler-rejected case; Object omission exact refusals; baseline=' + str(baseline), flush=True)
 
 
 def main():

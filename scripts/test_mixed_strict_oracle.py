@@ -86,5 +86,38 @@ class QualifiedOracleTests(unittest.TestCase):
             with self.assertRaises(AssertionError): c.o.check_reference_candidates(q, status, candidates, ds, result, Path('/unused'))
 
 
+    def test_own_instance_current_projection_is_exact_and_baseline_unchanged(self):
+        ds, qs, _, original = c.fixture()
+        frozen = copy.deepcopy(original)
+        baseline = c.baseline_expectations(original)
+        prior = c.o.current_null_expectations('mixed-strict-v1', original, qs, ds)
+        current = c.current_expectations(original, qs, ds)
+        self.assertEqual(original, frozen)
+        self.assertEqual(c.baseline_expectations(original), baseline)
+        self.assertEqual({q for q in prior if prior[q] != current[q]}, {'mixed_unknown'})
+        self.assertEqual(current['mixed_unknown'], ('Resolved', 'mix_int@mixed.Target', 'mix_int@mixed.Target'))
+        for field in range(3):
+            bad = dict(original)
+            row = list(bad['mixed_unknown']); row[field] = 'wrong'; bad['mixed_unknown'] = tuple(row)
+            with self.assertRaises(AssertionError): c.current_expectations(bad, qs, ds)
+        compiler, native = {}, {}
+        for name, (status, target, candidates) in current.items():
+            marker, owner = target.split('@'); path, _, _, method = ds[marker]
+            start, end = c.compiler_range(ds, marker)
+            compiler[name] = [path, 'METHOD', owner, method, str(start), str(end)]
+            targets = [c.o.reference_target(ds, x, Path('/unused')) for x in candidates.split(',')]
+            native[name] = [status, str(len(targets)), *targets]
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for mutation in ['status', 'count', 'target', 'owner', 'range']:
+            bad = copy.deepcopy(native)
+            if mutation == 'status': bad['mixed_unknown'][0] = 'OverloadNotResolved'
+            elif mutation == 'count': bad['mixed_unknown'][1] = '2'
+            elif mutation == 'target': bad['mixed_unknown'][2] = c.o.reference_target(ds, 'mix_long@mixed.Target', Path('/unused'))
+            elif mutation == 'owner': bad['mixed_unknown'][2] = bad['mixed_unknown'][2].replace('mixed.Target', 'wrong.Owner')
+            else: bad['mixed_unknown'][2] += '0'
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
+
+
 if __name__ == '__main__':
     unittest.main()

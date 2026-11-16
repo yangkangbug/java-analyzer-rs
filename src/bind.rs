@@ -643,6 +643,26 @@ impl Index {
                 }
             }
             let Some((caller_node, caller_start, caller_end)) = caller else { return result };
+            // Bare calls have a method namespace, not a value/type qualifier.
+            // Reuse the strict invocation proof before the older primitive path.
+            if reference_method_header(caller_node, caller_start)
+                && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
+                && !contains_kind(caller_node, SyntaxKind::LocalType)
+                && crate::green::collect_errors(caller_node).is_empty()
+            {
+                let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+                if let Some(owner) = proof.implicit_instance_owner(byte)
+                    && same_class(owner, class)
+                    && let Some(selected) =
+                        proof.select_mode(owner, name, args, args_at, 0, InvocationMode::OwnInstance)
+                    && !proof.exhausted
+                {
+                    return ResolveResult::one(
+                        ResolveStatus::Resolved,
+                        member_target(selected.declaring, selected.member),
+                    );
+                }
+            }
             let Some(object) = self.closed_primitive_owner(file, class, name) else { return result };
             if !file.call_inventory_valid
                 || !caller_node.child_nodes().any(|node| node.kind() == SyntaxKind::Block)
@@ -4214,6 +4234,8 @@ fn conversion_signature_edges(text: &str) -> Option<Vec<(String, bool)>> {
 enum InvocationMode {
     Instance,
     TypeStatic,
+    // Exact current source class in a nonstatic ordinary method; no inherited family.
+    OwnInstance,
 }
 
 const REFERENCE_PROOF_DEPTH: usize = 32;
@@ -5233,14 +5255,46 @@ impl<'a> ReferenceCallProof<'a> {
         (!owner.is_interface && owner.nesting.len() == 1).then_some(owner)
     }
 
+    fn implicit_instance_owner(&mut self, at: u32) -> Option<&'a ClassRec> {
+        if !self.file.call_inventory_valid || at < self.caller_start || at >= self.caller_end {
+            return None;
+        }
+        self.charge(self.file.classes.len().max(1))?;
+        let enclosing = enclosing_classes(self.file, at);
+        let [owner] = enclosing.as_slice() else { return None };
+        let owner = *owner;
+        if owner.binary || owner.nesting.len() != 1 || owner.is_interface || owner.reference_generic {
+            return None;
+        }
+        self.charge(owner.methods.len().max(1))?;
+        let mut callers = owner.methods.iter().filter(|m| m.start >= self.caller_start && m.end <= self.caller_end);
+        let caller = callers.next()?;
+        if callers.next().is_some() || caller.source_call.as_ref()?.is_static {
+            return None;
+        }
+        let Shape::Source { variables, .. } = &caller.shape else { return None };
+        variables.is_empty().then_some(owner)
+    }
+
     fn invocation_value(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
         self.check_depth(depth)?;
         if node.kind() != SyntaxKind::CallExpr {
             return None;
         }
         self.charge(node.children().len().max(1))?;
-        let (callee, callee_at) = child_kind(node, at, SyntaxKind::FieldExpr)?;
         let (args, args_at) = child_kind(node, at, SyntaxKind::ArgList)?;
+        if let Some((callee, callee_at)) = child_kind(node, at, SyntaxKind::ReferenceExpr) {
+            if node.child_nodes().count() != 2
+                || node.children().iter().any(|c| c.as_token().is_some_and(|t| !t.kind().is_trivia()))
+            {
+                return None;
+            }
+            let owner = self.implicit_instance_owner(callee_at)?;
+            let selected =
+                self.select_mode(owner, &token_name(callee), args, args_at, depth + 1, InvocationMode::OwnInstance)?;
+            return self.selected_value(&selected);
+        }
+        let (callee, callee_at) = child_kind(node, at, SyntaxKind::FieldExpr)?;
         if node.child_nodes().count() != 2
             || node.children().iter().any(|c| c.as_token().is_some_and(|t| !t.kind().is_trivia()))
         {
@@ -5304,8 +5358,12 @@ impl<'a> ReferenceCallProof<'a> {
             _ => return None,
         };
         let selected = self.select_mode(owner, name?, args, args_at, depth + 1, mode)?;
+        self.selected_value(&selected)
+    }
+
+    fn selected_value(&mut self, selected: &SelectedMethod<'a>) -> Option<StrictActual<'a>> {
         if selected.declaring.binary {
-            return self.binary_invocation_value(&selected);
+            return self.binary_invocation_value(selected);
         }
         let source = selected.member.source_call.as_ref()?;
         if let Some(primitive) = source.scalar_return {
@@ -5531,6 +5589,9 @@ impl<'a> ReferenceCallProof<'a> {
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
+        if mode == InvocationMode::OwnInstance && (inherited || !same_class(self.implicit_instance_owner(at)?, owner)) {
+            return None;
+        }
         if mode == InvocationMode::TypeStatic && (owner.is_interface || inherited) {
             return None;
         }
@@ -5667,8 +5728,10 @@ impl<'a> ReferenceCallProof<'a> {
                 let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
                 let source = member.source_call.as_ref()?;
                 let Shape::Source { parameters, variables } = &member.shape else { return None };
-                if member.access != Access::Public
-                    || mode == InvocationMode::Instance && source.is_static
+                // OwnInstance proves the caller and declaration are exactly
+                // the same class. Other receiver forms keep public-only access.
+                if (mode != InvocationMode::OwnInstance && member.access != Access::Public)
+                    || mode != InvocationMode::TypeStatic && source.is_static
                     || mode == InvocationMode::TypeStatic && source.is_abstract
                     || source.varargs
                     || !variables.is_empty()
@@ -5676,7 +5739,7 @@ impl<'a> ReferenceCallProof<'a> {
                 {
                     return None;
                 }
-                if mode == InvocationMode::TypeStatic {
+                if mode != InvocationMode::Instance {
                     let slots: usize = parameters
                         .iter()
                         .map(|p| {

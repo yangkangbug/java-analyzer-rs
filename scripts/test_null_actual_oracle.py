@@ -24,6 +24,17 @@ class NullOracleTests(unittest.TestCase):
             native[q] = [status, str(len(targets)), *targets]
         return ds, qs, expected, compiler, native
 
+    def test_implicit_result_keeps_historical_baseline(self):
+        ds, qs, _, expected = c.fixture()
+        old = copy.deepcopy(expected)
+        current = c.current_expectations(expected)
+        self.assertEqual(expected, old)
+        self.assertEqual(current['null_unknown'], ('Resolved', 'related_parent@nulls.Target', 'related_parent@nulls.Target'))
+        self.assertNotEqual(c.baseline_expectations(expected)['null_unknown'][0], 'Resolved')
+        expected['null_unknown'] = ('Wrong', 'related_parent@nulls.Target', '-')
+        with self.assertRaises(AssertionError):
+            c.current_expectations(expected)
+
     def test_complete_fixed_inventory(self):
         ds, qs, expected, compiler, native = self.evidence()
         self.assertEqual((len(qs), len(ds)), (11, 14))

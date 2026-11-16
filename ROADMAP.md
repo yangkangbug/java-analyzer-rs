@@ -72,6 +72,13 @@ class declarations and public abstract interface declarations, while preserving
 default/bridge/generic/mixed-source refusal boundaries. See
 [scope and frozen evidence](docs/EFFECTIVE_BINARY_METHODS.md).
 
+### Own-class implicit invocation composition
+
+Bare instance helper calls now reuse strict selection and declared return typing
+within a proved current source class, including same-class nonpublic access.
+Inherited/mixed/generic families and unsupported caller contexts remain separate.
+See [boundaries and evidence](docs/IMPLICIT_INSTANCE_CALLS.md).
+
 ## M0: reproducible independent project
 
 Gate: independent manifest/lockfile/toolchain; preserved licensing/provenance;

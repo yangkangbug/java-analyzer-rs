@@ -82,7 +82,12 @@ fn every_actual_must_have_existing_proof() {
         let source = format!(
             "class A {{}} class Box {{ public void pick(int i, A a) {{}} }} class Calls {{ int value; int give() {{ return 1; }} void run(Box box, A a, int[] values) {{ box.pick({actual},a); }} }}"
         );
-        refused(&source, &format!("pick({actual},a)"), 1);
+        if actual == "give()" {
+            // The exact own-instance int return now supplies this argument.
+            winner(&source, "pick(give(),a)", "pick(int i, A a)");
+        } else {
+            refused(&source, &format!("pick({actual},a)"), 1);
+        }
     }
 }
 

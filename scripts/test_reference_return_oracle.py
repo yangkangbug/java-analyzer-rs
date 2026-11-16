@@ -24,6 +24,17 @@ class ReturnOracleTests(unittest.TestCase):
             native[q] = [status, str(len(targets)), *targets]
         return ds, qs, expected, compiler, native
 
+    def test_implicit_result_keeps_historical_baseline(self):
+        ds, qs, _, expected = c.fixture()
+        old = copy.deepcopy(expected)
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(expected, old)
+        self.assertEqual(current['return_unknown_inner'], ('Resolved', 'product_value@model.Product', 'product_value@model.Product'))
+        self.assertNotEqual(c.baseline_expectations(expected)['return_unknown_inner'][0], 'Resolved')
+        expected['return_unknown_inner'] = ('Wrong', 'product_value@model.Product', '-')
+        with self.assertRaises(AssertionError):
+            c.current_expectations(expected, qs, ds)
+
     def test_complete_fixed_inventory(self):
         ds, qs, expected, compiler, native = self.evidence()
         self.assertEqual((len(qs), len(ds)), (7, 8))

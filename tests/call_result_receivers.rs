@@ -51,8 +51,17 @@ fn unsupported_call_receivers_never_fall_back_to_same_named_values() {
             "class Result {{ public Result again() {{ return null; }} public void next() {{}} }} class Box {{ public Result take(int i) {{ return null; }} }} class Calls {{ Result make() {{ return null; }} void run(Box box, int next) {{ {receiver}.next(); }} }}"
         );
         let result = query(&project(&source), "next();");
-        assert_eq!(result.status, ResolveStatus::ReceiverNotBound, "{receiver}: {result:?}");
-        assert!(result.targets.is_empty());
+        if receiver == "make()" {
+            // Own-instance return proof now composes; the local named next
+            // must not replace the selected Result method.
+            assert_eq!(result.status, ResolveStatus::Resolved, "{result:?}");
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].owner, "Result");
+            assert_eq!(result.targets[0].start_byte, source.find("next()").unwrap() as u32);
+        } else {
+            assert_eq!(result.status, ResolveStatus::ReceiverNotBound, "{receiver}: {result:?}");
+            assert!(result.targets.is_empty());
+        }
     }
 }
 
