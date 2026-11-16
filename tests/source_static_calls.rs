@@ -118,8 +118,15 @@ fn source_static_returns_compose_in_declaration_scope() {
 }
 #[test]
 fn unsupported_complete_families_never_supply_nested_values() {
+    let api = "package lib; public class Api {public static int pick(int i){return i;} public int pick(){return 0;}}";
+    let text = wrapped("Api.pick(1)");
+    let p = project(api, &text);
+    proved(&p, "take(Api.pick(1))", "Box");
+    assert_eq!(query(&p, "take(Api.pick(1))").targets[0].start_byte, text.find("take(int i)").unwrap() as u32);
+    proved(&p, "pick(1)", "lib.Api");
+    assert_eq!(query(&p, "pick(1)").targets[0].start_byte, api.find("pick(int i)").unwrap() as u32);
+
     for other in [
-        "public int pick(){return 0;}",
         "private static int pick(){return 0;}",
         "public static int pick(int... xs){return 0;}",
         "public static <T> int pick(){return 0;}",

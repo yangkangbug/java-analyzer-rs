@@ -2957,6 +2957,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
 #[derive(Clone, Debug)]
 struct SourceCall {
     is_static: bool,
+    is_abstract: bool,
     varargs: bool,
     override_facts: Option<OverrideFacts>,
     // Only a strictly selected source member may expose this value. It is not
@@ -3181,6 +3182,7 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
     }
     Some(SourceCall {
         is_static: mods.iter().any(|t| t.0 == SyntaxKind::Static),
+        is_abstract: mods.iter().any(|t| t.0 == SyntaxKind::Abstract),
         varargs,
         override_facts: source_override_facts(node, start),
         scalar_return: primitive_method_return(node),
@@ -5597,15 +5599,17 @@ impl<'a> ReferenceCallProof<'a> {
             if declaring.binary {
                 let Shape::Binary { descriptor, generic, flags } = &member.shape else { return None };
                 // Native/abstract/final/synchronized are valid invocation declarations.
-                // No mixed invocation mode, bridge, synthetic or variable-arity
-                // candidate is silently filtered from the complete family.
+                // Type-qualified selection keeps concrete instance competitors.
+                // Only the final winner must be static (JLS 15.12.3). Instance
+                // calls, inherited names and interfaces retain their old boundary.
+                // Never silently filter unsupported same-name candidates.
                 if member.access != Access::Public
                     || (declaring.is_interface && flags & 0x0400 == 0)
                     || *generic
                     || flags & !0x1dff != 0
                     || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
                     || flags & 7 != 1
-                    || (flags & 0x0008 != 0) != (mode == InvocationMode::TypeStatic)
+                    || mode == InvocationMode::Instance && flags & 0x0008 != 0
                     || mode == InvocationMode::TypeStatic && flags & 0x0400 != 0
                     || flags & (0x0040 | 0x0080 | 0x1000) != 0
                     || flags & 0x0400 != 0
@@ -5624,7 +5628,7 @@ impl<'a> ReferenceCallProof<'a> {
                         }
                     })
                     .sum();
-                if slots > if mode == InvocationMode::TypeStatic { 255 } else { 254 } {
+                if slots > if flags & 0x0008 != 0 { 255 } else { 254 } {
                     return None;
                 } // Only an instance receiver consumes a JVM parameter slot.
                 for parameter in parameters {
@@ -5659,7 +5663,8 @@ impl<'a> ReferenceCallProof<'a> {
                 let source = member.source_call.as_ref()?;
                 let Shape::Source { parameters, variables } = &member.shape else { return None };
                 if member.access != Access::Public
-                    || source.is_static != (mode == InvocationMode::TypeStatic)
+                    || mode == InvocationMode::Instance && source.is_static
+                    || mode == InvocationMode::TypeStatic && source.is_abstract
                     || source.varargs
                     || !variables.is_empty()
                     || mode == InvocationMode::TypeStatic && !file.syntax_valid
@@ -5677,7 +5682,7 @@ impl<'a> ReferenceCallProof<'a> {
                             }
                         })
                         .sum();
-                    if slots > 255 {
+                    if slots > if source.is_static { 255 } else { 254 } {
                         return None;
                     }
                 }
@@ -5835,7 +5840,18 @@ impl<'a> ReferenceCallProof<'a> {
                 winner = Some(SelectedMethod { declaring: members[i].0, member: members[i].1 });
             }
         }
-        winner
+        let winner = winner?;
+        if mode == InvocationMode::TypeStatic {
+            let is_static = match &winner.member.shape {
+                Shape::Binary { flags, .. } => flags & 0x0008 != 0,
+                Shape::Source { .. } => winner.member.source_call.as_ref()?.is_static,
+                Shape::Unknown => return None,
+            };
+            if !is_static {
+                return None; // A more-specific instance method cannot fall back to a static overload.
+            }
+        }
+        Some(winner)
     }
 }
 

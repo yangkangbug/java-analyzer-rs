@@ -99,8 +99,11 @@ fn static_result_values_compose_without_using_legacy_navigation() {
 }
 #[test]
 fn unsupported_static_families_are_not_pruned_by_arity() {
+    // A complete concrete instance competitor of different arity is now supported.
+    let p = project("import lib.Api; class Calls {void run(){Api.pick(1);}}", &[INT, ("pick", "()I", 0x101, None)]);
+    selected(&p, "pick(1)", "lib.Api", "(I)I");
+
     for other in [
-        ("pick", "()I", 0x101, None),   // instance different arity
         ("pick", "()I", 0x108, None),   // package access
         ("pick", "()I", 0x10a, None),   // private
         ("pick", "()I", 0x10c, None),   // protected

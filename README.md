@@ -632,8 +632,8 @@ A simple type qualifier resolved in the caller's context can select a complete
 public, fixed-arity, nongeneric static binary method family through the existing
 strict selector. Invocation mode is explicit; static results can supply nested
 arguments and reference receiver chains only after strict selection, with return
-types linked in the selected declaration's context. Mixed static/instance families,
-ancestor same-name methods, interface owners, nested/full-package qualifiers and
+types linked in the selected declaration's context. Ancestor same-name methods,
+interface owners, nested/full-package qualifiers and
 parenthesized type names remain unsupported. Local, field and type-variable
 shadowing cannot manufacture type-qualified return evidence. Existing legacy
 field navigation is not promoted to strict invocation proof. Strict selection
@@ -648,5 +648,16 @@ validated headers; unrelated legal switch bodies do not invalidate declaration
 types. The calling file retains its stricter call-proof boundary. Returns are
 resolved in the selected declaration's file and compilation context. Unsupported
 source calls may retain historical name navigation, but only a strict selection
-can supply a nested argument or receiver type. Mixed families, generic substitution,
-varargs and error recovery remain outside this slice.
+can supply a nested argument or receiver type. Generic substitution, varargs and
+error recovery remain outside this slice.
+
+### Concrete mixed families in type-qualified calls
+
+For the same bounded `TypeName.method(...)` path, public concrete instance
+methods remain in the complete own-owner family alongside static overloads.
+Strict applicability and most-specific selection run before checking that the
+winner is static; an instance winner never falls back to a less-specific static
+method. Parameter-slot limits follow each declaration, not the qualifier.
+Abstract or unsupported competitors still refuse proof. Value-qualified calls,
+method references, interfaces and ancestor same-name families are not expanded.
+This is not a general static/instance invocation implementation.
