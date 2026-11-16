@@ -153,7 +153,10 @@ fn unsupported_receiver_and_caller_contexts_never_supply_field_types() {
         "void run() { Runnable r = () -> { a.next().hit(); }; }",
         "class Nested { void run() { a.next().hit(); } }",
     ] {
-        check(&project("A a;", method), None);
+        // An ordinary constructor now has its own caller certificate; the
+        // field's declared A type is unchanged (no initializer inference).
+        let wanted = (method == "Calls() { a.next().hit(); }").then_some("A");
+        check(&project("A a;", method), wanted);
     }
     let mut p = project("", "void run() { a.next().hit(); }");
     let text = p

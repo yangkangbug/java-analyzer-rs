@@ -631,7 +631,7 @@ impl Index {
                         && actuals.as_ref().is_some_and(|args| {
                             candidate.signature.as_ref().is_some_and(|sig| args.len() != sig.parameters.len())
                         });
-                    let primitive_mismatch = caller.is_some_and(|(caller, start, end)| {
+                    let primitive_mismatch = caller.is_some_and(|DirectCaller { node: caller, start, end, .. }| {
                         if !file.call_inventory_valid || source_call(caller, start).is_none() {
                             return false;
                         }
@@ -661,7 +661,9 @@ impl Index {
                     }
                 }
             }
-            let Some((caller_node, caller_start, caller_end)) = caller else { return result };
+            let Some(DirectCaller { node: caller_node, start: caller_start, end: caller_end, .. }) = caller else {
+                return result;
+            };
             // Bare calls have a method namespace, not a value/type qualifier.
             // Reuse the strict invocation proof before the older primitive path.
             if reference_method_header(caller_node, caller_start)
@@ -669,7 +671,7 @@ impl Index {
                 && !contains_kind(caller_node, SyntaxKind::LocalType)
                 && crate::green::collect_errors(caller_node).is_empty()
             {
-                let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+                let mut proof = ReferenceCallProof::new(self, file, caller);
                 if let Some(owner) = proof.implicit_instance_owner(byte)
                     && same_class(owner, class)
                     && let Some(selected) =
@@ -938,7 +940,8 @@ impl Index {
             return None;
         }
         if plain_receiver.kind() == SyntaxKind::FieldExpr {
-            let (caller, caller_start, caller_end) = direct_caller(parsed.root(), byte)?;
+            let context = direct_caller(parsed.root(), byte)?;
+            let DirectCaller { node: caller, start: caller_start, .. } = context;
             if !reference_method_header(caller, caller_start)
                 || child_kind(caller, caller_start, SyntaxKind::TypeParamList).is_some()
                 || contains_kind(caller, SyntaxKind::LocalType)
@@ -946,7 +949,7 @@ impl Index {
             {
                 return None;
             }
-            let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+            let mut proof = ReferenceCallProof::new(self, file, Some(context));
             let receiver = proof.receiver(plain_receiver, plain_at, parens + 1)?;
             let member = proof.select_receiver(&receiver, selector?, args, args_at, 0)?;
             // Failure leaves legacy field-chain navigation intact. Only this
@@ -956,7 +959,8 @@ impl Index {
         }
         if matches!(plain_receiver.kind(), SyntaxKind::CallExpr | SyntaxKind::IndexExpr) {
             let refused = || ResolveResult::none(ResolveStatus::ReceiverNotBound);
-            let Some((caller, caller_start, caller_end)) = direct_caller(parsed.root(), byte) else {
+            let context = direct_caller(parsed.root(), byte);
+            let Some(DirectCaller { node: caller, start: caller_start, .. }) = context else {
                 return Some(refused());
             };
             if !reference_method_header(caller, caller_start)
@@ -966,7 +970,7 @@ impl Index {
             {
                 return Some(refused());
             }
-            let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+            let mut proof = ReferenceCallProof::new(self, file, context);
             let value = if plain_receiver.kind() == SyntaxKind::CallExpr {
                 match proof.invocation_value(plain_receiver, plain_at, parens + 1) {
                     Some(StrictActual::Reference(value)) => value,
@@ -991,8 +995,8 @@ impl Index {
         let name = selector?;
         let receiver_name = token_name(plain_receiver);
         let caller = direct_caller(parsed.root(), byte);
-        let (caller_start, caller_end) = caller.map_or((0, 0), |(_, a, b)| (a, b));
-        let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+        let (caller_start, caller_end) = caller.map_or((0, 0), |c| (c.start, c.end));
+        let mut proof = ReferenceCallProof::new(self, file, caller);
         if proof.charge(file.locals.len().max(1)).is_none() {
             return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
         }
@@ -1012,7 +1016,7 @@ impl Index {
         proof.caller_locals = Some(caller_locals);
         let is_value = locals.is_some();
         if !is_value
-            && let Some((caller_node, _, _)) = caller
+            && let Some(DirectCaller { node: caller_node, .. }) = caller
             && reference_method_header(caller_node, caller_start)
             && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
             && !contains_kind(caller_node, SyntaxKind::LocalType)
@@ -1046,7 +1050,7 @@ impl Index {
                     None => return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound)),
                 }
             }
-            if caller.is_some_and(|(node, at, _)| type_variables(node, at).contains(&receiver_name)) {
+            if caller.is_some_and(|c| type_variables(c.node, c.start).contains(&receiver_name)) {
                 return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
             }
             let Some(owner) = proof.raw_type(file, std::slice::from_ref(&receiver_name), *receiver_at) else {
@@ -1058,7 +1062,7 @@ impl Index {
             if proof.exhausted {
                 return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
             }
-            if let Some((caller_node, _, _)) = caller
+            if let Some(DirectCaller { node: caller_node, .. }) = caller
                 && parens == 0
                 && reference_method_header(caller_node, caller_start)
                 && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
@@ -1171,7 +1175,7 @@ impl Index {
         if result.status == ResolveStatus::Resolved {
             result.status = ResolveStatus::CallNotResolved;
         }
-        let Some((caller_node, _, _)) = caller else { return Some(result) };
+        let Some(DirectCaller { node: caller_node, .. }) = caller else { return Some(result) };
         if !reference_method_header(caller_node, caller_start)
             || child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_some()
             || contains_kind(caller_node, SyntaxKind::LocalType)
@@ -3684,9 +3688,24 @@ fn primitive_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<P
     (rank <= 255).then_some(PrimitiveValue { primitive, rank })
 }
 
-// Only a File -> Class -> ClassBody -> Method path owns modeled method locals.
+#[derive(Clone, Copy)]
+enum CallerKind {
+    Method,
+    Constructor,
+}
+
+#[derive(Clone, Copy)]
+struct DirectCaller<'n> {
+    node: &'n GreenNode,
+    start: u32,
+    end: u32,
+    kind: CallerKind,
+    work: usize,
+}
+
+// Only a File -> Class -> ClassBody -> callable path owns modeled locals.
 // Lambdas and anonymous/local/nested classes must not borrow an outer variable.
-fn direct_caller(root: &GreenNode, byte: u32) -> Option<(&GreenNode, u32, u32)> {
+fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
     let mut path = Vec::new();
     let mut node = root;
     let mut start = 0;
@@ -3712,7 +3731,7 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<(&GreenNode, u32, u32)> 
         || path[0].0.kind() != SyntaxKind::File
         || path[1].0.kind() != SyntaxKind::Class
         || path[2].0.kind() != SyntaxKind::ClassBody
-        || path[3].0.kind() != SyntaxKind::Method
+        || !matches!(path[3].0.kind(), SyntaxKind::Method | SyntaxKind::Constructor)
         || path[4].0.kind() != SyntaxKind::Block
         || path[4..].iter().any(|(node, _)| {
             matches!(
@@ -3743,7 +3762,45 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<(&GreenNode, u32, u32)> 
         return None;
     }
     let (method, start) = path[3];
-    Some((method, start, start + method.utf8_len()))
+    let mut caller_work = 0;
+    let kind = if method.kind() == SyntaxKind::Constructor {
+        let (class, class_at) = path[1];
+        if direct_ident(method, start)?.0 != direct_ident(class, class_at)?.0
+            || child_kind(class, class_at, SyntaxKind::TypeParamList).is_some()
+            || child_kind(method, start, SyntaxKind::TypeParamList).is_some()
+            || !reference_method_header(method, start)
+            || !crate::green::collect_errors(method).is_empty()
+            || contains_kind(method, SyntaxKind::LocalType)
+        {
+            return None;
+        }
+        // This first slice admits only bodies with implicit super(). Explicit
+        // delegation has a distinct early-construction context; never grant
+        // current-instance permissions to its arguments or a newer prologue.
+        let mut pending = vec![path[4].0];
+        let mut work = REFERENCE_PROOF_WORK;
+        while let Some(node) = pending.pop() {
+            work = work.checked_sub(node.children().len().max(1))?;
+            if node.kind() == SyntaxKind::CallExpr
+                && node.child_nodes().next().is_some_and(|callee| {
+                    matches!(callee.kind(), SyntaxKind::ThisExpr | SyntaxKind::SuperExpr)
+                        || callee.kind() == SyntaxKind::FieldExpr
+                            && callee
+                                .children()
+                                .iter()
+                                .any(|c| c.as_token().is_some_and(|t| t.kind() == SyntaxKind::Super))
+                })
+            {
+                return None;
+            }
+            pending.extend(node.child_nodes().map(|n| n.as_ref()));
+        }
+        caller_work = REFERENCE_PROOF_WORK - work;
+        CallerKind::Constructor
+    } else {
+        CallerKind::Method
+    };
+    Some(DirectCaller { node: method, start, end: start + method.utf8_len(), kind, work: caller_work })
 }
 
 // One budget is shared by the complete nested proof. These are analysis bounds,
@@ -4450,6 +4507,7 @@ struct ReferenceCallProof<'a> {
     file: &'a FileRec,
     caller_start: u32,
     caller_end: u32,
+    caller_kind: Option<CallerKind>,
     work_left: usize,
     exhausted: bool,
     graphs: BTreeMap<ClassIdentity, Vec<&'a ClassRec>>,
@@ -4458,13 +4516,15 @@ struct ReferenceCallProof<'a> {
     failure: Option<ResolveResult>,
 }
 impl<'a> ReferenceCallProof<'a> {
-    fn new(index: &'a Index, file: &'a FileRec, caller_start: u32, caller_end: u32) -> Self {
+    fn new(index: &'a Index, file: &'a FileRec, caller: Option<DirectCaller<'_>>) -> Self {
+        let (caller_start, caller_end) = caller.map_or((0, 0), |c| (c.start, c.end));
         Self {
             index,
             file,
             caller_start,
             caller_end,
-            work_left: REFERENCE_PROOF_WORK,
+            caller_kind: caller.map(|c| c.kind),
+            work_left: REFERENCE_PROOF_WORK - caller.map_or(0, |c| c.work),
             exhausted: false,
             graphs: BTreeMap::new(),
             caller_locals: None,
@@ -5848,8 +5908,13 @@ impl<'a> ReferenceCallProof<'a> {
         self.charge(owner.methods.len().max(1))?;
         let mut callers = owner.methods.iter().filter(|m| m.start >= self.caller_start && m.end <= self.caller_end);
         let caller = callers.next()?;
-        if callers.next().is_some() || caller.source_call.as_ref()?.is_static {
+        if callers.next().is_some() {
             return None;
+        }
+        match self.caller_kind? {
+            CallerKind::Method if !caller.source_call.as_ref()?.is_static => {}
+            CallerKind::Constructor if caller.source_call.is_none() && owner.nesting.last()? == &caller.name => {}
+            _ => return None,
         }
         let Shape::Source { variables, .. } = &caller.shape else { return None };
         variables.is_empty().then_some(owner)
@@ -7002,21 +7067,21 @@ mod invocation_budget_tests {
         project.insert("C.java", &text);
         let parsed = project.file("C.java").unwrap();
         let wanted = text.rfind("take(").unwrap() as u32;
-        let (_, start, end) = direct_caller(parsed.root(), wanted).unwrap();
+        let context = direct_caller(parsed.root(), wanted).unwrap();
         let index = Index::build(&project.files, &project.binaries);
         let file = &index.files[0];
         let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
         let (args, args_at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
         let nodes = delimited_nodes(args, args_at).unwrap();
         let (node, at) = nodes[0];
-        let mut proof = ReferenceCallProof::new(&index, file, start, end);
+        let mut proof = ReferenceCallProof::new(&index, file, Some(context));
         proof.work_left = file.locals.len() + 8;
         assert!(matches!(
             proof.actual(node, at, 0),
             Some(StrictActual::Primitive(PrimitiveValue { primitive: Primitive::Int, rank: 0 }))
         ));
         assert!(!proof.exhausted);
-        let mut exhausted = ReferenceCallProof::new(&index, file, start, end);
+        let mut exhausted = ReferenceCallProof::new(&index, file, Some(context));
         exhausted.work_left = file.locals.len() - 1;
         assert!(exhausted.actual(node, at, 0).is_none());
         assert!(exhausted.exhausted);
@@ -7028,24 +7093,24 @@ mod invocation_budget_tests {
         project.insert("C.java", text);
         let parsed = project.file("C.java").unwrap();
         let wanted = text.rfind("take(").unwrap() as u32;
-        let (_, start, end) = direct_caller(parsed.root(), wanted).unwrap();
+        let context = direct_caller(parsed.root(), wanted).unwrap();
         let index = Index::build(&project.files, &project.binaries);
         let file = &index.files[0];
         let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
         let (args, args_at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
         let nodes = delimited_nodes(args, args_at).unwrap();
         let (node, at) = nodes[0];
-        let mut good = ReferenceCallProof::new(&index, file, start, end);
+        let mut good = ReferenceCallProof::new(&index, file, Some(context));
         assert!(matches!(
             good.scalar_primitive_argument(node, at, 0),
             Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 })
         ));
-        let mut work = ReferenceCallProof::new(&index, file, start, end);
+        let mut work = ReferenceCallProof::new(&index, file, Some(context));
         work.work_left = 8;
         assert!(work.scalar_primitive_argument(node, at, 0).is_none());
         assert!(work.exhausted);
         assert_eq!(work.work_left, 0);
-        let mut depth = ReferenceCallProof::new(&index, file, start, end);
+        let mut depth = ReferenceCallProof::new(&index, file, Some(context));
         assert!(depth.scalar_primitive_argument(node, at, REFERENCE_PROOF_DEPTH).is_none());
         assert!(depth.exhausted);
         assert_eq!(depth.work_left, 0);
@@ -7057,24 +7122,24 @@ mod invocation_budget_tests {
         project.insert("C.java", text);
         let parsed = project.file("C.java").unwrap();
         let wanted = text.rfind("take(").unwrap() as u32;
-        let (_, start, end) = direct_caller(parsed.root(), wanted).unwrap();
+        let context = direct_caller(parsed.root(), wanted).unwrap();
         let index = Index::build(&project.files, &project.binaries);
         let file = &index.files[0];
         let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
         let (args, args_at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
         let nodes = delimited_nodes(args, args_at).unwrap();
         let (node, at) = nodes[0];
-        let mut good = ReferenceCallProof::new(&index, file, start, end);
+        let mut good = ReferenceCallProof::new(&index, file, Some(context));
         assert!(matches!(
             good.scalar_primitive_argument(node, at, 0),
             Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 })
         ));
-        let mut work = ReferenceCallProof::new(&index, file, start, end);
+        let mut work = ReferenceCallProof::new(&index, file, Some(context));
         work.work_left = 8;
         assert!(work.scalar_primitive_argument(node, at, 0).is_none());
         assert!(work.exhausted);
         assert_eq!(work.work_left, 0);
-        let mut depth = ReferenceCallProof::new(&index, file, start, end);
+        let mut depth = ReferenceCallProof::new(&index, file, Some(context));
         assert!(depth.scalar_primitive_argument(node, at, REFERENCE_PROOF_DEPTH).is_none());
         assert!(depth.exhausted);
         assert_eq!(depth.work_left, 0);
@@ -7095,10 +7160,10 @@ mod invocation_budget_tests {
             project.add_class_bytes("Object.class", &object).unwrap();
             let parsed = project.file("Calls.java").unwrap();
             let wanted = text.rfind("b.take(").unwrap() as u32;
-            let (_, caller_start, caller_end) = direct_caller(parsed.root(), wanted).unwrap();
+            let context = direct_caller(parsed.root(), wanted).unwrap();
             let index = Index::build(&project.files, &project.binaries);
             let file = &index.files[0];
-            let mut proof = ReferenceCallProof::new(&index, file, caller_start, caller_end);
+            let mut proof = ReferenceCallProof::new(&index, file, Some(context));
             let (node, at) = call_at(parsed.root(), 0, wanted).unwrap();
             let (args, args_at) = child_kind(node, at, SyntaxKind::ArgList).unwrap();
             let owner = file.classes.iter().find(|class| class.dotted() == "Box").unwrap();

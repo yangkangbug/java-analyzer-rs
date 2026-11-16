@@ -22,7 +22,8 @@ an in-scope unknown local does not. Exact `this.field` bypasses local shadowing.
 An own field hides a same-named ancestor; an unknown own declaration never borrows
 an ancestor's type. Inherited fields themselves remain outside this slice.
 
-The caller must prove an ordinary nonstatic method in its own top-level,
+The caller must prove an ordinary nonstatic method (or a supported
+[ordinary constructor](CONSTRUCTOR_CALL_CONTEXTS.md)) in its own top-level,
 nongeneric source class, with the existing complete inventory/hierarchy and
 caller-context checks. Access to that class's own private, package, protected or
 public field is allowed. Type names resolve at the field declaration, not at the
@@ -40,7 +41,7 @@ attempt the full inheritance, qualified access or capture-conversion rules.
 
 ## Preserved boundaries
 
-No strict field evidence for static fields/contexts, constructors, initializers,
+No strict field evidence for static fields/contexts, unsupported constructors, initializers,
 lambdas, nested/anonymous/local classes, `super`, qualified `Outer.this`, arbitrary
 `obj.field`, inherited fields, annotated or array fields, field updates, generic
 source owners, or initializer inference. Invalid/duplicate field modifiers,

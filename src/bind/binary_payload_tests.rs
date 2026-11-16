@@ -466,10 +466,13 @@ fn caller_local_subset_reuses_only_scanned_declarations_and_keeps_scope_checks()
     project.insert("Use.java", text);
     let index = Index::build(&project.files, &project.binaries);
     let file = &index.files[0];
-    let start = text.find("void run").unwrap() as u32;
     let end = text.find("void other").unwrap() as u32;
     let at = text.find("x;").unwrap() as u32;
-    let mut proof = ReferenceCallProof::new(&index, file, start, end);
+    let mut proof = ReferenceCallProof::new(
+        &index,
+        file,
+        Some(direct_caller(project.file("Use.java").unwrap().root(), at).unwrap()),
+    );
     assert!(proof.visible_argument_local("x", at).is_some());
     let remaining = proof.work_left;
     let count = proof.caller_locals.as_ref().unwrap().len();
@@ -483,7 +486,11 @@ fn caller_local_subset_reuses_only_scanned_declarations_and_keeps_scope_checks()
     proof.work_left = 0;
     assert!(proof.visible_argument_local("x", at).is_none(), "cache cannot bypass exhaustion");
     assert!(proof.exhausted);
-    let mut fresh = ReferenceCallProof::new(&index, file, start, end);
+    let mut fresh = ReferenceCallProof::new(
+        &index,
+        file,
+        Some(direct_caller(project.file("Use.java").unwrap().root(), at).unwrap()),
+    );
     fresh.work_left = file.locals.len() - 1;
     assert!(fresh.visible_argument_local("x", at).is_none());
     assert!(fresh.caller_locals.is_none(), "incomplete scan cannot populate subset");
@@ -501,7 +508,11 @@ fn receiver_hint_scan_keeps_all_caller_declarations_for_independent_strict_looku
     let at = text.find("int later").unwrap() as u32;
     let after = text.rfind("x;").unwrap() as u32;
     for receiver in ["x", "absent"] {
-        let mut proof = ReferenceCallProof::new(&index, file, start, end);
+        let mut proof = ReferenceCallProof::new(
+            &index,
+            file,
+            Some(direct_caller(project.file("Use.java").unwrap().root(), at).unwrap()),
+        );
         proof.charge(file.locals.len().max(1)).unwrap();
         let mut subset = Vec::new();
         let mut inspected = 0;

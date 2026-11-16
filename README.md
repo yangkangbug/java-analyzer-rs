@@ -34,6 +34,10 @@ The [owned analysis snapshot](docs/ANALYSIS_SNAPSHOTS.md) API retains prepared
 workspace versions across clone, source updates and explicit reloads without
 self-referential borrowing. Existing CLI/LSP job lifetimes are unchanged.
 
+Ordinary constructor bodies reuse existing strict call proofs through a separate
+[caller certificate](docs/CONSTRUCTOR_CALL_CONTEXTS.md), without constructor
+selection or early-construction support.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`
