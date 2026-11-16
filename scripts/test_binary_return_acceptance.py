@@ -70,6 +70,36 @@ class BinaryReturnAcceptanceTests(unittest.TestCase):
         sources[m.S] += b'\n' + m.PROBES[0][2].encode()
         with self.assertRaises(m.a.AcceptanceError): m.query_plan(sources)
 
+    def test_additive_projection_preserves_all_other_records(self):
+        original = copy.deepcopy(self.plan)
+        result = m.current_projection(self.plan)
+        self.assertEqual(self.plan, original)
+        for mode, detailed in [('default', False), ('details', True)]:
+            before = self.plan['candidate'][mode]
+            expected = copy.deepcopy(before)
+            expected['queries'][6].update(status='Resolved', targets=[m.target('trim', '()Ljava/lang/String;', detailed)])
+            self.assertEqual(result[mode], expected)
+            self.assertEqual(m.controls(result['details']), 7)
+        for change in [lambda p: p['queries'][6].update(id='wrong'),
+                       lambda p: p['candidate']['details']['queries'][6].update(status='Resolved'),
+                       lambda p: p['candidate']['default']['queries'][6].update(targets=[{}])]:
+            bad = copy.deepcopy(self.plan)
+            change(bad)
+            with self.assertRaises(m.a.AcceptanceError):
+                m.current_projection(bad)
+
+    def test_additive_projection_target_mutations_are_rejected(self):
+        wanted = m.current_projection(self.plan)['details']
+        for change in [lambda r: r.update(status='ReceiverNotBound'),
+                       lambda r: r['targets'][0].update(descriptor='()I'),
+                       lambda r: r['targets'][0].update(owner='java.lang.Object'),
+                       lambda r: r['targets'][0].update(binary_name='java/lang/Object'),
+                       lambda r: r['targets'][0]['linking_context'].update(project='wrong')]:
+            bad = copy.deepcopy(wanted)
+            change(bad['queries'][6])
+            with self.assertRaises(m.a.AcceptanceError):
+                m.exact(bad, wanted, 'additive target mutation')
+
     def test_frozen_hash_detects_mutation(self):
         with patch.object(m.a, 'sha256', return_value='0'*64):
             with self.assertRaises(m.a.AcceptanceError): m.load_plan()

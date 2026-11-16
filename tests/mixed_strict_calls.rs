@@ -78,14 +78,21 @@ fn crossed_mixed_vectors_remain_ambiguous() {
 
 #[test]
 fn every_actual_must_have_existing_proof() {
-    for actual in
-        ["null", "give()", "this.value", "values", "values[0]", "1 + 1", "-1", "int.class", "2147483648", "1_0"]
-    {
+    for actual in ["null", "give()", "this.value", "values", "values[0]", "-1", "int.class", "2147483648", "1_0"] {
         let source = format!(
             "class A {{}} class Box {{ public void pick(int i, A a) {{}} }} class Calls {{ int value; int give() {{ return 1; }} void run(Box box, A a, int[] values) {{ box.pick({actual},a); }} }}"
         );
         refused(&source, &format!("pick({actual},a)"), 1);
     }
+}
+
+#[test]
+fn integral_addition_supplies_proof_in_a_mixed_argument_vector() {
+    winner(
+        "class A {} class Box { public void pick(int i, A a) {} } class Calls { void run(Box box, A a) { box.pick(1 + 1,a); } }",
+        "pick(1 + 1,a)",
+        "pick(int i, A a)",
+    );
 }
 
 #[test]

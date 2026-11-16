@@ -4642,8 +4642,9 @@ impl<'a> ReferenceCallProof<'a> {
         found.then_some(())
     }
 
-    // A fallback only after reference typing fails: explicit scalar declarations
-    // or a range-checked decimal int token, never fields or general expressions.
+    // A fallback after reference typing fails: explicit scalar declarations,
+    // range-checked decimal int tokens and bounded integral +/- compositions.
+    // No field/array operands, call-result leaves, boxing or general inference.
     fn scalar_primitive_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
         if depth > REFERENCE_PROOF_DEPTH {
             self.work_left = 0;
@@ -4655,6 +4656,61 @@ impl<'a> ReferenceCallProof<'a> {
             let children = delimited_nodes(node, at)?;
             let [(inner, at)] = children.as_slice() else { return None };
             return self.scalar_primitive_argument(inner, *at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::BinaryExpr {
+            // BinaryExpr also represents assignments/conditionals: consume the
+            // complete direct shape, never search descendants for usable leaves.
+            let mut state = 0;
+            let mut left = None;
+            let mut right = None;
+            let mut offset = at;
+            for child in node.children() {
+                if let Some(inner) = child.as_node() {
+                    match state {
+                        0 => {
+                            left = Some((inner.as_ref(), offset));
+                            state = 1;
+                        }
+                        2 => {
+                            right = Some((inner.as_ref(), offset));
+                            state = 3;
+                        }
+                        _ => return None,
+                    }
+                } else if let Some(token) = child.as_token()
+                    && !token.kind().is_trivia()
+                {
+                    if state != 1 || !matches!(token.kind(), SyntaxKind::Plus | SyntaxKind::Minus) {
+                        return None;
+                    }
+                    state = 2;
+                }
+                offset += child.utf8_len();
+            }
+            if state != 3 {
+                return None;
+            }
+            let (left, left_at) = left?;
+            let (right, right_at) = right?;
+            // Same proof and budget, scalar declaration/literal leaves only:
+            // no invocation results, fields, array reads, boxing or evaluation.
+            let left = self.scalar_primitive_argument(left, left_at, depth + 1)?;
+            let right = self.scalar_primitive_argument(right, right_at, depth + 1)?;
+            if [left, right].iter().any(|v| {
+                v.rank != 0
+                    || !matches!(
+                        v.primitive,
+                        Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int | Primitive::Long
+                    )
+            }) {
+                return None;
+            }
+            let primitive = if left.primitive == Primitive::Long || right.primitive == Primitive::Long {
+                Primitive::Long
+            } else {
+                Primitive::Int
+            };
+            return Some(PrimitiveValue { primitive, rank: 0 });
         }
         if node.kind() == SyntaxKind::LiteralExpr {
             let mut literal = None;
@@ -5710,6 +5766,35 @@ mod invocation_budget_tests {
         exhausted.work_left = file.locals.len() - 1;
         assert!(exhausted.actual(node, at, 0).is_none());
         assert!(exhausted.exhausted);
+    }
+    #[test]
+    fn additive_actual_recursion_keeps_the_callers_work_and_depth_budget() {
+        let text = "class C { void run(int i) { take((i + 1) - (i + 2)); } }";
+        let mut project = Project::new();
+        project.insert("C.java", text);
+        let parsed = project.file("C.java").unwrap();
+        let wanted = text.rfind("take(").unwrap() as u32;
+        let (_, start, end) = direct_caller(parsed.root(), wanted).unwrap();
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
+        let (args, args_at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
+        let nodes = delimited_nodes(args, args_at).unwrap();
+        let (node, at) = nodes[0];
+        let mut good = ReferenceCallProof::new(&index, file, start, end);
+        assert!(matches!(
+            good.scalar_primitive_argument(node, at, 0),
+            Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 })
+        ));
+        let mut work = ReferenceCallProof::new(&index, file, start, end);
+        work.work_left = 8;
+        assert!(work.scalar_primitive_argument(node, at, 0).is_none());
+        assert!(work.exhausted);
+        assert_eq!(work.work_left, 0);
+        let mut depth = ReferenceCallProof::new(&index, file, start, end);
+        assert!(depth.scalar_primitive_argument(node, at, REFERENCE_PROOF_DEPTH).is_none());
+        assert!(depth.exhausted);
+        assert_eq!(depth.work_left, 0);
     }
     #[test]
     fn shallow_invocation_tree_reports_shared_work_exhaustion() {

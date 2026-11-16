@@ -101,6 +101,20 @@ def load_plan():
     return plan
 
 
+def current_projection(plan):
+    # Preserve the frozen binary-return milestone. Integral additive actual proof
+    # now makes only desc.substring(i + 1).trim() an additional exact selection.
+    result = copy.deepcopy(plan['candidate'])
+    a.same(plan['queries'][6]['id'], 'arithmetic_refusal', 'reviewed additive query identity')
+    for mode, detailed in [('default', False), ('details', True)]:
+        row = result[mode]['queries'][6]
+        a.same(row['status'], 'ReceiverNotBound', 'historical additive receiver refusal')
+        a.same(row['targets'], [], 'historical additive receiver has no target')
+        row['status'] = 'Resolved'
+        row['targets'] = [target('trim', '()Ljava/lang/String;', detailed)]
+    return result
+
+
 def controls(wanted):
     mutants = []
     def add(change):
@@ -166,10 +180,10 @@ def run(args):
             a.write_json(PLAN, plan)
         else:
             exact({k: plan[k] for k in metadata}, metadata, 'all corpus provenance and token positions')
-            exact(actual, plan['baseline' if args.baseline else 'candidate'], 'complete default and detailed records')
+            exact(actual, plan['baseline'] if args.baseline else current_projection(plan), 'complete default and detailed records')
         a.same({name: a.sha256(root / name) for name in sources}, hashes, 'all 249 source files unchanged')
-        count = controls(plan['candidate']['details'])
-        print('PASS: 8 complete Commons probes, 5 new selections, 2 refusals, 1 preserved inner target; '
+        count = controls(current_projection(plan)['details'])
+        print('PASS: 8 complete Commons probes, 5 historical selections plus 1 reviewed additive projection, 1 refusal, 1 preserved inner target; '
               f'249 unchanged sources; {count} comparator controls; baseline={args.baseline}; capture={args.capture_baseline}')
 
 

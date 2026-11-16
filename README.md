@@ -569,3 +569,14 @@ historical records remain intact.
 [Workspace load sessions](docs/WORKSPACE_LOAD_SESSIONS.md) retain bounded archive
 decoding across explicit fresh loads. Default loading and LSP behavior stay
 unchanged; source admission, budgets, graph and index construction still run.
+
+### Bounded integral additive arguments
+
+Strict reference-receiver calls can use integral binary `+` and `-` arguments
+whose leaves are explicitly typed scalar locals/parameters or supported decimal
+`int` literals. Parentheses and nested additions share the existing proof budget.
+Java binary numeric promotion yields `long` if either operand is `long`, otherwise
+`int`; no value evaluation, overflow folding or implicit narrowing is performed.
+String concatenation, boxing, floating-point operands, long literals, fields,
+array reads, invocation-result operands and other operators remain outside this
+slice. This does not extend the separate unqualified primitive-call proof.
