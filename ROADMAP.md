@@ -17,8 +17,17 @@ is a design reference, not a claim that its PSI or type system has been ported.
 Selected nongeneric binary method results can supply primitive scalar or plain
 reference types to existing qualified call chains and arguments. Selection and
 return typing remain separate, with exact declaration linking context and shared
-proof limits. Arrays, generic substitution and arbitrary expression inference
+proof limits. Array results, general generic inference and arbitrary expression inference
 remain deferred. See [binary call results](docs/BINARY_CALL_RETURNS.md).
+
+## Bounded binary generic receivers
+
+Explicit parameterized locals/parameters now instantiate complete own binary
+instance method families with Object-bounded formals and plain reference type
+arguments. Substitution reuses strict selection and carries instantiated return
+evidence, while preserving exact declaration/caller linking identities. Inherited
+generic members, source generic owners, wildcard capture and inference remain
+deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
 
 ## Exact-name directory reuse
 

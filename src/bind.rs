@@ -30,6 +30,8 @@ use std::sync::Arc;
 use crate::classfile::{
     Access, ClassError, ClassSignature, MemberKind, MemberSignature, parse_class_bytes, read_class_directory,
 };
+mod instantiation;
+
 use crate::green::GreenNode;
 use crate::kind::SyntaxKind;
 use crate::{EditResult, ParsedFile, TextEdit};
@@ -348,8 +350,22 @@ struct LocalRec {
     postfix_after: Option<u32>,
     catch_origin: bool,
     // Strict plain-reference syntax, with dimensions; unlike legacy declared metadata.
-    reference: Option<QualName>,
+    reference: Option<ReferenceDeclaration>,
     path: String,
+}
+
+#[derive(Clone, Debug)]
+enum ReferenceDeclaration {
+    Plain(QualName),
+    Applied { name: Vec<String>, arguments: Vec<Vec<String>> },
+}
+impl ReferenceDeclaration {
+    fn plain(&self) -> Option<&QualName> {
+        match self {
+            Self::Plain(ty) => Some(ty),
+            Self::Applied { .. } => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1126,10 +1142,11 @@ impl Index {
             return Some(result);
         }
         // Exact local declaration evidence is separate from hint lookup above.
-        if !proof.expression(receiver, *receiver_at, 0).is_some_and(|c| same_class(c.class, owner)) {
+        let Some(value) = proof.receiver(receiver, *receiver_at, 0) else { return Some(result) };
+        if !same_class(value.class, owner) {
             return Some(result);
         }
-        if let Some(member) = proof.select(owner, name, args, args_at, 0)
+        if let Some(member) = proof.select_receiver(&value, name, args, args_at, 0)
             && !proof.exhausted
         {
             return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
@@ -1817,7 +1834,7 @@ struct ParameterType {
 enum Shape {
     Unknown,
     Source { parameters: Vec<ParameterType>, variables: Vec<String> },
-    Binary { descriptor: String, generic: bool, flags: u16 },
+    Binary { descriptor: String, generic: bool, flags: u16, signature: Option<String> },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Comparison {
@@ -2599,7 +2616,8 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         primitive: None,
         postfix_after: None,
         catch_origin: true,
-        reference: catch_reference_declaration(node, start, name_start).map(|parts| QualName { parts, array_rank: 0 }),
+        reference: catch_reference_declaration(node, start, name_start)
+            .map(|parts| ReferenceDeclaration::Plain(QualName { parts, array_rank: 0 })),
         path: ctx.file.path.clone(),
     });
 }
@@ -2981,6 +2999,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
         shape: Shape::Binary {
             descriptor: member.descriptor.clone(),
             generic: member.signature.is_some(),
+            signature: member.signature.clone(),
             flags: member.raw_access_flags,
         },
         source_call: None,
@@ -4129,9 +4148,9 @@ fn catch_reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Op
     (state == 7).then_some(parts).flatten()
 }
 
-fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<QualName> {
+fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<ReferenceDeclaration> {
     let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
-    let prefix_rank = plain_reference_rank(ty)?;
+    let prefix_rank = plain_reference_rank(ty);
     if let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) {
         let kinds: Vec<_> = tokens(mods, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
         if !matches!(kinds.as_slice(), [] | [SyntaxKind::Final]) || mods.child_nodes().next().is_some() {
@@ -4148,8 +4167,32 @@ fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<Q
         .take_while(|t| !matches!(t.0, SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::Semi))
         .map(|t| t.0)
         .collect();
-    let array_rank = prefix_rank + bracket_rank(&suffix)?;
-    (array_rank <= 255).then_some(QualName { parts: type_parts(ty, at)?, array_rank })
+    let suffix_rank = bracket_rank(&suffix)?;
+    if let Some(prefix_rank) = prefix_rank {
+        let array_rank = prefix_rank + suffix_rank;
+        return (array_rank <= 255)
+            .then_some(ReferenceDeclaration::Plain(QualName { parts: type_parts(ty, at)?, array_rank }));
+    }
+    if suffix_rank != 0 || !raw_reference_header_type(ty, 0) {
+        return None;
+    }
+    let (name, name_at) = child_kind(ty, at, SyntaxKind::Name)?;
+    let (args, args_at) = child_kind(name, name_at, SyntaxKind::TypeArgList)?;
+    let mut arguments = Vec::new();
+    let mut offset = args_at;
+    for child in args.children() {
+        if let Some(arg) = child.as_node() {
+            if plain_reference_rank(arg)? != 0 {
+                return None;
+            }
+            arguments.push(type_parts(arg, offset)?);
+        }
+        offset += child.utf8_len();
+    }
+    if arguments.is_empty() || arguments.len() > 32 {
+        return None;
+    }
+    Some(ReferenceDeclaration::Applied { name: type_parts(ty, at)?, arguments })
 }
 
 // This is deliberately not Java Unicode preprocessing or text-block typing.
@@ -4261,10 +4304,12 @@ const REFERENCE_PROOF_WORK: usize = 4096;
 // Unlike name-navigation results, this private proof distinguishes actual
 // declared local types, complete raw inventories and justified conversions.
 // One budget covers discovery, arguments, closure and pairwise specificity.
+#[derive(Clone, Copy)]
 struct ReferenceValue<'a> {
     class: &'a ClassRec,
 }
 
+#[derive(Clone, Copy)]
 enum StrictActual<'a> {
     Null,
     Reference(ReferenceValue<'a>),
@@ -4289,6 +4334,17 @@ impl ReferenceFormal<'_> {
 struct SelectedMethod<'a> {
     declaring: &'a ClassRec,
     member: &'a Member,
+    instantiated_result: Option<StrictActual<'a>>,
+}
+
+struct InvocationReceiver<'a> {
+    class: &'a ClassRec,
+    instantiation: Option<ClassInstantiation<'a>>,
+}
+struct ClassInstantiation<'a> {
+    owner: ClassIdentity,
+    declaration: instantiation::ClassTemplate,
+    arguments: Vec<&'a ClassRec>,
 }
 
 struct ReferenceCallProof<'a> {
@@ -4720,7 +4776,7 @@ impl<'a> ReferenceCallProof<'a> {
         Some(class)
     }
     fn local_reference(&mut self, local: &'a LocalRec) -> Option<&'a ClassRec> {
-        let declared = local.reference.as_ref()?;
+        let declared = local.reference.as_ref()?.plain()?;
         if declared.array_rank != 0 {
             return None;
         }
@@ -4745,6 +4801,117 @@ impl<'a> ReferenceCallProof<'a> {
             }
         }
         Some(class)
+    }
+
+    // Applied references are receiver evidence only, never erased scalar actuals.
+    fn receiver(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<InvocationReceiver<'a>> {
+        self.check_depth(depth)?;
+        self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::ParenExpr {
+            let children = delimited_nodes(node, at)?;
+            let [(inner, inner_at)] = children.as_slice() else { return None };
+            return self.receiver(inner, *inner_at, depth + 1);
+        }
+        if node.kind() == SyntaxKind::ReferenceExpr {
+            let local = self.visible_argument_local(&token_name(node), at)?;
+            if let Some(ReferenceDeclaration::Applied { name, arguments }) = &local.reference {
+                if local.catch_origin {
+                    return None;
+                }
+                self.charge(
+                    name.iter().map(String::len).sum::<usize>()
+                        + arguments.iter().flatten().map(String::len).sum::<usize>(),
+                )?;
+                let owner = self.raw_type(self.file, name, local.start)?;
+                if !owner.binary || !owner.reference_generic || owner.nesting.len() != 1 {
+                    return None;
+                }
+                self.accessible(owner)?;
+                self.graph(owner)?;
+                // Same lexical hiding checks as plain reference declarations.
+                for enclosing in enclosing_classes(self.file, local.start) {
+                    for ancestor in self.graph(enclosing)? {
+                        self.charge(1)?;
+                        if !self.named(ancestor.scope, &format!("{}.{}", ancestor.dotted(), name[0]))?.is_empty() {
+                            return None;
+                        }
+                    }
+                }
+                let sig = owner.binary_signature.as_ref()?;
+                let text = sig.signature.as_deref()?;
+                self.charge(text.len())?;
+                let parents: Vec<_> =
+                    sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
+                let declaration = instantiation::ClassTemplate::parse(text, &parents)?;
+                if declaration.parameters.len() != arguments.len() {
+                    return None;
+                }
+                let object = self.unique_named(owner.scope, "java.lang.Object")?;
+                if !object.binary_root || object.binary_signature.as_ref()?.binary_name != "java/lang/Object" {
+                    return None;
+                }
+                self.graph(object)?;
+                let mut resolved = Vec::new();
+                for parts in arguments {
+                    let argument = self.reference_type(self.file, parts, local.start)?;
+                    // Object is universal only within a proved linking identity.
+                    // Separate closed graphs are not a cross-scope bound proof.
+                    if !self.converts(argument, object)? {
+                        return None;
+                    }
+                    resolved.push(argument);
+                }
+                return Some(InvocationReceiver {
+                    class: owner,
+                    instantiation: Some(ClassInstantiation {
+                        owner: ClassIdentity::of(owner),
+                        declaration,
+                        arguments: resolved,
+                    }),
+                });
+            }
+        }
+        self.expression(node, at, depth).map(|value| InvocationReceiver { class: value.class, instantiation: None })
+    }
+
+    fn template_value(
+        &mut self,
+        owner: &'a ClassRec,
+        env: &ClassInstantiation<'a>,
+        ty: &instantiation::TypeTemplate,
+    ) -> Option<Option<StrictActual<'a>>> {
+        use instantiation::TypeTemplate;
+        self.charge(1)?;
+        match ty {
+            TypeTemplate::Void => Some(None),
+            TypeTemplate::Primitive(primitive) => {
+                Some(Some(StrictActual::Primitive(PrimitiveValue { primitive: *primitive, rank: 0 })))
+            }
+            TypeTemplate::Parameter(index) => {
+                Some(Some(StrictActual::Reference(ReferenceValue { class: *env.arguments.get(*index)? })))
+            }
+            TypeTemplate::Nominal(raw) => {
+                self.charge(raw.len())?;
+                let class = self.unique_named(owner.scope, &raw.replace('/', "."))?;
+                let actual = if let Some(sig) = &class.binary_signature {
+                    sig.binary_name.clone()
+                } else {
+                    format!(
+                        "{}{}{}",
+                        class.package.replace('.', "/"),
+                        if class.package.is_empty() { "" } else { "/" },
+                        class.nesting.join("$")
+                    )
+                };
+                self.charge(actual.len())?;
+                if actual != *raw || class.reference_generic {
+                    return None;
+                }
+                self.accessible(class)?;
+                self.graph(class)?;
+                Some(Some(StrictActual::Reference(ReferenceValue { class })))
+            }
+        }
     }
 
     fn expression(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<ReferenceValue<'a>> {
@@ -4808,7 +4975,7 @@ impl<'a> ReferenceCallProof<'a> {
                 return None;
             }
             let local = self.visible_argument_local(&token_name(base), base_at)?;
-            let declared = local.reference.as_ref()?;
+            let declared = local.reference.as_ref()?.plain()?;
             if declared.array_rank != 1 || local.catch_origin {
                 return None;
             }
@@ -5393,6 +5560,12 @@ impl<'a> ReferenceCallProof<'a> {
             base_at = *at;
             depth += 1;
         }
+        if base.kind() == SyntaxKind::ReferenceExpr
+            && let Some(receiver) = self.receiver(base, base_at, depth + 1)
+        {
+            let selected = self.select_receiver(&receiver, name?, args, args_at, depth + 1)?;
+            return self.selected_value(&selected);
+        }
         let (owner, mode) = match base.kind() {
             SyntaxKind::ReferenceExpr => {
                 if let Some(value) = self.expression(base, base_at, depth + 1) {
@@ -5415,6 +5588,9 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     fn selected_value(&mut self, selected: &SelectedMethod<'a>) -> Option<StrictActual<'a>> {
+        if let Some(value) = selected.instantiated_result {
+            return Some(value);
+        }
         if selected.declaring.binary {
             return self.binary_invocation_value(selected);
         }
@@ -5566,7 +5742,7 @@ impl<'a> ReferenceCallProof<'a> {
             if !same_class(owner, declaring) {
                 return None;
             }
-            let Shape::Binary { descriptor, generic, flags } = &member.shape else { return None };
+            let Shape::Binary { descriptor, generic, flags, .. } = &member.shape else { return None };
             self.charge(descriptor.len().saturating_add(1))?;
             let access = flags & 7;
             if *generic
@@ -5626,6 +5802,25 @@ impl<'a> ReferenceCallProof<'a> {
         self.select_mode(owner, name, args, at, depth, InvocationMode::Instance)
     }
 
+    fn select_receiver(
+        &mut self,
+        receiver: &InvocationReceiver<'a>,
+        name: &str,
+        args: &GreenNode,
+        at: u32,
+        depth: usize,
+    ) -> Option<SelectedMethod<'a>> {
+        self.select_with_env(
+            receiver.class,
+            name,
+            args,
+            at,
+            depth,
+            InvocationMode::Instance,
+            receiver.instantiation.as_ref(),
+        )
+    }
+
     fn select_mode(
         &mut self,
         owner: &'a ClassRec,
@@ -5635,13 +5830,32 @@ impl<'a> ReferenceCallProof<'a> {
         depth: usize,
         mode: InvocationMode,
     ) -> Option<SelectedMethod<'a>> {
+        self.select_with_env(owner, name, args, at, depth, mode, None)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn select_with_env(
+        &mut self,
+        owner: &'a ClassRec,
+        name: &str,
+        args: &GreenNode,
+        at: u32,
+        depth: usize,
+        mode: InvocationMode,
+        env: Option<&ClassInstantiation<'a>>,
+    ) -> Option<SelectedMethod<'a>> {
         self.check_depth(depth)?;
-        if (owner.is_interface && !owner.binary) || owner.reference_generic {
+        if (owner.is_interface && !owner.binary) || (owner.reference_generic && env.is_none()) {
             return None;
         }
         self.accessible(owner)?;
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
+        if let Some(env) = env
+            && (mode != InvocationMode::Instance || !owner.binary || env.owner != ClassIdentity::of(owner) || inherited)
+        {
+            return None;
+        }
         if mode == InvocationMode::OwnInstance && (inherited || !same_class(self.implicit_instance_owner(at)?, owner)) {
             return None;
         }
@@ -5686,7 +5900,7 @@ impl<'a> ReferenceCallProof<'a> {
             for member in declaring.methods.iter().filter(|m| m.name == name) {
                 if declaring.binary != owner.binary
                     || (declaring.is_interface && !owner.binary)
-                    || declaring.reference_generic
+                    || (declaring.reference_generic && env.is_none())
                 {
                     return None;
                 }
@@ -5712,11 +5926,14 @@ impl<'a> ReferenceCallProof<'a> {
             members
         };
         let mut formals = Vec::new();
+        let mut instantiated_results = Vec::new();
+        let mut erased_parameters: Vec<(Vec<ParameterType>, usize)> = Vec::new();
         for (declaring, member) in &members {
+            let mut instantiated_result = None;
             self.charge(1)?;
             let mut types = Vec::new();
             if declaring.binary {
-                let Shape::Binary { descriptor, generic, flags } = &member.shape else { return None };
+                let Shape::Binary { descriptor, generic, flags, signature } = &member.shape else { return None };
                 // Native/abstract/final/synchronized are valid invocation declarations.
                 // Type-qualified selection keeps concrete instance competitors.
                 // Only the final winner must be static (JLS 15.12.3). Instance
@@ -5724,7 +5941,7 @@ impl<'a> ReferenceCallProof<'a> {
                 // Never silently filter unsupported same-name candidates.
                 if member.access != Access::Public
                     || (declaring.is_interface && flags & 0x0400 == 0)
-                    || *generic
+                    || (*generic && env.is_none())
                     || flags & !0x1dff != 0
                     || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
                     || flags & 7 != 1
@@ -5735,6 +5952,9 @@ impl<'a> ReferenceCallProof<'a> {
                         && (flags & (0x0010 | 0x0020 | 0x0100 | 0x0800) != 0 || declaring.reference_final)
                 {
                     return None;
+                }
+                if env.is_some() {
+                    self.charge(descriptor.len() + signature.as_ref().map_or(0, String::len))?;
                 }
                 let parameters = descriptor_parameters(descriptor)?;
                 let slots: usize = parameters
@@ -5750,32 +5970,58 @@ impl<'a> ReferenceCallProof<'a> {
                 if slots > if flags & 0x0008 != 0 { 255 } else { 254 } {
                     return None;
                 } // Only an instance receiver consumes a JVM parameter slot.
-                for parameter in parameters {
-                    self.charge(1)?;
-                    if parameter.unsupported || parameter.array_rank != 0 {
-                        return None;
-                    }
-                    types.push(match parameter.primitive {
-                        Some(primitive) => ReferenceFormal::Primitive(primitive),
-                        None => {
-                            // Use the existing descriptor parser's raw name, not a
-                            // textual ')' split: ')' is legal within a JVM class name.
-                            let binary_name = parameter.binary_name.as_ref()?;
-                            if binary_name.contains('$') {
-                                return None; // nested/dollar formal proof is unsupported
-                            }
-                            let class = self.unique_named(declaring.scope, &parameter.name.join("."))?;
-                            if class.binary_signature.as_ref().is_some_and(|sig| sig.binary_name != *binary_name) {
-                                return None;
-                            }
-                            if class.reference_generic {
-                                return None;
-                            }
-                            self.accessible(class)?;
-                            self.graph(class)?;
-                            ReferenceFormal::Reference(class)
+                if let Some(env) = env {
+                    for (prior, bytes) in &erased_parameters {
+                        self.charge(descriptor.len().saturating_add(*bytes).max(1))?;
+                        if prior.len() == parameters.len()
+                            && prior.iter().zip(&parameters).all(|(a, b)| {
+                                a.primitive == b.primitive
+                                    && a.binary_name == b.binary_name
+                                    && a.array_rank == b.array_rank
+                            })
+                        {
+                            return None;
                         }
-                    });
+                    }
+                    erased_parameters.push((parameters.clone(), descriptor.len()));
+                    let method =
+                        instantiation::MethodTemplate::parse(signature.as_deref(), descriptor, &env.declaration)?;
+                    for parameter in &method.parameters {
+                        types.push(match self.template_value(declaring, env, parameter)?? {
+                            StrictActual::Primitive(value) => ReferenceFormal::Primitive(value.primitive),
+                            StrictActual::Reference(value) => ReferenceFormal::Reference(value.class),
+                            StrictActual::Null => return None,
+                        });
+                    }
+                    instantiated_result = self.template_value(declaring, env, &method.result)?;
+                } else {
+                    for parameter in parameters {
+                        self.charge(1)?;
+                        if parameter.unsupported || parameter.array_rank != 0 {
+                            return None;
+                        }
+                        types.push(match parameter.primitive {
+                            Some(primitive) => ReferenceFormal::Primitive(primitive),
+                            None => {
+                                // Use the existing descriptor parser's raw name, not a
+                                // textual ')' split: ')' is legal within a JVM class name.
+                                let binary_name = parameter.binary_name.as_ref()?;
+                                if binary_name.contains('$') {
+                                    return None; // nested/dollar formal proof is unsupported
+                                }
+                                let class = self.unique_named(declaring.scope, &parameter.name.join("."))?;
+                                if class.binary_signature.as_ref().is_some_and(|sig| sig.binary_name != *binary_name) {
+                                    return None;
+                                }
+                                if class.reference_generic {
+                                    return None;
+                                }
+                                self.accessible(class)?;
+                                self.graph(class)?;
+                                ReferenceFormal::Reference(class)
+                            }
+                        });
+                    }
                 }
             } else {
                 let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
@@ -5819,6 +6065,7 @@ impl<'a> ReferenceCallProof<'a> {
                 }
             }
             formals.push(types);
+            instantiated_results.push(instantiated_result);
         }
         let mut hidden = vec![false; members.len()];
         for (i, left) in formals.iter().enumerate() {
@@ -5958,7 +6205,11 @@ impl<'a> ReferenceCallProof<'a> {
                 if winner.is_some() {
                     return None;
                 }
-                winner = Some(SelectedMethod { declaring: members[i].0, member: members[i].1 });
+                winner = Some(SelectedMethod {
+                    declaring: members[i].0,
+                    member: members[i].1,
+                    instantiated_result: instantiated_results[i],
+                });
             }
         }
         let winner = winner?;

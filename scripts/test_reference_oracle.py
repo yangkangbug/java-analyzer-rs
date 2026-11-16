@@ -510,34 +510,42 @@ class EffectiveBinaryHistoricalProjection(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 oracle.binary_instance_effective_expected(wrong, 'valid')
 
-class BinaryReturnHistoricalProjection(unittest.TestCase):
-    def test_two_context_chain_upgrade_only(self):
+class BinaryCurrentHistoricalProjection(unittest.TestCase):
+    def test_two_context_chain_and_generic_owner_upgrades_only(self):
         _, contract = oracle.binary_instance_fixture()
         before = json.dumps(contract, sort_keys=True)
         for label in contract['current']:
             old = oracle.binary_instance_effective_expected(contract, label)
-            current = oracle.binary_instance_return_expected(contract, label)
+            current = oracle.binary_instance_current_expected(contract, label)
             changed = [i for i, (a, b) in enumerate(zip(old['queries'], current['queries'])) if a != b]
-            self.assertEqual(changed, [24, 49] if label == 'valid' else [])
+            self.assertEqual(changed, [21, 24, 46, 49] if label == 'valid' else [])
             for i in changed:
                 row = old['queries'][i]
-                expected = dict(row, status='Resolved', targets=[oracle.binary_instance_target(
-                    'dep/Token', 'id', '()I', row['source_compilation']['project'])])
+                expected = dict(row, status='Resolved')
+                if i in (24, 49):
+                    expected['targets'] = [oracle.binary_instance_target(
+                        'dep/Token', 'id', '()I', row['source_compilation']['project'])]
                 self.assertEqual(current['queries'][i], expected)
         self.assertEqual(json.dumps(contract, sort_keys=True), before)
 
     def test_wrong_compiler_or_old_query_rejected(self):
         _, contract = oracle.binary_instance_fixture()
-        for mode in ('compiler', 'position', 'target'):
+        for mode in ('compiler', 'position', 'target', 'generic_compiler', 'generic_position', 'generic_target'):
             wrong = json.loads(json.dumps(contract))
             if mode == 'compiler':
                 wrong['baseline']['compiler']['probe_calls']['returnReceiverRefusal'][1][1] = 'dep/Wrong'
             elif mode == 'position':
                 wrong['current']['valid']['queries'][24]['byte_offset'] += 1
-            else:
+            elif mode == 'target':
                 wrong['current']['valid']['queries'][24]['targets'] = [{}]
+            elif mode == 'generic_compiler':
+                wrong['baseline']['compiler']['probe_calls']['genericOwnerRefusal'][0][1] = 'dep/Wrong'
+            elif mode == 'generic_position':
+                wrong['current']['valid']['queries'][21]['byte_offset'] += 1
+            else:
+                wrong['current']['valid']['queries'][46]['targets'] = [{}]
             with self.assertRaises(AssertionError):
-                oracle.binary_instance_return_expected(wrong, 'valid')
+                oracle.binary_instance_current_expected(wrong, 'valid')
 
 
 if __name__ == "__main__":
