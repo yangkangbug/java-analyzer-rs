@@ -177,7 +177,19 @@ fn ancestor_same_name_is_not_silently_erased_from_inventory() {
         &binary("api/Parent", Some("java/lang/Object"), 0x21, None, &[("get", "(I)Ljava/lang/Object;", None, 0x101)]),
     )
     .unwrap();
-    refused(&p);
+    exact(&p, "A"); // A fully proved different-arity inherited overload is not applicable.
+    p.add_class_bytes(
+        "Parent.class",
+        &binary(
+            "api/Parent",
+            Some("java/lang/Object"),
+            0x21,
+            None,
+            &[("get", "(LMissing;)Ljava/lang/Object;", None, 0x101)],
+        ),
+    )
+    .unwrap();
+    refused(&p); // Unknown different-arity formal remains a complete-inventory blocker.
 }
 
 #[test]

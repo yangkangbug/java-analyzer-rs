@@ -4438,6 +4438,7 @@ struct InvocationReceiver<'a> {
     class: &'a ClassRec,
     instantiation: Option<ClassInstantiation<'a>>,
 }
+#[derive(Clone)]
 struct ClassInstantiation<'a> {
     owner: ClassIdentity,
     declaration: instantiation::ClassTemplate,
@@ -4967,29 +4968,189 @@ impl<'a> ReferenceCallProof<'a> {
         if declaration.parameters.len() != arguments.len() {
             return None;
         }
+        let mut resolved = Vec::new();
+        for parts in arguments {
+            resolved.push(self.reference_type(self.file, parts, declared_at)?);
+        }
+        Some(InvocationReceiver {
+            class: owner,
+            instantiation: Some(self.class_instantiation(owner, declaration, resolved)?),
+        })
+    }
+
+    fn class_instantiation(
+        &mut self,
+        owner: &'a ClassRec,
+        declaration: instantiation::ClassTemplate,
+        arguments: Vec<&'a ClassRec>,
+    ) -> Option<ClassInstantiation<'a>> {
+        self.charge(arguments.len().max(1))?;
+        if !owner.binary
+            || owner.nesting.len() != 1
+            || declaration.parameters.len() != arguments.len()
+            || owner.reference_generic == declaration.parameters.is_empty()
+        {
+            return None;
+        }
+        self.accessible(owner)?;
+        self.graph(owner)?;
         let object = self.unique_named(owner.scope, "java.lang.Object")?;
         if !object.binary_root || object.binary_signature.as_ref()?.binary_name != "java/lang/Object" {
             return None;
         }
         self.graph(object)?;
-        let mut resolved = Vec::new();
-        for parts in arguments {
-            let argument = self.reference_type(self.file, parts, declared_at)?;
-            // Object is universal only within a proved linking identity.
-            // Separate closed graphs are not a cross-scope bound proof.
+        for argument in &arguments {
+            // Same spelling or independently closed graphs do not prove the bound.
             if !self.converts(argument, object)? {
                 return None;
             }
-            resolved.push(argument);
         }
-        Some(InvocationReceiver {
-            class: owner,
-            instantiation: Some(ClassInstantiation {
-                owner: ClassIdentity::of(owner),
-                declaration,
-                arguments: resolved,
-            }),
-        })
+        Some(ClassInstantiation { owner: ClassIdentity::of(owner), declaration, arguments })
+    }
+
+    fn class_template(&mut self, owner: &'a ClassRec) -> Option<instantiation::ClassTemplate> {
+        let sig = owner.binary_signature.as_ref()?;
+        let parents: Vec<_> =
+            sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
+        self.charge(
+            parents
+                .iter()
+                .map(|p| p.len())
+                .sum::<usize>()
+                .saturating_add(sig.signature.as_ref().map_or(0, String::len))
+                .max(1),
+        )?;
+        if let Some(signature) = &sig.signature {
+            instantiation::ClassTemplate::parse(signature, &parents)
+        } else {
+            Some(instantiation::ClassTemplate {
+                parameters: Vec::new(),
+                parents: parents
+                    .into_iter()
+                    .map(|name| instantiation::ParentTemplate { name: name.to_owned(), arguments: Vec::new() })
+                    .collect(),
+            })
+        }
+    }
+
+    // Raw graph remains inventory only. This separate certificate refuses
+    // branching/multiple environments instead of treating raw-node dedup as
+    // generic inheritance proof. Only empty nongeneric leaf interfaces and
+    // synthetic Object edges are neutral to the single non-Object parent chain.
+    fn inherited_instantiations(
+        &mut self,
+        owner: &'a ClassRec,
+        root: &ClassInstantiation<'a>,
+    ) -> Option<Vec<ClassInstantiation<'a>>> {
+        self.charge(root.arguments.len() + owner.binary_signature.as_ref()?.signature.as_ref().map_or(0, String::len))?;
+        let mut instances = vec![root.clone()];
+        let mut seen = BTreeSet::from([ClassIdentity::of(owner)]);
+        let mut current = owner;
+        let mut object: Option<&'a ClassRec> = None;
+        for depth in 0..=REFERENCE_PROOF_DEPTH {
+            self.check_depth(depth)?;
+            let env = instances.last()?;
+            let edges = current.reference_edges.as_ref()?;
+            if edges.len() != env.declaration.parents.len() {
+                return None;
+            }
+            self.charge(edges.len().max(1))?;
+            let mut next = None;
+            for ((parts, _), template) in edges.iter().zip(&env.declaration.parents) {
+                let parent = self.edge(current, parts)?;
+                if !parent.binary {
+                    return None;
+                }
+                if parent.binary_root {
+                    if !template.arguments.is_empty() || object.is_some_and(|prior| !same_class(prior, parent)) {
+                        return None;
+                    }
+                    object = Some(parent);
+                    continue;
+                }
+                self.charge(parent.methods.len().max(1))?;
+                let marker_edges = parent.reference_edges.as_ref()?;
+                if parent.is_interface
+                    && !parent.reference_generic
+                    && parent.methods.is_empty()
+                    && parent.binary_signature.as_ref()?.signature.is_none()
+                    && marker_edges.len() == 1
+                    && self.edge(parent, &marker_edges[0].0)?.binary_root
+                {
+                    if !template.arguments.is_empty() {
+                        return None;
+                    }
+                    continue;
+                }
+                if next.is_some() {
+                    return None;
+                }
+                let declaration = self.class_template(parent)?;
+                let mut arguments = Vec::new();
+                for argument in &template.arguments {
+                    let Some(StrictActual::Reference(value)) = self.template_value(current, env, argument)? else {
+                        return None;
+                    };
+                    arguments.push(value.class);
+                }
+                let instance = self.class_instantiation(parent, declaration, arguments)?;
+                next = Some((parent, instance));
+            }
+            if let Some((parent, instance)) = next {
+                if !seen.insert(ClassIdentity::of(parent)) {
+                    return None;
+                }
+                current = parent;
+                instances.push(instance);
+            } else {
+                let object = object?;
+                let declaration = self.class_template(object)?;
+                instances.push(self.class_instantiation(object, declaration, Vec::new())?);
+                return Some(instances);
+            }
+        }
+        self.check_depth(REFERENCE_PROOF_DEPTH + 1)?;
+        None
+    }
+
+    // A declaration-level certificate, independent of concrete caller arguments.
+    // Between the two declaring owners, each edge must only rename formals in
+    // order. Equal closed types alone could hide an illegal erasure clash.
+    fn identity_override(
+        &mut self,
+        instances: &[ClassInstantiation<'a>],
+        left: (&'a ClassRec, &'a Member),
+        right: (&'a ClassRec, &'a Member),
+    ) -> Option<()> {
+        self.charge(instances.len().saturating_mul(2).max(1))?;
+        let a = instances.iter().position(|e| e.owner == ClassIdentity::of(left.0))?;
+        let b = instances.iter().position(|e| e.owner == ClassIdentity::of(right.0))?;
+        if a == b {
+            return None;
+        }
+        for pair in instances[a.min(b)..=a.max(b)].windows(2) {
+            let child = &pair[0].declaration;
+            let parent = &pair[1];
+            self.charge(child.parents.iter().map(|p| p.name.len() + p.arguments.len()).sum::<usize>().max(1))?;
+            let edge = child.parents.iter().find(|p| p.name.replace('/', ".") == parent.owner.name)?;
+            if child.parameters.len() != parent.declaration.parameters.len()
+                || edge.arguments.len() != child.parameters.len()
+                || !edge.arguments.iter().enumerate().all(|(i, t)| *t == instantiation::TypeTemplate::Parameter(i))
+            {
+                return None;
+            }
+        }
+        let template = |member: &Member, env: &ClassInstantiation<'a>| {
+            let Shape::Binary { descriptor, signature, .. } = &member.shape else { return None };
+            instantiation::MethodTemplate::parse(signature.as_deref(), descriptor, &env.declaration)
+        };
+        for member in [left.1, right.1] {
+            let Shape::Binary { descriptor, signature, .. } = &member.shape else { return None };
+            self.charge(descriptor.len().saturating_add(signature.as_ref().map_or(0, String::len)).max(1))?;
+        }
+        // Formal indices are normalized by MethodTemplate, not their spelling.
+        // Nominal equality also needs the existing same-scope/raw override proof.
+        (template(left.1, &instances[a])? == template(right.1, &instances[b])?).then_some(())
     }
 
     fn own_field(&mut self, name: &str, at: u32) -> Option<&'a Member> {
@@ -6051,7 +6212,7 @@ impl<'a> ReferenceCallProof<'a> {
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
         if let Some(env) = env
-            && (mode != InvocationMode::Instance || !owner.binary || env.owner != ClassIdentity::of(owner) || inherited)
+            && (mode != InvocationMode::Instance || !owner.binary || env.owner != ClassIdentity::of(owner))
         {
             return None;
         }
@@ -6088,6 +6249,14 @@ impl<'a> ReferenceCallProof<'a> {
                 }
             }
         }
+        let inherited_envs = if inherited {
+            match env {
+                Some(env) => Some(self.inherited_instantiations(owner, env)?),
+                None => None,
+            }
+        } else {
+            None
+        };
         self.charge(args.children().len())?;
         let args = delimited_nodes(args, at)?;
         let actuals = args.iter().map(|(node, at)| self.actual(node, *at, depth + 1)).collect::<Option<Vec<_>>>()?;
@@ -6126,8 +6295,15 @@ impl<'a> ReferenceCallProof<'a> {
         };
         let mut formals = Vec::new();
         let mut instantiated_results = Vec::new();
-        let mut erased_parameters: Vec<(Vec<ParameterType>, usize)> = Vec::new();
+        let mut erased_parameters: Vec<(&ClassRec, Vec<ParameterType>, usize)> = Vec::new();
         for (declaring, member) in &members {
+            let declaration_env = if let Some(instances) = &inherited_envs {
+                self.charge(instances.len().max(1))?;
+                let identity = ClassIdentity::of(declaring);
+                Some(instances.iter().find(|instance| instance.owner == identity)?)
+            } else {
+                env
+            };
             let mut instantiated_result = None;
             self.charge(1)?;
             let mut types = Vec::new();
@@ -6140,7 +6316,7 @@ impl<'a> ReferenceCallProof<'a> {
                 // Never silently filter unsupported same-name candidates.
                 if member.access != Access::Public
                     || (declaring.is_interface && flags & 0x0400 == 0)
-                    || (*generic && env.is_none())
+                    || (*generic && declaration_env.is_none())
                     || flags & !0x1dff != 0
                     || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
                     || flags & 7 != 1
@@ -6152,7 +6328,7 @@ impl<'a> ReferenceCallProof<'a> {
                 {
                     return None;
                 }
-                if env.is_some() {
+                if declaration_env.is_some() {
                     self.charge(descriptor.len() + signature.as_ref().map_or(0, String::len))?;
                 }
                 let parameters = descriptor_parameters(descriptor)?;
@@ -6169,8 +6345,12 @@ impl<'a> ReferenceCallProof<'a> {
                 if slots > if flags & 0x0008 != 0 { 255 } else { 254 } {
                     return None;
                 } // Only an instance receiver consumes a JVM parameter slot.
-                if let Some(env) = env {
-                    for (prior, bytes) in &erased_parameters {
+                if let Some(env) = declaration_env {
+                    for (prior_owner, prior, bytes) in &erased_parameters {
+                        self.charge(1)?;
+                        if !same_class(prior_owner, declaring) {
+                            continue;
+                        }
                         self.charge(descriptor.len().saturating_add(*bytes).max(1))?;
                         if prior.len() == parameters.len()
                             && prior.iter().zip(&parameters).all(|(a, b)| {
@@ -6182,7 +6362,7 @@ impl<'a> ReferenceCallProof<'a> {
                             return None;
                         }
                     }
-                    erased_parameters.push((parameters.clone(), descriptor.len()));
+                    erased_parameters.push((declaring, parameters.clone(), descriptor.len()));
                     let method =
                         instantiation::MethodTemplate::parse(signature.as_deref(), descriptor, &env.declaration)?;
                     for parameter in &method.parameters {
@@ -6270,6 +6450,23 @@ impl<'a> ReferenceCallProof<'a> {
         for (i, left) in formals.iter().enumerate() {
             for (j, right) in formals.iter().enumerate().skip(i + 1) {
                 self.charge(left.len().max(1))?;
+                if inherited && env.is_some() {
+                    let (_, erased_left, left_bytes) = erased_parameters.get(i)?;
+                    let (_, erased_right, right_bytes) = erased_parameters.get(j)?;
+                    self.charge(left_bytes.saturating_add(*right_bytes).max(1))?;
+                    let same_erasure = erased_left.len() == erased_right.len()
+                        && erased_left.iter().zip(erased_right).all(|(a, b)| {
+                            a.primitive == b.primitive && a.binary_name == b.binary_name && a.array_rank == b.array_rank
+                        });
+                    // Substitution cannot turn an erasure clash into two legal
+                    // overloads. Equal erased parameters need the same typed
+                    // signature before the override/return proof below applies.
+                    if same_erasure
+                        && (left.len() != right.len() || !left.iter().zip(right).all(|(a, b)| a.same_type(b)))
+                    {
+                        return None;
+                    }
+                }
                 if left.len() == right.len() {
                     if inherited {
                         // Different scope identity is not proof of a different
@@ -6299,6 +6496,25 @@ impl<'a> ReferenceCallProof<'a> {
                             }
                             if same_class(members[i].0, members[j].0) {
                                 return None;
+                            }
+                            if env.is_some() {
+                                self.identity_override(inherited_envs.as_ref()?, members[i], members[j])?;
+                                self.charge(1)?;
+                                // Equal erasure is not enough: class-formal
+                                // substitution may make the return incompatible.
+                                let same_result = match (instantiated_results[i], instantiated_results[j]) {
+                                    (None, None) => true,
+                                    (Some(StrictActual::Primitive(a)), Some(StrictActual::Primitive(b))) => {
+                                        a.primitive == b.primitive && a.rank == b.rank
+                                    }
+                                    (Some(StrictActual::Reference(a)), Some(StrictActual::Reference(b))) => {
+                                        same_class(a.class, b.class)
+                                    }
+                                    _ => false,
+                                };
+                                if !same_result {
+                                    return None;
+                                }
                             }
                             if self.graph(members[i].0)?.iter().any(|c| same_class(c, members[j].0)) {
                                 if owner.binary {

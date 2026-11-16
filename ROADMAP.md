@@ -30,12 +30,13 @@ See [source field evidence and limits](docs/SOURCE_FIELD_VALUES.md).
 
 ## Bounded binary generic receivers
 
-Explicit parameterized locals/parameters now instantiate complete own binary
+Explicit parameterized locals/parameters and supported own source fields instantiate binary
 instance method families with Object-bounded formals and plain reference type
 arguments. Substitution reuses strict selection and carries instantiated return
-evidence, while preserving exact declaration/caller linking identities. Inherited
-generic members, source generic owners, wildcard capture and inference remain
-deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
+evidence, while preserving exact declaration/caller linking identities. A bounded
+single-parent certificate supports inherited members and identity-mapped exact
+overrides. Branching generic inheritance, source generic owners, wildcard capture
+and inference remain deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
 
 ## Exact-name directory reuse
 

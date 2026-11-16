@@ -1,5 +1,5 @@
 //! Bounded templates for an explicit, plain instantiation of a binary owner.
-//! This is not a generic assignability or parent-substitution implementation.
+//! Includes bounded parent templates, not general generic assignability or inference.
 use super::Primitive;
 
 const MAX_BYTES: usize = 4096;
@@ -10,7 +10,13 @@ const MAX_PARAMETERS: usize = 255;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ClassTemplate {
     pub parameters: Vec<String>,
-    pub parents: Vec<String>,
+    pub parents: Vec<ParentTemplate>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ParentTemplate {
+    pub name: String,
+    pub arguments: Vec<TypeTemplate>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,9 +105,10 @@ impl<'a> Parser<'a> {
             _ => None,
         }
     }
-    fn parent(&mut self, formals: &[String]) -> Option<String> {
+    fn parent(&mut self, formals: &[String]) -> Option<ParentTemplate> {
         self.eat(b'L')?;
         let name = self.binary_name()?;
+        let mut arguments = Vec::new();
         if self.peek() == Some(b'<') {
             self.at += 1;
             let mut count = 0;
@@ -110,8 +117,9 @@ impl<'a> Parser<'a> {
                 if count > MAX_FORMALS {
                     return None;
                 }
-                match self.ty(formals, false)? {
-                    TypeTemplate::Nominal(_) | TypeTemplate::Parameter(_) => (),
+                let argument = self.ty(formals, false)?;
+                match argument {
+                    TypeTemplate::Nominal(_) | TypeTemplate::Parameter(_) => arguments.push(argument),
                     _ => return None,
                 }
             }
@@ -121,7 +129,7 @@ impl<'a> Parser<'a> {
             self.eat(b'>')?;
         }
         self.eat(b';')?;
-        Some(name)
+        Some(ParentTemplate { name, arguments })
     }
     fn method(&mut self, formals: &[String]) -> Option<MethodTemplate> {
         self.eat(b'(')?;
@@ -144,26 +152,28 @@ impl<'a> Parser<'a> {
 impl ClassTemplate {
     pub fn parse(signature: &str, expected_parents: &[&str]) -> Option<Self> {
         let mut parser = Parser::new(signature)?;
-        parser.eat(b'<')?;
         let mut parameters = Vec::new();
-        while parser.peek() != Some(b'>') {
-            if parameters.len() == MAX_FORMALS {
+        if parser.peek() == Some(b'<') {
+            parser.eat(b'<')?;
+            while parser.peek() != Some(b'>') {
+                if parameters.len() == MAX_FORMALS {
+                    return None;
+                }
+                let name = parser.identifier()?;
+                if parameters.contains(&name) {
+                    return None;
+                }
+                parser.eat(b':')?;
+                // Exactly one concrete Object bound. Interface/intersection/F-bounds are unknown.
+                if parser.ty(&[], false)? != TypeTemplate::Nominal("java/lang/Object".into()) {
+                    return None;
+                }
+                parameters.push(name);
+            }
+            parser.eat(b'>')?;
+            if parameters.is_empty() {
                 return None;
             }
-            let name = parser.identifier()?;
-            if parameters.contains(&name) {
-                return None;
-            }
-            parser.eat(b':')?;
-            // Exactly one concrete Object bound. Interface/intersection/F-bounds are unknown.
-            if parser.ty(&[], false)? != TypeTemplate::Nominal("java/lang/Object".into()) {
-                return None;
-            }
-            parameters.push(name);
-        }
-        parser.eat(b'>')?;
-        if parameters.is_empty() {
-            return None;
         }
         let mut parents = Vec::new();
         while parser.at < parser.text.len() {
@@ -172,7 +182,8 @@ impl ClassTemplate {
             }
             parents.push(parser.parent(&parameters)?);
         }
-        if parents.is_empty() || parents.iter().map(String::as_str).ne(expected_parents.iter().copied()) {
+        if parents.is_empty() || parents.iter().map(|parent| parent.name.as_str()).ne(expected_parents.iter().copied())
+        {
             return None;
         }
         Some(Self { parameters, parents })
@@ -366,5 +377,51 @@ mod tests {
             let signature = format!("<K:Ljava/lang/Object;>{tail}");
             assert_eq!(ClassTemplate::parse(&signature, &["pkg/P"]).is_some(), tail == "Lpkg/P<TK;>;");
         }
+    }
+    #[test]
+    fn parent_templates_preserve_order_constant_and_raw_arguments() {
+        let c = ClassTemplate::parse(
+            "<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;Lpkg/P<TU;TT;LA;>;Lpkg/Raw;",
+            &["java/lang/Object", "pkg/P", "pkg/Raw"],
+        )
+        .unwrap();
+        assert_eq!(c.parents[0], ParentTemplate { name: "java/lang/Object".into(), arguments: vec![] });
+        assert_eq!(
+            c.parents[1],
+            ParentTemplate {
+                name: "pkg/P".into(),
+                arguments: vec![
+                    TypeTemplate::Parameter(1),
+                    TypeTemplate::Parameter(0),
+                    TypeTemplate::Nominal("A".into())
+                ]
+            }
+        );
+        assert_eq!(c.parents[2], ParentTemplate { name: "pkg/Raw".into(), arguments: vec![] });
+        let c = ClassTemplate::parse("Lpkg/P<LA;>;", &["pkg/P"]).unwrap();
+        assert!(c.parameters.is_empty());
+        assert_eq!(c.parents[0].arguments, [TypeTemplate::Nominal("A".into())]);
+        let raw = ClassTemplate::parse("Lpkg/P;", &["pkg/P"]).unwrap();
+        assert!(raw.parents[0].arguments.is_empty());
+        assert_ne!(raw.parents, c.parents);
+    }
+
+    #[test]
+    fn nongeneric_signatures_have_no_implicit_formal_scope() {
+        assert!(ClassTemplate::parse("Ljava/lang/Object;", &["java/lang/Object"]).unwrap().parameters.is_empty());
+        for text in [
+            "",
+            "<>Ljava/lang/Object;",
+            "Lpkg/P<TT;>;",
+            "Lpkg/P<LA;>;junk",
+            "Lpkg/P<LA;>",
+            "Lpkg/P<+LA;>;",
+            "Lpkg/P<[LA;>;",
+        ] {
+            assert!(ClassTemplate::parse(text, &["pkg/P"]).is_none(), "{text}");
+        }
+        let owner = ClassTemplate::parse("Lpkg/P<LA;>;", &["pkg/P"]).unwrap();
+        assert!(MethodTemplate::parse(Some("()TT;"), "()Ljava/lang/Object;", &owner).is_none());
+        assert!(MethodTemplate::parse(None, "()Ljava/lang/Object;", &owner).is_some());
     }
 }
