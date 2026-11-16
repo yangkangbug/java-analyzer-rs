@@ -174,6 +174,8 @@ fn no_field_call_result_array_or_budget_escape_supplies_scalar_proof() {
         if actual == "give()" {
             // A proven own-instance int return now participates in widening.
             winner(&project(&source, true), "pick(give())", "pick(int x)");
+        } else if actual == "this.value" {
+            winner(&project(&source, true), "pick(this.value)", "pick(int x)");
         } else {
             let result = query(&project(&source, true), &format!("pick({actual})"));
             assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{actual}: {result:?}");
@@ -226,6 +228,15 @@ fn missing_expired_or_overlapping_primitive_locals_never_borrow_outer_values() {
             "class Box {{ public void pick(int x) {{}} public void pick(long x) {{}} }} class Calls {{ {caller} }}"
         );
         let marker = if caller.contains("missing") { "pick(missing)" } else { "pick(value)" };
+        if matches!(
+            caller,
+            "int value; void run(Box box) { { int value = 1; } box.pick(value); }"
+                | "int value; void run(Box box) { box.pick(value); int value = 1; }"
+        ) {
+            // The own field is visible after an inner scope, or before a later declaration.
+            winner(&project(&source, true), marker, "pick(int x)");
+            continue;
+        }
         let result = query(&project(&source, true), marker);
         assert_eq!(result.status, ResolveStatus::OverloadNotResolved, "{caller}: {result:?}");
         assert_eq!(result.targets.len(), 2);

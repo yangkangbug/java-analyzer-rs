@@ -100,6 +100,7 @@ def current_expectations(expected, queries, declarations):
     result = o.current_null_expectations('string-v1', expected, queries, declarations)
     result = dict(result)
     prior = {
+        'string_field': ('CallNotResolved', 'exact@literal.Target', 'exact@literal.Target'),
         'string_result': ('CallNotResolved', 'exact@literal.Target', 'exact@literal.Target'),
         'string_object': ('CallNotResolved', 'object@literal.Target', 'object@literal.Target'),
         'string_choose': ('OverloadNotResolved', 'choose_string@literal.Target',

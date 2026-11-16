@@ -35,6 +35,26 @@ class NullOracleTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             c.current_expectations(expected)
 
+    def test_field_projection_is_exact_and_preserves_history(self):
+        ds, qs, expected, compiler, _ = self.evidence()
+        old = copy.deepcopy(expected)
+        current = c.current_expectations(expected)
+        self.assertEqual(expected, old)
+        self.assertEqual({q for q in old if old[q] != current[q]}, {'null_unknown', 'null_field'})
+        self.assertEqual(current['null_field'], ('Resolved', 'only@nulls.Target', 'only@nulls.Target'))
+        self.assertEqual(c.baseline_expectations(expected)['null_field'][0], 'CallNotResolved')
+        for i in range(3):
+            bad = copy.deepcopy(expected)
+            row = list(bad['null_field']); row[i] = 'wrong'; bad['null_field'] = tuple(row)
+            with self.assertRaises(AssertionError): c.current_expectations(bad)
+        native = {q: [status, str(0 if candidates == '-' else len(candidates.split(','))),
+                      *([] if candidates == '-' else [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')])]
+                  for q, (status, _, candidates) in current.items()}
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for i, value in [(0, 'CallNotResolved'), (1, '2'), (2, 'wrong')]:
+            bad = copy.deepcopy(native); bad['null_field'][i] = value
+            with self.assertRaises((AssertionError, ValueError)): c.compare(current, qs, ds, compiler, bad, Path('/unused'))
+
     def test_complete_fixed_inventory(self):
         ds, qs, expected, compiler, native = self.evidence()
         self.assertEqual((len(qs), len(ds)), (11, 14))

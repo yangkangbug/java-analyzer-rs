@@ -173,7 +173,17 @@ fn inner_complete_competitors_and_explicit_local_scope_are_required() {
         let source = format!(
             "class Result {{ public void next() {{}} }} class Box {{ public Result take(int i) {{ return null; }} }} class Calls {{ Box box; void run() {{ {body} }} }}"
         );
-        assert_eq!(query(&project(&source), "next();").status, ResolveStatus::ReceiverNotBound, "{body}");
+        let result = query(&project(&source), "next();");
+        if matches!(body, "{ Box box = null; } box.take(1).next();" | "this.box.take(1).next();") {
+            // The expired local no longer shadows the own field; this.box names it explicitly.
+            assert_eq!(result.status, ResolveStatus::Resolved, "{body}: {result:?}");
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].owner, "Result");
+            assert_eq!(result.targets[0].path, "Calls.java");
+            assert_eq!(result.targets[0].start_byte, source.find("next()").unwrap() as u32);
+        } else {
+            assert_eq!(result.status, ResolveStatus::ReceiverNotBound, "{body}");
+        }
     }
 }
 

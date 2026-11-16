@@ -20,6 +20,14 @@ return typing remain separate, with exact declaration linking context and shared
 proof limits. Array results, general generic inference and arbitrary expression inference
 remain deferred. See [binary call results](docs/BINARY_CALL_RETURNS.md).
 
+## Own source-field values
+
+Ordinary instance methods can use their class's own scalar fields as strict
+actuals or receivers, with bare-name lexical shadowing and exact `this.field`
+access. Dedicated declaration evidence reuses existing plain/applied receiver
+proofs; no initializer inference or inherited-field/generic-member expansion.
+See [source field evidence and limits](docs/SOURCE_FIELD_VALUES.md).
+
 ## Bounded binary generic receivers
 
 Explicit parameterized locals/parameters now instantiate complete own binary

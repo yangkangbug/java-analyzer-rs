@@ -628,13 +628,24 @@ def reference_invalid_fixtures():
     return result
 
 
+def current_reference_expectations(expected, queries, declarations):
+    result = current_receiver_guard_expectations("reference-v1", expected, queries, declarations)
+    result = current_null_expectations("reference-v1", result, queries, declarations)
+    result = current_inherited_expectations("reference-v1", result, queries, declarations)
+    result = dict(result)
+    assert result['reference_field_refusal'] == (
+        'OverloadNotResolved', 'pick_mid@model.Target',
+        'pick_root@model.Target,pick_mid@model.Target,pick_other@model.Target')
+    # The declared Leaf field converts to Mid, not unrelated Other.
+    result['reference_field_refusal'] = ('Resolved', 'pick_mid@model.Target', 'pick_mid@model.Target')
+    return result
+
+
 def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
     """Optional javac comparison, never fixture execution or production dependency."""
     root = ORACLE / "reference-v1"
     declarations, queries, requests, expected = reference_fixture()
-    expected = current_receiver_guard_expectations("reference-v1", expected, queries, declarations)
-    expected = current_null_expectations("reference-v1", expected, queries, declarations)
-    expected = current_inherited_expectations("reference-v1", expected, queries, declarations)
+    expected = current_reference_expectations(expected, queries, declarations)
     binaries = work / "reference-classes"
     binaries.mkdir()
     dependency = root / "dependency"
@@ -739,8 +750,9 @@ def reference_suite(jdk, native_binary, env, work, helper, empty, platform):
                         "omitted reference " + removed.name)
         finally:
             removed.write_bytes(content)
-    print("PASS: 15 reference source bindings (13 new selections and two singleton controls); "
-          "9 compiler-valid refusals; 11 separate compiler-invalid refusals; "
+    selected_count = sum(row[0] == "Resolved" for row in expected.values())
+    print(f"PASS: {selected_count} current reference selections; "
+          f"{len(expected) - selected_count} compiler-valid refusals; 11 separate compiler-invalid refusals; "
           "exact source/binary candidate inventories, compiler/native mutations, "
           "and omitted Object/Iterable controls verified")
 

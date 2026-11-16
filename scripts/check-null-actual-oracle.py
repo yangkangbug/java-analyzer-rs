@@ -72,6 +72,8 @@ def current_expectations(expected):
         'related_parent@nulls.Target,related_child@nulls.Target')
     # value() supplies its declared Parent, not the runtime null in its body.
     result['null_unknown'] = ('Resolved', 'related_parent@nulls.Target', 'related_parent@nulls.Target')
+    assert result['null_field'] == ('CallNotResolved', 'only@nulls.Target', 'only@nulls.Target')
+    result['null_field'] = ('Resolved', 'only@nulls.Target', 'only@nulls.Target')
     return result
 
 
@@ -108,7 +110,7 @@ def run_suite(jdk, native, work, baseline=False):
             o.check_reference_candidates(q, row[0], row[2], ds, omitted[q], platform)
     finally:
         path.write_bytes(contents)
-    print('PASS: null actual oracle; current 8 selections, 3 compiler-valid native refusals, 3 compiler-rejected cases; Object omission exact refusals; baseline=' + str(baseline), flush=True)
+    print('PASS: null actual oracle; current 9 selections, 2 compiler-valid native refusals, 3 compiler-rejected cases; Object omission exact refusals; baseline=' + str(baseline), flush=True)
 
 
 def main():

@@ -248,6 +248,8 @@ struct Member {
     access: Access,
     shape: Shape,
     source_call: Option<SourceCall>,
+    // Keep unused source-only metadata out of every binary member payload.
+    source_field: Option<Box<SourceField>>,
 }
 
 #[derive(Clone, Debug)]
@@ -928,6 +930,30 @@ impl Index {
             plain_at = *at;
             parens += 1;
         }
+        // Only the new exact this.field form enters strict field typing.
+        // Preserve unrelated legacy navigation for arbitrary object.field chains.
+        if plain_receiver.kind() == SyntaxKind::FieldExpr
+            && plain_receiver.child_nodes().next().is_none_or(|base| base.kind() != SyntaxKind::ThisExpr)
+        {
+            return None;
+        }
+        if plain_receiver.kind() == SyntaxKind::FieldExpr {
+            let (caller, caller_start, caller_end) = direct_caller(parsed.root(), byte)?;
+            if !reference_method_header(caller, caller_start)
+                || child_kind(caller, caller_start, SyntaxKind::TypeParamList).is_some()
+                || contains_kind(caller, SyntaxKind::LocalType)
+                || !crate::green::collect_errors(caller).is_empty()
+            {
+                return None;
+            }
+            let mut proof = ReferenceCallProof::new(self, file, caller_start, caller_end);
+            let receiver = proof.receiver(plain_receiver, plain_at, parens + 1)?;
+            let member = proof.select_receiver(&receiver, selector?, args, args_at, 0)?;
+            // Failure leaves legacy field-chain navigation intact. Only this
+            // separately proved success supplies a strict selected target.
+            return (!proof.exhausted)
+                .then(|| ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
+        }
         if matches!(plain_receiver.kind(), SyntaxKind::CallExpr | SyntaxKind::IndexExpr) {
             let refused = || ResolveResult::none(ResolveStatus::ReceiverNotBound);
             let Some((caller, caller_start, caller_end)) = direct_caller(parsed.root(), byte) else {
@@ -985,6 +1011,18 @@ impl Index {
         );
         proof.caller_locals = Some(caller_locals);
         let is_value = locals.is_some();
+        if !is_value
+            && let Some((caller_node, _, _)) = caller
+            && reference_method_header(caller_node, caller_start)
+            && child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_none()
+            && !contains_kind(caller_node, SyntaxKind::LocalType)
+            && crate::green::collect_errors(caller_node).is_empty()
+            && let Some(receiver) = proof.receiver(plain_receiver, plain_at, 0)
+            && let Some(member) = proof.select_receiver(&receiver, name, args, args_at, 0)
+            && !proof.exhausted
+        {
+            return Some(ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
+        }
         let owner = if let Some(local) = locals {
             if local.targets.len() != 1 || local.status != ResolveStatus::Resolved {
                 return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
@@ -2458,6 +2496,7 @@ fn index_enum_constant(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             access: Access::Public,
             shape: Shape::Unknown,
             source_call: None,
+            source_field: None,
         });
     }
     ctx.enum_constant_depth += 1;
@@ -2488,6 +2527,7 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
                 access: read_access(child, offset),
                 shape: source_type_shape(child, offset),
                 source_call: None,
+                source_field: None,
             });
         }
         offset += child.utf8_len();
@@ -2515,6 +2555,10 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
                 source_type_shape(node, start)
             },
             source_call: (node.kind() == SyntaxKind::Method).then(|| source_call(node, start)).flatten(),
+            source_field: (node.kind() == SyntaxKind::Field)
+                .then(|| source_field(node, start, name_start))
+                .flatten()
+                .map(Box::new),
         };
         if kind == TargetKind::Field {
             ctx.file.classes[class_index].source_data_mut().fields.push(member);
@@ -2748,6 +2792,54 @@ fn read_access(node: &GreenNode, start: u32) -> Access {
         [one] => *one,
         _ => Access::Unspecified,
     }
+}
+
+#[derive(Clone, Debug)]
+struct SourceField {
+    is_static: bool,
+    reference: Option<ReferenceDeclaration>,
+    primitive: Option<PrimitiveValue>,
+}
+
+// Field types are declaration evidence, not initializer inference or legacy
+// Member.declared navigation. Each sibling keeps its own suffix dimensions.
+fn source_field(node: &GreenNode, start: u32, name_at: u32) -> Option<SourceField> {
+    if node.kind() != SyntaxKind::Field || !crate::green::collect_errors(node).is_empty() {
+        return None;
+    }
+    let mut modifiers = Vec::new();
+    if let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) {
+        if mods.child_nodes().next().is_some() {
+            return None;
+        }
+        for (kind, _, _) in tokens(mods, 0).into_iter().filter(|t| !t.0.is_trivia()) {
+            if !matches!(
+                kind,
+                SyntaxKind::Public
+                    | SyntaxKind::Private
+                    | SyntaxKind::Protected
+                    | SyntaxKind::Static
+                    | SyntaxKind::Final
+                    | SyntaxKind::Transient
+                    | SyntaxKind::Volatile
+            ) || modifiers.contains(&kind)
+            {
+                return None;
+            }
+            modifiers.push(kind);
+        }
+    }
+    if [SyntaxKind::Public, SyntaxKind::Private, SyntaxKind::Protected].iter().filter(|k| modifiers.contains(k)).count()
+        > 1
+        || (modifiers.contains(&SyntaxKind::Final) && modifiers.contains(&SyntaxKind::Volatile))
+    {
+        return None;
+    }
+    Some(SourceField {
+        is_static: modifiers.contains(&SyntaxKind::Static),
+        reference: reference_declaration_type(node, start, name_at),
+        primitive: primitive_declaration(node, start, name_at),
+    })
 }
 
 fn source_type_shape(_node: &GreenNode, _start: u32) -> Shape {
@@ -3003,6 +3095,7 @@ fn member_from_signature(member: &MemberSignature, kind: TargetKind) -> Member {
             flags: member.raw_access_flags,
         },
         source_call: None,
+        source_field: None,
     }
 }
 
@@ -4149,14 +4242,18 @@ fn catch_reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Op
 }
 
 fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<ReferenceDeclaration> {
-    let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
-    let prefix_rank = plain_reference_rank(ty);
     if let Some((mods, _)) = child_kind(node, start, SyntaxKind::ModifierList) {
         let kinds: Vec<_> = tokens(mods, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
         if !matches!(kinds.as_slice(), [] | [SyntaxKind::Final]) || mods.child_nodes().next().is_some() {
             return None;
         }
     }
+    reference_declaration_type(node, start, name_at)
+}
+
+fn reference_declaration_type(node: &GreenNode, start: u32, name_at: u32) -> Option<ReferenceDeclaration> {
+    let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
+    let prefix_rank = plain_reference_rank(ty);
     let direct: Vec<_> = tokens(node, start).into_iter().filter(|t| !t.0.is_trivia()).collect();
     let name = direct.iter().position(|t| t.0 == SyntaxKind::Ident && t.1 == name_at)?;
     if name > 0 && direct[name - 1].0 == SyntaxKind::DotDotDot {
@@ -4813,65 +4910,151 @@ impl<'a> ReferenceCallProof<'a> {
             return self.receiver(inner, *inner_at, depth + 1);
         }
         if node.kind() == SyntaxKind::ReferenceExpr {
-            let local = self.visible_argument_local(&token_name(node), at)?;
-            if let Some(ReferenceDeclaration::Applied { name, arguments }) = &local.reference {
+            let name = token_name(node);
+            if let Some(local) = self.argument_local(&name, at)? {
                 if local.catch_origin {
-                    return None;
+                    return self.local_reference(local).map(|class| InvocationReceiver { class, instantiation: None });
                 }
-                self.charge(
-                    name.iter().map(String::len).sum::<usize>()
-                        + arguments.iter().flatten().map(String::len).sum::<usize>(),
-                )?;
-                let owner = self.raw_type(self.file, name, local.start)?;
-                if !owner.binary || !owner.reference_generic || owner.nesting.len() != 1 {
-                    return None;
-                }
-                self.accessible(owner)?;
-                self.graph(owner)?;
-                // Same lexical hiding checks as plain reference declarations.
-                for enclosing in enclosing_classes(self.file, local.start) {
-                    for ancestor in self.graph(enclosing)? {
-                        self.charge(1)?;
-                        if !self.named(ancestor.scope, &format!("{}.{}", ancestor.dotted(), name[0]))?.is_empty() {
-                            return None;
-                        }
-                    }
-                }
-                let sig = owner.binary_signature.as_ref()?;
-                let text = sig.signature.as_deref()?;
-                self.charge(text.len())?;
-                let parents: Vec<_> =
-                    sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
-                let declaration = instantiation::ClassTemplate::parse(text, &parents)?;
-                if declaration.parameters.len() != arguments.len() {
-                    return None;
-                }
-                let object = self.unique_named(owner.scope, "java.lang.Object")?;
-                if !object.binary_root || object.binary_signature.as_ref()?.binary_name != "java/lang/Object" {
-                    return None;
-                }
-                self.graph(object)?;
-                let mut resolved = Vec::new();
-                for parts in arguments {
-                    let argument = self.reference_type(self.file, parts, local.start)?;
-                    // Object is universal only within a proved linking identity.
-                    // Separate closed graphs are not a cross-scope bound proof.
-                    if !self.converts(argument, object)? {
-                        return None;
-                    }
-                    resolved.push(argument);
-                }
-                return Some(InvocationReceiver {
-                    class: owner,
-                    instantiation: Some(ClassInstantiation {
-                        owner: ClassIdentity::of(owner),
-                        declaration,
-                        arguments: resolved,
-                    }),
-                });
+                return self.declared_receiver(local.reference.as_ref()?, local.start);
             }
+            let field = self.own_field(&name, at)?;
+            return self.declared_receiver(field.source_field.as_ref()?.reference.as_ref()?, field.start);
+        }
+        if node.kind() == SyntaxKind::FieldExpr {
+            let field = self.this_field(node, at)?;
+            return self.declared_receiver(field.source_field.as_ref()?.reference.as_ref()?, field.start);
         }
         self.expression(node, at, depth).map(|value| InvocationReceiver { class: value.class, instantiation: None })
+    }
+
+    fn declared_receiver(
+        &mut self,
+        reference: &ReferenceDeclaration,
+        declared_at: u32,
+    ) -> Option<InvocationReceiver<'a>> {
+        if let ReferenceDeclaration::Plain(ty) = reference {
+            if ty.array_rank != 0 {
+                return None;
+            }
+            let class = self.reference_type(self.file, &ty.parts, declared_at)?;
+            return Some(InvocationReceiver { class, instantiation: None });
+        }
+        let ReferenceDeclaration::Applied { name, arguments } = reference else { return None };
+        self.charge(
+            name.iter().map(String::len).sum::<usize>() + arguments.iter().flatten().map(String::len).sum::<usize>(),
+        )?;
+        let owner = self.raw_type(self.file, name, declared_at)?;
+        if !owner.binary || !owner.reference_generic || owner.nesting.len() != 1 {
+            return None;
+        }
+        self.accessible(owner)?;
+        self.graph(owner)?;
+        // Same lexical hiding checks as plain reference declarations.
+        for enclosing in enclosing_classes(self.file, declared_at) {
+            for ancestor in self.graph(enclosing)? {
+                self.charge(1)?;
+                if !self.named(ancestor.scope, &format!("{}.{}", ancestor.dotted(), name[0]))?.is_empty() {
+                    return None;
+                }
+            }
+        }
+        let sig = owner.binary_signature.as_ref()?;
+        let text = sig.signature.as_deref()?;
+        self.charge(text.len())?;
+        let parents: Vec<_> =
+            sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
+        let declaration = instantiation::ClassTemplate::parse(text, &parents)?;
+        if declaration.parameters.len() != arguments.len() {
+            return None;
+        }
+        let object = self.unique_named(owner.scope, "java.lang.Object")?;
+        if !object.binary_root || object.binary_signature.as_ref()?.binary_name != "java/lang/Object" {
+            return None;
+        }
+        self.graph(object)?;
+        let mut resolved = Vec::new();
+        for parts in arguments {
+            let argument = self.reference_type(self.file, parts, declared_at)?;
+            // Object is universal only within a proved linking identity.
+            // Separate closed graphs are not a cross-scope bound proof.
+            if !self.converts(argument, object)? {
+                return None;
+            }
+            resolved.push(argument);
+        }
+        Some(InvocationReceiver {
+            class: owner,
+            instantiation: Some(ClassInstantiation {
+                owner: ClassIdentity::of(owner),
+                declaration,
+                arguments: resolved,
+            }),
+        })
+    }
+
+    fn own_field(&mut self, name: &str, at: u32) -> Option<&'a Member> {
+        let owner = self.implicit_instance_owner(at)?;
+        self.graph(owner)?;
+        self.charge(owner.fields.len().max(1))?;
+        let mut fields = owner.fields.iter().filter(|f| f.name == name);
+        let field = fields.next()?;
+        if fields.next().is_some() || field.source_field.as_ref()?.is_static {
+            return None;
+        }
+        // The declaration belongs to the caller itself, including private access.
+        // An own declaration hides ancestors; absent/unknown own fields never
+        // borrow an inherited declaration or a legacy navigation type.
+        Some(field)
+    }
+
+    fn this_field(&mut self, node: &GreenNode, at: u32) -> Option<&'a Member> {
+        self.charge(node.children().len().max(1))?;
+        if node.kind() != SyntaxKind::FieldExpr {
+            return None;
+        }
+        let mut state = 0;
+        let mut name = None;
+        for child in node.children() {
+            if let Some(base) = child.as_node() {
+                if state != 0 || base.kind() != SyntaxKind::ThisExpr || base.child_nodes().next().is_some() {
+                    return None;
+                }
+                self.charge(base.children().len().max(1))?;
+                let direct: Vec<_> = tokens(base, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect();
+                if direct != [SyntaxKind::This] {
+                    return None;
+                }
+                state = 1;
+            } else if let Some(token) = child.as_token()
+                && !token.kind().is_trivia()
+            {
+                state = match (state, token.kind()) {
+                    (1, SyntaxKind::Dot) => 2,
+                    (2, SyntaxKind::Ident) => {
+                        name = Some(token.text());
+                        3
+                    }
+                    _ => return None,
+                };
+            }
+        }
+        if state != 3 {
+            return None;
+        }
+        self.own_field(name?, at)
+    }
+
+    fn field_actual(&mut self, field: &'a Member) -> Option<StrictActual<'a>> {
+        let evidence = field.source_field.as_ref()?;
+        if let Some(reference) = &evidence.reference {
+            let plain = reference.plain()?;
+            if plain.array_rank != 0 {
+                return None;
+            }
+            let class = self.reference_type(self.file, &plain.parts, field.start)?;
+            return Some(StrictActual::Reference(ReferenceValue { class }));
+        }
+        evidence.primitive.filter(|v| v.rank == 0).map(StrictActual::Primitive)
     }
 
     fn template_value(
@@ -5394,6 +5577,12 @@ impl<'a> ReferenceCallProof<'a> {
     // One bounded lookup shared by reference and primitive local evidence.
     // No persistent cache: overlapping, expired or untyped declarations still refuse.
     fn visible_argument_local(&mut self, name: &str, at: u32) -> Option<&'a LocalRec> {
+        self.argument_local(name, at)?
+    }
+
+    // Some(None) proves absence; outer None is ambiguity/unsupported/budget
+    // failure. Only proved absence may fall back to a same-named own field.
+    fn argument_local(&mut self, name: &str, at: u32) -> Option<Option<&'a LocalRec>> {
         let mut found = None;
         let mut count = 0;
         let mut consider = |local: &'a LocalRec| {
@@ -5420,8 +5609,11 @@ impl<'a> ReferenceCallProof<'a> {
                 consider(local);
             }
         }
+        if count == 0 {
+            return Some(None);
+        }
         let local = found?;
-        (count == 1 && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)).then_some(local)
+        (count == 1 && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)).then_some(Some(local))
     }
 
     fn actual(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
@@ -5435,9 +5627,16 @@ impl<'a> ReferenceCallProof<'a> {
         if node.kind() == SyntaxKind::CallExpr {
             return self.invocation_value(node, at, depth + 1);
         }
+        if node.kind() == SyntaxKind::FieldExpr {
+            let field = self.this_field(node, at)?;
+            return self.field_actual(field);
+        }
         if node.kind() == SyntaxKind::ReferenceExpr {
             let name = token_name(node);
-            let local = self.visible_argument_local(&name, at)?;
+            let Some(local) = self.argument_local(&name, at)? else {
+                let field = self.own_field(&name, at)?;
+                return self.field_actual(field);
+            };
             // A reference declaration failing its type proof cannot become a
             // primitive guess. Each category uses only its own stored evidence.
             if local.reference.is_some() {
@@ -5560,7 +5759,7 @@ impl<'a> ReferenceCallProof<'a> {
             base_at = *at;
             depth += 1;
         }
-        if base.kind() == SyntaxKind::ReferenceExpr
+        if matches!(base.kind(), SyntaxKind::ReferenceExpr | SyntaxKind::FieldExpr)
             && let Some(receiver) = self.receiver(base, base_at, depth + 1)
         {
             let selected = self.select_receiver(&receiver, name?, args, args_at, depth + 1)?;

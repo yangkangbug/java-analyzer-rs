@@ -85,6 +85,8 @@ fn every_actual_must_have_existing_proof() {
         if actual == "give()" {
             // The exact own-instance int return now supplies this argument.
             winner(&source, "pick(give(),a)", "pick(int i, A a)");
+        } else if actual == "this.value" {
+            winner(&source, "pick(this.value,a)", "pick(int i, A a)");
         } else {
             refused(&source, &format!("pick({actual},a)"), 1);
         }
@@ -182,6 +184,11 @@ fn mixed_argument_scopes_do_not_borrow_expired_or_overlapping_bindings() {
         let source = format!(
             "class A {{}} class Box {{ public void pick(int i, A a) {{}} }} class Calls {{ int i; void run(Box box, A a) {{ {body} }} }}"
         );
-        refused(&source, "pick(i,a)", 1);
+        if matches!(body, "{ int i = 0; } box.pick(i,a);" | "box.pick(i,a); int i = 0;") {
+            // Outside/before the local's scope, i denotes the declared own int field.
+            winner(&source, "pick(i,a)", "pick(int i, A a)");
+        } else {
+            refused(&source, "pick(i,a)", 1);
+        }
     }
 }

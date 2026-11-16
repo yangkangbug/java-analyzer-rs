@@ -548,5 +548,33 @@ class BinaryCurrentHistoricalProjection(unittest.TestCase):
                 oracle.binary_instance_current_expected(wrong, 'valid')
 
 
+class OwnFieldCurrentProjection(unittest.TestCase):
+    def test_exact_delta_and_old_tuple_mutations(self):
+        ds, qs, _, original = oracle.reference_fixture()
+        before = json.dumps(original, sort_keys=True)
+        previous = oracle.current_receiver_guard_expectations('reference-v1', original, qs, ds)
+        previous = oracle.current_null_expectations('reference-v1', previous, qs, ds)
+        previous = oracle.current_inherited_expectations('reference-v1', previous, qs, ds)
+        current = oracle.current_reference_expectations(original, qs, ds)
+        self.assertEqual(json.dumps(original, sort_keys=True), before)
+        self.assertEqual([q for q in previous if previous[q] != current[q]], ['reference_field_refusal'])
+        self.assertEqual(current['reference_field_refusal'], ('Resolved', 'pick_mid@model.Target', 'pick_mid@model.Target'))
+        target = oracle.reference_target(ds, 'pick_mid@model.Target', Path('/unused'))
+        oracle.check_reference_candidates('reference_field_refusal', 'Resolved', 'pick_mid@model.Target',
+                                          ds, ['Resolved', '1', target], Path('/unused'))
+        for native in [['OverloadNotResolved', '1', target], ['Resolved', '2', target],
+                       ['Resolved', '1', target.replace('model.Target', 'wrong.Owner')]]:
+            with self.assertRaises(AssertionError):
+                oracle.check_reference_candidates('reference_field_refusal', 'Resolved', 'pick_mid@model.Target',
+                                                  ds, native, Path('/unused'))
+        from unittest.mock import patch
+        for i in range(3):
+            changed = dict(previous)
+            row = list(changed['reference_field_refusal']); row[i] = 'wrong'
+            changed['reference_field_refusal'] = tuple(row)
+            with patch.object(oracle, 'current_inherited_expectations', return_value=changed):
+                with self.assertRaises(AssertionError): oracle.current_reference_expectations(original, qs, ds)
+
+
 if __name__ == "__main__":
     unittest.main()
