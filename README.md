@@ -580,3 +580,14 @@ Java binary numeric promotion yields `long` if either operand is `long`, otherwi
 String concatenation, boxing, floating-point operands, long literals, fields,
 array reads, invocation-result operands and other operators remain outside this
 slice. This does not extend the separate unqualified primitive-call proof.
+
+### Bounded integral postfix arguments
+
+Qualified reference-call proofs also accept direct-name `++`/`--` arguments
+for unmodified scalar integral method parameters and initialized ordinary local
+declarations, preserving `byte`/`short`/`char` rather than promoting them. Local
+declarators must all be initialized, and the use must follow the whole declaration.
+This is a bounded type proof, not evaluation or definite-assignment analysis.
+Annotations/modifiers, loop headers, captured variables, fields, array elements,
+boxing, floating point and prefix updates remain outside this slice. Existing
+unqualified primitive proof behavior and runtime JVM independence are unchanged.

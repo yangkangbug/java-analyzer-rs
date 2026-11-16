@@ -79,7 +79,6 @@ fn unsupported_operands_and_operators_retain_all_candidates() {
         "i + 2147483648",
         "i + 1L",
         "i += 1",
-        "i++",
         "i * 1",
         "i / 1",
         "i & 1",

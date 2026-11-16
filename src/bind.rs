@@ -345,6 +345,7 @@ struct LocalRec {
     visible_from: u32,
     declared: Option<QualName>,
     primitive: Option<PrimitiveValue>,
+    postfix_after: Option<u32>,
     reference: Option<Vec<String>>,
     path: String,
 }
@@ -2506,6 +2507,9 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
             visible_from: name_end,
             declared,
             primitive: primitive_declaration(node, start, name_start),
+            postfix_after: (kind == TargetKind::Local)
+                .then(|| postfix_declaration_end(node, start, name_start))
+                .flatten(),
             reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
@@ -2525,6 +2529,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         visible_from: name_end,
         declared: read_type(node, start),
         primitive: None,
+        postfix_after: None,
         reference: None,
         path: ctx.file.path.clone(),
     });
@@ -2546,6 +2551,9 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             visible_from: name_end,
             declared: read_type(node, start),
             primitive: primitive_declaration(node, start, name_start),
+            postfix_after: (kind == ScopeKind::Method)
+                .then(|| postfix_declaration_end(node, start, name_start))
+                .flatten(),
             reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
@@ -3383,6 +3391,60 @@ fn bracket_rank(kinds: &[SyntaxKind]) -> Option<usize> {
     (kinds.len().is_multiple_of(2)
         && kinds.chunks_exact(2).all(|pair| pair == [SyntaxKind::LBracket, SyntaxKind::RBracket]))
     .then_some(kinds.len() / 2)
+}
+
+// A deliberately narrow writable-variable witness, not definite-assignment analysis.
+// No modifiers (including annotations), loop headers, resources or implicit types.
+// An initialized local becomes usable only after its complete declaration.
+fn postfix_declaration_end(node: &GreenNode, start: u32, name_at: u32) -> Option<u32> {
+    if child_kind(node, start, SyntaxKind::ModifierList).is_some() {
+        return None;
+    }
+    let ty = primitive_declaration(node, start, name_at)?;
+    if ty.rank != 0 {
+        return None;
+    }
+    if node.kind() == SyntaxKind::Parameter {
+        let direct: Vec<_> = tokens(node, start).into_iter().filter(|t| !t.0.is_trivia()).collect();
+        return (node.child_nodes().count() == 1
+            && node.child_nodes().all(|n| n.kind() == SyntaxKind::Type)
+            && direct.len() == 1
+            && direct[0].0 == SyntaxKind::Ident
+            && direct[0].1 == name_at)
+            .then_some(start + node.utf8_len());
+    }
+    if node.kind() != SyntaxKind::LocalVar
+        || tokens(node, start).into_iter().rev().find(|t| !t.0.is_trivia())?.0 != SyntaxKind::Semi
+    {
+        return None;
+    }
+    let mut at = start;
+    let mut state = 0;
+    let mut selected = false;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                match state {
+                    1 if token.kind() == SyntaxKind::Ident => {
+                        selected |= at == name_at;
+                        state = 2;
+                    }
+                    2 if token.kind() == SyntaxKind::Eq => state = 3,
+                    4 if token.kind() == SyntaxKind::Comma => state = 1,
+                    4 if token.kind() == SyntaxKind::Semi => state = 5,
+                    _ => return None,
+                }
+            }
+        } else if let Some(inner) = child.as_node() {
+            match state {
+                0 if inner.kind() == SyntaxKind::Type => state = 1,
+                3 if inner.kind() != SyntaxKind::Error => state = 4,
+                _ => return None,
+            }
+        }
+        at += child.utf8_len();
+    }
+    (state == 5 && selected).then_some(start + node.utf8_len())
 }
 
 fn primitive_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<PrimitiveValue> {
@@ -4657,6 +4719,53 @@ impl<'a> ReferenceCallProof<'a> {
             let [(inner, at)] = children.as_slice() else { return None };
             return self.scalar_primitive_argument(inner, *at, depth + 1);
         }
+        if node.kind() == SyntaxKind::UnaryExpr {
+            // Postfix only, on one direct name. Never recurse into arbitrary
+            // operands: prefix, nested updates, fields and array elements refuse.
+            let mut operand = None;
+            let mut updated = false;
+            let mut offset = at;
+            for child in node.children() {
+                if let Some(inner) = child.as_node() {
+                    if operand.is_some() || updated || inner.kind() != SyntaxKind::ReferenceExpr {
+                        return None;
+                    }
+                    operand = Some((inner.as_ref(), offset));
+                } else if let Some(token) = child.as_token()
+                    && !token.kind().is_trivia()
+                {
+                    if operand.is_none()
+                        || updated
+                        || !matches!(token.kind(), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus)
+                    {
+                        return None;
+                    }
+                    updated = true;
+                }
+                offset += child.utf8_len();
+            }
+            if !updated {
+                return None;
+            }
+            let (inner, name_at) = operand?;
+            self.charge(inner.children().len().max(1))?;
+            let direct: Vec<_> = tokens(inner, name_at).into_iter().filter(|t| !t.0.is_trivia()).collect();
+            if inner.child_nodes().next().is_some() || direct.len() != 1 || direct[0].0 != SyntaxKind::Ident {
+                return None;
+            }
+            let local = self.visible_argument_local(&token_name(inner), name_at)?;
+            if name_at < local.postfix_after? {
+                return None;
+            }
+            // Unlike binary addition, postfix preserves byte/short/char.
+            return local.primitive.filter(|v| {
+                v.rank == 0
+                    && matches!(
+                        v.primitive,
+                        Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int | Primitive::Long
+                    )
+            });
+        }
         if node.kind() == SyntaxKind::BinaryExpr {
             // BinaryExpr also represents assignments/conditionals: consume the
             // complete direct shape, never search descendants for usable leaves.
@@ -5770,6 +5879,35 @@ mod invocation_budget_tests {
     #[test]
     fn additive_actual_recursion_keeps_the_callers_work_and_depth_budget() {
         let text = "class C { void run(int i) { take((i + 1) - (i + 2)); } }";
+        let mut project = Project::new();
+        project.insert("C.java", text);
+        let parsed = project.file("C.java").unwrap();
+        let wanted = text.rfind("take(").unwrap() as u32;
+        let (_, start, end) = direct_caller(parsed.root(), wanted).unwrap();
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
+        let (args, args_at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
+        let nodes = delimited_nodes(args, args_at).unwrap();
+        let (node, at) = nodes[0];
+        let mut good = ReferenceCallProof::new(&index, file, start, end);
+        assert!(matches!(
+            good.scalar_primitive_argument(node, at, 0),
+            Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 })
+        ));
+        let mut work = ReferenceCallProof::new(&index, file, start, end);
+        work.work_left = 8;
+        assert!(work.scalar_primitive_argument(node, at, 0).is_none());
+        assert!(work.exhausted);
+        assert_eq!(work.work_left, 0);
+        let mut depth = ReferenceCallProof::new(&index, file, start, end);
+        assert!(depth.scalar_primitive_argument(node, at, REFERENCE_PROOF_DEPTH).is_none());
+        assert!(depth.exhausted);
+        assert_eq!(depth.work_left, 0);
+    }
+    #[test]
+    fn postfix_actual_composition_keeps_the_callers_work_and_depth_budget() {
+        let text = "class C { void run(int i) { take((i++) - (i--)); } }";
         let mut project = Project::new();
         project.insert("C.java", text);
         let parsed = project.file("C.java").unwrap();
