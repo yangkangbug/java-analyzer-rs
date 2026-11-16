@@ -346,6 +346,7 @@ struct LocalRec {
     declared: Option<QualName>,
     primitive: Option<PrimitiveValue>,
     postfix_after: Option<u32>,
+    catch_origin: bool,
     reference: Option<Vec<String>>,
     path: String,
 }
@@ -2510,6 +2511,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
             postfix_after: (kind == TargetKind::Local)
                 .then(|| postfix_declaration_end(node, start, name_start))
                 .flatten(),
+            catch_origin: false,
             reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
@@ -2530,7 +2532,8 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         declared: read_type(node, start),
         primitive: None,
         postfix_after: None,
-        reference: None,
+        catch_origin: true,
+        reference: catch_reference_declaration(node, start, name_start),
         path: ctx.file.path.clone(),
     });
 }
@@ -2554,6 +2557,7 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             postfix_after: (kind == ScopeKind::Method)
                 .then(|| postfix_declaration_end(node, start, name_start))
                 .flatten(),
+            catch_origin: false,
             reference: reference_declaration(node, start, name_start),
             path: ctx.file.path.clone(),
         });
@@ -4003,6 +4007,52 @@ fn raw_reference_header_type(node: &GreenNode, depth: usize) -> bool {
     state == 2
 }
 
+// A catch parameter is not an ordinary declaration: consume the entire header
+// and preserve its origin so reference use must also prove Throwable ancestry.
+fn catch_reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<Vec<String>> {
+    if node.kind() != SyntaxKind::CatchClause {
+        return None;
+    }
+    let mut state = 0;
+    let mut parts = None;
+    let mut at = start;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                state = match (state, token.kind()) {
+                    (0, SyntaxKind::Catch) => 1,
+                    (1, SyntaxKind::LParen) => 2,
+                    (4, SyntaxKind::Ident) if at == name_at => 5,
+                    (5, SyntaxKind::RParen) => 6,
+                    _ => return None,
+                };
+            }
+        } else if let Some(inner) = child.as_node() {
+            state = match (state, inner.kind()) {
+                (2, SyntaxKind::ModifierList)
+                    if inner.child_nodes().next().is_none()
+                        && tokens(inner, at)
+                            .into_iter()
+                            .filter(|t| !t.0.is_trivia())
+                            .map(|t| t.0)
+                            .collect::<Vec<_>>()
+                            == [SyntaxKind::Final] =>
+                {
+                    3
+                }
+                (2 | 3, SyntaxKind::Type) if plain_reference_type(inner) => {
+                    parts = Some(type_parts(inner, at)?);
+                    4
+                }
+                (6, SyntaxKind::Block) => 7,
+                _ => return None,
+            };
+        }
+        at += child.utf8_len();
+    }
+    (state == 7).then_some(parts).flatten()
+}
+
 fn reference_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<Vec<String>> {
     let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
     if !plain_reference_type(ty) {
@@ -4533,6 +4583,30 @@ impl<'a> ReferenceCallProof<'a> {
         }
         Some(class)
     }
+    fn local_reference(&mut self, local: &'a LocalRec) -> Option<&'a ClassRec> {
+        let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
+        if local.catch_origin {
+            if class.is_interface || class.reference_generic {
+                return None;
+            }
+            // Resolve the real platform identity in this compilation; a same-named
+            // source class or an incomplete hierarchy cannot establish a catch type.
+            let throwable = self.unique_named(self.file.scope, "java.lang.Throwable")?;
+            if !throwable.binary
+                || throwable.is_interface
+                || throwable.reference_generic
+                || throwable.binary_signature.as_ref()?.binary_name != "java/lang/Throwable"
+            {
+                return None;
+            }
+            self.accessible(throwable)?;
+            if !self.converts(class, throwable)? {
+                return None;
+            }
+        }
+        Some(class)
+    }
+
     fn expression(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<ReferenceValue<'a>> {
         if depth > REFERENCE_PROOF_DEPTH {
             self.work_left = 0;
@@ -4615,7 +4689,7 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let name = token_name(node);
         let local = self.visible_argument_local(&name, at)?;
-        let class = self.reference_type(self.file, local.reference.as_ref()?, local.start)?;
+        let class = self.local_reference(local)?;
         Some(ReferenceValue { class })
     }
     // Only an explicit plain-reference cast of null supplies new argument evidence.
@@ -4998,8 +5072,8 @@ impl<'a> ReferenceCallProof<'a> {
             let local = self.visible_argument_local(&name, at)?;
             // A reference declaration failing its type proof cannot become a
             // primitive guess. Each category uses only its own stored evidence.
-            if let Some(parts) = &local.reference {
-                let class = self.reference_type(self.file, parts, local.start)?;
+            if local.reference.is_some() {
+                let class = self.local_reference(local)?;
                 return Some(StrictActual::Reference(ReferenceValue { class }));
             }
             return local.primitive.filter(|value| value.rank == 0).map(StrictActual::Primitive);

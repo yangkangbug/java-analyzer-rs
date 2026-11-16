@@ -591,3 +591,14 @@ This is a bounded type proof, not evaluation or definite-assignment analysis.
 Annotations/modifiers, loop headers, captured variables, fields, array elements,
 boxing, floating point and prefix updates remain outside this slice. Existing
 unqualified primitive proof behavior and runtime JVM independence are unchanged.
+
+### Single-type catch reference evidence
+
+Strict reference-call proofs can use a single plain catch parameter, optionally
+`final`, after proving its accessible, non-generic class derives from the
+compilation's binary `java.lang.Throwable` identity. Receiver chains and argument
+typing share this check and the existing budgets. Multi-catch, annotations,
+arrays, malformed headers, incomplete hierarchies and captured uses stay refused.
+Catch scope does not extend into `finally` or following statements. This is not
+exception-flow/reachability analysis and does not extend inherited method or
+string-concatenation support.
