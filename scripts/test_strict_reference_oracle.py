@@ -88,6 +88,54 @@ class StrictReferenceOracleTests(unittest.TestCase):
         changed = copy.deepcopy(compiler); changed['strict_child'][4] = str(int(changed['strict_child'][4]) - 1)
         with self.assertRaises(AssertionError): compare(j=changed)
 
+    def test_current_parent_projection_preserves_historical_stages(self):
+        ds, qs, expected, _, _ = self.evidence()
+        original = copy.deepcopy(expected)
+        baseline = c.baseline_expectations(expected)
+        omitted = c.omitted_expectations(expected)
+        prior = c.o.current_inherited_expectations(
+            'strict-reference-v1',
+            c.o.current_null_expectations('strict-reference-v1', expected, qs, ds), qs, ds)
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(expected, original)
+        self.assertEqual(c.baseline_expectations(expected), baseline)
+        self.assertEqual(c.omitted_expectations(expected), omitted)
+        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper'})
+        self.assertEqual(current['strict_wrapper'],
+                         ('Resolved', 'wrapper_object@strict.Target', 'wrapper_object@strict.Target'))
+        self.assertEqual(current['strict_loose'], prior['strict_loose'])
+        for replacement in [
+            ('Resolved', prior['strict_wrapper'][1], prior['strict_wrapper'][2]),
+            ('OverloadNotResolved', 'wrapper_scalar@strict.Target', prior['strict_wrapper'][2]),
+            ('OverloadNotResolved', prior['strict_wrapper'][1], 'wrapper_object@strict.Target'),
+        ]:
+            changed = dict(prior); changed['strict_wrapper'] = replacement
+            with patch.object(c.o, 'current_inherited_expectations', return_value=changed):
+                with self.assertRaises(AssertionError):
+                    c.current_expectations(expected, qs, ds)
+
+    def test_current_wrapper_exact_evidence_controls(self):
+        ds, qs, historical, compiler, _ = self.evidence()
+        expected = c.current_expectations(historical, qs, ds)
+        native = {}
+        for q, (status, _, candidates) in expected.items():
+            targets = [c.o.reference_target(ds, item, Path('/unused'))
+                       for item in candidates.split(',')]
+            native[q] = [status, str(len(targets)), *targets]
+        def compare(n):
+            c.compare(expected, qs, ds, compiler, n, Path('/unused'))
+        compare(native)
+        for action in ('status', 'count', 'scalar', 'owner', 'duplicate'):
+            bad = copy.deepcopy(native); row = bad['strict_wrapper']
+            if action == 'status': row[0] = 'OverloadNotResolved'
+            elif action == 'count': row[1] = '2'
+            elif action == 'scalar':
+                row[2] = c.o.reference_target(ds, 'wrapper_scalar@strict.Target', Path('/unused'))
+            elif action == 'owner': row[2] = row[2].replace('strict.Target', 'wrong.Owner')
+            else: row[1] = '2'; row.append(row[2])
+            with self.subTest(action=action), self.assertRaises(AssertionError):
+                compare(bad)
+
     def test_invalid_cases_never_become_success(self):
         for case, status, candidates, _, ds, _ in c.invalid_fixtures():
             q = 'invalid_' + case

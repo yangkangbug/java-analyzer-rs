@@ -725,8 +725,8 @@ fn string_literal_specificity_requires_proved_binary_edges() {
         let source = format!("class C {{ {methods} }} class Calls {{ void run(C c) {{ c.m(\"x\"); }} }}");
         selected(&literal_project(&source), "m(\"x\")", "Calls.java", "m(String x)");
     }
-    // Real String has a generic Signature. Existing conversion deliberately
-    // declines even its Object edge, rather than treating erasure as proof.
+    // A completely framed class Signature can certify its ordinary Object edge.
+    // The parameterized Comparable edge remains unknown, not erased to plain.
     let source = r#"class C { public void m(String x) {} public void m(Object x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
     let mut p = project(source);
     p.add_class_bytes(
@@ -743,9 +743,22 @@ fn string_literal_specificity_requires_proved_binary_edges() {
     let access = 10 + 3 + "java/lang/Comparable".len() + 3 + 3 + "java/lang/Object".len() + 3;
     comparable[access..access + 2].copy_from_slice(&0x601u16.to_be_bytes());
     p.add_class_bytes("Comparable.class", &comparable).unwrap();
-    refused(&p, r#"m("x")"#, &[("Calls.java", "m(String x)"), ("Calls.java", "m(Object x)")]);
+    selected(&p, r#"m("x")"#, "Calls.java", "m(String x)");
     p.insert("Calls.java", r#"class C { public void m(String x) {} } class Calls { void run(C c) { c.m("x"); } }"#);
     selected(&p, r#"m("x")"#, "Calls.java", "m(String x)");
+    // Trailing Signature garbage invalidates the new ordinary-edge certificate;
+    // it cannot silently remove Object from the competing overload inventory.
+    p.insert("Calls.java", source);
+    p.add_class_bytes(
+        "String.class",
+        &literal_string_binary(
+            0x31,
+            Some("Ljava/lang/Object;Ljava/lang/Comparable<Ljava/lang/String;>;junk"),
+            &["java/lang/Comparable"],
+        ),
+    )
+    .unwrap();
+    refused(&p, r#"m("x")"#, &[("Calls.java", "m(String x)"), ("Calls.java", "m(Object x)")]);
 }
 
 #[test]

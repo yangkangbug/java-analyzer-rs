@@ -92,6 +92,22 @@ def baseline_expectations(expected):
     return result
 
 
+
+def current_expectations(expected, queries, declarations):
+    # Historical string/null fixtures stay frozen. Only the newly certified
+    # ordinary String parent edge changes these two current selections.
+    result = o.current_null_expectations('string-v1', expected, queries, declarations)
+    result = dict(result)
+    prior = {
+        'string_object': ('CallNotResolved', 'object@literal.Target', 'object@literal.Target'),
+        'string_choose': ('OverloadNotResolved', 'choose_string@literal.Target',
+                          'choose_string@literal.Target,choose_object@literal.Target'),
+    }
+    for query, before in prior.items():
+        assert result[query] == before, query + ': previous current-stage result changed'
+        result[query] = ('Resolved', before[1], before[1])
+    return result
+
 def run_suite(jdk, native, work, baseline=False):
     env = {'PATH': '/nonexistent'}
     helper, empty = work / 'helper', work / 'empty'
@@ -106,7 +122,7 @@ def run_suite(jdk, native, work, baseline=False):
     actual = o.records(o.run([native, ROOT / 'source', request, platform], env).stdout)
     for q in sorted(expected):
         print(q + '\tjavac=' + '|'.join(javac[q]) + '\tnative=' + '|'.join(actual[q]), flush=True)
-    compare(baseline_expectations(expected) if baseline else o.current_null_expectations('string-v1', expected, qs, ds), qs, ds, javac, actual, platform)
+    compare(baseline_expectations(expected) if baseline else current_expectations(expected, qs, ds), qs, ds, javac, actual, platform)
     for case, status, candidates, diagnostic, ids, contents in invalid_fixtures():
         request.write_text(contents)
         rejected = o.run([jdk / 'bin/java', '-cp', helper, 'BindingOracle', ROOT / 'invalid' / case, request, empty, empty], env, False)

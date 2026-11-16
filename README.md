@@ -613,3 +613,15 @@ same-package competition, private/protected candidates, inherited same-name
 methods, malformed or unsupported signatures, and exhausted proof budgets still
 fail closed. Generic reference conversions and type-qualified static calls are
 unchanged.
+
+### Plain binary parents alongside generic metadata
+
+Strict reference conversions can prove independent, non-parameterized binary
+parent edges even when another parent edge has generic arguments. The proof
+consumes a bounded, conservative class-Signature grammar and matches every
+erased parent name and its order against the class-file inheritance table.
+Parameterized paths remain unknown; no class type-variable substitution, raw
+generic receiver support, generic arity/bounds validation or inference is added.
+Unsupported syntax, mismatched metadata and exhausted budgets fail closed.
+The certificate is local to conversions (including specificity and catch
+qualification); shared cast/override edge metadata is unchanged.

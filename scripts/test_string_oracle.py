@@ -86,6 +86,55 @@ class StringOracleTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             compare(n=changed)
 
+    def test_current_parent_projection_preserves_history_and_other_rows(self):
+        ds, qs, _, expected = c.fixture()
+        original = copy.deepcopy(expected)
+        baseline = c.baseline_expectations(expected)
+        prior = c.o.current_null_expectations('string-v1', expected, qs, ds)
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(expected, original)
+        self.assertEqual(c.baseline_expectations(expected), baseline)
+        self.assertTrue(all(row[0] != 'Resolved' for row in baseline.values()))
+        self.assertEqual({q for q in prior if prior[q] != current[q]},
+                         {'string_object', 'string_choose'})
+        for q in ('string_object', 'string_choose'):
+            self.assertEqual(current[q], ('Resolved', prior[q][1], prior[q][1]))
+        self.assertEqual(current['string_null'], prior['string_null'])
+        for q in ('string_object', 'string_choose'):
+            changed = dict(prior)
+            changed[q] = ('Resolved', prior[q][1], prior[q][2])
+            with patch.object(c.o, 'current_null_expectations', return_value=changed):
+                with self.assertRaises(AssertionError):
+                    c.current_expectations(expected, qs, ds)
+
+    def test_current_parent_projection_exact_evidence_controls(self):
+        ds, qs, _, historical = c.fixture()
+        expected = c.current_expectations(historical, qs, ds)
+        compiler, native = {}, {}
+        for q, (status, selected, candidates) in expected.items():
+            marker, owner = selected.split('@')
+            path, _, _, name = ds[marker]
+            start, end = c.compiler_range(ds, marker)
+            compiler[q] = [path, 'METHOD', owner, name, str(start), str(end)]
+            targets = [c.o.reference_target(ds, item, Path('/unused'))
+                       for item in candidates.split(',')]
+            native[q] = [status, str(len(targets)), *targets]
+        def compare(n):
+            c.compare(expected, qs, ds, compiler, n, Path('/unused'))
+        compare(native)
+        for q in ('string_object', 'string_choose'):
+            mutations = []
+            bad = copy.deepcopy(native); bad[q][0] = 'CallNotResolved'; mutations.append(bad)
+            bad = copy.deepcopy(native); bad[q][1] = '2'; mutations.append(bad)
+            bad = copy.deepcopy(native)
+            bad[q][2] = c.o.reference_target(ds, 'choose_object@literal.Target', Path('/unused'))
+            mutations.append(bad)
+            bad = copy.deepcopy(native); bad[q][2] = bad[q][2].replace('literal.Target', 'wrong.Owner')
+            mutations.append(bad)
+            for bad in mutations:
+                with self.subTest(query=q, mutated=bad[q]), self.assertRaises(AssertionError):
+                    compare(bad)
+
     def test_platform_requires_digest_gate(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(c.o, 'pinned_object', side_effect=AssertionError('checksum differs')) as gate:

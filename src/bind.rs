@@ -4119,6 +4119,57 @@ fn ordinary_string_literal(text: &str) -> bool {
     true
 }
 
+// Complete conservative subset of JVMS class signatures: no class formals,
+// variables, wildcards, arrays or nested owners. Parameterized edges are parsed
+// for framing/identity only, never promoted to plain inheritance.
+fn conversion_signature_edges(text: &str) -> Option<Vec<(String, bool)>> {
+    fn class_type(bytes: &[u8], at: &mut usize, depth: usize) -> Option<(String, bool)> {
+        if depth > REFERENCE_PROOF_DEPTH || bytes.get(*at) != Some(&b'L') {
+            return None;
+        }
+        *at += 1;
+        let start = *at;
+        let mut segment = false;
+        while let Some(&ch) = bytes.get(*at) {
+            if ch.is_ascii_alphanumeric() || ch == b'_' {
+                segment = true;
+            } else if ch == b'/' && segment {
+                segment = false;
+            } else {
+                break;
+            }
+            *at += 1;
+        }
+        if !segment {
+            return None;
+        }
+        let name = std::str::from_utf8(&bytes[start..*at]).ok()?.to_owned();
+        let plain = bytes.get(*at) != Some(&b'<');
+        if !plain {
+            *at += 1;
+            let first = *at;
+            while bytes.get(*at) != Some(&b'>') {
+                class_type(bytes, at, depth + 1)?;
+            }
+            if *at == first {
+                return None;
+            }
+            *at += 1;
+        }
+        if bytes.get(*at) != Some(&b';') {
+            return None;
+        }
+        *at += 1;
+        Some((name, plain))
+    }
+    let mut at = 0;
+    let mut edges = Vec::new();
+    while at < text.len() {
+        edges.push(class_type(text.as_bytes(), &mut at, 0)?);
+    }
+    (!edges.is_empty()).then_some(edges)
+}
+
 const REFERENCE_PROOF_DEPTH: usize = 32;
 const REFERENCE_PROOF_WORK: usize = 4096;
 
@@ -4978,6 +5029,31 @@ impl<'a> ReferenceCallProof<'a> {
         }
         Some(())
     }
+    // Local conversion certificate only: shared cast/override edge metadata is
+    // unchanged. Unsupported signature grammar and parameterized paths stay unknown.
+    fn plain_binary_parent_edges(&mut self, class: &ClassRec) -> Option<Vec<bool>> {
+        if !class.binary || class.reference_generic || class.nesting.len() != 1 {
+            return None;
+        }
+        let sig = class.binary_signature.as_ref()?;
+        let text = sig.signature.as_ref()?;
+        self.charge(text.len().saturating_add(1))?;
+        let parsed = conversion_signature_edges(text)?;
+        let names: Vec<_> = sig.binary_super_class.iter().chain(&sig.binary_interfaces).collect();
+        if names.len() != parsed.len() {
+            return None;
+        }
+        let mut plain = Vec::new();
+        for ((name, unparameterized), expected) in parsed.iter().zip(names) {
+            self.charge(name.len().saturating_add(expected.len()).max(1))?;
+            if name != expected {
+                return None;
+            }
+            plain.push(*unparameterized);
+        }
+        Some(plain)
+    }
+
     fn converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
         self.graph(actual)?;
         self.graph(formal)?;
@@ -4997,8 +5073,13 @@ impl<'a> ReferenceCallProof<'a> {
             if same_class(class, formal) {
                 return Some(true);
             }
-            for (parts, plain) in class.reference_edges.as_ref()? {
-                if !plain {
+            let certified = if class.binary && class.binary_signature.as_ref()?.signature.is_some() {
+                self.plain_binary_parent_edges(class)
+            } else {
+                None
+            };
+            for (index, (parts, plain)) in class.reference_edges.as_ref()?.iter().enumerate() {
+                if !plain && !certified.as_ref().and_then(|edges| edges.get(index)).copied().unwrap_or(false) {
                     unknown = true;
                     continue;
                 }
