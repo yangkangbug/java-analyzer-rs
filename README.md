@@ -51,9 +51,10 @@ selection or early-construction support.
 value references to supported own declarations, preserving lexical shadowing and
 keeping field type inference and inherited imports outside this slice.
 
-[Anonymous-method locals](docs/ANONYMOUS_LOCALS.md) have private lexical ownership
-and can navigate to their own declarations without borrowing outer captures or
-exporting anonymous classes as named types.
+[Anonymous-method declarations](docs/ANONYMOUS_LOCALS.md) have private lexical
+ownership for their locals and own fields, without borrowing outer captures or
+exporting anonymous classes as named types. Anonymous field targets document an
+empty canonical-owner display value.
 
 ## Build and try it
 

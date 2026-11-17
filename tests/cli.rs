@@ -791,3 +791,20 @@ fn traditional_switch_structure_has_no_unsupported_parser_report() {
     assert_eq!(result["files_with_reports"], 0);
     assert_eq!(result["report_count"], 0);
 }
+
+#[test]
+fn anonymous_field_empty_owner_keeps_exact_source_identity() {
+    let f = Fixture::new();
+    f.manifest();
+    let text = "class A{Object f(){return new X(){int value;void run(){use(value);}};}}";
+    let path = f.write("src/A.java", text);
+    let out = f.declaration(path.to_str().unwrap(), text.rfind("value);").unwrap());
+    let target = &out["result"]["queries"][0]["targets"][0];
+    assert_eq!(target["owner"], "");
+    assert_eq!(target["kind"], "Field");
+    assert_eq!(target["origin"], "source");
+    assert_eq!(target["name"], "value");
+    assert_eq!(target["path"], path.canonicalize().unwrap().to_str().unwrap());
+    assert_eq!(target["range"]["start_byte"], text.find("value;").unwrap());
+    assert_eq!(target["range"]["end_byte"], text.find("value;").unwrap() + 5);
+}

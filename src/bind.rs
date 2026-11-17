@@ -99,6 +99,9 @@ pub struct Target {
     pub kind: TargetKind,
     pub name: String,
     /// Dotted package plus nesting, such as `demo.Outer.Inner`.
+    /// Empty for locals/parameters/resources and source fields of an anonymous
+    /// owner. Empty does not mean a top-level field or a persistent identity;
+    /// source declaration identity includes path and exact name range.
     pub owner: String,
     pub start_byte: u32,
     pub end_byte: u32,
@@ -401,6 +404,7 @@ struct LexicalOwner {
     end: u32,
     anonymous: bool,
     methods: Vec<(u32, u32)>,
+    fields: Vec<Member>,
 }
 
 #[derive(Clone, Debug)]
@@ -659,7 +663,14 @@ impl Index {
                         byte,
                         &token_name(hit.node),
                     )
-                    .unwrap_or_else(|| ResolveResult::none(ResolveStatus::Unresolved))
+                    .unwrap_or_else(|| anonymous_field(file, owner_id, &token_name(hit.node)))
+                } else if hit.node.kind() == SyntaxKind::FieldExpr && !hit.call {
+                    match field_chain(hit.node, hit.start).as_deref() {
+                        Some([base, field]) if base.this && !field.this && field.start <= byte && byte < field.end => {
+                            anonymous_field(file, owner_id, &field.name)
+                        }
+                        _ => ResolveResult::none(ResolveStatus::Unresolved),
+                    }
                 } else {
                     ResolveResult::none(ResolveStatus::Unresolved)
                 };
@@ -2574,6 +2585,30 @@ fn token_name(node: &GreenNode) -> String {
         .unwrap_or_default()
 }
 
+// Display owner is deliberately not used to recover an anonymous declaration.
+fn anonymous_field(file: &FileRec, owner: usize, name: &str) -> ResolveResult {
+    let targets: Vec<_> = file.lexical_owners[owner]
+        .fields
+        .iter()
+        .filter(|field| field.name == name)
+        .map(|field| Target {
+            binary: None,
+            path: file.path.clone(),
+            kind: TargetKind::Field,
+            name: field.name.clone(),
+            owner: String::new(),
+            start_byte: field.start,
+            end_byte: field.end,
+        })
+        .collect();
+    let status = match targets.len() {
+        0 => ResolveStatus::Unresolved,
+        1 => ResolveStatus::Resolved,
+        _ => ResolveStatus::Ambiguous,
+    };
+    ResolveResult::many(status, targets)
+}
+
 fn declaration_at(file: &FileRec, byte: u32) -> Option<Target> {
     if let Some(local) =
         file.named_locals().iter().find(|local| !local.guard_only && local.start <= byte && byte < local.end)
@@ -2734,11 +2769,16 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     }
     if ctx.lexical_owner.is_some_and(|id| ctx.file.lexical_owners[id].anonymous) {
         match node.kind() {
+            SyntaxKind::Field => {
+                let fields = source_members(node, start, TargetKind::Field, false);
+                ctx.file.lexical_owners[ctx.lexical_owner.unwrap()].fields.extend(fields);
+                ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
+                return;
+            }
             SyntaxKind::Class
             | SyntaxKind::Interface
             | SyntaxKind::Enum
             | SyntaxKind::Record
-            | SyntaxKind::Field
             | SyntaxKind::Initializer
             | SyntaxKind::Constructor
             | SyntaxKind::LambdaExpr => {
@@ -2847,6 +2887,7 @@ fn index_anonymous_body(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         end: start + node.utf8_len(),
         anonymous: true,
         methods: Vec::new(),
+        fields: Vec::new(),
     });
     if crate::green::collect_errors(node).is_empty() {
         index_node(node, start, ctx);
@@ -2940,6 +2981,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         end: start + node.utf8_len(),
         anonymous: false,
         methods: Vec::new(),
+        fields: Vec::new(),
     });
     ctx.class_stack.push(index);
     if node.kind() == SyntaxKind::Record
@@ -3021,25 +3063,37 @@ fn index_components(params: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, clas
 }
 
 fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_index: usize, kind: TargetKind) {
+    for member in source_members(node, start, kind, ctx.file.classes[class_index].is_interface) {
+        if kind == TargetKind::Field {
+            ctx.file.classes[class_index].source_data_mut().fields.push(member);
+        } else if node.kind() == SyntaxKind::Constructor {
+            ctx.file.classes[class_index].source_data_mut().constructors.push(member);
+        } else {
+            ctx.file.classes[class_index].source_data_mut().methods.push(member);
+        }
+    }
+    index_callable_contents(node, start, ctx);
+}
+
+// Shared source declaration extraction; lexical ownership is assigned by the caller.
+fn source_members(node: &GreenNode, start: u32, kind: TargetKind, is_interface: bool) -> Vec<Member> {
     let declarations = if kind == TargetKind::Field {
         variable_declarators(node, start)
     } else {
         direct_ident(node, start).map(|(name, at, end)| (name, at, end, read_type(node, start))).into_iter().collect()
     };
-    for (name, name_start, name_end, declared) in declarations {
-        let member = Member {
+    declarations
+        .into_iter()
+        .map(|(name, name_start, name_end, declared)| Member {
             source_enum_constant: false,
-            source_interface_declared_only: ctx.file.classes[class_index].is_interface
-                && interface_declared_only(node, start),
+            source_interface_declared_only: is_interface && interface_declared_only(node, start),
             name,
             kind,
             start: name_start,
             end: name_end,
             declared,
             access: match read_access(node, start) {
-                Access::Package if kind == TargetKind::Field && ctx.file.classes[class_index].is_interface => {
-                    Access::Public
-                }
+                Access::Package if kind == TargetKind::Field && is_interface => Access::Public,
                 access => access,
             },
             shape: if kind == TargetKind::Method {
@@ -3052,16 +3106,8 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
                 .then(|| source_field(node, start, name_start))
                 .flatten()
                 .map(Box::new),
-        };
-        if kind == TargetKind::Field {
-            ctx.file.classes[class_index].source_data_mut().fields.push(member);
-        } else if node.kind() == SyntaxKind::Constructor {
-            ctx.file.classes[class_index].source_data_mut().constructors.push(member);
-        } else {
-            ctx.file.classes[class_index].source_data_mut().methods.push(member);
-        }
-    }
-    index_callable_contents(node, start, ctx);
+        })
+        .collect()
 }
 
 // Shared lexical extraction for named members and admitted anonymous methods.
@@ -8752,6 +8798,10 @@ mod lexical_owner_inventory_tests {
             assert!(file.lexical_owners[local.owner.unwrap()].anonymous);
             assert!(declared_of(&file, &local.target()).is_none());
         }
+        let owner = file.lexical_owners.iter().position(|owner| owner.anonymous).unwrap();
+        let field = anonymous_field(&file, owner, "field");
+        assert_eq!(field.status, ResolveStatus::Resolved);
+        assert!(declared_of(&file, &field.targets[0]).is_none());
         assert!(!file.classes[0].fields.iter().any(|f| f.name == "field"));
         assert!(!file.classes[0].methods.iter().any(|m| m.name == "run"));
     }

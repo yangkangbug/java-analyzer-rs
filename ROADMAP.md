@@ -15,9 +15,10 @@ is a design reference, not a claim that its PSI or type system has been ported.
 ## Anonymous lexical ownership
 
 Private source owners separate anonymous-method local declarations from named
-class inventories. Shared lexical rules support own parameters, locals, catches
-and resources; outer captures, fields, anonymous calls and general type semantics
-remain deferred. Existing named-query inventories and proof budgets are preserved.
+class inventories. Shared lexical rules support own parameters, locals, catches,
+resources and own-field declaration navigation. Anonymous fields have no canonical
+owner display name; outer captures, inherited members, anonymous calls and general
+type semantics remain deferred. Existing named-query inventories and proof budgets are preserved.
 See [anonymous local navigation and refusal boundaries](docs/ANONYMOUS_LOCALS.md).
 
 ## Bounded binary invocation composition
@@ -132,12 +133,12 @@ omits switch expressions, arrow rules, patterns, switch semantic validation, mod
 support and some parameter/type-annotation syntax. See [switch boundaries](docs/TRADITIONAL_SWITCH.md).
 Local type declarations have an opaque containment boundary; their bindings
 remain unsupported rather than being indexed as ordinary members.
-Anonymous class bodies have the same conservative containment policy: their
-declarations do not enter the enclosing named class, and navigation inside the
-body is refused rather than guessed. Construction types and arguments remain
-outside that boundary. This does not implement anonymous-class ownership,
-inheritance or capture semantics.
-This intentionally retracts previously successful captures inside those bodies,
+Anonymous class declarations do not enter the enclosing named class. Private
+lexical owners now admit their own method parameters, locals and own fields under
+the [bounded declaration-navigation contract](docs/ANONYMOUS_LOCALS.md); inherited
+members and outer captures remain unsupported. Construction types and
+arguments retain their creating context outside the anonymous body.
+The earlier containment correction intentionally retracted captures inside those bodies,
 including two fixed Gson probes (5477 and 5834 in GsonTest.java). Their complete
 before/after records are in
 [anonymous-body contractions](examples/second_project/anonymous-body-contractions.json);

@@ -8,16 +8,32 @@ fn query(s: &str, marker: &str) -> java_engine::ResolveResult {
     assert_eq!(result, p.prepare().resolve_at("C.java", at));
     result
 }
+fn own_field(s: &str, marker: &str, declaration: usize) -> java_engine::Target {
+    let result = query(s, marker);
+    assert_eq!(result.status, ResolveStatus::Resolved);
+    assert_eq!(result.targets.len(), 1);
+    let target = result.targets[0].clone();
+    assert_eq!(target.kind, TargetKind::Field);
+    assert_eq!(target.owner, "");
+    assert_eq!(target.path, "C.java");
+    assert_eq!(target.name, "value");
+    assert_eq!((target.start_byte, target.end_byte), (declaration as u32, declaration as u32 + 5));
+    target
+}
 #[test]
 fn anonymous_field_shadowing_is_not_bound_to_outer_local_or_exported() {
     let s = "class C{Object value; Object f(){Object value=null;return new Object(){Object value;Object g(){return value/*inner*/;}};} Object h(){return value/*outer*/;}}";
     assert!(ParsedFile::parse(s).errors().is_empty());
-    assert_eq!(query(s, "value/*inner*/").status, ResolveStatus::Unresolved);
+    let inner = own_field(s, "value/*inner*/", s.find("value;Object g").unwrap());
     let r = query(s, "value/*outer*/");
     assert_eq!(r.status, ResolveStatus::Resolved);
     assert_eq!(r.targets.len(), 1);
     assert_eq!(r.targets[0].kind, TargetKind::Field);
     assert_eq!(r.targets[0].start_byte, s.find("value;").unwrap() as u32);
+    assert_eq!(r.targets[0].owner, "C");
+    assert_ne!(inner, r.targets[0]);
+    let capture = s.replacen("Object value;Object g", "Object g", 1);
+    assert_eq!(query(&capture, "value/*inner*/").status, ResolveStatus::Unresolved);
 }
 #[test]
 fn anonymous_methods_and_named_members_do_not_become_enclosing_members() {
@@ -34,8 +50,15 @@ fn constructor_arguments_remain_outside_the_body_boundary() {
     let s = "class X{X(Object a,Object b){}} class C{Object f(Object value){return new X(value/*arg*/,new Object(){Object value;Object g(){return value/*nested*/;}}){Object value;Object g(){return value/*body*/;}};}}";
     assert!(ParsedFile::parse(s).errors().is_empty());
     assert_eq!(query(s, "value/*arg*/").targets[0].kind, TargetKind::Parameter);
-    assert_eq!(query(s, "value/*nested*/").status, ResolveStatus::Unresolved);
-    assert_eq!(query(s, "value/*body*/").status, ResolveStatus::Unresolved);
+    let nested = own_field(s, "value/*nested*/", s.find("value;Object g").unwrap());
+    let body = own_field(s, "value/*body*/", s.rfind("value;Object g").unwrap());
+    assert_ne!(nested, body);
+    let capture = s.replace("Object value;Object g", "Object g");
+    for marker in ["value/*nested*/", "value/*body*/"] {
+        let refused = query(&capture, marker);
+        assert_eq!(refused.status, ResolveStatus::Unresolved);
+        assert!(refused.targets.is_empty());
+    }
     assert_eq!(query(s, "X(value").targets[0].kind, TargetKind::Class);
 }
 #[test]

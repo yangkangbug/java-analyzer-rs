@@ -33,7 +33,7 @@ fn own_parameters_locals_and_declarations_shadow_without_capturing() {
     target(&p, "value){", "value){");
     target(&p, "local=value", "local=value");
     no(&p, "outer);");
-    no(&p, "field);");
+    target(&p, "field);", "field;");
     no(&p, "use(local)");
 }
 #[test]
@@ -58,7 +58,7 @@ fn initializer_lambda_local_class_enum_and_fields_remain_opaque() {
     no(&p, "lam);");
     no(&p, "own);};");
 
-    no(&p, "field);");
+    target(&p, "field);", "field=1");
     no(&p, "en);");
 }
 #[test]

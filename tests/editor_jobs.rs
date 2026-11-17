@@ -378,3 +378,19 @@ fn attachment_missing_invalid_utf8_and_oversized_files_never_open() {
     fs::create_dir(f.0.join("attached/lib/Lib.java")).unwrap();
     assert_eq!(f.definition(&job, true)["result"]["refusal"], "binary_source_unavailable");
 }
+
+#[test]
+fn anonymous_field_definition_uses_source_range_not_display_owner() {
+    let f = Fixture::new();
+    let text = "class A{Object f(){return new X(){int value;void run(){use(this.value);}};}}";
+    let job = f.job(text, 0, text.rfind("value);").unwrap() as u32);
+    let r = f.definition(&job, true)["result"].clone();
+    assert_eq!(r["status"], "Resolved");
+    assert!(r["source_association"].is_null());
+    assert_eq!(r["location"]["path"], f.0.join("src/A.java").canonicalize().unwrap().to_str().unwrap());
+    let start = text.find("value;").unwrap();
+    assert_eq!(
+        r["location"]["range"],
+        json!({"start":{"line":0,"character":start},"end":{"line":0,"character":start+5}})
+    );
+}
