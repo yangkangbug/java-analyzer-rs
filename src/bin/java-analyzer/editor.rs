@@ -89,6 +89,15 @@ pub(super) struct DefinitionResult {
     refusal: Option<String>,
     #[serde(deserialize_with = "required_nullable")]
     location: Option<Location>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    source_association: Option<SourceAssociation>,
+}
+
+/// Explicit display association, not evidence of source/binary build equivalence.
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum SourceAssociation {
+    ExplicitUnverified,
 }
 
 fn required_nullable<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
@@ -178,20 +187,27 @@ impl DefinitionResult {
                 && (location.range.start.line, location.range.start.character)
                     < (location.range.end.line, location.range.end.character)
         } else {
-            self.refusal.as_deref().is_some_and(|reason| {
-                [
-                    "eof",
-                    "binary_source_unavailable",
-                    "package_source_unavailable",
-                    "not_unique_source_target",
-                    "inexact_source_range",
-                ]
-                .contains(&reason)
-            })
+            self.source_association.is_none()
+                && self.refusal.as_deref().is_some_and(|reason| {
+                    [
+                        "eof",
+                        "binary_source_unavailable",
+                        "package_source_unavailable",
+                        "not_unique_source_target",
+                        "inexact_source_range",
+                    ]
+                    .contains(&reason)
+                })
         }
     }
     fn refused(generation: u64, status: ResolveStatus, reason: &str) -> Self {
-        Self { generation, status: status_name(status).to_owned(), refusal: Some(reason.to_owned()), location: None }
+        Self {
+            generation,
+            status: status_name(status).to_owned(),
+            refusal: Some(reason.to_owned()),
+            location: None,
+            source_association: None,
+        }
     }
 }
 fn unique_sources(workspace: &WorkspaceSnapshot) -> Result<BTreeMap<&str, Source<'_>>, Error> {
@@ -312,6 +328,7 @@ fn definition(job: DefinitionJob) -> Result<(String, Value), Error> {
                         generation: job.generation,
                         status: status_name(resolved.status).to_owned(),
                         refusal: None,
+                        source_association: None,
                         location: Some(Location {
                             path: target.path.clone(),
                             range: Range { start: start.into(), end: end.into() },
@@ -322,7 +339,25 @@ fn definition(job: DefinitionJob) -> Result<(String, Value), Error> {
             } else {
                 // Preserve the existing binary provenance check, without fabricating a source location.
                 super::target_json(&workspace, &sources, target, resolved.status, false)?;
-                DefinitionResult::refused(job.generation, resolved.status, "binary_source_unavailable")
+                match super::source_attachments::locate(
+                    &job.frozen.manifest.source_attachments,
+                    &job.frozen.manifest,
+                    Path::new(&job.frozen.base),
+                    &workspace,
+                    target,
+                ) {
+                    Some((path, start, end)) => DefinitionResult {
+                        generation: job.generation,
+                        status: status_name(resolved.status).to_owned(),
+                        refusal: None,
+                        source_association: Some(SourceAssociation::ExplicitUnverified),
+                        location: Some(Location {
+                            path: path.to_str().expect("checked attachment UTF-8 path").to_owned(),
+                            range: Range { start: start.into(), end: end.into() },
+                        }),
+                    },
+                    None => DefinitionResult::refused(job.generation, resolved.status, "binary_source_unavailable"),
+                }
             }
         }
     };
@@ -345,4 +380,17 @@ pub(super) fn run(args: &[String]) -> Result<Value, Error> {
     Ok(
         json!({"schema_version":1,"command":command,"snapshot":{"id":format!("{}-{now}",std::process::id()),"identity":"invocation_local","manifest":manifest},"capabilities":capabilities(),"result":result}),
     )
+}
+
+#[cfg(test)]
+mod attachment_result_tests {
+    use super::*;
+    #[test]
+    fn association_is_closed_and_only_valid_with_a_location() {
+        let refused = json!({"generation":1,"status":"Resolved","refusal":"binary_source_unavailable","location":null,"source_association":"explicit_unverified"});
+        assert!(!serde_json::from_value::<DefinitionResult>(refused.clone()).unwrap().valid());
+        let mut unknown = refused;
+        unknown["source_association"] = json!("version_verified");
+        assert!(serde_json::from_value::<DefinitionResult>(unknown).is_err());
+    }
 }

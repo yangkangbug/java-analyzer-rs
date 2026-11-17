@@ -6,6 +6,7 @@ mod editor;
 mod execution;
 mod lsp;
 mod overlays;
+mod source_attachments;
 
 use config::{Id, Manifest, Position, Query, Requests};
 use java_engine::{

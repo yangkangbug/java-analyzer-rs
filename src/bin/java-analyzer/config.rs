@@ -39,6 +39,8 @@ impl From<&CompilationId> for Id {
 pub struct Manifest {
     pub schema_version: u32,
     pub compilations: Vec<Compilation>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_attachments: Vec<super::source_attachments::Attachment>,
     #[serde(default)]
     pub limits: WorkspaceLimits,
 }
@@ -194,6 +196,7 @@ pub fn local_path(base: &Path, path: &str) -> Result<PathBuf, Error> {
 impl Manifest {
     pub fn core(&self, base: &Path) -> Result<WorkspaceConfig, Error> {
         super::version(self.schema_version)?;
+        super::source_attachments::validate(&self.source_attachments, self, base)?;
         if self.compilations.is_empty() {
             return Err(Error::new("invalid_configuration", "compilations must not be empty"));
         }

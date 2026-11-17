@@ -81,7 +81,8 @@ fn path(base: &Path, value: &str) -> Result<String, Error> {
 }
 fn parse(args: &[String], base: &Path) -> Result<Manifest, Error> {
     check_argument_bytes(args)?;
-    let mut manifest = Manifest { schema_version: 1, compilations: vec![], limits: Default::default() };
+    let mut manifest =
+        Manifest { schema_version: 1, compilations: vec![], source_attachments: vec![], limits: Default::default() };
     let mut current: Option<Group> = None;
     let mut iter = args.iter();
     while let Some(flag) = iter.next() {

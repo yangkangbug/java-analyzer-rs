@@ -425,6 +425,9 @@ impl Server {
                     return self.result(&request.id, Value::Null);
                 }
                 if result["status"] == "Resolved" && result["location"].is_object() {
+                    if result["source_association"] == "explicit_unverified" {
+                        self.log("Opening explicitly associated source; binary/source build correspondence is unverified. Attachment is display-only for this service, not an enforced read-only editor document.")?;
+                    }
                     let location = &result["location"];
                     let path = location["path"].as_str().ok_or("native location omitted source path")?;
                     let uri = self.workspace.as_ref().expect("ready workspace").target_uri(path)?;

@@ -265,3 +265,116 @@ fn nested_private_fields_and_frozen_original_base_are_strict() {
     job["frozen"]["base"] = json!(std::env::temp_dir().to_str().unwrap());
     assert_eq!(f.definition(&job, false)["error"]["code"], "invalid_configuration");
 }
+
+fn attached_binary_fixture() -> Fixture {
+    let f = Fixture::new();
+    f.write("deps/library.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    let mut manifest: Value = serde_json::from_slice(&fs::read(f.0.join("project.json")).unwrap()).unwrap();
+    manifest["compilations"][0]["classpath"] = json!([{"kind":"jar","path":"deps/library.jar"}]);
+    manifest["source_attachments"] = json!([{
+        "binary_input":"deps/library.jar", "source_root":"attached", "association":"explicit_unverified"
+    }]);
+    f.write("project.json", manifest.to_string());
+    f.write("attached/lib/Lib.java", "package lib; public class Lib {}");
+    f
+}
+
+#[test]
+fn explicit_attachment_opens_only_type_and_reloads_exact_source_bytes() {
+    let f = attached_binary_fixture();
+    let text = "class A extends lib.Lib { void use() { run(); } }";
+    let job = f.job(text, 0, text.find("Lib").unwrap() as u32);
+    let frozen = job["frozen"]["sources"].clone();
+    assert!(!frozen.to_string().contains("attached"));
+    let result = f.definition(&job, true)["result"].clone();
+    assert_eq!(result["status"], "Resolved");
+    assert!(result["refusal"].is_null());
+    assert_eq!(result["source_association"], "explicit_unverified");
+    assert_eq!(result["location"]["path"], f.0.join("attached/lib/Lib.java").canonicalize().unwrap().to_str().unwrap());
+    assert_eq!(result["location"]["range"], json!({"start":{"line":0,"character":26},"end":{"line":0,"character":29}}));
+    // The frozen association, not a newly edited manifest, owns this job.
+    f.write("project.json", "not JSON");
+    f.write("attached/lib/Lib.java", "// 😀\r\npackage lib; /* 😀 */ public class Lib {}");
+    let result = f.definition(&job, true)["result"].clone();
+    assert_eq!(result["location"]["range"]["start"]["line"], 1);
+    assert_eq!(result["location"]["range"]["start"]["character"], 35);
+    let mut method = job.clone();
+    method["query"]["character"] = json!(text.find("run").unwrap());
+    let result = f.definition(&method, true)["result"].clone();
+    assert_eq!(result["status"], "Resolved");
+    assert_eq!(result["refusal"], "binary_source_unavailable");
+    assert!(result.get("source_association").is_none());
+}
+
+#[test]
+fn attachment_parse_identity_and_unsupported_declarations_refuse_without_changing_binding() {
+    let f = attached_binary_fixture();
+    let text = "class A extends lib.Lib {}";
+    let job = f.job(text, 0, text.find("Lib").unwrap() as u32);
+    for source in [
+        "package other; public class Lib {}",
+        "package lib; public class Other {}",
+        "package lib; public class Lib {",
+        "package lib; class Lib {} class Lib {}",
+        "package lib; public interface Lib {}",
+        "package lib; public enum Lib { A }",
+        "package lib; public record Lib() {}",
+        "package lib; public @interface Lib {}",
+    ] {
+        f.write("attached/lib/Lib.java", source);
+        let result = f.definition(&job, true)["result"].clone();
+        assert_eq!(result["status"], "Resolved", "{source}");
+        assert_eq!(result["refusal"], "binary_source_unavailable", "{source}");
+        assert!(result["location"].is_null(), "{source}");
+    }
+}
+
+#[test]
+fn attachment_configuration_requires_explicit_unique_existing_binary_association() {
+    let f = attached_binary_fixture();
+    let manifest: Value = serde_json::from_slice(&fs::read(f.0.join("project.json")).unwrap()).unwrap();
+    for mode in 0..3 {
+        let mut changed = manifest.clone();
+        match mode {
+            0 => changed["source_attachments"].as_array_mut().unwrap().push(manifest["source_attachments"][0].clone()),
+            1 => changed["source_attachments"][0]["association"] = json!("verified"),
+            _ => {
+                f.write("deps/unconfigured.jar", include_bytes!("fixtures/project/deps/library.jar"));
+                changed["source_attachments"][0]["binary_input"] = json!("deps/unconfigured.jar");
+            }
+        }
+        f.write("project.json", changed.to_string());
+        f.run(INSPECT, "--manifest", f.0.join("project.json").to_str().unwrap(), false);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn attachment_symlink_never_becomes_navigation_location() {
+    let f = attached_binary_fixture();
+    let text = "class A extends lib.Lib {}";
+    let job = f.job(text, 0, text.find("Lib").unwrap() as u32);
+    let source = f.0.join("attached/lib/Lib.java");
+    fs::remove_file(&source).unwrap();
+    let other = f.write("outside.java", "package lib; public class Lib {}");
+    std::os::unix::fs::symlink(other, source).unwrap();
+    let result = f.definition(&job, true)["result"].clone();
+    assert_eq!(result["refusal"], "binary_source_unavailable");
+}
+
+#[test]
+fn attachment_missing_invalid_utf8_and_oversized_files_never_open() {
+    let f = attached_binary_fixture();
+    let text = "class A extends lib.Lib {}";
+    let job = f.job(text, 0, text.find("Lib").unwrap() as u32);
+    for bytes in [vec![0xff], vec![b' '; 1024 * 1024 + 1]] {
+        f.write("attached/lib/Lib.java", bytes);
+        let result = f.definition(&job, true)["result"].clone();
+        assert_eq!(result["status"], "Resolved");
+        assert_eq!(result["refusal"], "binary_source_unavailable");
+    }
+    fs::remove_file(f.0.join("attached/lib/Lib.java")).unwrap();
+    assert_eq!(f.definition(&job, true)["result"]["refusal"], "binary_source_unavailable");
+    fs::create_dir(f.0.join("attached/lib/Lib.java")).unwrap();
+    assert_eq!(f.definition(&job, true)["result"]["refusal"], "binary_source_unavailable");
+}
