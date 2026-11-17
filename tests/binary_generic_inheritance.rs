@@ -301,6 +301,15 @@ fn inherited_and_overridden_targets_keep_original_binary_declarations() {
 }
 #[test]
 fn inherited_environment_cannot_erase_cross_compilation_bound_identity() {
+    cross_compilation_bound_identity(false);
+}
+
+#[test]
+fn mixed_wildcard_identity_chain_keeps_cross_compilation_object_bounds() {
+    cross_compilation_bound_identity(true);
+}
+
+fn cross_compilation_bound_identity(wildcard: bool) {
     use java_engine::{
         AnalysisSnapshot, ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig,
         WorkspaceSnapshot,
@@ -345,19 +354,38 @@ fn inherited_environment_cannot_erase_cross_compilation_bound_identity() {
                         Some("java/lang/Object"),
                         &["api/Parent"],
                         0x601,
-                        Some("<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<TT;>;"),
+                        Some(if wildcard {
+                            "<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<TT;TU;>;"
+                        } else {
+                            "<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<TT;>;"
+                        }),
                         &[],
                     ),
                 )
                 .unwrap();
                 fs::write(
                     bin.join("api/Parent.class"),
-                    binary("api/Parent", Some("java/lang/Object"), &[], 0x601, Some(SIG), &[GET]),
+                    binary(
+                        "api/Parent",
+                        Some("java/lang/Object"),
+                        &[],
+                        0x601,
+                        Some(if wildcard {
+                            "<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;"
+                        } else {
+                            SIG
+                        }),
+                        &[GET],
+                    ),
                 )
                 .unwrap();
                 fs::write(
                     src.join("Calls.java"),
-                    "import api.Root; import models.A; class Calls { void run(Root<A> box) { box.get().hit(); } }",
+                    if wildcard {
+                        "import api.Root; import models.A; class Calls { void run(Root<A,?> box) { box.get().hit(); } }"
+                    } else {
+                        "import api.Root; import models.A; class Calls { void run(Root<A> box) { box.get().hit(); } }"
+                    },
                 )
                 .unwrap();
             }
@@ -447,4 +475,147 @@ fn only_the_path_between_overlapping_declarations_requires_identity() {
     let mut p = identity(&[GET], &[GET]);
     add(&mut p, "api/Mid", &["api/Parent"], Some("<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<LA;>;"), &[]);
     check(&p, None); // Constant edge lies between the two overlapping declarations, although actual T is A.
+}
+
+const READY: Method<'_> = ("ready", "()Z", None, 0x401);
+fn wildcard_chain(root_methods: &[Method<'_>], parent_methods: &[Method<'_>]) -> Project {
+    let mut p = identity(root_methods, parent_methods);
+    let text = p
+        .file("Calls.java")
+        .unwrap()
+        .text()
+        .replace("Root<A>", "Root<?>")
+        .replace("root.get().hit()", "root./*Q*/ready()");
+    p.insert("Calls.java", &text);
+    p
+}
+fn wildcard_result(p: &Project) -> java_engine::ResolveResult {
+    let text = p.file("Calls.java").unwrap().text();
+    let at = (text.find("/*Q*/").unwrap() + 5) as u32;
+    let result = p.resolve_at("Calls.java", at);
+    assert_eq!(result, p.prepare().resolve_at("Calls.java", at));
+    result
+}
+fn wildcard_refused(p: &Project) {
+    assert_ne!(wildcard_result(p).status, ResolveStatus::Resolved);
+}
+#[test]
+fn wildcard_identity_chain_proves_independent_inherited_and_overridden_families() {
+    for (own, parent, expected) in [
+        (&[][..], &[READY][..], "api.Parent"),
+        (&[READY][..], &[READY][..], "api.Root"),
+        (&[READY][..], &[][..], "api.Root"),
+    ] {
+        let p = wildcard_chain(own, parent);
+        let r = wildcard_result(&p);
+        assert_eq!(r.status, ResolveStatus::Resolved, "{r:?}");
+        assert_eq!(r.targets.len(), 1);
+        assert_eq!(r.targets[0].owner, expected);
+        assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "()Z");
+    }
+}
+#[test]
+fn wildcard_chain_unknown_formals_and_returns_keep_every_competitor() {
+    for unknown in [
+        ("ready", "(Ljava/lang/Object;)Z", Some("(TT;)Z"), 0x401),
+        ("ready", "(I)Ljava/lang/Object;", Some("(I)TT;"), 0x401),
+        ("ready", "()Ljava/lang/Object;", Some("()TT;"), 0x401),
+    ] {
+        wildcard_refused(&wildcard_chain(&[READY], &[unknown]));
+    }
+    let mut p = wildcard_chain(&[], &[GET]);
+    let text = p.file("Calls.java").unwrap().text().replace("/*Q*/ready()", "get()./*Q*/hit()");
+    p.insert("Calls.java", &text);
+    wildcard_refused(&p);
+}
+#[test]
+fn wildcard_own_family_cannot_skip_parent_arity_bounds_or_missing_evidence() {
+    for signature in [
+        "<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent;",
+        "<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<TT;TT;>;",
+        "<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<LA;>;",
+    ] {
+        let mut p = wildcard_chain(&[READY], &[]);
+        add(&mut p, "api/Mid", &["api/Parent"], Some(signature), &[]);
+        wildcard_refused(&p);
+    }
+    for missing in ["api/Parent.class", "api/Mid.class", "Object.class"] {
+        let mut p = wildcard_chain(&[READY], &[]);
+        p.remove_class(missing);
+        wildcard_refused(&p);
+    }
+    let mut p = wildcard_chain(&[READY], &[]);
+    add(&mut p, "api/Parent", &[], Some("<T:LA;>Ljava/lang/Object;"), &[]);
+    wildcard_refused(&p);
+}
+#[test]
+fn wildcard_parent_mapping_cannot_reorder_duplicate_or_drop_unknown_slots() {
+    for edge in ["TU;TT;", "TT;TT;", "TT;", "LA;TU;"] {
+        let mut p = wildcard_chain(&[READY], &[]);
+        let text = p.file("Calls.java").unwrap().text().replace("Root<?>", "Root<?,?>");
+        p.insert("Calls.java", &text);
+        add(
+            &mut p,
+            "api/Root",
+            &["api/Parent"],
+            Some(&format!("<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<{edge}>;")),
+            &[READY],
+        );
+        add(&mut p, "api/Parent", &[], Some("<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;"), &[]);
+        wildcard_refused(&p);
+    }
+}
+#[test]
+fn wildcard_single_chain_preserves_mixed_known_slots_without_capturing_unknown() {
+    let take = ("take", "(Ljava/lang/Object;)V", Some("(TT;)V"), 0x401);
+    for (params, success) in [("Root<A,?> root, A a", true), ("Root<?,A> root, A a", false)] {
+        let mut p = project(params, "root./*Q*/take(a)");
+        add(
+            &mut p,
+            "api/Root",
+            &["api/Parent"],
+            Some("<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Parent<TT;TU;>;"),
+            &[],
+        );
+        add(&mut p, "api/Parent", &[], Some("<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;"), &[take]);
+        assert_eq!(wildcard_result(&p).status == ResolveStatus::Resolved, success);
+    }
+}
+#[test]
+fn wildcard_chain_branch_cycle_and_budget_failures_have_no_own_method_escape() {
+    let mut p = wildcard_chain(&[READY], &[]);
+    add(&mut p, "api/Other", &[], Some(SIG), &[]);
+    add(
+        &mut p,
+        "api/Root",
+        &["api/Mid", "api/Other"],
+        Some("<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Mid<TT;>;Lapi/Other<TT;>;"),
+        &[READY],
+    );
+    wildcard_refused(&p);
+    let mut p = wildcard_chain(&[READY], &[]);
+    add(&mut p, "api/Parent", &["api/Root"], Some("<T:Ljava/lang/Object;>Ljava/lang/Object;Lapi/Root<TT;>;"), &[]);
+    wildcard_refused(&p);
+    let mut p = wildcard_chain(&[READY], &[]);
+    let text = p
+        .file("Calls.java")
+        .unwrap()
+        .text()
+        .replace("root./*Q*/", &format!("{}root./*Q*/", (0..5000).map(|i| format!("int x{i}=0;")).collect::<String>()));
+    p.insert("Calls.java", &text);
+    wildcard_refused(&p);
+    let mut p = wildcard_chain(&[READY], &[]);
+    for i in 0..40 {
+        let name = if i == 0 { "api/Root".to_string() } else { format!("api/P{i}") };
+        let next = format!("api/P{}", i + 1);
+        add(
+            &mut p,
+            &name,
+            &[&next],
+            Some(&format!("<T:Ljava/lang/Object;>Ljava/lang/Object;L{next}<TT;>;")),
+            if i == 0 { &[READY] } else { &[] },
+        );
+    }
+    add(&mut p, "api/P40", &[], Some(SIG), &[]);
+    wildcard_refused(&p);
 }

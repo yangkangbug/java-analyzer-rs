@@ -387,7 +387,7 @@ fn wildcard_scope_keeps_bounds_rank_arity_and_source_owners_out() {
     assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
 }
 #[test]
-fn wildcard_parent_edges_do_not_gain_substitution_certificates() {
+fn wildcard_identity_parent_edges_certify_independent_methods_only() {
     for own in [false, true] {
         let mut p = project(BOX, &[], "Box<?> b", "b./*Q*/ready()", false);
         p.add_class_bytes(
@@ -401,7 +401,7 @@ fn wildcard_parent_edges_do_not_gain_substitution_certificates() {
             &binary("api/Box", Some("api/Parent"), 0x21, Some("<T:Ljava/lang/Object;>Lapi/Parent<TT;>;"), &methods),
         )
         .unwrap();
-        assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+        assert_eq!(marked_query(&p).status, ResolveStatus::Resolved);
     }
     let mut p = project(BOX, &[("ready", "()Z", None, 0x101)], "Box<?> b", "b./*Q*/ready()", false);
     let text = p.file("Calls.java").unwrap().text().replace("class Calls {", "class Calls extends Box<?> {");

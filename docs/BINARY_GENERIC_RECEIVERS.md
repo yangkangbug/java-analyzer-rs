@@ -64,11 +64,11 @@ For example, the JDK List/SequencedCollection/Collection chain can select
 ArrayList's multiple-parent paths, default methods, bridges or covariant returns.
 No runtime JVM, build import, general inference or public result schema is added.
 
-## Independent own methods on explicit unbounded wildcards
+## Independent methods on explicit unbounded wildcards
 
 A bare `?` receiver argument is retained as unknown, never replaced with Object
 or treated as a concrete capture type. An accessible top-level binary declaration
-must have only its validated Object parent and Object-bounded formals. Every
+must have Object-bounded formals and a validated single parent chain. Every
 same-name method's parameter and return template must materialize without using
 an unknown slot before the existing selector may choose a target. An unknown-
 dependent competitor refuses the whole proof, even when its arity differs.
@@ -81,8 +81,13 @@ For example, `Iterator<?>.hasNext()`, `Map<?,?>.isEmpty()` and
 This is a deliberate analysis limit, not a Java error diagnosis. Bounds other than
 bare `?`, annotations, nested applied arguments and source generic owners remain
 outside this slice. Unknown slots cannot supply scalar actuals or source-formal
-evidence. They cannot follow parent substitutions; source ancestry syntax retains
-its old wildcard-free boundary. Concrete-argument inherited proofs are unchanged.
+evidence. Parent edges may only carry slots by a one-to-one, in-order formal
+identity mapping while any slot is unknown. Raw, reordered, duplicated, dropped,
+constant or branching substitutions remain unproved. Even an own-only method
+family must first certify the complete parent chain. Known slots are checked
+against the declaring compilation's Object identity at each step. Source ancestry
+syntax retains its old wildcard-free boundary. Concrete-only inherited proofs
+are unchanged.
 
 Eight additional native groups cover own class/interface targets, unknown-dependent
 parameters/returns/competitors, mixed slots, declaration bounds/arity/rank, source
@@ -93,6 +98,17 @@ Commons StringUtils `Iterator<?>.hasNext()` sites now match javac owner/descript
 when analyzing the original file and dependencies. The remaining 28 entries in
 that diagnostic set and all 577 entries in the other fixed set remain unchanged;
 these are not coverage percentages or full-project build claims.
+
+A follow-on identity-chain slice proves `Collection<?>.contains(Object)` and
+`List<?>.size()` without assigning a type to `?`. Native regressions cover own and
+inherited families, unknown-dependent competitors, invalid mappings and parents,
+cycles, shared proof budgets and mixed concrete/unknown slots. The separate javac
+check has six exact supported declaration targets and three legal but deliberately
+refused calls; three invalid controls are rejected by javac. The List fixture's
+initially missing SequencedCollection dependency remains recorded as a refusal,
+not reclassified as a valid resolution. Of twelve independently retained public
+source sites, three Gson calls and one Commons call newly resolve; the other eight remain
+unchanged. These are diagnostic observations, not full-project acceptance.
 
 ## Limits
 

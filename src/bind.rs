@@ -5316,15 +5316,6 @@ impl<'a> ReferenceCallProof<'a> {
         {
             return None;
         }
-        // Unknown arguments do not certify any parameterized parent edge.
-        // Limit this slice to the checked Object-only declaration envelope.
-        if arguments.iter().any(Option::is_none)
-            && (declaration.parents.len() != 1
-                || declaration.parents[0].name != "java/lang/Object"
-                || !declaration.parents[0].arguments.is_empty())
-        {
-            return None;
-        }
         self.accessible(owner)?;
         self.graph(owner)?;
         let object = self.unique_named(owner.scope, "java.lang.Object")?;
@@ -5376,10 +5367,6 @@ impl<'a> ReferenceCallProof<'a> {
         root: &ClassInstantiation<'a>,
     ) -> Option<Vec<ClassInstantiation<'a>>> {
         self.charge(root.arguments.len() + owner.binary_signature.as_ref()?.signature.as_ref().map_or(0, String::len))?;
-        // Wildcard capture/substitution across parent edges is not proved here.
-        if root.arguments.iter().any(Option::is_none) {
-            return None;
-        }
         let mut instances = vec![root.clone()];
         let mut seen = BTreeSet::from([ClassIdentity::of(owner)]);
         let mut current = owner;
@@ -5423,13 +5410,29 @@ impl<'a> ReferenceCallProof<'a> {
                     return None;
                 }
                 let declaration = self.class_template(parent)?;
-                let mut arguments = Vec::new();
-                for argument in &template.arguments {
-                    let Some(StrictActual::Reference(value)) = self.template_value(current, env, argument)? else {
+                let arguments = if env.arguments.iter().any(Option::is_none) {
+                    // Carry unknown slots only along a declaration-level identity
+                    // mapping. This is not wildcard capture or materialization.
+                    self.charge(template.arguments.len().max(1))?;
+                    if declaration.parameters.len() != env.arguments.len()
+                        || template.arguments.len() != env.arguments.len()
+                        || !template.arguments.iter().enumerate().all(|(i, argument)| {
+                            matches!(argument, instantiation::TypeTemplate::Parameter(index) if *index == i)
+                        })
+                    {
                         return None;
-                    };
-                    arguments.push(Some(value.class));
-                }
+                    }
+                    env.arguments.clone()
+                } else {
+                    let mut arguments = Vec::new();
+                    for argument in &template.arguments {
+                        let Some(StrictActual::Reference(value)) = self.template_value(current, env, argument)? else {
+                            return None;
+                        };
+                        arguments.push(Some(value.class));
+                    }
+                    arguments
+                };
                 let instance = self.class_instantiation(parent, declaration, arguments)?;
                 next = Some((parent, instance));
             }
@@ -6595,7 +6598,9 @@ impl<'a> ReferenceCallProof<'a> {
                 }
             }
         }
-        let inherited_envs = if inherited {
+        // Unknown receiver slots require a complete parent certificate even
+        // for an own-only method family; raw graph closure is not enough.
+        let inherited_envs = if inherited || env.is_some_and(|env| env.arguments.iter().any(Option::is_none)) {
             match env {
                 Some(env) => Some(self.inherited_instantiations(owner, env)?),
                 None => None,
