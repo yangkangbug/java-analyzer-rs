@@ -1,24 +1,32 @@
 use super::*;
 
-fn binary(origin: &str, package: &str, nesting: &[&str], raw: &str) -> Arc<ClassSignature> {
-    Arc::new(ClassSignature {
-        origin: origin.into(),
-        binary_name: raw.into(),
-        dotted_name: if package.is_empty() { nesting.join(".") } else { format!("{package}.{}", nesting.join(".")) },
-        package: package.into(),
-        nesting: nesting.iter().map(|s| (*s).into()).collect(),
-        super_class: None,
-        interfaces: vec![],
-        binary_super_class: None,
-        binary_interfaces: vec![],
-        signature: None,
-        major: 61,
-        minor: 0,
-        is_interface: false,
-        is_final: false,
-        access: Access::Public,
-        fields: vec![],
-        methods: vec![],
+fn binary(origin: &str, package: &str, nesting: &[&str], raw: &str) -> Arc<ClassFileData> {
+    Arc::new(ClassFileData {
+        class_signature: ClassSignature {
+            origin: origin.into(),
+            binary_name: raw.into(),
+            dotted_name: if package.is_empty() {
+                nesting.join(".")
+            } else {
+                format!("{package}.{}", nesting.join("."))
+            },
+            package: package.into(),
+            nesting: nesting.iter().map(|s| (*s).into()).collect(),
+            super_class: None,
+            interfaces: vec![],
+            binary_super_class: None,
+            binary_interfaces: vec![],
+            signature: None,
+            major: 61,
+            minor: 0,
+            is_interface: false,
+            is_final: false,
+            access: Access::Public,
+            fields: vec![],
+            methods: vec![],
+        },
+        inner_classes: Vec::new(),
+        has_enclosing_method: false,
     })
 }
 

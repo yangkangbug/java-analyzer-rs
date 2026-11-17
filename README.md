@@ -9,6 +9,9 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Direct nested-type evidence](docs/NESTED_TYPES.md) preserves raw `InnerClasses`
+metadata separately from the legacy dollar-name projection and binding proofs.
+
 The [return declaration inventory](docs/DECLARATION_INVENTORY.md) separates
 complete generic/wildcard header syntax from usable invocation types, without
 adding generic inference or discarding unsupported same-name competitors.

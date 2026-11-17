@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::jar::{ArchiveReads, SharedArchiveRead, read_jar_with_usage, read_jmod_with_usage};
-use crate::{ClassSignature, JarOptions, JmodOptions, Project, ResolveResult, parse_class_bytes};
+use crate::{ClassFileData, JarOptions, JmodOptions, Project, ResolveResult, parse_class_data};
 
 /// One entry on the ordered, flat binary classpath. No discovery or downloads occur.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -261,7 +261,7 @@ impl ProjectSnapshot {
                         }
                         let origin = path_string(&path)?;
                         let bytes = read_bounded(&path, &mut budget)?;
-                        let signature = parse_class_bytes(&origin, &bytes)
+                        let signature = parse_class_data(&origin, &bytes)
                             .map_err(|err| error(&origin, ProjectLoadErrorKind::ClassFile, &err.to_string()))?;
                         let expected = path
                             .strip_prefix(&root)
@@ -386,7 +386,7 @@ enum BinaryInput<'a> {
 
 fn register_class(
     project: &mut Project,
-    signature: Arc<ClassSignature>,
+    signature: Arc<ClassFileData>,
     classes: &mut BTreeMap<String, String>,
     origins: &mut Vec<String>,
     shadowed: &mut Vec<ShadowedClass>,

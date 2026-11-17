@@ -106,6 +106,28 @@ fn source_names_resolve_at_the_declaration_not_the_call_site() {
     );
     expect(&p, "Child.java", ResolveStatus::Resolved, &["Child"]);
 }
+// A real member relationship needs matching InnerClasses on both files.
+fn nested_class(name: &str) -> Vec<u8> {
+    fn utf(bytes: &mut Vec<u8>, text: &str) {
+        bytes.push(1);
+        bytes.extend((text.len() as u16).to_be_bytes());
+        bytes.extend(text.as_bytes());
+    }
+    let mut bytes = class(name, None, &[]);
+    let pool_end = 10 + 3 + name.len() + 3 + 3 + "java/lang/Object".len() + 3;
+    let mut extra = vec![];
+    utf(&mut extra, "InnerClasses"); // #5
+    utf(&mut extra, "p/Outer"); // #6
+    extra.extend([7, 0, 6]); // #7
+    utf(&mut extra, "p/Outer$Inner"); // #8
+    extra.extend([7, 0, 8]); // #9
+    utf(&mut extra, "Inner"); // #10
+    bytes[8..10].copy_from_slice(&11u16.to_be_bytes());
+    bytes.splice(pool_end..pool_end, extra);
+    bytes.truncate(bytes.len() - 2); // original zero class attributes
+    bytes.extend([0, 1, 0, 5, 0, 0, 0, 10, 0, 1, 0, 9, 0, 7, 0, 10, 0, 9]);
+    bytes
+}
 #[test]
 fn mixed_declared_types_use_imports_arrays_and_nested_identity() {
     for (source, descriptor) in
@@ -113,8 +135,9 @@ fn mixed_declared_types_use_imports_arrays_and_nested_identity() {
     {
         let mut p = Project::new();
         binary(&mut p, "p/Item", None, &[]);
-        binary(&mut p, "p/Outer", None, &[]);
-        binary(&mut p, "p/Outer$Inner", None, &[]);
+        for name in ["p/Outer", "p/Outer$Inner"] {
+            p.add_class_bytes(format!("{name}.class"), &nested_class(name)).unwrap();
+        }
         binary(&mut p, "Base", None, &[("m", descriptor)]);
         p.insert("Child.java", &format!("import p.Item; import p.Outer; class Child extends Base {{ public void m({source}) {{}} void test() {{ m(null); }} }}"));
         expect(&p, "Child.java", ResolveStatus::Resolved, &["Child"]);
@@ -448,4 +471,17 @@ fn workspace_parameter_identity_uses_declaration_compilation_and_provenance() {
         assert!(result.targets.iter().any(|target| target.owner == "p.Base"));
         assert!(result.targets.iter().any(|target| target.owner == "p.Child"));
     }
+}
+
+#[test]
+fn dollar_spelling_without_member_metadata_cannot_prove_an_override() {
+    let mut p = Project::new();
+    binary(&mut p, "p/Outer", None, &[]);
+    binary(&mut p, "p/Outer$Inner", None, &[]);
+    binary(&mut p, "Base", None, &[("m", "(Lp/Outer$Inner;)V")]);
+    p.insert(
+        "Child.java",
+        "import p.Outer; class Child extends Base {public void m(Outer.Inner i){} void test(){m(null);}}",
+    );
+    expect(&p, "Child.java", ResolveStatus::SignatureNotCompared, &["Base", "Child"]);
 }

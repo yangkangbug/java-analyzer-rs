@@ -5,7 +5,7 @@
 //! Only the JAR manifest and selected classes are decompressed and CRC-checked;
 //! this is not a whole-archive integrity or JAR-signature verifier. Module
 //! descriptors are skipped, and nonempty JAR manifest Class-Path is an error.
-use crate::classfile::{ClassSignature, parse_class_bytes};
+use crate::classfile::{ClassFileData, ClassSignature, parse_class_data};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::File;
 use std::io::{Cursor, Read};
@@ -66,7 +66,7 @@ impl Default for JmodOptions {
 /// Other sections are validated and bounded but not decompressed or executed.
 /// Errors use the same categories as [`read_jar`]; the call is all-or-nothing.
 pub fn read_jmod(path: &Path, options: &JmodOptions) -> Result<Vec<ClassSignature>, JarError> {
-    Ok(read_jmod_with_usage(path, options)?.classes)
+    Ok(read_jmod_with_usage(path, options)?.classes.into_iter().map(|data| data.class_signature).collect())
 }
 pub(crate) fn read_jmod_with_usage(path: &Path, options: &JmodOptions) -> Result<JarRead, JarError> {
     read_archive_with_usage(path, &jmod_limits(options), ArchiveFormat::Jmod)
@@ -120,10 +120,10 @@ fn error(origin: &str, kind: JarErrorKind, detail: impl ToString) -> JarError {
 /// at most `target_release`, including version-only classes. Unselected classes
 /// are not parsed. Entry names must match each selected class's internal name.
 pub fn read_jar(path: &Path, options: &JarOptions) -> Result<Vec<ClassSignature>, JarError> {
-    Ok(read_jar_with_usage(path, options)?.classes)
+    Ok(read_jar_with_usage(path, options)?.classes.into_iter().map(|data| data.class_signature).collect())
 }
 pub(crate) struct JarRead {
-    pub classes: Vec<ClassSignature>,
+    pub classes: Vec<ClassFileData>,
     pub entries: usize,
     pub archive_bytes: u64,
     pub uncompressed_bytes: u64,
@@ -132,7 +132,7 @@ pub(crate) struct JarRead {
 // Parsed facts are immutable; project ownership and binder contexts are separate.
 #[derive(Clone, Debug)]
 pub(crate) struct SharedArchiveRead {
-    pub classes: Vec<Arc<ClassSignature>>,
+    pub classes: Vec<Arc<ClassFileData>>,
     pub entries: usize,
     pub archive_bytes: u64,
     pub uncompressed_bytes: u64,
@@ -382,7 +382,7 @@ fn parse_archive(path: &Path, bytes: &[u8], options: &JarOptions, format: Archiv
         let entry_origin = format!("{origin}!/{actual}");
         let bytes = read_entry(&mut archive, index, &entry_origin, options)?;
         let signature =
-            parse_class_bytes(&entry_origin, &bytes).map_err(|e| error(&entry_origin, JarErrorKind::ClassFile, e))?;
+            parse_class_data(&entry_origin, &bytes).map_err(|e| error(&entry_origin, JarErrorKind::ClassFile, e))?;
         if logical.strip_suffix(".class") != Some(signature.binary_name.as_str()) {
             return Err(error(
                 &entry_origin,
@@ -573,3 +573,6 @@ pub(crate) mod test_support {
         }
     }
 }
+
+#[cfg(test)]
+mod metadata_tests;

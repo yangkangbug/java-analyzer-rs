@@ -28,9 +28,11 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::classfile::{
-    Access, ClassError, ClassSignature, MemberKind, MemberSignature, parse_class_bytes, read_class_directory,
+    Access, ClassError, ClassFileData, ClassSignature, MemberKind, MemberSignature, parse_class_data,
+    read_class_directory,
 };
 mod instantiation;
+mod nested_types;
 
 use crate::green::GreenNode;
 use crate::kind::SyntaxKind;
@@ -127,7 +129,7 @@ impl ResolveResult {
 #[derive(Clone, Debug, Default)]
 pub struct Project {
     files: BTreeMap<String, ParsedFile>,
-    binaries: BTreeMap<String, Arc<ClassSignature>>,
+    binaries: BTreeMap<String, Arc<ClassFileData>>,
 }
 
 impl Project {
@@ -156,7 +158,7 @@ impl Project {
     /// the index from the current map.
     pub fn add_class_bytes(&mut self, origin: impl Into<String>, bytes: &[u8]) -> Result<(), ClassError> {
         let origin = origin.into();
-        let signature = parse_class_bytes(&origin, bytes)?;
+        let signature = parse_class_data(&origin, bytes)?;
         self.binaries.insert(origin, Arc::new(signature));
         Ok(())
     }
@@ -172,7 +174,7 @@ impl Project {
         Ok(origins)
     }
 
-    pub(crate) fn insert_class_signature(&mut self, signature: Arc<ClassSignature>) {
+    pub(crate) fn insert_class_signature(&mut self, signature: Arc<ClassFileData>) {
         self.binaries.insert(signature.origin.clone(), signature);
     }
 
@@ -181,7 +183,7 @@ impl Project {
     }
 
     pub fn class_signature(&self, origin: &str) -> Option<&ClassSignature> {
-        self.binaries.get(origin).map(Arc::as_ref)
+        self.binaries.get(origin).map(|data| &data.class_signature)
     }
 
     /// Prepare one immutable index for repeated half-open byte-offset queries.
@@ -281,7 +283,7 @@ struct ClassPayload {
     super_parts: Option<Vec<String>>,
     interface_parts: Vec<Vec<String>>,
     binary: bool,
-    binary_signature: Option<Arc<ClassSignature>>,
+    binary_signature: Option<Arc<ClassFileData>>,
     is_interface: bool,
     type_variables: Vec<String>,
     primitive_owner: bool,
@@ -423,7 +425,7 @@ struct Index {
 }
 
 impl Index {
-    fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, Arc<ClassSignature>>) -> Self {
+    fn build(sources: &BTreeMap<String, ParsedFile>, binaries: &BTreeMap<String, Arc<ClassFileData>>) -> Self {
         #[cfg(test)]
         INDEX_BUILDS.with(|count| count.set(count.get() + 1));
         let files = sources.iter().map(|(path, file)| index_file(path, file)).collect();
@@ -446,7 +448,7 @@ impl Index {
         // One preparation only, bounded by its distinct input signature allocations.
         // Each value retains binary_signature, a strong Arc owning its pointer key.
         // Equal names/origins (or even equal bytes) never substitute for identity.
-        let mut payloads: BTreeMap<*const ClassSignature, Arc<ClassPayload>> = BTreeMap::new();
+        let mut payloads: BTreeMap<*const ClassFileData, Arc<ClassPayload>> = BTreeMap::new();
         for (scope, project) in projects.iter().enumerate() {
             for (path, parsed) in &project.files {
                 let mut file = index_file(path, parsed);
@@ -1524,13 +1526,23 @@ impl Index {
         }
     }
     fn signature_nested<'a>(&'a self, scope: usize, class: &'a ClassRec, rest: &[String]) -> Option<&'a ClassRec> {
-        if rest.is_empty() {
-            return Some(class);
+        // The first segment is already selected by the existing caller. Retain
+        // its declaration identity and prove every direct ownership step;
+        // a unique final spelling cannot erase an ambiguous/missing middle.
+        let mut selected = class;
+        let mut seen = BTreeSet::from([ClassIdentity::of(class)]);
+        for name in rest {
+            selected = match self.direct_nested_type(selected, name) {
+                TypeLookup::One(next) => next,
+                TypeLookup::Many(_) | TypeLookup::None | TypeLookup::MissingImport => return None,
+            };
+            // A dependency owner's scope can differ from the querying scope.
+            // Do not lose source/binary JVM-identity competitors visible here.
+            if !seen.insert(ClassIdentity::of(selected)) || !self.nested_identity_unique(scope, selected) {
+                return None;
+            }
         }
-        match self.class_named(scope, &format!("{}.{}", class.dotted(), rest.join("."))) {
-            Named::One(class) => Some(class),
-            _ => None,
-        }
+        Some(selected)
     }
 
     fn lookup_member(&self, class: &ClassRec, name: &str, call: bool, site: &FileRec, byte: u32) -> ResolveResult {
@@ -3243,7 +3255,7 @@ fn descriptor_parameters(descriptor: &str) -> Option<Vec<ParameterType>> {
     descriptor_parts(descriptor).map(|(parameters, _)| parameters)
 }
 
-fn class_from_signature(sig: &Arc<ClassSignature>) -> ClassPayload {
+fn class_from_signature(sig: &Arc<ClassFileData>) -> ClassPayload {
     let mut binary_ancestor_names = BTreeMap::new();
     for name in sig.binary_super_class.iter().chain(&sig.binary_interfaces) {
         let dotted = name.replace(['/', '$'], ".");

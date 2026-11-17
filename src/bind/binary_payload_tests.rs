@@ -1,25 +1,29 @@
 use super::*;
 
-fn signature(origin: &str, name: &str, parent: Option<&str>) -> Arc<ClassSignature> {
+fn signature(origin: &str, name: &str, parent: Option<&str>) -> Arc<ClassFileData> {
     let (package, simple) = name.rsplit_once('.').unwrap_or(("", name));
-    Arc::new(ClassSignature {
-        origin: origin.into(),
-        binary_name: name.replace('.', "/"),
-        dotted_name: name.into(),
-        package: package.into(),
-        nesting: vec![simple.into()],
-        super_class: parent.map(str::to_string),
-        interfaces: Vec::new(),
-        binary_super_class: parent.map(|name| name.replace('.', "/")),
-        binary_interfaces: Vec::new(),
-        signature: None,
-        major: 61,
-        minor: 0,
-        is_interface: false,
-        is_final: false,
-        access: Access::Public,
-        fields: vec![member("value", "I", MemberKind::Field, Access::Public)],
-        methods: vec![member("read", "()I", MemberKind::Method, Access::Public)],
+    Arc::new(ClassFileData {
+        class_signature: ClassSignature {
+            origin: origin.into(),
+            binary_name: name.replace('.', "/"),
+            dotted_name: name.into(),
+            package: package.into(),
+            nesting: vec![simple.into()],
+            super_class: parent.map(str::to_string),
+            interfaces: Vec::new(),
+            binary_super_class: parent.map(|name| name.replace('.', "/")),
+            binary_interfaces: Vec::new(),
+            signature: None,
+            major: 61,
+            minor: 0,
+            is_interface: false,
+            is_final: false,
+            access: Access::Public,
+            fields: vec![member("value", "I", MemberKind::Field, Access::Public)],
+            methods: vec![member("read", "()I", MemberKind::Method, Access::Public)],
+        },
+        inner_classes: Vec::new(),
+        has_enclosing_method: false,
     })
 }
 
@@ -210,7 +214,7 @@ fn equal_origins_names_and_bytes_are_not_signature_allocation_identity() {
     let shared = signature("same.jar!/Lib.class", "Lib", None);
     let equal = Arc::new((*shared).clone());
     let mut changed = (*shared).clone();
-    changed.methods[0].name = "changed".into();
+    changed.class_signature.methods[0].name = "changed".into();
     let changed = Arc::new(changed);
     let other_origin = signature("other.jar!/Lib.class", "Lib", None);
     let mut projects = vec![Project::new(); 4];
@@ -246,7 +250,7 @@ fn equal_origins_names_and_bytes_are_not_signature_allocation_identity() {
 #[test]
 fn shared_payload_keeps_parents_descriptor_types_access_and_dependency_owners_contextual() {
     let mut shared = (*signature("shared.jar!/lib/Child.class", "lib.Child", Some("lib.Parent"))).clone();
-    shared.methods = vec![
+    shared.class_signature.methods = vec![
         member("choose", "(Ldep/Arg;)V", MemberKind::Method, Access::Public),
         member("overload", "(I)V", MemberKind::Method, Access::Public),
         member("overload", "(J)V", MemberKind::Method, Access::Public),
@@ -259,7 +263,7 @@ fn shared_payload_keeps_parents_descriptor_types_access_and_dependency_owners_co
     for (scope, project) in projects.iter_mut().enumerate() {
         project.insert_class_signature(Arc::clone(&shared));
         let mut parent = (*signature(&format!("parent-{scope}.jar!/lib/Parent.class"), "lib.Parent", None)).clone();
-        parent.methods = vec![
+        parent.class_signature.methods = vec![
             member("inherited", "()V", MemberKind::Method, Access::Public),
             member("choose", "(Ldep/Arg;)V", MemberKind::Method, Access::Public),
         ];
@@ -315,7 +319,7 @@ fn shared_payload_keeps_parents_descriptor_types_access_and_dependency_owners_co
 #[test]
 fn sharing_preserves_constructor_validation_generic_refusal_and_member_order() {
     let mut sig = (*signature("lib.jar!/Lib.class", "Lib", None)).clone();
-    sig.methods = vec![
+    sig.class_signature.methods = vec![
         member("<init>", "invalid", MemberKind::Method, Access::Public),
         member("read", "(I)V", MemberKind::Method, Access::Public),
         member("read", "broken", MemberKind::Method, Access::Public),
@@ -323,7 +327,7 @@ fn sharing_preserves_constructor_validation_generic_refusal_and_member_order() {
         member("generic", "(J)V", MemberKind::Method, Access::Public),
         member("notAMethod", "I", MemberKind::Field, Access::Public),
     ];
-    sig.methods[3].signature = Some("<T:Ljava/lang/Object;>(TT;)V".into());
+    sig.class_signature.methods[3].signature = Some("<T:Ljava/lang/Object;>(TT;)V".into());
     let sig = Arc::new(sig);
     let mut projects = [Project::new(), Project::new()];
     for (scope, project) in projects.iter_mut().enumerate() {
@@ -363,7 +367,7 @@ fn fresh_inputs_rebuild_payloads_while_old_prepared_queries_remain_valid() {
     let old_payload = payload(&old_prepared.index.index.binaries[0]);
     let mut next = old.clone();
     let mut changed = (*shared).clone();
-    changed.fields[0].name = "next".into();
+    changed.class_signature.fields[0].name = "next".into();
     next.insert_class_signature(Arc::new(changed));
     let next_prepared = PreparedScopedIndex::new(vec![&next], &isolated(1));
     assert!(!Arc::ptr_eq(old_payload, payload(&next_prepared.index.index.binaries[0])));
@@ -411,9 +415,9 @@ fn source_payloads_remain_independently_owned() {
 fn method_identity_preserves_raw_dollar_name_without_claiming_nested_lookup() {
     let mut sig = signature("lib.jar!/lib/Outer$Inner.class", "lib.Outer.Inner", None);
     let data = Arc::make_mut(&mut sig);
-    data.binary_name = "lib/Outer$Inner".into();
-    data.package = "lib".into();
-    data.nesting = vec!["Outer".into(), "Inner".into()];
+    data.class_signature.binary_name = "lib/Outer$Inner".into();
+    data.class_signature.package = "lib".into();
+    data.class_signature.nesting = vec!["Outer".into(), "Inner".into()];
     let mut project = Project::new();
     project.insert_class_signature(sig);
     let index = Index::build(&project.files, &project.binaries);
@@ -430,21 +434,21 @@ fn method_identity_preserves_raw_dollar_name_without_claiming_nested_lookup() {
 fn raw_ancestor_payloads_require_consistent_projections_and_exact_object_root() {
     let mut sig = signature("Object.class", "java.lang.Object", None);
     assert!(class_from_signature(&sig).binary_root);
-    Arc::make_mut(&mut sig).binary_name = "java/lang$Object".into();
+    Arc::make_mut(&mut sig).class_signature.binary_name = "java/lang$Object".into();
     assert!(!class_from_signature(&sig).binary_root);
 
     let mut sig = signature("Lib.class", "lib.Lib", Some("java.lang.Object"));
     assert!(class_from_signature(&sig).reference_inventory);
-    Arc::make_mut(&mut sig).binary_super_class = None;
+    Arc::make_mut(&mut sig).class_signature.binary_super_class = None;
     assert!(!class_from_signature(&sig).reference_inventory);
-    Arc::make_mut(&mut sig).binary_super_class = Some("lib/Other".into());
+    Arc::make_mut(&mut sig).class_signature.binary_super_class = Some("lib/Other".into());
     assert!(!class_from_signature(&sig).reference_inventory);
-    Arc::make_mut(&mut sig).binary_super_class = Some("java/lang/Object".into());
-    Arc::make_mut(&mut sig).interfaces = vec!["lib.I".into()];
+    Arc::make_mut(&mut sig).class_signature.binary_super_class = Some("java/lang/Object".into());
+    Arc::make_mut(&mut sig).class_signature.interfaces = vec!["lib.I".into()];
     assert!(!class_from_signature(&sig).reference_inventory);
-    Arc::make_mut(&mut sig).binary_interfaces = vec!["lib/I".into()];
+    Arc::make_mut(&mut sig).class_signature.binary_interfaces = vec!["lib/I".into()];
     assert!(class_from_signature(&sig).reference_inventory);
-    Arc::make_mut(&mut sig).binary_interfaces.push("lib/Extra".into());
+    Arc::make_mut(&mut sig).class_signature.binary_interfaces.push("lib/Extra".into());
     assert!(!class_from_signature(&sig).reference_inventory);
 }
 
@@ -452,8 +456,8 @@ fn raw_ancestor_payloads_require_consistent_projections_and_exact_object_root() 
 fn repeated_raw_ancestor_cannot_revive_a_dotted_collision() {
     let mut sig = signature("Lib.class", "lib.Lib", Some("java.lang.Object"));
     let data = Arc::make_mut(&mut sig);
-    data.interfaces = vec!["lib.Outer.I".into(); 3];
-    data.binary_interfaces = vec!["lib/Outer$I".into(), "lib/Outer/I".into(), "lib/Outer$I".into()];
+    data.class_signature.interfaces = vec!["lib.Outer.I".into(); 3];
+    data.class_signature.binary_interfaces = vec!["lib/Outer$I".into(), "lib/Outer/I".into(), "lib/Outer$I".into()];
     let payload = class_from_signature(&sig);
     assert!(payload.reference_inventory);
     assert_eq!(payload.binary_ancestor_names.get("lib.Outer.I"), Some(&None));

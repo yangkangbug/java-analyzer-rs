@@ -62,7 +62,8 @@ pub use bind::{
     TargetKind,
 };
 pub use classfile::{
-    Access, ClassError, ClassErrorKind, ClassSignature, MemberKind, MemberSignature, parse_class_bytes,
+    Access, ClassError, ClassErrorKind, ClassFileData, ClassSignature, InnerClassEntry, MemberKind, MemberSignature,
+    parse_class_bytes, parse_class_data,
 };
 
 pub use green::{GreenElement, GreenNode, GreenToken, SyntaxError};

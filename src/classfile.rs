@@ -48,6 +48,17 @@ pub struct MemberSignature {
     pub access: Access,
 }
 
+/// Raw member-class metadata from one JVMS `InnerClasses` entry.
+/// Names come from the constant pool; no relationship is inferred from `$`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InnerClassEntry {
+    pub binary_name: String,
+    pub outer_binary_name: Option<String>,
+    pub inner_name: Option<String>,
+    /// Original u16, including unknown or conflicting flags.
+    pub raw_access_flags: u16,
+}
+
 /// One successfully parsed class file and the path it was registered under.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClassSignature {
@@ -82,6 +93,26 @@ pub struct ClassSignature {
     pub methods: Vec<MemberSignature>,
 }
 
+/// An owned signature plus class-file metadata. Existing `ClassSignature`
+/// construction and parsing APIs remain unchanged; callers can opt into this
+/// richer result with [`parse_class_data`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClassFileData {
+    pub class_signature: ClassSignature,
+    /// Entries grouped by attribute in original order. Empty means absent;
+    /// `[vec![]]` is an empty attribute. Duplicate attributes/entries are retained,
+    /// not interpreted as a reliable member relationship.
+    pub inner_classes: Vec<Vec<InnerClassEntry>>,
+    /// Presence only, not a proof of a local/anonymous class's enclosing scope.
+    pub has_enclosing_method: bool,
+}
+impl std::ops::Deref for ClassFileData {
+    type Target = ClassSignature;
+    fn deref(&self) -> &ClassSignature {
+        &self.class_signature
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClassErrorKind {
     Truncated,
@@ -111,6 +142,12 @@ impl std::error::Error for ClassError {}
 /// pool, and a version outside 45..=71 are errors. This does not panic on
 /// those inputs.
 pub fn parse_class_bytes(origin: &str, bytes: &[u8]) -> Result<ClassSignature, ClassError> {
+    Ok(parse_class_data(origin, bytes)?.class_signature)
+}
+
+/// Parse the same class file with raw nested-class metadata retained.
+/// This is the same validated read, not a second parse or filesystem cache.
+pub fn parse_class_data(origin: &str, bytes: &[u8]) -> Result<ClassFileData, ClassError> {
     let mut options = cafebabe::ParseOptions::default();
     options.parse_bytecode(false);
     let class =
@@ -129,26 +166,42 @@ pub fn parse_class_bytes(origin: &str, bytes: &[u8]) -> Result<ClassSignature, C
             detail: format!("major {} minor {}", class.major_version, class.minor_version),
         });
     }
-    let (field_flags, method_flags) = raw_member_flags(bytes)
-        .filter(|(fields, methods)| fields.len() == class.fields.len() && methods.len() == class.methods.len())
+    let raw = raw_class_layout(bytes)
+        .filter(|raw| {
+            raw.field_flags.len() == class.fields.len()
+                && raw.method_flags.len() == class.methods.len()
+                && raw.attributes.len() == class.attributes.len()
+        })
         .ok_or_else(|| ClassError {
             origin: origin.to_owned(),
             kind: ClassErrorKind::Other,
-            detail: "raw member flag inventory does not match parsed class".into(),
+            detail: "raw class inventory does not match parsed class".into(),
         })?;
-    Ok(signature_from(origin, &class, &field_flags, &method_flags))
+    let inner_classes = inner_classes_metadata(&class.attributes, &raw.attributes).ok_or_else(|| ClassError {
+        origin: origin.to_owned(),
+        kind: ClassErrorKind::Other,
+        detail: "raw InnerClasses layout does not match parsed attribute".into(),
+    })?;
+    Ok(ClassFileData {
+        class_signature: signature_from(origin, &class, &raw.field_flags, &raw.method_flags),
+        inner_classes,
+        has_enclosing_method: class
+            .attributes
+            .iter()
+            .any(|attribute| matches!(attribute.data, AttributeData::EnclosingMethod { .. })),
+    })
 }
 
 /// Read every `*.class` file under `root`. A parse error or an I/O error
 /// fails the whole call; nothing from this call is returned. Symlinks are
 /// not followed. This does not open JARs.
-pub(crate) fn read_class_directory(root: &Path) -> Result<Vec<ClassSignature>, ClassError> {
+pub(crate) fn read_class_directory(root: &Path) -> Result<Vec<ClassFileData>, ClassError> {
     let mut out = Vec::new();
     walk_class_dir(root, &mut out)?;
     Ok(out)
 }
 
-fn walk_class_dir(dir: &Path, out: &mut Vec<ClassSignature>) -> Result<(), ClassError> {
+fn walk_class_dir(dir: &Path, out: &mut Vec<ClassFileData>) -> Result<(), ClassError> {
     let entries = fs::read_dir(dir).map_err(|err| ClassError {
         origin: dir.display().to_string(),
         kind: ClassErrorKind::Io,
@@ -184,20 +237,25 @@ fn walk_class_dir(dir: &Path, out: &mut Vec<ClassSignature>) -> Result<(), Class
             kind: ClassErrorKind::Io,
             detail: err.to_string(),
         })?;
-        out.push(parse_class_bytes(&path.display().to_string(), &bytes)?);
+        out.push(parse_class_data(&path.display().to_string(), &bytes)?);
     }
     Ok(())
 }
 
 // cafebabe intentionally truncates unknown access bits. Walk only the already
-// validated binary framing to retain original member u16 flags; never interpret
-// constant-pool names, descriptors, bytecode, or attribute payloads here.
-fn raw_member_flags(bytes: &[u8]) -> Option<(Vec<u16>, Vec<u16>)> {
+// validated binary framing to retain original member flags and class attribute
+// payloads. Constant-pool names, descriptors and bytecode remain cafebabe's job.
+struct RawClassLayout<'a> {
+    field_flags: Vec<u16>,
+    method_flags: Vec<u16>,
+    attributes: Vec<&'a [u8]>,
+}
+fn raw_class_layout(bytes: &[u8]) -> Option<RawClassLayout<'_>> {
     struct Cursor<'a> {
         bytes: &'a [u8],
         at: usize,
     }
-    impl Cursor<'_> {
+    impl<'a> Cursor<'a> {
         fn skip(&mut self, count: usize) -> Option<()> {
             let end = self.at.checked_add(count)?;
             self.bytes.get(self.at..end)?;
@@ -214,6 +272,18 @@ fn raw_member_flags(bytes: &[u8]) -> Option<(Vec<u16>, Vec<u16>)> {
         }
         fn u4(&mut self) -> Option<u32> {
             Some(u32::from_be_bytes([self.u1()?, self.u1()?, self.u1()?, self.u1()?]))
+        }
+        fn attributes(&mut self) -> Option<Vec<&'a [u8]>> {
+            let count = self.u2()?;
+            let mut attributes = Vec::with_capacity(usize::from(count));
+            for _ in 0..count {
+                self.skip(2)?; // attribute_name_index is resolved by cafebabe
+                let length = usize::try_from(self.u4()?).ok()?;
+                let start = self.at;
+                self.skip(length)?;
+                attributes.push(self.bytes.get(start..self.at)?);
+            }
+            Some(attributes)
         }
         fn members(&mut self) -> Option<Vec<u16>> {
             let count = self.u2()?;
@@ -258,7 +328,40 @@ fn raw_member_flags(bytes: &[u8]) -> Option<(Vec<u16>, Vec<u16>)> {
     cursor.skip(6)?;
     let interfaces = usize::from(cursor.u2()?);
     cursor.skip(interfaces.checked_mul(2)?)?;
-    Some((cursor.members()?, cursor.members()?))
+    Some(RawClassLayout {
+        field_flags: cursor.members()?,
+        method_flags: cursor.members()?,
+        attributes: cursor.attributes()?,
+    })
+}
+
+fn inner_classes_metadata(
+    attributes: &[cafebabe::attributes::AttributeInfo<'_>],
+    raw: &[&[u8]],
+) -> Option<Vec<Vec<InnerClassEntry>>> {
+    if attributes.len() != raw.len() {
+        return None;
+    }
+    let mut groups = Vec::new();
+    for (attribute, bytes) in attributes.iter().zip(raw) {
+        let AttributeData::InnerClasses(entries) = &attribute.data else { continue };
+        let count = usize::from(u16::from_be_bytes([*bytes.first()?, *bytes.get(1)?]));
+        if count != entries.len() || bytes.len() != 2usize.checked_add(count.checked_mul(8)?)? {
+            return None;
+        }
+        let mut group = Vec::with_capacity(count);
+        for (index, entry) in entries.iter().enumerate() {
+            let flag = 2 + index * 8 + 6;
+            group.push(InnerClassEntry {
+                binary_name: entry.inner_class_info.to_string(),
+                outer_binary_name: entry.outer_class_info.as_ref().map(ToString::to_string),
+                inner_name: entry.inner_name.as_ref().map(ToString::to_string),
+                raw_access_flags: u16::from_be_bytes([bytes[flag], bytes[flag + 1]]),
+            });
+        }
+        groups.push(group);
+    }
+    Some(groups)
 }
 
 fn signature_from(
@@ -390,7 +493,7 @@ fn classify(origin: &str, detail: &str) -> ClassError {
 
 #[cfg(test)]
 mod raw_flags_tests {
-    use super::raw_member_flags;
+    use super::raw_class_layout;
     fn framing() -> Vec<u8> {
         // Framing-only unit fixture: the semantic parser remains cafebabe.
         let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 5];
@@ -410,21 +513,24 @@ mod raw_flags_tests {
                 bytes.extend(payload);
             }
         }
+        bytes.extend(0u16.to_be_bytes()); // class attributes
         bytes
     }
     #[test]
     fn raw_flags_checked_framing_handles_double_slots_and_attributes() {
         let bytes = framing();
-        assert_eq!(raw_member_flags(&bytes), Some((vec![0x2001], vec![0x4001])));
+        let raw = raw_class_layout(&bytes).unwrap();
+        assert_eq!((raw.field_flags, raw.method_flags), (vec![0x2001], vec![0x4001]));
+        assert!(raw.attributes.is_empty());
         for end in 0..bytes.len() {
-            assert!(raw_member_flags(&bytes[..end]).is_none(), "prefix {end}");
+            assert!(raw_class_layout(&bytes[..end]).is_none(), "prefix {end}");
         }
         let mut unknown = bytes.clone();
         unknown[10] = 2;
-        assert!(raw_member_flags(&unknown).is_none());
+        assert!(raw_class_layout(&unknown).is_none());
         let mut overflow = bytes;
         let len = overflow.len();
         overflow[len - 4..].copy_from_slice(&u32::MAX.to_be_bytes());
-        assert!(raw_member_flags(&overflow).is_none());
+        assert!(raw_class_layout(&overflow).is_none());
     }
 }

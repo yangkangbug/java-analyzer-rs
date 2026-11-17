@@ -166,8 +166,9 @@ fn generic_arrays_cycles_and_unknown_competitors_remain_refused() {
         match mode {
             0 => {
                 for p in [&mut lib, &mut app] {
-                    Arc::make_mut(p.binaries.get_mut("library.jar!/lib/Token.class").unwrap()).signature =
-                        Some("<T:Ljava/lang/Object;>Ljava/lang/Object;".into());
+                    Arc::make_mut(p.binaries.get_mut("library.jar!/lib/Token.class").unwrap())
+                        .class_signature
+                        .signature = Some("<T:Ljava/lang/Object;>Ljava/lang/Object;".into());
                 }
             }
             1 => {
@@ -286,6 +287,7 @@ fn same_origin_raw_member_flag_change_is_not_binary_closure_identity() {
     lib.add_class_bytes("library.jar!/lib/Token.class", &bytes).unwrap();
     app.add_class_bytes("library.jar!/lib/Token.class", &bytes).unwrap();
     selected(&lib, &app);
-    Arc::make_mut(app.binaries.get_mut("library.jar!/lib/Token.class").unwrap()).methods[0].raw_access_flags ^= 0x20;
+    Arc::make_mut(app.binaries.get_mut("library.jar!/lib/Token.class").unwrap()).class_signature.methods[0]
+        .raw_access_flags ^= 0x20;
     refused(&lib, &app);
 }
