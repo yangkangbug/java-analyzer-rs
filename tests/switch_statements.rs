@@ -163,3 +163,72 @@ fn selector_block_edits_recheck_the_switch_commit_boundary() {
         assert_eq!(changed.file.dump(), full.dump(), "{replacement}");
     }
 }
+
+#[test]
+fn label_nested_block_edits_recheck_the_whole_switch_and_preserve_old_tree() {
+    // Label constant evaluation is intentionally outside the syntax parser.
+    // These accepted syntax trees still require the same recovery after editing
+    // as a full parse, including edits that invalidate the label inventory.
+    let source = "class C { void m(int k) { switch(k) { case new C(){int f(){return 1;}}.f(): break; default: break; } int after=0; after++; } void sibling() {} }";
+    let original = ParsedFile::parse(source);
+    let before = original.dump();
+    assert!(original.errors().is_empty());
+    for replacement in ["return null;", "int = ;", "return 2;", "call(a,b);", "call(() -> {return 1;});"] {
+        let needle = "return 1;";
+        let at = source.find(needle).unwrap();
+        let changed = original.apply_edit(TextEdit {
+            start_byte: at as u32,
+            end_byte: (at + needle.len()) as u32,
+            insert: replacement.into(),
+        });
+        let expected = source.replacen(needle, replacement, 1);
+        let full = ParsedFile::parse(&expected);
+        assert!(changed.file.tokens_cover_text());
+        assert_eq!(changed.file.root(), full.root(), "{replacement}");
+        assert_eq!(changed.file.errors(), full.errors(), "{replacement}");
+        assert_eq!(original.dump(), before);
+        assert_eq!(original.text(), source);
+        assert_eq!(query(&expected, "after++;").status, ResolveStatus::Resolved);
+        // Undo through the production edit API, not the verified fallback.
+        let restored = changed.file.apply_edit(TextEdit {
+            start_byte: at as u32,
+            end_byte: (at + replacement.len()) as u32,
+            insert: needle.into(),
+        });
+        assert!(restored.file.tokens_cover_text());
+        assert_eq!(restored.file.root(), original.root(), "undo {replacement}");
+    }
+}
+
+#[test]
+fn ordinary_switch_body_blocks_keep_the_incremental_path() {
+    let source = "class C {void m(int k){switch(k){case 0: {int n=1;} break; default: break;}}}";
+    let original = ParsedFile::parse(source);
+    let at = source.find("n=1").unwrap() + 2;
+    let changed =
+        original.apply_edit(TextEdit { start_byte: at as u32, end_byte: (at + 1) as u32, insert: "2".into() });
+    assert_eq!(changed.mode, java_engine::UpdateMode::Incremental { kind: java_engine::SyntaxKind::Block });
+    assert_eq!(changed.file.root(), ParsedFile::parse(changed.file.text()).root());
+}
+
+#[test]
+fn label_nested_syntax_edit_matrix_matches_fresh_without_verified_fallback() {
+    let source = "class C {void m(int k){switch(k){case new C(){int 名=1; int f(){return 名;}}.f(): break; default: break;} int after=0;}}";
+    let original = ParsedFile::parse(source);
+    assert!(original.errors().is_empty());
+    let begin = source.find("int 名").unwrap();
+    let end = source.find(".f():").unwrap();
+    for (at, ch) in source.char_indices().filter(|(at, _)| *at >= begin && *at < end) {
+        for replacement in ["", "null", ",", "->", "/*中😀*/", "{", "}", "int = ;"] {
+            let changed = original.apply_edit(TextEdit {
+                start_byte: at as u32,
+                end_byte: (at + ch.len_utf8()) as u32,
+                insert: replacement.into(),
+            });
+            let expected = format!("{}{}{}", &source[..at], replacement, &source[at + ch.len_utf8()..]);
+            let full = ParsedFile::parse(&expected);
+            assert!(changed.file.tokens_cover_text(), "at={at} {replacement}");
+            assert_eq!(changed.file.root(), full.root(), "at={at} {replacement}");
+        }
+    }
+}

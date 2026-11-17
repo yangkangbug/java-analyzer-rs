@@ -101,10 +101,13 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
     let mut offset = base;
     for (index, child) in node.children().iter().enumerate() {
         if let Some(child) = child.as_node() {
-            // A selector error makes parse_switch_colon roll back the entire
-            // switch. Reparse its enclosing block rather than splice a nested
-            // selector lambda block without rechecking that commit boundary.
-            if node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody {
+            // Selector errors and label errors/unsupported tokens can roll back
+            // the entire switch. Reparse its enclosing block rather than splice
+            // a nested block without rechecking that commit boundary. Ordinary
+            // statement blocks in the switch body remain independently eligible.
+            if node.kind() != SyntaxKind::SwitchLabel
+                && (node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody)
+            {
                 path.push(index);
                 collect(child, offset, edit_start, edit_end, path, hits);
                 path.pop();

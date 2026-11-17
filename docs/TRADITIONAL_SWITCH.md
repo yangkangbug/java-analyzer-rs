@@ -24,9 +24,11 @@ body expressions continue through the existing binder where supported.
 
 The SwitchBody is not an independently reparseable ordinary Block. Edits fall
 back to the enclosing supported block, while explicitly nested blocks retain
-their normal incremental path. Blocks nested inside a selector fall back to the
-enclosing supported block too: selector errors can change the whole switch's
-commit/recovery decision. Incremental results must match a fresh full
+their normal incremental path. Blocks nested inside a selector or label fall
+back to the enclosing supported block too: selector errors, label errors and
+unsupported label tokens can change the whole switch's commit/recovery decision.
+This also covers anonymous-class bodies nested inside label expressions; syntax
+acceptance does not prove that such an expression is a legal Java constant label. Incremental results must match a fresh full
 parse, including malformed and unsupported constructs.
 
 Modern/unsupported label forms remain errors rather than partially becoming
