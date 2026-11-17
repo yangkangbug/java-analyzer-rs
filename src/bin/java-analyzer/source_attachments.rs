@@ -4,7 +4,8 @@ use super::{
     config::{BinaryEntry, Manifest, PlatformInput},
 };
 use java_engine::{
-    GreenElement, LineIndex, ParsedFile, SyntaxKind as K, Target, TargetKind, Utf16Position, WorkspaceSnapshot,
+    GreenElement, GreenNode, LineIndex, ParsedFile, SyntaxKind as K, Target, TargetKind, Utf16Position,
+    WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -133,7 +134,252 @@ pub fn validate(attachments: &[Attachment], manifest: &Manifest, base: &Path) ->
     associations(attachments, manifest, base).map(|_| ()).ok_or_else(invalid)
 }
 
+// Display-only matching: no source type resolution, erasure, or inference.
+#[derive(Clone, Copy)]
+struct MethodKey<'a> {
+    name: &'a str,
+    descriptor: &'a str,
+    is_static: bool,
+    is_varargs: bool,
+}
+
+fn binary_method_key<'a>(
+    raw: &str,
+    methods: &[java_engine::MemberSignature],
+    target: &'a Target,
+) -> Option<MethodKey<'a>> {
+    let identity = target.binary.as_ref()?;
+    if target.kind != TargetKind::Method || identity.binary_name != raw || target.name.starts_with('<') {
+        return None;
+    }
+    let mut matching = methods.iter().filter(|m| m.name == target.name && m.descriptor == identity.descriptor);
+    let member = matching.next()?;
+    if matching.next().is_some()
+        || member.kind != java_engine::MemberKind::Method
+        || member.signature.is_some()
+        || member.raw_access_flags & (0x40 | 0x1000) != 0
+    {
+        return None;
+    }
+    Some(MethodKey {
+        name: &target.name,
+        descriptor: &identity.descriptor,
+        is_static: member.raw_access_flags & 0x8 != 0,
+        is_varargs: member.raw_access_flags & 0x80 != 0,
+    })
+}
+
+fn primitive_type(node: &GreenNode, allow_void: bool) -> Option<String> {
+    let mut tokens = Vec::new();
+    for item in node.children() {
+        match item {
+            GreenElement::Node(n) if n.kind() == K::Annotation => {}
+            GreenElement::Token(t) if t.kind().is_trivia() => {}
+            GreenElement::Token(t) => tokens.push(t.kind()),
+            _ => return None,
+        }
+    }
+    let (first, rest) = tokens.split_first()?;
+    let letter = match first {
+        K::BooleanKw => "Z",
+        K::Byte => "B",
+        K::CharKw => "C",
+        K::Short => "S",
+        K::IntKw => "I",
+        K::LongKw => "J",
+        K::FloatKw => "F",
+        K::DoubleKw => "D",
+        K::Void if allow_void && rest.is_empty() => "V",
+        _ => return None,
+    };
+    let rank = array_rank(rest)?;
+    Some(format!("{}{letter}", "[".repeat(rank)))
+}
+
+fn array_rank(tokens: &[K]) -> Option<usize> {
+    if !tokens.len().is_multiple_of(2)
+        || tokens.len() / 2 > 255
+        || tokens.chunks_exact(2).any(|p| p != [K::LBracket, K::RBracket])
+    {
+        return None;
+    }
+    Some(tokens.len() / 2)
+}
+
+fn parameter_descriptor(node: &GreenNode) -> Option<(String, bool)> {
+    let mut ty = None;
+    let mut tokens = Vec::new();
+    for item in node.children() {
+        match item {
+            GreenElement::Node(n) if n.kind() == K::ModifierList => {
+                modifiers(n, true)?;
+            }
+            GreenElement::Node(n) if n.kind() == K::Type && ty.is_none() => ty = Some(primitive_type(n, false)?),
+            GreenElement::Token(t) if t.kind().is_trivia() => {}
+            GreenElement::Token(t) if ty.is_some() => tokens.push(t.kind()),
+            _ => return None,
+        }
+    }
+    let ty = ty?;
+    let varargs = tokens.first() == Some(&K::DotDotDot);
+    let tokens = if varargs { &tokens[1..] } else { &tokens[..] };
+    let (name, rest) = tokens.split_first()?;
+    if *name != K::Ident || (varargs && !rest.is_empty()) {
+        return None;
+    }
+    let added = array_rank(rest)? + usize::from(varargs);
+    if ty.bytes().filter(|c| *c == b'[').count() + added > 255 {
+        return None;
+    }
+    Some((format!("{}{ty}", "[".repeat(added)), varargs))
+}
+
+fn modifiers(node: &GreenNode, parameter: bool) -> Option<(bool, bool)> {
+    let mut seen = Vec::new();
+    for item in node.children() {
+        match item {
+            GreenElement::Node(n) if n.kind() == K::Annotation => {}
+            GreenElement::Token(t) if t.kind().is_trivia() => {}
+            GreenElement::Token(t) => {
+                let k = t.kind();
+                if seen.contains(&k)
+                    || if parameter {
+                        k != K::Final
+                    } else {
+                        !matches!(
+                            k,
+                            K::Public | K::Protected | K::Private | K::Static | K::Final | K::Native | K::Abstract
+                        )
+                    }
+                {
+                    return None;
+                }
+                seen.push(k);
+            }
+            _ => return None,
+        }
+    }
+    if seen.iter().filter(|k| matches!(k, K::Public | K::Protected | K::Private)).count() > 1
+        || (seen.contains(&K::Abstract)
+            && seen.iter().any(|k| matches!(k, K::Static | K::Final | K::Native | K::Private)))
+    {
+        return None;
+    }
+    Some((seen.contains(&K::Static), seen.contains(&K::Native) || seen.contains(&K::Abstract)))
+}
+
+fn method_header(node: &GreenNode) -> Option<(String, bool, bool)> {
+    let mut result = None;
+    let mut params = None;
+    let mut is_static = false;
+    let mut declaration_only = false;
+    let mut is_varargs = false;
+    let mut phase = 0;
+    for item in node.children() {
+        match item {
+            GreenElement::Token(t) if t.kind().is_trivia() => {}
+            GreenElement::Node(n) if phase == 0 && n.kind() == K::ModifierList => {
+                (is_static, declaration_only) = modifiers(n, false)?;
+                phase = 1;
+            }
+            GreenElement::Node(n) if phase <= 1 && n.kind() == K::Type => {
+                result = Some(primitive_type(n, true)?);
+                phase = 2;
+            }
+            GreenElement::Token(t) if phase == 2 && t.kind() == K::Ident => phase = 3,
+            GreenElement::Node(n) if phase == 3 && n.kind() == K::ParamList => {
+                let mut value = String::from("(");
+                let mut state = 0;
+                for child in n.children() {
+                    match child {
+                        GreenElement::Token(t) if t.kind().is_trivia() => {}
+                        GreenElement::Token(t) if state == 0 && t.kind() == K::LParen => state = 1,
+                        GreenElement::Node(param)
+                            if matches!(state, 1 | 3) && param.kind() == K::Parameter && !is_varargs =>
+                        {
+                            let (descriptor, varargs) = parameter_descriptor(param)?;
+                            value.push_str(&descriptor);
+                            is_varargs = varargs;
+                            state = 2;
+                        }
+                        GreenElement::Token(t) if state == 2 && t.kind() == K::Comma && !is_varargs => state = 3,
+                        GreenElement::Token(t) if matches!(state, 1 | 2) && t.kind() == K::RParen => state = 4,
+                        _ => return None,
+                    }
+                }
+                if state != 4 {
+                    return None;
+                }
+                value.push(')');
+                params = Some(value);
+                phase = 4;
+            }
+            GreenElement::Node(n) if phase == 4 && n.kind() == K::Block && !declaration_only => phase = 5,
+            GreenElement::Token(t) if phase == 4 && t.kind() == K::Semi => phase = 5,
+            _ => return None,
+        }
+    }
+    if phase != 5 {
+        return None;
+    }
+    Some((format!("{}{}", params?, result?), is_static, is_varargs))
+}
+
+fn method_range(owner: &GreenNode, owner_start: u32, key: MethodKey<'_>) -> Option<(u32, u32)> {
+    let mut found = None;
+    let mut parameter_keys = BTreeSet::new();
+    let mut offset = owner_start;
+    for item in owner.children() {
+        if let GreenElement::Node(body) = item
+            && matches!(body.kind(), K::ClassBody | K::InterfaceBody)
+        {
+            let mut at = offset;
+            for child in body.children() {
+                if let GreenElement::Node(method) = child
+                    && method.kind() == K::Method
+                {
+                    let mut name_at = at;
+                    for part in method.children() {
+                        if let Some(token) = part.as_token()
+                            && token.kind() == K::Ident
+                        {
+                            if token.text() == key.name {
+                                // Unknown same-name headers cannot silently disappear from the family.
+                                let (descriptor, is_static, is_varargs) = method_header(method)?;
+                                let parameter_key = descriptor.split_once(')')?.0.to_owned();
+                                if !parameter_keys.insert(parameter_key) {
+                                    return None;
+                                }
+                                if descriptor == key.descriptor {
+                                    if is_static != key.is_static || is_varargs != key.is_varargs || found.is_some() {
+                                        return None;
+                                    }
+                                    found = Some((name_at, name_at + token.utf8_len()));
+                                }
+                            }
+                            break;
+                        }
+                        name_at += part.utf8_len();
+                    }
+                }
+                at += child.utf8_len();
+            }
+        }
+        offset += item.utf8_len();
+    }
+    found
+}
+
 fn source_range(text: &str, binary_name: &str, is_interface: bool) -> Option<(Utf16Position, Utf16Position)> {
+    source_target_range(text, binary_name, is_interface, None)
+}
+
+fn source_target_range(
+    text: &str,
+    binary_name: &str,
+    is_interface: bool,
+    method: Option<MethodKey<'_>>,
+) -> Option<(Utf16Position, Utf16Position)> {
     if binary_name.contains(['$', '\\', '\0']) {
         return None;
     }
@@ -178,7 +424,7 @@ fn source_range(text: &str, binary_name: &str, is_interface: bool) -> Option<(Ut
                             if node.kind() != expected {
                                 return None;
                             }
-                            candidates.push((at, at + token.utf8_len()));
+                            candidates.push((at, at + token.utf8_len(), node, offset));
                         }
                         break;
                     }
@@ -191,7 +437,13 @@ fn source_range(text: &str, binary_name: &str, is_interface: bool) -> Option<(Ut
     if found_package.unwrap_or_default() != package || candidates.len() != 1 {
         return None;
     }
-    let (start, end) = candidates[0];
+    let (start, end, owner, owner_start) = candidates[0];
+    let (start, end, name) = if let Some(key) = method {
+        let (start, end) = method_range(owner, owner_start, key)?;
+        (start, end, key.name)
+    } else {
+        (start, end, name)
+    };
     if text.get(start as usize..end as usize)? != name {
         return None;
     }
@@ -206,7 +458,7 @@ pub fn locate(
     workspace: &WorkspaceSnapshot,
     target: &Target,
 ) -> Option<(PathBuf, Utf16Position, Utf16Position)> {
-    if target.kind != TargetKind::Class || attachments.is_empty() {
+    if !matches!(target.kind, TargetKind::Class | TargetKind::Method) || attachments.is_empty() {
         return None;
     }
     let mut signature = None;
@@ -221,6 +473,11 @@ pub fn locate(
     }
     let signature = signature?;
     let raw = &signature.binary_name;
+    let method = if target.kind == TargetKind::Method {
+        Some(binary_method_key(raw, &signature.methods, target)?)
+    } else {
+        None
+    };
     if raw.contains(['$', '\\', '\0']) || raw.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
         return None;
     }
@@ -255,13 +512,130 @@ pub fn locate(
         return None;
     }
     let text = std::str::from_utf8(&bytes).ok()?;
-    let (start, end) = source_range(text, raw, signature.is_interface)?;
+    let (start, end) = if let Some(key) = method {
+        source_target_range(text, raw, signature.is_interface, Some(key))?
+    } else {
+        source_range(text, raw, signature.is_interface)?
+    };
     Some((path, start, end))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn method(
+        text: &str,
+        descriptor: &str,
+        is_static: bool,
+        is_varargs: bool,
+    ) -> Option<(Utf16Position, Utf16Position)> {
+        source_target_range(text, "p/A", false, Some(MethodKey { name: "m", descriptor, is_static, is_varargs }))
+    }
+    #[test]
+    fn binary_method_identity_and_metadata_refusals() {
+        use java_engine::{Access, BinaryLinkingContext, BinaryTargetIdentity, MemberKind, MemberSignature};
+        let target = Target {
+            binary: Some(BinaryTargetIdentity {
+                binary_name: "p/A".into(),
+                descriptor: "(C)Z".into(),
+                linking_context: BinaryLinkingContext::Standalone,
+            }),
+            path: "fixture.jar!/p/A.class".into(),
+            kind: TargetKind::Method,
+            name: "m".into(),
+            owner: "p.A".into(),
+            start_byte: 0,
+            end_byte: 0,
+        };
+        let member = MemberSignature {
+            raw_access_flags: 0x9,
+            name: "m".into(),
+            kind: MemberKind::Method,
+            descriptor: "(C)Z".into(),
+            signature: None,
+            access: Access::Public,
+        };
+        let one = std::slice::from_ref(&member);
+        assert!(binary_method_key("p/A", one, &target).unwrap().is_static);
+        assert!(binary_method_key("p/B", one, &target).is_none());
+        assert!(binary_method_key("p/A", &[], &target).is_none());
+        assert!(binary_method_key("p/A", &[member.clone(), member.clone()], &target).is_none());
+        for flags in [0x49, 0x1009] {
+            assert!(
+                binary_method_key("p/A", &[MemberSignature { raw_access_flags: flags, ..member.clone() }], &target)
+                    .is_none()
+            );
+        }
+        assert!(
+            binary_method_key(
+                "p/A",
+                &[MemberSignature { signature: Some("(TC;)Z".into()), ..member.clone() }],
+                &target
+            )
+            .is_none()
+        );
+        assert!(
+            binary_method_key("p/A", &[MemberSignature { descriptor: "(I)Z".into(), ..member.clone() }], &target)
+                .is_none()
+        );
+        assert!(
+            binary_method_key("p/A", &[MemberSignature { kind: MemberKind::Field, ..member.clone() }], &target)
+                .is_none()
+        );
+        assert!(binary_method_key("p/A", one, &Target { binary: None, ..target.clone() }).is_none());
+        assert!(binary_method_key("p/A", one, &Target { name: "<init>".into(), ..target.clone() }).is_none());
+        assert!(binary_method_key("p/A", one, &Target { kind: TargetKind::Class, ..target }).is_none());
+    }
+    #[test]
+    fn exact_primitive_methods_arrays_and_native() {
+        let text = "// 😀\r\npackage p; class A { static boolean m(char c) { return true; } static boolean m(int c) { return false; } class N { void m() {} } }";
+        for (descriptor, needle) in [("(C)Z", "m(char"), ("(I)Z", "m(int")] {
+            let (start, end) = method(text, descriptor, true, false).unwrap();
+            let index = LineIndex::new(text);
+            assert_eq!(start, index.byte_to_position(text.find(needle).unwrap() as u32).unwrap());
+            assert_eq!(end.character - start.character, 1);
+        }
+        assert!(method(text, "()V", false, false).is_none());
+        for (head, descriptor, varargs) in [
+            ("native int m();", "()I", false),
+            ("int[] m(byte x[][]) { return null; }", "([[B)[I", false),
+            ("void m(int... x) {}", "([I)V", true),
+        ] {
+            assert!(
+                method(&format!("package p; class A {{ {head} }}"), descriptor, false, varargs).is_some(),
+                "{head}"
+            );
+        }
+    }
+    #[test]
+    fn method_source_family_refusals() {
+        assert!(method("package p; class A { int m(int x,) { return 1; } }", "(I)I", false, false).is_none());
+        assert!(method("package p; class A { int m(public int x) { return 1; } }", "(I)I", false, false).is_none());
+        assert!(method("package p; class A { static static int m() { return 1; } }", "()I", true, false).is_none());
+        for body in [
+            "int m() { return 1; } int m() { return 2; }",
+            "int m() { return 1; } long m() { return 2; }",
+            "int m() { return 1; } int m(String s) { return 2; }",
+            "int m() { return 1; } <T> int m(int x) { return 2; }",
+            "static int m() { return 1; }",
+            "class N { int m() { return 1; } }",
+            "int m(int x,) { return 1; }",
+            "int m() throws int { return 1; }",
+            "int m() { return 1; } void m(public int x) {}",
+            "public private int m() { return 1; }",
+            "public public int m() { return 1; }",
+            "abstract int m() { return 1; }",
+        ] {
+            assert!(method(&format!("package p; class A {{ {body} }}"), "()I", false, false).is_none(), "{body}");
+        }
+        assert!(method("package p; class A { void m(int[] x) {} }", "([I)V", false, true).is_none());
+        assert!(method("package p; class A { void m(int... x) {} }", "([I)V", false, false).is_none());
+        assert!(method("package p; class A { int m() { return 1; } }", "()J", false, false).is_none());
+        let old = "package p; class A { int m() { return 1; } }";
+        let fresh = format!("// 😀\n{old}");
+        assert_eq!(method(old, "()I", false, false).unwrap().0.line, 0);
+        assert_eq!(method(&fresh, "()I", false, false).unwrap().0.line, 1);
+    }
     #[test]
     fn exact_top_level_name_and_utf16() {
         let text = "// 😀\r\npackage p; public interface List<T> { T get(); }";
