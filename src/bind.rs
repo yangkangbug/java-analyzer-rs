@@ -638,37 +638,43 @@ impl Index {
                         && actuals.as_ref().is_some_and(|args| {
                             candidate.signature.as_ref().is_some_and(|sig| args.len() != sig.parameters.len())
                         });
-                    let primitive_mismatch = caller.is_some_and(|DirectCaller { node: caller, start, end, .. }| {
-                        if !file.call_inventory_valid || source_call(caller, start).is_none() {
-                            return false;
-                        }
-                        let mut proof = PrimitiveProof::new(file, start, end, None);
-                        let mismatch = actuals.as_ref().is_some_and(|args| {
-                            let Shape::Source { parameters, .. } = &candidate.member.shape else { return false };
-                            // One independently known contradiction is enough;
-                            // unrelated unknown formals cannot erase it.
-                            !source.varargs
-                                && args.len() == parameters.len()
-                                && args.iter().zip(parameters).any(|((arg, at), formal)| {
-                                    formal.primitive.filter(|_| !formal.unsupported).is_some_and(|primitive| {
-                                        proof.expression(arg, *at, 0).is_some_and(|actual| {
-                                            !actual.converts_to(PrimitiveValue { primitive, rank: formal.array_rank })
+                    let primitive_mismatch =
+                        caller.is_some_and(|DirectCaller { node: caller, start, end, work, .. }| {
+                            if !file.call_inventory_valid || source_call(caller, start).is_none() {
+                                return false;
+                            }
+                            let mut proof = PrimitiveProof::new(file, start, end, None);
+                            if proof.charge(work).is_none() {
+                                return true;
+                            }
+                            let mismatch = actuals.as_ref().is_some_and(|args| {
+                                let Shape::Source { parameters, .. } = &candidate.member.shape else { return false };
+                                // One independently known contradiction is enough;
+                                // unrelated unknown formals cannot erase it.
+                                !source.varargs
+                                    && args.len() == parameters.len()
+                                    && args.iter().zip(parameters).any(|((arg, at), formal)| {
+                                        formal.primitive.filter(|_| !formal.unsupported).is_some_and(|primitive| {
+                                            proof.expression(arg, *at, 0).is_some_and(|actual| {
+                                                !actual
+                                                    .converts_to(PrimitiveValue { primitive, rank: formal.array_rank })
+                                            })
                                         })
                                     })
-                                })
+                            });
+                            // A bounded guard must not turn an exhausted known-
+                            // contradiction check into unique-name success when
+                            // the strict positive context (e.g. Object) is absent.
+                            mismatch || proof.exhausted
                         });
-                        // A bounded guard must not turn an exhausted known-
-                        // contradiction check into unique-name success when
-                        // the strict positive context (e.g. Object) is absent.
-                        mismatch || proof.exhausted
-                    });
                     if fixed_arity_mismatch || primitive_mismatch {
                         result.status = ResolveStatus::CallNotResolved;
                         return result;
                     }
                 }
             }
-            let Some(DirectCaller { node: caller_node, start: caller_start, end: caller_end, .. }) = caller else {
+            let Some(DirectCaller { node: caller_node, start: caller_start, end: caller_end, work, .. }) = caller
+            else {
                 return result;
             };
             // Bare calls have a method namespace, not a value/type qualifier.
@@ -703,7 +709,7 @@ impl Index {
                 return result;
             }
             let mut proof = PrimitiveProof::new(file, caller_start, caller_end, Some((class, object)));
-            let selected = proof.call(name, args, args_at, 0);
+            let selected = proof.charge(work).and_then(|()| proof.call(name, args, args_at, 0));
             if let Some(member) = selected {
                 return ResolveResult::one(ResolveStatus::Resolved, member_target(class, member));
             }
@@ -3943,6 +3949,56 @@ struct DirectCaller<'n> {
     work: usize,
 }
 
+// Array dimension expressions execute in the enclosing caller. Recognize their
+// existing direct syntax layout, not array result types or constructor contexts.
+fn array_dimension_context(node: &GreenNode, start: u32, byte: u32, work: &mut usize) -> Option<()> {
+    let mut state = 0;
+    let mut at = start;
+    let mut selected = false;
+    let mut empty_seen = false;
+    for child in node.children() {
+        *work = work.checked_sub(1)?;
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                state = match (state, token.kind()) {
+                    (0, SyntaxKind::New) => 1,
+                    (2 | 5, SyntaxKind::LBracket) => 3,
+                    (3, SyntaxKind::RBracket) => {
+                        empty_seen = true;
+                        5
+                    }
+                    (4, SyntaxKind::RBracket) => 5,
+                    _ => return None,
+                };
+            }
+        } else if let Some(inner) = child.as_node() {
+            state = match state {
+                1 if inner.kind() == SyntaxKind::Type => 2,
+                3 if !empty_seen && inner.kind() != SyntaxKind::Error => {
+                    selected |= at <= byte && byte < at + inner.utf8_len();
+                    4
+                }
+                _ => return None,
+            };
+        }
+        at += child.utf8_len();
+    }
+    if state != 5 || !selected {
+        return None;
+    }
+    // Recovery errors in a dimension or creator type cannot certify its layout.
+    // Charge the same caller budget, including nested NewExpr checks.
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        *work = work.checked_sub(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::Error {
+            return None;
+        }
+        pending.extend(node.child_nodes().map(|n| n.as_ref()));
+    }
+    Some(())
+}
+
 // Only a File -> Class -> ClassBody -> callable path owns modeled locals.
 // Lambdas and anonymous/local/nested classes must not borrow an outer variable.
 fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
@@ -3967,26 +4023,27 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
         node = child;
         start = at;
     }
+    let mut work = REFERENCE_PROOF_WORK;
     if path.len() < 5
         || path[0].0.kind() != SyntaxKind::File
         || path[1].0.kind() != SyntaxKind::Class
         || path[2].0.kind() != SyntaxKind::ClassBody
         || !matches!(path[3].0.kind(), SyntaxKind::Method | SyntaxKind::Constructor)
         || path[4].0.kind() != SyntaxKind::Block
-        || path[4..].iter().any(|(node, _)| {
-            matches!(
-                node.kind(),
-                SyntaxKind::Annotation
-                    | SyntaxKind::LambdaExpr
-                    | SyntaxKind::NewExpr
-                    | SyntaxKind::Class
-                    | SyntaxKind::Interface
-                    | SyntaxKind::Enum
-                    | SyntaxKind::Record
-                    | SyntaxKind::ClassBody
-                    | SyntaxKind::Method
-                    | SyntaxKind::Constructor
-            )
+        || path[4..].iter().any(|(node, start)| {
+            (node.kind() == SyntaxKind::NewExpr && array_dimension_context(node, *start, byte, &mut work).is_none())
+                || matches!(
+                    node.kind(),
+                    SyntaxKind::Annotation
+                        | SyntaxKind::LambdaExpr
+                        | SyntaxKind::Class
+                        | SyntaxKind::Interface
+                        | SyntaxKind::Enum
+                        | SyntaxKind::Record
+                        | SyntaxKind::ClassBody
+                        | SyntaxKind::Method
+                        | SyntaxKind::Constructor
+                )
         })
     {
         return None;
@@ -4002,7 +4059,6 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
         return None;
     }
     let (method, start) = path[3];
-    let mut caller_work = 0;
     let kind = if method.kind() == SyntaxKind::Constructor {
         let (class, class_at) = path[1];
         if direct_ident(method, start)?.0 != direct_ident(class, class_at)?.0
@@ -4018,7 +4074,6 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
         // delegation has a distinct early-construction context; never grant
         // current-instance permissions to its arguments or a newer prologue.
         let mut pending = vec![path[4].0];
-        let mut work = REFERENCE_PROOF_WORK;
         while let Some(node) = pending.pop() {
             work = work.checked_sub(node.children().len().max(1))?;
             if node.kind() == SyntaxKind::CallExpr
@@ -4035,12 +4090,11 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
             }
             pending.extend(node.child_nodes().map(|n| n.as_ref()));
         }
-        caller_work = REFERENCE_PROOF_WORK - work;
         CallerKind::Constructor
     } else {
         CallerKind::Method
     };
-    Some(DirectCaller { node: method, start, end: start + method.utf8_len(), kind, work: caller_work })
+    Some(DirectCaller { node: method, start, end: start + method.utf8_len(), kind, work: REFERENCE_PROOF_WORK - work })
 }
 
 // One budget is shared by the complete nested proof. These are analysis bounds,
