@@ -67,3 +67,25 @@ and run it with `--profile release --rounds 5`; alternate revisions serially.
 Retain preparation and query phases separately rather than timing the whole
 checker as though it were warm lookup. Existing full Commons and four-compilation
 Gson acceptance contracts remain the correctness criteria.
+
+## Explicit-import competition boundary
+
+Ordinary simple-type navigation now considers every distinct explicit import
+with the requested simple name. Multiple different qualified names are refused,
+regardless of import order or whether all targets are loaded/visible. It does not
+select the only loaded import or fall through to a same-package/on-demand type.
+Repeated identical imports contribute one name and retain the original lookup.
+The existing local/member shadowing checks run first; independently fully
+qualified names do not acquire a dependency on a conflicting simple import.
+
+This is a conservative navigation boundary, not a compilation-validity checker.
+An import conflict can make the whole file invalid even when another lexical or
+qualified name remains navigable. Local types retain their existing unsupported
+binding boundary. General access validation, import diagnostics, static imports,
+canonical import validation and same-unit declaration deduplication are not added.
+
+Regressions compare direct/prepared navigation, import insertion/removal against
+fresh inputs, old retained views, and an unreferenced compilation's invisible
+candidate. Optional pinned-javac controls distinguish duplicate identical imports,
+conflicting/missing imports and legal member/local shadowing; Java remains absent
+from the library and mandatory native regressions.

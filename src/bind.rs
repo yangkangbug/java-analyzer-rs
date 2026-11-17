@@ -803,7 +803,15 @@ impl Index {
         if let Some(member) = member_type_here(file, byte, name) {
             return TypeLookup::One(member);
         }
-        if let Some((_, full)) = file.singles.iter().find(|(simple, _)| simple == name) {
+        let imports: BTreeSet<_> =
+            file.singles.iter().filter(|(simple, _)| simple == name).map(|(_, full)| full).collect();
+        // A missing or invisible import is still a competing declaration. Do
+        // not choose whichever import was indexed first or happens to be loaded.
+        // Exact repeated imports contribute only one name, as in strict lookup.
+        if imports.len() > 1 {
+            return TypeLookup::MissingImport;
+        }
+        if let Some(full) = imports.first() {
             let imported = self.legacy_named(file.scope, full);
             let same_unit = file
                 .classes
