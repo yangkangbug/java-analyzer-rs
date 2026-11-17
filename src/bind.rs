@@ -961,7 +961,7 @@ impl Index {
             return (!proof.exhausted)
                 .then(|| ResolveResult::one(ResolveStatus::Resolved, member_target(member.declaring, member.member)));
         }
-        if matches!(plain_receiver.kind(), SyntaxKind::CallExpr | SyntaxKind::IndexExpr) {
+        if matches!(plain_receiver.kind(), SyntaxKind::CallExpr | SyntaxKind::IndexExpr | SyntaxKind::LiteralExpr) {
             let refused = || ResolveResult::none(ResolveStatus::ReceiverNotBound);
             let context = direct_caller(parsed.root(), byte);
             let Some(DirectCaller { node: caller, start: caller_start, .. }) = context else {

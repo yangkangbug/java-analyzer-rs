@@ -318,6 +318,10 @@ covered by an [additive gate](examples/second_project/STRING_CALLS.md); unknown
 binary generic edges, text blocks, Unicode preprocessing and other literal types
 remain refused. This does not enable String/Object overload selection or general
 reference conversion through generic class-file signatures.
+Ordinary string-literal receivers now reuse that platform identity proof and the
+existing strict method selector, including parenthesized forms. Thirteen original
+Gson `length()` sites match compiler owner/descriptors; this adds no inference or
+initializer support. See [receiver boundaries](docs/REFERENCE_CALLS.md).
 Validated scalar primitive formals no longer block a proved strict reference
 winner: reference actuals cannot unbox in that first phase. The
 [Gson strict-phase gate](examples/second_project/STRICT_REFERENCE_PHASE.md) selects

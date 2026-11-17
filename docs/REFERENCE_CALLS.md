@@ -197,3 +197,32 @@ or binary overload selection remain unsupported. Real generic fromJson and
 chained-call cases are not solved. The next integration milestone is safe
 OpenIDEA client stale-result protection and actual end-to-end validation, not
 replacing its build/debug services with this declaration-only proof.
+
+
+## Ordinary string-literal receivers
+
+Ordinary string literals and their parenthesized forms now enter the same bounded
+strict receiver path as already-proved call results and array elements. The
+existing expression proof requires a unique supplied public final binary
+`java.lang.String`, valid ordinary spelling and a complete supported ancestor
+graph. Lexical `String` or `java` shadows do not change the literal's identity.
+Source replacements, missing/duplicate platform definitions, unsupported spelling,
+text blocks and exhausted work/depth budgets do not authorize a target.
+
+Selection still uses the existing instance-invocation selector and full method
+family checks, including access, argument types and unsupported competitors. This
+adds no inference, new conversions, static-context rules or initializer support.
+The existing bounded caller certificate remains required. Other literal kinds now
+enter the same path but have no reference evidence; their rejection can be
+`ReceiverNotBound` instead of the previous `Unresolved`. Neither is a resolved
+navigation target, and no public result variant is added.
+
+Seven native test groups cover platform identity, lexical shadows, ordinary
+spelling, argument overloads, rejected method families, work/depth bounds and
+edit/fresh/old-snapshot parity. The fixed 577-query diagnostic set improves thirteen
+original Gson `UtcDateTypeAdapter` string-literal `length()` sites. All thirteen
+binary owner/descriptors were checked against javac analyzing the original file
+and original dependency sources (including the checked-in GsonBuildConfig Java
+template, whose version literal is irrelevant to these targets). The other 564
+rows and the separate 30-query generic set are unchanged. These fixed sets are
+regression diagnostics, not a Java coverage rate or a full Gson build claim.
