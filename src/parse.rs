@@ -539,13 +539,28 @@ impl<'a> Parser<'a> {
         self.parse_qualified_name(false);
         if self.eat(SyntaxKind::LParen) {
             if !self.at(SyntaxKind::RParen) {
+                let named = self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Eq;
+                let mut first = true;
                 loop {
-                    if self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Eq {
+                    let entry_named = self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Eq;
+                    if entry_named != named || !named && !first {
+                        self.open(SyntaxKind::Error);
+                        self.set_message("expected a uniform annotation element list");
+                        self.finish();
+                    }
+                    if entry_named {
                         self.bump();
                         self.bump();
                     }
                     self.parse_element_value();
-                    if !self.eat(SyntaxKind::Comma) || self.at(SyntaxKind::RParen) {
+                    first = false;
+                    if !self.eat(SyntaxKind::Comma) {
+                        break;
+                    }
+                    if self.at(SyntaxKind::RParen) {
+                        self.open(SyntaxKind::Error);
+                        self.set_message("expected annotation element after ','");
+                        self.finish();
                         break;
                     }
                 }
