@@ -222,15 +222,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("unqualified_call_namespace_audit: calls={calls} wrong_namespace={wrong_namespace}");
-    assert_eq!(historical_calls, 3030, "historical calls outside newly structured switches");
-    assert_eq!(calls, 3077, "review pinned call inventory when parser/walker coverage changes");
+    assert_eq!(historical_calls, 3025, "historical unqualified calls after five typed-qualifier corrections");
+    assert_eq!(calls, 3072, "review pinned call inventory when parser/walker coverage changes");
     complete_calls.sort();
     // Freeze and review complete records before publication; never a count-only gate.
-    let expected_calls: Vec<_> = include_str!("traditional_switch/commons-calls.tsv")
+    let mut expected_calls: Vec<_> = include_str!("traditional_switch/commons-calls.tsv")
         .lines()
         .filter(|line| !line.starts_with('#'))
         .map(str::to_owned)
         .collect();
+    // The frozen parser classified these qualified invocations as bare calls
+    // after failing on <...>. Retain history and remove only these exact rows.
+    assert_eq!(expected_calls.len(), 3077);
+    for corrected in [
+        "org/apache/commons/lang3/builder/ReflectionDiffBuilder.java\t5982\tbuilder\thistorical",
+        "org/apache/commons/lang3/exception/ExceptionUtils.java\t5409\teraseType\thistorical",
+        "org/apache/commons/lang3/exception/ExceptionUtils.java\t36114\teraseType\thistorical",
+        "org/apache/commons/lang3/reflect/TypeUtils.java\t8001\tbuilder\thistorical",
+        "org/apache/commons/lang3/reflect/TypeUtils.java\t8355\tbuilder\thistorical",
+    ] {
+        assert_eq!(expected_calls.iter().filter(|row| *row == corrected).count(), 1);
+        let at = expected_calls.iter().position(|row| row == corrected).unwrap();
+        expected_calls.remove(at);
+    }
     assert_eq!(complete_calls, expected_calls, "complete call inventory including historical and switch rows");
     assert_eq!(wrong_namespace, 0, "method invocations must never resolve to variable/type declarations");
     let mut expected = Vec::new();

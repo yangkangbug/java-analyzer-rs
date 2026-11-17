@@ -5,6 +5,7 @@ The previous labeled-stage contract is preserved and remains explicitly callable
 """
 import copy
 import hashlib
+import json
 import importlib.util
 from pathlib import Path
 
@@ -31,6 +32,8 @@ CHANGES = {
     ],
 }
 
+INVOCATION_CHANGES = json.loads(Path(__file__).with_name('explicit-invocation-parser-delta.json').read_text())
+
 def prior_reports(offsets):
     return [{'classification': 'parser_limit_or_invalid_syntax', 'message': message,
              'range': {'start_byte': at, 'end_byte': at + width, 'start_utf16': at, 'end_utf16': at + width}}
@@ -49,6 +52,13 @@ def load(corpus, stage='latest'):
                            'reports': prior_reports(offsets)},
                 'exact prior synchronized parser records drift')
         rows[0]['reports'] = []
+    for change in INVOCATION_CHANGES[corpus]:
+        rows = [row for row in expected['files'] if row['path'] == change['path']]
+        require(len(rows) == 1, 'exact invocation file identity drift')
+        require(rows[0] == {'path': change['path'],
+                           'compilation': change['compilation'],
+                           'reports': change['before']}, 'exact prior invocation parser records drift')
+        rows[0]['reports'] = copy.deepcopy(change['after'])
     expected['report_count'] = sum(len(row['reports']) for row in expected['files'])
     expected['files_with_reports'] = sum(bool(row['reports']) for row in expected['files'])
     return expected, hashes

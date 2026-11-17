@@ -9,6 +9,9 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Explicit invocation type arguments](docs/EXPLICIT_INVOCATION_TYPES.md) are
+retained as syntax without erasing them into unsupported generic-call proofs.
+
 [Direct nested-type evidence](docs/NESTED_TYPES.md) preserves raw `InnerClasses`
 metadata separately from the legacy dollar-name projection and binding proofs.
 

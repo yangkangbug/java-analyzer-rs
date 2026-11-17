@@ -470,3 +470,25 @@ fn negative_guard_budget_exhaustion_cannot_restore_legacy_singleton_success() {
         refused(&p, &call, ResolveStatus::CallNotResolved, &["outer(byte a"]);
     }
 }
+
+#[test]
+fn explicit_type_arguments_do_not_supply_source_return_evidence() {
+    for types in ["", "<Marker>"] {
+        let source = format!(
+            "class Marker{{}}class Api{{public int make(){{return 1;}}}}class Box{{public void take(int x){{}}public void take(long x){{}}}}class Calls{{void run(Api api,Box box){{box.take(api.{types}make());}}}}"
+        );
+        let p = project(&source);
+        assert!(p.file("Calls.java").unwrap().errors().is_empty());
+        if types.is_empty() {
+            let result = query(&p, "take(api.make())");
+            assert_eq!(result.status, ResolveStatus::Resolved);
+            assert_eq!(result.targets[0].owner, "Box");
+            assert_eq!(result.targets[0].start_byte, source.find("take(int x)").unwrap() as u32);
+        } else {
+            assert_ne!(query(&p, "take(api.<Marker>make())").status, ResolveStatus::Resolved);
+            assert_ne!(query(&p, "make()").status, ResolveStatus::Resolved);
+            let marker = source.rfind("Marker>").unwrap() as u32;
+            assert_eq!(p.resolve_at("Calls.java", marker).status, ResolveStatus::Resolved);
+        }
+    }
+}

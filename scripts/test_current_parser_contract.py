@@ -11,7 +11,7 @@ spec.loader.exec_module(contract)
 
 class CurrentParserContractTests(unittest.TestCase):
     def test_exact_delta_and_history_unchanged(self):
-        for corpus, count in [('commons', 46), ('gson', 114)]:
+        for corpus, count in [('commons', 36), ('gson', 79)]:
             before, hashes = contract.previous.load(corpus)
             frozen = copy.deepcopy(before)
             actual, actual_hashes = contract.load(corpus)
@@ -21,6 +21,10 @@ class CurrentParserContractTests(unittest.TestCase):
             for old, new in zip(before['files'], actual['files']):
                 expected = copy.deepcopy(old)
                 if old['path'] in changes: expected['reports'] = []
+                invocation = next((c for c in contract.INVOCATION_CHANGES[corpus] if c['path'] == old['path']), None)
+                if invocation:
+                    self.assertEqual(expected['reports'], invocation['before'])
+                    expected['reports'] = invocation['after']
                 self.assertEqual(new, expected)
             self.assertEqual(contract.previous.load(corpus)[0], frozen)
 
@@ -38,6 +42,20 @@ class CurrentParserContractTests(unittest.TestCase):
                 elif operation == 'extra': row['unexpected'] = True
                 elif operation in ['message', 'classification']: row['reports'][0][operation] += 'wrong'
                 else: row['reports'][0]['range'][operation] += 1
+                with self.subTest(corpus=corpus, operation=operation), mock.patch.object(contract.previous, 'load', return_value=(changed, hashes)), self.assertRaises(AssertionError):
+                    contract.load(corpus)
+
+    def test_invocation_prior_records_cannot_drift(self):
+        for corpus in ['commons', 'gson']:
+            original, hashes = contract.previous.load(corpus)
+            path = contract.INVOCATION_CHANGES[corpus][0]['path']
+            for operation in ['missing', 'message', 'position', 'owner']:
+                changed = copy.deepcopy(original)
+                row = next(r for r in changed['files'] if r['path'] == path)
+                if operation == 'missing': row['reports'].pop()
+                elif operation == 'message': row['reports'][0]['message'] += 'wrong'
+                elif operation == 'position': row['reports'][0]['range']['start_byte'] += 1
+                else: row['compilation']['project'] += 'wrong'
                 with self.subTest(corpus=corpus, operation=operation), mock.patch.object(contract.previous, 'load', return_value=(changed, hashes)), self.assertRaises(AssertionError):
                     contract.load(corpus)
 

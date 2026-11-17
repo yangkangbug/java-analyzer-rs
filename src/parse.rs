@@ -42,6 +42,61 @@ pub fn parse_fragment(kind: SyntaxKind, text: &str) -> Arc<GreenNode> {
     }
 }
 
+// Validate only type-grammar edges, not expressions inside annotation values.
+// Shared parsing builds the tree; this role-specific check excludes invocation
+// diamond/wildcards and invalid nested reference-type arguments.
+fn valid_invocation_type_args(node: &GreenNode, allow_wildcard: bool) -> bool {
+    let before_close =
+        node.children().iter().rev().filter(|c| c.as_token().is_none_or(|t| !t.kind().is_trivia())).nth(1);
+    if before_close.is_some_and(|c| c.as_token().is_some_and(|t| t.kind() == SyntaxKind::Comma)) {
+        return false;
+    }
+    let types: Vec<_> = node.child_nodes().collect();
+    if types.is_empty() || types.iter().any(|ty| ty.kind() != SyntaxKind::Type) {
+        return false;
+    }
+    types.iter().all(|ty| {
+        let kinds: Vec<_> = ty
+            .children()
+            .iter()
+            .filter_map(|c| c.as_token())
+            .filter(|t| !t.kind().is_trivia())
+            .map(|t| t.kind())
+            .collect();
+        let array = kinds.contains(&SyntaxKind::LBracket);
+        let wildcard = kinds.contains(&SyntaxKind::Question);
+        if kinds.contains(&SyntaxKind::Void)
+            || wildcard
+                && (!allow_wildcard
+                    || array && !kinds.contains(&SyntaxKind::Extends) && !kinds.contains(&SyntaxKind::Super))
+        {
+            return false;
+        }
+        if !array
+            && kinds.iter().any(|k| {
+                matches!(
+                    k,
+                    SyntaxKind::BooleanKw
+                        | SyntaxKind::Byte
+                        | SyntaxKind::CharKw
+                        | SyntaxKind::Short
+                        | SyntaxKind::IntKw
+                        | SyntaxKind::LongKw
+                        | SyntaxKind::FloatKw
+                        | SyntaxKind::DoubleKw
+                )
+            })
+        {
+            return false;
+        }
+        ty.child_nodes().filter(|n| n.kind() == SyntaxKind::Name).all(|name| {
+            name.child_nodes()
+                .filter(|n| n.kind() == SyntaxKind::TypeArgList)
+                .all(|args| valid_invocation_type_args(args, true))
+        })
+    })
+}
+
 struct Frame {
     kind: SyntaxKind,
     children: Vec<GreenElement>,
@@ -683,7 +738,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_type_args(&mut self) {
+    fn parse_type_args(&mut self) -> Arc<GreenNode> {
         self.open(SyntaxKind::TypeArgList);
         self.expect(SyntaxKind::Lt, "expected '<'");
         if !self.closes_args() {
@@ -698,7 +753,7 @@ impl<'a> Parser<'a> {
         if !self.eat_gt() {
             self.expect(SyntaxKind::Gt, "expected '>'");
         }
-        self.finish();
+        self.finish()
     }
 
     fn closes_args(&self) -> bool {
@@ -1810,7 +1865,23 @@ impl<'a> Parser<'a> {
                 self.start(SyntaxKind::FieldExpr);
                 self.push(base);
                 self.bump();
-                if !self.eat(SyntaxKind::Ident)
+                // Reuse the existing lookahead grammar. An incomplete
+                // list keeps ordinary recovery; dot/less-than comparisons are
+                // not reinterpreted as invocation type arguments.
+                let mut look = Look::from(&*self);
+                let typed = self.at(SyntaxKind::Lt) && look.scan_args() && look.kind() == SyntaxKind::Ident;
+                if typed {
+                    let arguments = self.parse_type_args();
+                    if !valid_invocation_type_args(&arguments, false) {
+                        self.open(SyntaxKind::Error);
+                        self.set_message("invalid explicit invocation type arguments");
+                        self.finish();
+                    }
+                    self.expect(SyntaxKind::Ident, "expected method name");
+                    if !self.at(SyntaxKind::LParen) {
+                        self.expect(SyntaxKind::LParen, "expected invocation arguments");
+                    }
+                } else if !self.eat(SyntaxKind::Ident)
                     && !self.eat(SyntaxKind::This)
                     && !self.eat(SyntaxKind::Super)
                     && !self.eat(SyntaxKind::ClassKw)

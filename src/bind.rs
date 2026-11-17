@@ -964,7 +964,7 @@ impl Index {
                 ResolveResult::none(ResolveStatus::ReceiverNotBound)
             };
         }
-        let chain = field_chain(hit.node, hit.start);
+        let chain = field_chain(hit.node, hit.start).unwrap_or_default();
         let Some(index) = chain.iter().position(|segment| segment.start <= byte && byte < segment.end) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
@@ -2396,9 +2396,14 @@ fn has_call_result_receiver(node: &GreenNode) -> bool {
     }
 }
 
-fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {
+fn field_chain(node: &GreenNode, start: u32) -> Option<Vec<Segment>> {
+    // Preserve the entire unsupported boundary through outer suffixes; dropping
+    // only the selector could turn obj.<T>method.field into obj.field.
+    if node.kind() == SyntaxKind::FieldExpr && node.child_nodes().any(|n| n.kind() == SyntaxKind::TypeArgList) {
+        return None;
+    }
     if node.kind() == SyntaxKind::ThisExpr {
-        return vec![Segment { name: "this".into(), start, end: start + node.utf8_len(), this: true }];
+        return Some(vec![Segment { name: "this".into(), start, end: start + node.utf8_len(), this: true }]);
     }
     if node.kind() == SyntaxKind::ReferenceExpr {
         let mut offset = start;
@@ -2406,12 +2411,12 @@ fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {
             if let Some(token) = child.as_token()
                 && token.kind() == SyntaxKind::Ident
             {
-                return vec![Segment {
+                return Some(vec![Segment {
                     name: token.text().to_string(),
                     start: offset,
                     end: offset + token.utf8_len(),
                     this: false,
-                }];
+                }]);
             }
             offset += child.utf8_len();
         }
@@ -2424,7 +2429,7 @@ fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {
             if base.is_none()
                 && let Some(child_node) = child.as_node()
             {
-                base = Some(field_chain(child_node, offset));
+                base = Some(field_chain(child_node, offset)?);
             }
             if let Some(token) = child.as_token()
                 && token.kind() == SyntaxKind::Ident
@@ -2442,9 +2447,9 @@ fn field_chain(node: &GreenNode, start: u32) -> Vec<Segment> {
         if let Some(selector) = selector {
             chain.push(selector);
         }
-        return chain;
+        return Some(chain);
     }
-    Vec::new()
+    Some(Vec::new())
 }
 
 fn token_kind_covering(node: &GreenNode, start: u32, byte: u32) -> Option<SyntaxKind> {

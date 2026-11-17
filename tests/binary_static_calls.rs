@@ -442,3 +442,60 @@ fn unrelated_switch_restores_static_paths_but_preserves_existing_instance_paths(
         assert_ne!(query(&project(&s, &[INT]), "pick(1)").status, ResolveStatus::Resolved);
     }
 }
+
+#[test]
+fn explicit_type_arguments_do_not_supply_binary_call_or_return_proofs() {
+    for typed in [false, true] {
+        let types = if typed { "<Marker>" } else { "" };
+        let text = format!(
+            "import lib.Api;class Marker{{}}class Box{{public void take(int x){{}}public void take(long x){{}}}}class Calls{{void run(Box box){{box.take(Api.{types}pick(1));Api.{types}make().value();Api.pick(1);}}}}"
+        );
+        let mut p = project(&text, &[INT, LONG, ("make", "()Llib/Product;", 0x109, None)]);
+        p.add_class_bytes(
+            "Product.class",
+            &binary("lib/Product", Some("java/lang/Object"), 0x21, &[("value", "()I", 0x101, None)]),
+        )
+        .unwrap();
+        assert!(p.file("Calls.java").unwrap().errors().is_empty());
+        let outer = query(&p, &format!("take(Api.{types}pick(1))"));
+        if typed {
+            assert_ne!(outer.status, ResolveStatus::Resolved);
+            assert_ne!(query(&p, "value()").status, ResolveStatus::Resolved);
+            assert_ne!(query(&p, "make()").status, ResolveStatus::Resolved);
+            let explicit = text.find("pick(1)").unwrap() as u32;
+            assert_ne!(p.resolve_at("Calls.java", explicit).status, ResolveStatus::Resolved);
+        } else {
+            assert_eq!(outer.status, ResolveStatus::Resolved);
+            assert_eq!(outer.targets[0].start_byte, text.find("take(int x)").unwrap() as u32);
+            selected(&p, "value()", "lib.Product", "()I");
+        }
+        // The same file's ordinary call keeps its complete proof.
+        selected(&p, "pick(1)", "lib.Api", "(I)I");
+    }
+}
+
+#[test]
+fn explicit_type_argument_edits_do_not_reuse_old_call_proofs() {
+    use java_engine::TextEdit;
+    let source = "import lib.Api;class Marker{}class Calls{void run(){Api.<Marker>pick(1);}}";
+    let mut p = project(source, &[INT, LONG]);
+    let old = p.clone();
+    let old_prepared = old.prepare();
+    let old_at = source.find("pick(1)").unwrap() as u32;
+    let original = old_prepared.resolve_at("Calls.java", old_at);
+    assert_ne!(original.status, ResolveStatus::Resolved);
+    let start = source.find("Api.<").unwrap() + 4;
+    for types in ["", "<Marker", "<Marker>"] {
+        let end = p.file("Calls.java").unwrap().text().find("pick(1)").unwrap();
+        p.edit("Calls.java", TextEdit { start_byte: start as u32, end_byte: end as u32, insert: types.into() })
+            .unwrap();
+        let fresh = project(p.file("Calls.java").unwrap().text(), &[INT, LONG]);
+        assert_eq!(query(&p, "pick(1)"), query(&fresh, "pick(1)"));
+        if types.is_empty() {
+            selected(&p, "pick(1)", "lib.Api", "(I)I");
+        } else {
+            assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+        }
+        assert_eq!(old_prepared.resolve_at("Calls.java", old_at), original);
+    }
+}
