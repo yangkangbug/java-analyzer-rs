@@ -81,8 +81,8 @@ qualified names do not acquire a dependency on a conflicting simple import.
 This is a conservative navigation boundary, not a compilation-validity checker.
 An import conflict can make the whole file invalid even when another lexical or
 qualified name remains navigable. Local types retain their existing unsupported
-binding boundary. General access validation, import diagnostics, static imports,
-canonical import validation and same-unit declaration deduplication are not added.
+binding boundary. General access validation, import diagnostics, static imports and canonical
+import validation remain outside this boundary.
 
 Regressions compare direct/prepared navigation, import insertion/removal against
 fresh inputs, old retained views, and an unreferenced compilation's invisible
@@ -111,3 +111,26 @@ and duplicate insertion/removal compared with fresh indexing. Optional javac
 controls distinguish illegal duplicate members from legal nearest-scope shadowing
 and equal names owned by distinct classes. This fixes a false unique navigation
 result; it is not a percentage of complete Java support.
+
+
+## Same-declaration import contributions
+
+A legal explicit import can name the containing top-level type itself, or another
+top-level type in the same compilation unit. When combining import candidates
+with current-unit declarations, the binder now adds each existing declaration
+identity only once. This restores one exact type/field target instead of a false
+ambiguity from contributing the same declaration twice. Identical repeated imports
+retain the same result.
+
+Deduplication uses the existing snapshot-local compilation scope, path, dotted
+name and declaration range, not the name alone. Distinct source declarations in
+one file, separate source paths, visible compilation scopes and a source/binary
+pair remain distinct candidates. No new global symbol identity, cache, source
+precedence or classpath policy is introduced. The ordinary no-current-unit import
+fast path is unchanged.
+
+Native tests cover valid self/same-unit imports, genuine duplicate declarations,
+source/binary competition, isolated and combined compilation visibility, lexical
+shadowing, import insertion and duplicate insertion/removal with old prepared
+views preserved. Optional javac controls confirm the legal cases and reject the
+real conflicts; emitted field descriptors independently retain the declared type.

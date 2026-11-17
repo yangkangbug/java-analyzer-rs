@@ -825,8 +825,12 @@ impl Index {
             if imported.is_empty() {
                 return TypeLookup::MissingImport;
             }
+            // The import and current unit can contribute the same declaration.
+            // Collapse only that identity, never equal spellings from distinct
+            // source ranges, paths, binary origins or compilation contexts.
+            let mut seen: BTreeSet<_> = imported.iter().map(|class| ClassIdentity::of(class)).collect();
             let mut all = imported;
-            all.extend(same_unit);
+            all.extend(same_unit.into_iter().filter(|class| seen.insert(ClassIdentity::of(class))));
             return if all.len() == 1 { TypeLookup::One(all[0]) } else { TypeLookup::Many(all) };
         }
         let same_package: Vec<_> = self
