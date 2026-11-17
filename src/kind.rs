@@ -208,6 +208,8 @@ pub enum SyntaxKind {
     Eof,
     /// A synchronized statement with a monitor expression and required Block.
     SynchronizedStmt,
+    /// Recognized instanceof type pattern; flow-sensitive binding is unsupported.
+    TypePattern,
 }
 
 impl SyntaxKind {

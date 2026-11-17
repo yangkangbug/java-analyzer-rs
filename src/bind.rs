@@ -346,6 +346,8 @@ impl ClassRec {
 
 #[derive(Clone, Debug)]
 struct LocalRec {
+    // A refusal record, never evidence of a proven local declaration/scope.
+    guard_only: bool,
     name: String,
     kind: TargetKind,
     start: u32,
@@ -1037,7 +1039,7 @@ impl Index {
         let mut caller_locals = Vec::new();
         let locals = local_resolution(
             file.locals.iter().inspect(|local| {
-                if local.start >= caller_start && local.end <= caller_end {
+                if local.guard_only || local.start >= caller_start && local.end <= caller_end {
                     caller_locals.push(*local);
                 }
             }),
@@ -2121,6 +2123,9 @@ fn local_resolution<'a>(locals: impl Iterator<Item = &'a LocalRec>, byte: u32, n
     if locals.is_empty() {
         return None;
     }
+    if locals.iter().any(|local| local.guard_only) {
+        return Some(ResolveResult::none(ResolveStatus::Unresolved));
+    }
     let min_span = locals.iter().map(|local| local.scope_end - local.scope_start).min().unwrap();
     let targets = locals
         .into_iter()
@@ -2408,7 +2413,7 @@ fn token_name(node: &GreenNode) -> String {
 }
 
 fn declaration_at(file: &FileRec, byte: u32) -> Option<Target> {
-    if let Some(local) = file.locals.iter().find(|local| local.start <= byte && byte < local.end) {
+    if let Some(local) = file.locals.iter().find(|local| !local.guard_only && local.start <= byte && byte < local.end) {
         return Some(local.target());
     }
     for class in &file.classes {
@@ -2459,7 +2464,55 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         0,
         &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new(), enum_constant_depth: 0 },
     );
+    index_pattern_guards(parsed.root(), 0, None, &mut file);
     file
+}
+
+// Recomputed from the current syntax tree when indexing, never cached on a
+// parser ancestor. The interval is a conservative refusal bound, not flow scope.
+fn index_pattern_guards(node: &GreenNode, start: u32, unit_end: Option<u32>, file: &mut FileRec) {
+    let unit_end = if matches!(
+        node.kind(),
+        SyntaxKind::Method
+            | SyntaxKind::Constructor
+            | SyntaxKind::Field
+            | SyntaxKind::Initializer
+            | SyntaxKind::EnumConstant
+    ) {
+        Some(start + node.utf8_len())
+    } else {
+        unit_end
+    };
+    if node.kind() == SyntaxKind::TypePattern {
+        if let Some(scope_end) = unit_end
+            && let Some((name, at, end)) = direct_ident(node, start)
+        {
+            file.locals.push(LocalRec {
+                guard_only: true,
+                name,
+                kind: TargetKind::Local,
+                start: at,
+                end,
+                scope_start: at,
+                scope_end,
+                visible_from: end,
+                declared: None,
+                primitive: None,
+                postfix_after: None,
+                catch_origin: false,
+                reference: None,
+                path: file.path.clone(),
+            });
+        }
+        return;
+    }
+    let mut at = start;
+    for child in node.children() {
+        if let Some(child) = child.as_node() {
+            index_pattern_guards(child, at, unit_end, file);
+        }
+        at += child.utf8_len();
+    }
 }
 
 struct IndexCtx<'a> {
@@ -2812,6 +2865,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
     let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
     for (name, name_start, name_end, declared) in variable_declarators(node, start) {
         ctx.file.locals.push(LocalRec {
+            guard_only: false,
             name,
             kind,
             start: name_start,
@@ -2835,6 +2889,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
     let Some((name, name_start, name_end)) = direct_ident(node, start) else { return };
     ctx.file.locals.push(LocalRec {
+        guard_only: false,
         name,
         kind: TargetKind::Parameter,
         start: name_start,
@@ -2859,6 +2914,7 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     }
     if let Some((name, name_start, name_end)) = direct_ident(node, start) {
         ctx.file.locals.push(LocalRec {
+            guard_only: false,
             name,
             kind: TargetKind::Parameter,
             start: name_start,
@@ -4215,8 +4271,7 @@ impl<'a> PrimitiveProof<'a> {
                 let name = token_name(node);
                 let mut locals = self.file.locals.iter().filter(|local| {
                     local.name == name
-                        && local.start >= self.caller_start
-                        && local.end <= self.caller_end
+                        && (local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end)
                         && local.scope_start <= start
                         && start < local.scope_end
                         && local.visible_from <= start
@@ -4225,7 +4280,7 @@ impl<'a> PrimitiveProof<'a> {
                 if locals.next().is_some() {
                     return None;
                 }
-                if !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
+                if one.guard_only || !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
                     return None;
                 }
                 one.primitive
@@ -6155,7 +6210,7 @@ impl<'a> ReferenceCallProof<'a> {
             self.charge(self.file.locals.len())?;
             let mut subset = Vec::new();
             for local in &self.file.locals {
-                if local.start >= self.caller_start && local.end <= self.caller_end {
+                if local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end {
                     subset.push(local);
                     // The initial full scan also answers this lookup. Do not
                     // immediately scan the newly collected subset a second time.
@@ -6173,7 +6228,8 @@ impl<'a> ReferenceCallProof<'a> {
             return Some(None);
         }
         let local = found?;
-        (count == 1 && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)).then_some(Some(local))
+        (count == 1 && !local.guard_only && matches!(local.kind, TargetKind::Local | TargetKind::Parameter))
+            .then_some(Some(local))
     }
 
     fn actual(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
@@ -7529,3 +7585,63 @@ mod header_type;
 
 #[cfg(test)]
 mod legacy_name_index_tests;
+
+#[cfg(test)]
+mod pattern_guard_proof_tests {
+    use super::*;
+
+    #[test]
+    fn guard_is_unknown_not_absence_in_both_caller_scans() {
+        let s =
+            "class value{} class C{int value; void f(Object input){if(input instanceof String value){take(value);}}}";
+        let mut project = Project::new();
+        project.insert("C.java", s);
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        let guard = file.locals.iter().find(|local| local.guard_only).unwrap();
+        let at = s.rfind("value);").unwrap() as u32;
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        // Simulate a nested caller whose enclosing guard was declared outside it.
+        proof.caller_start = guard.end + 1;
+        proof.caller_end = s.len() as u32;
+        assert!(proof.argument_local("value", at).is_none());
+        assert!(proof.caller_locals.as_ref().unwrap().iter().any(|local| local.guard_only));
+        assert!(proof.argument_local("value", at).is_none());
+        assert!(matches!(proof.argument_local("absent", at), Some(None)));
+        assert!(declaration_at(file, guard.start).is_none());
+    }
+
+    #[test]
+    fn guard_wins_over_narrower_ordinary_records_and_never_proves_primitive() {
+        let s = "class C{void f(Object input){if(input instanceof String value){use(value);}}}";
+        let parsed = ParsedFile::parse(s);
+        let mut file = index_file("C.java", &parsed);
+        let guard = file.locals.iter().find(|local| local.guard_only).unwrap().clone();
+        let at = s.rfind("value);").unwrap() as u32;
+        let mut ordinary = guard.clone();
+        ordinary.guard_only = false;
+        ordinary.scope_start = at;
+        ordinary.scope_end = at + 5;
+        file.locals.push(ordinary);
+        assert_eq!(local_resolution(file.locals.iter(), at, "value").unwrap().status, ResolveStatus::Unresolved);
+        file.locals.pop();
+        // Even accidental future type metadata must not turn a guard into evidence.
+        file.locals.iter_mut().find(|local| local.guard_only).unwrap().primitive =
+            Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
+        let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+        let mut proof = PrimitiveProof::new(&file, guard.end + 1, s.len() as u32, None);
+        assert!(proof.expression(hit.node, hit.start, 0).is_none());
+    }
+
+    #[test]
+    fn guard_blocks_static_type_reinterpretation_even_with_valid_inventory() {
+        let s = "class value{static void hit(){}} class C{void f(Object input){if(input instanceof String value){value.hit();}}}";
+        let mut project = Project::new();
+        project.insert("C.java", s);
+        let mut index = Index::build(&project.files, &project.binaries);
+        index.files[0].call_inventory_valid = true;
+        let file = &index.files[0];
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert!(proof.static_type_owner("value", s.rfind("value.hit").unwrap() as u32).is_none());
+    }
+}

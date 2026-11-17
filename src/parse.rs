@@ -1504,7 +1504,18 @@ impl<'a> Parser<'a> {
             self.push(left);
             self.bump();
             if op == SyntaxKind::Instanceof {
-                self.parse_type();
+                let mut look = Look::from(&*self);
+                look.skip_mods();
+                if look.scan_type() && look.kind() == SyntaxKind::Ident {
+                    self.open(SyntaxKind::TypePattern);
+                    self.parse_modifier_list();
+                    self.parse_type();
+                    self.expect(SyntaxKind::Ident, "expected pattern variable");
+                    self.set_message("type pattern flow scope is unsupported");
+                    self.finish();
+                } else {
+                    self.parse_type();
+                }
             } else if op == SyntaxKind::Question {
                 self.parse_expr_bp(0);
                 self.expect(SyntaxKind::Colon, "expected ':'");
