@@ -200,7 +200,14 @@ fn inner_applicability_unknowns_and_competitors_are_not_discarded() {
         let p = project(&format!(
             "class Calls {{ static float field; {inner} static void outer(float a) {{}} static void outer(double a) {{}} static void test(float a) {{ {call}; }} }}"
         ));
-        refused(&p, &call, ResolveStatus::OverloadNotResolved, &["outer(float a", "outer(double a"]);
+        if call == "outer(inner(1))" {
+            // Literal evidence proves inner's float parameter, then the
+            // existing declared-return proof selects outer(float).
+            selected(&p, "inner(1)", "inner(float a");
+            selected(&p, &call, "outer(float a");
+        } else {
+            refused(&p, &call, ResolveStatus::OverloadNotResolved, &["outer(float a", "outer(double a"]);
+        }
     }
 }
 

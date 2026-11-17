@@ -57,10 +57,10 @@ when selection is refused. Candidates must not be opened as selected definitions
 
 ## Deliberately unsupported
 
-No literal typing, field-value typing, general call-result typing, lambda inference,
+The initial slice added no literal typing, field-value typing, general call-result typing, lambda inference,
 reference conversion, boxing/unboxing, generic inference, expanded varargs,
 qualified/inherited/binary overload choice, constructor choice or full access/
-control-flow analysis is added. Resource bindings remain unknown rather than
+control-flow analysis. Resource bindings remain unknown rather than
 falling through to outer names. Annotation calls and enhanced-for iterable headers
 cannot borrow method/loop bindings outside their scope. Enhanced-for body locals
 are supported when otherwise eligible. Malformed syntax and ambiguous inventories cannot supply the new positive proof.
@@ -73,7 +73,8 @@ generalize the primitive proof to all expression or receiver kinds.
 Its later [single-primitive-argument extension](QUALIFIED_PRIMITIVE_CALLS.md)
 independently proves qualified source instance calls from explicit scalar values
 and a bounded decimal `int` subset. It does not broaden this unqualified static
-proof or add general expression inference.
+proof or add general expression inference. The later shared leaf evidence below
+now makes the same decimal subset available in both paths.
 
 ## Evidence
 
@@ -97,3 +98,25 @@ error nodes in 24 files; this work does not reduce parser gaps.
 See [real-source provenance and query records](../examples/real_source/README.md),
 [optional oracle boundaries](ACCEPTANCE_PLAN.md), [signature identities](METHOD_SIGNATURES.md)
 and [remaining preview gates](PREVIEW_PLAN.md).
+
+
+## Shared literal evidence
+
+The primitive and reference argument paths now share exact single-token decimal
+`int` evidence: ASCII decimal digits, no leading zero except `0`, and a value
+at most `2147483647`. This reuses the previously supported reference-path range,
+rather than adding suffixes, other radices, underscores, floating-point literals
+or the special unary-minus minimum value. Exact Boolean leaves are also shared.
+
+Both entries charge the literal's complete UTF-8 length, including trivia, before
+the decimal scan. No selection, conversion or complete-competitor rule changes.
+Existing parentheses, array-index and independently selected scalar-call-return
+composition can consume the new evidence. Thus a literal array index can now
+enable an already-supported primitive array element; this is not a new array or
+general expression inference mechanism. Legacy singleton contradiction checks
+can also use the same leaf evidence without requiring Object inventory.
+
+The original native fixture texts are retained with explicit new expectations
+for decimal int-to-float selection and a literal array index. Unsupported
+competitors and other expression/literal forms remain refusals. A selected target
+does not establish whole-method semantic validity or runtime array bounds.

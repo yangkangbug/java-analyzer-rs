@@ -4006,6 +4006,34 @@ fn postfix_declaration_end(node: &GreenNode, start: u32, name_at: u32) -> Option
     (state == 5 && selected).then_some(start + node.utf8_len())
 }
 
+// Shared existing decimal-int leaf evidence. Callers charge the complete
+// literal text before inspecting it; this does not evaluate arbitrary expressions.
+fn decimal_int_literal(node: &GreenNode) -> Option<PrimitiveValue> {
+    if node.kind() != SyntaxKind::LiteralExpr {
+        return None;
+    }
+    let mut literal = None;
+    for child in node.children() {
+        let token = child.as_token()?;
+        if token.kind().is_trivia() {
+            continue;
+        }
+        if token.kind() != SyntaxKind::IntLiteral || literal.is_some() {
+            return None;
+        }
+        let text = token.text();
+        if text.is_empty()
+            || !text.bytes().all(|b| b.is_ascii_digit())
+            || (text.len() > 1 && text.starts_with('0'))
+            || text.parse::<u32>().ok()? > i32::MAX as u32
+        {
+            return None;
+        }
+        literal = Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
+    }
+    literal
+}
+
 // One complete keyword leaf, shared by both invocation proof paths.
 fn boolean_literal(node: &GreenNode) -> Option<PrimitiveValue> {
     if node.kind() != SyntaxKind::LiteralExpr {
@@ -4320,7 +4348,13 @@ impl<'a> PrimitiveProof<'a> {
         self.enter(depth)?;
         self.charge(node.children().len())?;
         match node.kind() {
-            SyntaxKind::LiteralExpr => boolean_literal(node),
+            SyntaxKind::LiteralExpr => {
+                if let Some(value) = boolean_literal(node) {
+                    return Some(value);
+                }
+                self.charge(node.utf8_len() as usize)?;
+                decimal_int_literal(node)
+            }
             SyntaxKind::ReferenceExpr => {
                 self.charge(self.file.locals.len())?;
                 let name = token_name(node);
@@ -6090,27 +6124,8 @@ impl<'a> ReferenceCallProof<'a> {
             if let Some(value) = boolean_literal(node) {
                 return Some(value);
             }
-            let mut literal = None;
-            for child in node.children() {
-                let token = child.as_token()?;
-                if token.kind().is_trivia() {
-                    continue;
-                }
-                if token.kind() != SyntaxKind::IntLiteral || literal.is_some() {
-                    return None;
-                }
-                let text = token.text();
-                self.charge(text.len())?;
-                if text.is_empty()
-                    || !text.bytes().all(|b| b.is_ascii_digit())
-                    || (text.len() > 1 && text.starts_with('0'))
-                    || text.parse::<u32>().ok()? > i32::MAX as u32
-                {
-                    return None;
-                }
-                literal = Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
-            }
-            return literal;
+            self.charge(node.utf8_len() as usize)?;
+            return decimal_int_literal(node);
         }
         if node.kind() != SyntaxKind::ReferenceExpr {
             return None;
@@ -7874,5 +7889,64 @@ mod static_import_proof_tests {
         let file = wildcard.files.iter().find(|f| f.path == "C.java").unwrap();
         let mut proof = ReferenceCallProof::new(&wildcard, file, caller);
         assert!(proof.static_import_owner("pick", at).is_none());
+    }
+}
+
+#[cfg(test)]
+mod decimal_literal_proof_tests {
+    use super::*;
+    use crate::green::{GreenElement, GreenToken};
+    fn leaf(kind: SyntaxKind, text: &str) -> Arc<GreenNode> {
+        GreenNode::from_parts(
+            SyntaxKind::LiteralExpr,
+            vec![GreenElement::Token(GreenToken::new(kind, text.into()))],
+            None,
+        )
+    }
+    #[test]
+    fn decimal_leaf_requires_complete_single_token_in_supported_range() {
+        let expected = Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
+        for text in ["0", "1", "2147483647"] {
+            assert_eq!(decimal_int_literal(&leaf(SyntaxKind::IntLiteral, text)), expected);
+        }
+        for text in ["", "2147483648", "4294967296", "01", "00", "1L", "1_0", "0x1", "-1", "1.0", "true", "١"] {
+            assert_eq!(decimal_int_literal(&leaf(SyntaxKind::IntLiteral, text)), None, "{text}");
+        }
+        for kind in [SyntaxKind::Ident, SyntaxKind::LongLiteral, SyntaxKind::FloatLiteral] {
+            assert_eq!(decimal_int_literal(&leaf(kind, "1")), None);
+        }
+        for children in [
+            vec![GreenElement::Node(leaf(SyntaxKind::IntLiteral, "1"))],
+            vec![
+                GreenElement::Token(GreenToken::new(SyntaxKind::IntLiteral, "1".into())),
+                GreenElement::Token(GreenToken::new(SyntaxKind::IntLiteral, "2".into())),
+            ],
+        ] {
+            let node = GreenNode::from_parts(SyntaxKind::LiteralExpr, children, None);
+            assert_eq!(decimal_int_literal(&node), None);
+        }
+    }
+    #[test]
+    fn both_decimal_entries_charge_text_and_share_existing_budgets() {
+        let mut p = Project::new();
+        p.insert("C.java", "class C{}");
+        let index = Index::build(&p.files, &p.binaries);
+        let file = &index.files[0];
+        let node = leaf(SyntaxKind::IntLiteral, "2147483647");
+        let expected = Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 });
+        let mut a = PrimitiveProof::new(file, 0, 100, None);
+        assert_eq!(a.expression(&node, 0, 0), expected);
+        let mut b = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(b.scalar_primitive_argument(&node, 0, 0), expected);
+        for budget in [0, 2, 9] {
+            let mut a = PrimitiveProof::new(file, 0, 100, None);
+            a.work_left = budget;
+            assert_eq!(a.expression(&node, 0, 0), None);
+            assert!(a.exhausted);
+            let mut b = ReferenceCallProof::new(&index, file, None);
+            b.work_left = budget;
+            assert_eq!(b.scalar_primitive_argument(&node, 0, 0), None);
+            assert!(b.exhausted);
+        }
     }
 }

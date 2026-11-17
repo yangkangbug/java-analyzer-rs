@@ -341,6 +341,16 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
         "instance_float@oracle.Boundaries,instance_double@oracle.Boundaries")
     expected["instance_refusal"] = (
         "Resolved", "instance_float@oracle.Boundaries", "instance_float@oracle.Boundaries")
+    # Shared decimal leaves now feed the pre-existing array-index proof.
+    # Preserve the original fixture and golden row; require its exact former
+    # candidates and independently compiler-selected declaration before updating.
+    literal_before = (
+        "OverloadNotResolved", "pick_float@oracle.PrimitiveCalls",
+        "pick_float@oracle.PrimitiveCalls,pick_double@oracle.PrimitiveCalls,"
+        "pick_three@oracle.PrimitiveCalls,pick_float_varargs@oracle.PrimitiveCalls,"
+        "pick_double_varargs@oracle.PrimitiveCalls")
+    assert expected["literal_index_refusal"] == literal_before
+    expected["literal_index_refusal"] = ("Resolved", literal_before[1], literal_before[1])
     request = work / "primitive-requests.tsv"
     request.write_text(requests)
     javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
@@ -411,11 +421,12 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     omitted = records(run([native_binary, root / "source", request], {"PATH": "/nonexistent"}).stdout)
     newly_supported = [query for query, row in expected.items()
                        if row[0] == "Resolved" and not query.startswith("single_")]
-    assert len(newly_supported) == 13 and set(omitted) == set(expected)
+    assert len(newly_supported) == 14 and "literal_index_refusal" in newly_supported
+    assert set(omitted) == set(expected)
     assert all(omitted[q][0] != "Resolved" for q in newly_supported), "missing Object did not block new selections"
     must_reject(lambda: compare_primitive(expected, queries, declarations, javac, omitted), "omitted Object input")
-    print("PASS: 16 strict source bindings; 16 conservative refusals; "
-          "three scalar-return and one implicit-instance update to the unchanged 32-query corpus; "
+    print("PASS: 17 strict source bindings; 15 conservative refusals; "
+          "three scalar-return, one implicit-instance and one literal-index update to the unchanged 32-query corpus; "
           "exact candidates, target mutations, omitted Object and query-completeness controls verified")
 
 

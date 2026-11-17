@@ -222,7 +222,12 @@ fn singleton_unknown_applicability_is_not_a_java_error_or_a_selected_target() {
         let source = format!(
             "class Calls {{ static void m({formal}) {{}} static float give() {{ return 0; }} static void test({actual}) {{ m({value}); }} }}"
         );
-        refused(&source, &format!("m({value})"), ResolveStatus::CallNotResolved, 1);
+        if value == "1" {
+            // Shared decimal evidence now proves the existing int-to-float conversion.
+            selected(&source, "m(1)", "m(float x)");
+        } else {
+            refused(&source, &format!("m({value})"), ResolveStatus::CallNotResolved, 1);
+        }
     }
     refused(
         "class Calls { static <T> void m(T a) {} static void test(float a) { m(a); } }",
@@ -269,7 +274,12 @@ fn raw_syntax_and_inapplicable_duplicate_declarations_block_selection() {
         let source = format!(
             "class Calls {{ static void m(float a) {{}} static void m(double a) {{}} static void test(float[] a) {{ {body}; }} }}"
         );
-        refused(&source, body, ResolveStatus::OverloadNotResolved, 2);
+        if body == "m(a[0])" {
+            // The existing array proof can now type its literal index.
+            selected(&source, body, "m(float a)");
+        } else {
+            refused(&source, body, ResolveStatus::OverloadNotResolved, 2);
+        }
     }
     for extra in [
         "static static void bad() {}",
@@ -415,7 +425,11 @@ fn unsupported_competitors_and_contexts_do_not_supply_proof() {
         let source = format!(
             "class Calls {{ static void m(float a) {{}} static void m(double a) {{}} static void test(float a) {{ {body}; }} }}"
         );
-        refused(&source, body, ResolveStatus::OverloadNotResolved, 2);
+        if body == "m(1)" {
+            selected(&source, body, "m(float a)");
+        } else {
+            refused(&source, body, ResolveStatus::OverloadNotResolved, 2);
+        }
     }
     for bad in [
         "static void broken(void q) {}",
@@ -558,4 +572,64 @@ fn boolean_literal_evidence_does_not_add_operators_boxing_or_ignore_competitors(
     }
     let source = "class Calls{static void m(Object b){} static void test(){m(true);}}";
     refused(source, "m(true)", ResolveStatus::CallNotResolved, 1);
+}
+
+#[test]
+fn decimal_int_literal_uses_same_primitive_selection_as_declared_int() {
+    for actual in ["0", "1", "2147483647", "((1))"] {
+        let s = format!(
+            "class Calls{{static void m(int x){{}}static void m(long x){{}}static void run(){{m({actual});}}}}"
+        );
+        selected(&s, &format!("m({actual})"), "m(int x)");
+    }
+    for formal in ["long", "float", "double"] {
+        let s = format!("class Calls{{static void m({formal} x){{}}static void run(){{m(1);}}}}");
+        selected(&s, "m(1)", &format!("m({formal} x)"));
+    }
+    let s = "class Calls{static int m(int x){return x;}static long m(long x){return x;}static void run(){m(m(1));}}";
+    selected(s, "m(m(1))", "m(int x)");
+}
+
+#[test]
+fn decimal_int_evidence_rejects_contradictions_but_not_unknown_competitors() {
+    for formal in ["boolean", "byte", "short", "char"] {
+        let s = format!("class Calls{{static void m({formal} x){{}}static void run(){{m(1);}}}}");
+        assert_eq!(query(&project(&s), "m(1)").status, ResolveStatus::CallNotResolved);
+    }
+    let mut incomplete = Project::new();
+    incomplete.insert("Calls.java", "class Calls{static void m(boolean x){}static void run(){m(1);}}");
+    assert_eq!(query(&incomplete, "m(1)").status, ResolveStatus::CallNotResolved);
+    for actual in ["2147483648", "01", "1L", "1_0", "0x1", "0b1", "1.0", "-1"] {
+        let s = format!(
+            "class Calls{{static void m(int x){{}}static void m(long x){{}}static void run(){{m({actual});}}}}"
+        );
+        assert_ne!(query(&project(&s), &format!("m({actual})")).status, ResolveStatus::Resolved, "{actual}");
+    }
+    for competing in ["static void m(Missing x){}", "static <T> void m(T x){}", "static void m(Object... x){}"] {
+        let s = format!("class Calls{{static void m(int x){{}}{competing} static void run(){{m(1);}}}}");
+        assert_ne!(query(&project(&s), "m(1)").status, ResolveStatus::Resolved, "{competing}");
+    }
+}
+
+#[test]
+fn decimal_int_edits_match_fresh_and_preserve_old_prepared() {
+    use java_engine::TextEdit;
+    let s = "class Calls{static void m(int x){}static void m(long x){}static void run(){m(1);}}";
+    let mut p = project(s);
+    let old = p.clone();
+    let prepared = old.prepare();
+    let at = s.rfind("1").unwrap() as u32;
+    let old_result = query(&p, "m(1)");
+    assert_eq!(old_result.status, ResolveStatus::Resolved);
+    for replacement in ["2147483648", "01", "1L", "0", "2147483647"] {
+        let current = p.file("Calls.java").unwrap().text();
+        let start = current.rfind("m(").unwrap() + 2;
+        let end = current[start..].find(')').unwrap() + start;
+        p.edit("Calls.java", TextEdit { start_byte: start as u32, end_byte: end as u32, insert: replacement.into() })
+            .unwrap();
+        let text = p.file("Calls.java").unwrap().text();
+        let marker = format!("m({replacement})");
+        assert_eq!(query(&p, &marker), query(&project(text), &marker));
+        assert_eq!(prepared.resolve_at("Calls.java", at - 2), old_result);
+    }
 }
