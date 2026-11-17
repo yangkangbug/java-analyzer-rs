@@ -401,6 +401,8 @@ struct FileRec {
     singles: Vec<(String, String)>,
     stars: Vec<String>,
     static_names: Vec<String>,
+    // None member denotes an on-demand import; never infer absence from it.
+    static_imports: Vec<(String, Option<String>)>,
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
     local_types: Vec<LocalTypeRec>,
@@ -721,6 +723,24 @@ impl Index {
             return result;
         }
         if file.static_names.iter().any(|imported| imported == name) {
+            if let Some((args, args_at)) = arguments
+                && let Some(caller) = direct_caller(parsed.root(), byte)
+                && reference_method_header(caller.node, caller.start)
+                && child_kind(caller.node, caller.start, SyntaxKind::TypeParamList).is_none()
+                && !contains_kind(caller.node, SyntaxKind::LocalType)
+                && crate::green::collect_errors(caller.node).is_empty()
+            {
+                let mut proof = ReferenceCallProof::new(self, file, Some(caller));
+                if let Some(owner) = proof.static_import_owner(name, byte)
+                    && let Some(selected) = proof.select_mode(owner, name, args, args_at, 0, InvocationMode::TypeStatic)
+                    && !proof.exhausted
+                {
+                    return ResolveResult::one(
+                        ResolveStatus::Resolved,
+                        member_target(selected.declaring, selected.member),
+                    );
+                }
+            }
             ResolveResult::none(ResolveStatus::StaticImportNotApplied)
         } else {
             ResolveResult::none(ResolveStatus::Unresolved)
@@ -2452,6 +2472,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         singles: Vec::new(),
         stars: Vec::new(),
         static_names: Vec::new(),
+        static_imports: Vec::new(),
         classes: Vec::new(),
         locals: Vec::new(),
         local_types: Vec::new(),
@@ -2637,6 +2658,10 @@ fn index_import(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         if let Some((simple, _, _)) = parts.last() {
             ctx.file.static_names.push(simple.clone());
         }
+        let owner_parts = if star { &parts[..] } else { &parts[..parts.len() - 1] };
+        let owner = owner_parts.iter().map(|(name, _, _)| name.as_str()).collect::<Vec<_>>().join(".");
+        let member = (!star).then(|| parts.last().unwrap().0.clone());
+        ctx.file.static_imports.push((owner, member));
         return;
     }
     if star {
@@ -6301,6 +6326,59 @@ impl<'a> ReferenceCallProof<'a> {
             .or_else(|| self.cast_null_argument(node, at, depth).map(StrictActual::Reference))
     }
 
+    // Import owners are canonical names, not expression receivers. This proof
+    // is deliberately direct-navigation-only: no imported invocation values.
+    fn static_import_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
+        if !self.file.call_inventory_valid || at < self.caller_start || at >= self.caller_end {
+            return None;
+        }
+        self.charge(self.file.static_imports.len().max(1))?;
+        let mut imported = None;
+        for (owner, member) in &self.file.static_imports {
+            self.charge(owner.len() + member.as_ref().map_or(0, String::len) + 1)?;
+            let member = member.as_ref()?; // Any on-demand import remains unsupported.
+            if member == name {
+                if imported.is_some_and(|prior| prior != owner.as_str()) {
+                    return None;
+                }
+                imported = Some(owner.as_str());
+            }
+        }
+        let imported = imported?;
+        self.charge(self.file.classes.len().max(1))?;
+        let enclosing = enclosing_classes(self.file, at);
+        let [caller_owner] = enclosing.as_slice() else { return None };
+        if caller_owner.nesting.len() != 1 || caller_owner.reference_generic || caller_owner.is_interface {
+            return None;
+        }
+        // Legacy collect may discard incomplete edges or inaccessible members.
+        // Only a complete raw graph proves that lexical lookup cannot win.
+        for class in self.graph(caller_owner)? {
+            self.charge(class.methods.len().max(1))?;
+            if class.methods.iter().any(|method| method.name == name) {
+                return None;
+            }
+        }
+        let owner = self.unique_named(self.file.scope, imported)?;
+        let (package, simple) = imported.rsplit_once('.')?;
+        if owner.nesting.len() != 1
+            || package.is_empty()
+            || owner.package != package
+            || owner.simple() != simple
+            || owner.is_interface
+        {
+            return None;
+        }
+        if let Some(signature) = &owner.binary_signature {
+            self.charge(signature.binary_name.len() + imported.len())?;
+            if signature.binary_name != imported.replace('.', "/") {
+                return None;
+            }
+        }
+        self.accessible(owner)?;
+        Some(owner)
+    }
+
     // Shared by direct navigation and nested invocation typing. A failed value
     // proof is never sufficient evidence that the same spelling is a type.
     fn static_type_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
@@ -7745,5 +7823,56 @@ mod boolean_literal_proof_tests {
             let node = GreenNode::from_parts(SyntaxKind::LiteralExpr, children, None);
             assert_eq!(boolean_literal(&node), None);
         }
+    }
+}
+
+#[cfg(test)]
+mod static_import_proof_tests {
+    use super::*;
+    #[test]
+    fn import_discovery_and_selection_share_budget_and_require_closed_ancestors() {
+        let text = "import static lib.Api.pick; class C{void run(){pick(1);}}";
+        let mut p = Project::new();
+        p.insert("C.java", text);
+        p.insert("Api.java", "package lib; public class Api{public static void pick(int x){}}");
+        let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+        bytes.extend(b"java/lang/Object");
+        bytes.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        p.add_class_bytes("Object.class", &bytes).unwrap();
+        let index = Index::build(&p.files, &p.binaries);
+        let file = index.files.iter().find(|f| f.path == "C.java").unwrap();
+        let parsed = p.file("C.java").unwrap();
+        let at = text.rfind("pick(1)").unwrap() as u32;
+        let caller = direct_caller(parsed.root(), at);
+        let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+        let (args, args_at) = hit.arguments.unwrap();
+        let mut proof = ReferenceCallProof::new(&index, file, caller);
+        let initial = proof.work_left;
+        let owner = proof.static_import_owner("pick", at).unwrap();
+        let discovery_work = initial - proof.work_left;
+        assert!(discovery_work > 0);
+        assert!(proof.select_mode(owner, "pick", args, args_at, 0, InvocationMode::TypeStatic).is_some());
+        let mut proof = ReferenceCallProof::new(&index, file, caller);
+        proof.work_left = 0;
+        assert!(proof.static_import_owner("pick", at).is_none());
+        assert!(proof.exhausted);
+        let mut proof = ReferenceCallProof::new(&index, file, caller);
+        proof.work_left = discovery_work;
+        let owner = proof.static_import_owner("pick", at).unwrap();
+        assert_eq!(proof.work_left, 0);
+        assert!(proof.select_mode(owner, "pick", args, args_at, 0, InvocationMode::TypeStatic).is_none());
+        assert!(proof.exhausted);
+        let missing = Index::build(&p.files, &BTreeMap::new());
+        let file = missing.files.iter().find(|f| f.path == "C.java").unwrap();
+        let mut proof = ReferenceCallProof::new(&missing, file, caller);
+        assert!(proof.static_import_owner("pick", at).is_none());
+        // A matching import must not short-circuit a later wildcard, even with
+        // the otherwise-successful complete graph retained.
+        let mut wildcard = Index::build(&p.files, &p.binaries);
+        let file = wildcard.files.iter_mut().find(|f| f.path == "C.java").unwrap();
+        file.static_imports.push(("other.Api".into(), None));
+        let file = wildcard.files.iter().find(|f| f.path == "C.java").unwrap();
+        let mut proof = ReferenceCallProof::new(&wildcard, file, caller);
+        assert!(proof.static_import_owner("pick", at).is_none());
     }
 }

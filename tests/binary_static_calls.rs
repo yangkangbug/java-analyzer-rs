@@ -186,66 +186,69 @@ fn static_parameter_slot_limit_and_work_budget_are_bounded() {
 }
 #[test]
 fn same_binary_name_in_separate_compilations_keeps_static_result_identity() {
-    use java_engine::{
-        AnalysisSnapshot, ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig,
-        WorkspaceSnapshot,
-    };
-    use std::{
-        fs,
-        sync::atomic::{AtomicU64, Ordering},
-    };
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    let root = std::env::temp_dir().join(format!(
-        "static-scope-{}-{}",
-        std::process::id(),
-        NEXT.fetch_add(1, Ordering::Relaxed)
-    ));
-    fs::create_dir_all(&root).unwrap();
-    struct Cleanup(std::path::PathBuf);
-    impl Drop for Cleanup {
-        fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.0);
+    fn check(text: &str) {
+        use java_engine::{
+            AnalysisSnapshot, ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig,
+            WorkspaceSnapshot,
+        };
+        use std::{
+            fs,
+            sync::atomic::{AtomicU64, Ordering},
+        };
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "static-scope-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        struct Cleanup(std::path::PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(root.clone());
+        let mut configs = Vec::new();
+        for (name, method) in [("a", INT), ("b", LONG)] {
+            let src = root.join(name).join("src");
+            let bin = root.join(name).join("bin");
+            fs::create_dir_all(&src).unwrap();
+            fs::create_dir_all(bin.join("lib")).unwrap();
+            fs::create_dir_all(bin.join("java/lang")).unwrap();
+            fs::write(src.join("Calls.java"), text).unwrap();
+            fs::write(bin.join("java/lang/Object.class"), binary("java/lang/Object", None, 0x21, &[])).unwrap();
+            fs::write(bin.join("lib/Api.class"), binary("lib/Api", Some("java/lang/Object"), 0x21, &[method])).unwrap();
+            configs.push(CompilationConfig {
+                id: CompilationId::new(name, "main"),
+                inputs: ProjectConfig {
+                    source_roots: vec![src],
+                    classpath: vec![ClasspathEntry::Directory(bin)],
+                    ..Default::default()
+                },
+                dependencies: vec![],
+            });
+        }
+        let a = AnalysisSnapshot::new(
+            WorkspaceSnapshot::load(&WorkspaceConfig { compilations: configs, ..Default::default() }).unwrap(),
+        );
+        for (name, desc) in [("a", "(I)I"), ("b", "(J)J")] {
+            let path = root.join(name).join("src/Calls.java").canonicalize().unwrap();
+            let r = a
+                .scope(&CompilationId::new(name, "main"))
+                .unwrap()
+                .resolve_at(path.to_str().unwrap(), text.find("pick(1)").unwrap() as u32);
+            assert_eq!(r.status, ResolveStatus::Resolved);
+            assert_eq!(r.targets.len(), 1);
+            assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, desc);
+            assert_eq!(
+                r.targets[0].path,
+                root.join(name).join("bin/lib/Api.class").canonicalize().unwrap().to_str().unwrap()
+            );
         }
     }
-    let _cleanup = Cleanup(root.clone());
-    let text = "import lib.Api; class Calls {void run(){Api.pick(1);}}";
-    let mut configs = Vec::new();
-    for (name, method) in [("a", INT), ("b", LONG)] {
-        let src = root.join(name).join("src");
-        let bin = root.join(name).join("bin");
-        fs::create_dir_all(&src).unwrap();
-        fs::create_dir_all(bin.join("lib")).unwrap();
-        fs::create_dir_all(bin.join("java/lang")).unwrap();
-        fs::write(src.join("Calls.java"), text).unwrap();
-        fs::write(bin.join("java/lang/Object.class"), binary("java/lang/Object", None, 0x21, &[])).unwrap();
-        fs::write(bin.join("lib/Api.class"), binary("lib/Api", Some("java/lang/Object"), 0x21, &[method])).unwrap();
-        configs.push(CompilationConfig {
-            id: CompilationId::new(name, "main"),
-            inputs: ProjectConfig {
-                source_roots: vec![src],
-                classpath: vec![ClasspathEntry::Directory(bin)],
-                ..Default::default()
-            },
-            dependencies: vec![],
-        });
-    }
-    let a = AnalysisSnapshot::new(
-        WorkspaceSnapshot::load(&WorkspaceConfig { compilations: configs, ..Default::default() }).unwrap(),
-    );
-    for (name, desc) in [("a", "(I)I"), ("b", "(J)J")] {
-        let path = root.join(name).join("src/Calls.java").canonicalize().unwrap();
-        let r = a
-            .scope(&CompilationId::new(name, "main"))
-            .unwrap()
-            .resolve_at(path.to_str().unwrap(), text.find("pick(1)").unwrap() as u32);
-        assert_eq!(r.status, ResolveStatus::Resolved);
-        assert_eq!(r.targets.len(), 1);
-        assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, desc);
-        assert_eq!(
-            r.targets[0].path,
-            root.join(name).join("bin/lib/Api.class").canonicalize().unwrap().to_str().unwrap()
-        );
-    }
+    check("import lib.Api; class Calls {void run(){Api.pick(1);}}");
+    check("import static lib.Api.pick; class Calls {void run(){pick(1);}}");
 }
 
 #[test]
@@ -279,4 +282,137 @@ fn boolean_literal_edits_keep_prepared_versions_and_fresh_selection() {
     p.edit("Calls.java", TextEdit { start_byte: at as u32, end_byte: (at + 1) as u32, insert: "false".into() })
         .unwrap();
     selected(&p, "pick(false)", "lib.Api", "(Z)Z");
+}
+
+#[test]
+fn explicit_static_import_calls_reuse_exact_binary_selection() {
+    for prefix in ["import static lib.Api.pick;", "import static lib.Api.pick; import static lib.Api.pick;"] {
+        for (value, desc) in [("1", "(I)I"), ("true", "(Z)Z")] {
+            let s = format!("{prefix} class Calls{{void run(){{int pick=0;pick({value});}}}}");
+            selected(
+                &project(&s, &[INT, LONG, ("pick", "(Z)Z", 0x109, None)]),
+                &format!("pick({value})"),
+                "lib.Api",
+                desc,
+            );
+        }
+    }
+    let s = "import static lib.Api.pick; class Calls{static void run(){pick(1);}}";
+    selected(&project(s, &[INT, LONG]), "pick(1)", "lib.Api", "(I)I");
+    let s = "import static lib.Api.pick; class Calls{Calls(){pick(1);}}";
+    selected(&project(s, &[INT, LONG]), "pick(1)", "lib.Api", "(I)I");
+}
+
+#[test]
+fn static_import_requires_complete_lexical_absence_and_import_inventory() {
+    for s in [
+        "import static lib.Api.pick; import static missing.Other.pick; class Calls{void run(){pick(1);}}",
+        "import static lib.Api.pick; import static lib.Other.*; class Calls{void run(){pick(1);}}",
+        "import static lib.Api.*; class Calls{void run(){pick(1);}}",
+        "import static missing.Api.pick; class Calls{void run(){pick(1);}}",
+        "import static lib.Api.pick; class Calls extends Missing{void run(){pick(1);}}",
+        "import static lib.Api.pick; class Calls<T>{void run(){pick(1);}}",
+        "import static lib.Api.pick; class Calls{void run(){Runnable r=()->pick(1);}}",
+        "import static lib.Api.pick; class Calls{class Inner{void run(){pick(1);}}}",
+    ] {
+        let p = project(s, &[INT, LONG]);
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "{s}");
+    }
+    let nested = "import static lib.Api.pick; class Calls{void run(){pick(pick(1));}}";
+    assert_ne!(query(&project(nested, &[INT]), "pick(pick(1))").status, ResolveStatus::Resolved);
+    let s = "import static lib.Api.pick; class Calls extends Parent{void run(){pick(1);}}";
+    let mut p = project(s, &[INT]);
+    p.insert("Parent.java", "class Parent{private void pick(int x){}}");
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    let s = "import static lib.Api.pick; class Calls{void pick(long x){} void run(){pick(1);}}";
+    let p = project(s, &[INT]);
+    let r = query(&p, "pick(1)");
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets[0].owner, "Calls");
+    assert!(r.targets[0].binary.is_none());
+}
+
+#[test]
+fn static_import_owner_identity_access_and_unsupported_competitors_are_not_filtered() {
+    let s = "import static lib.Api.pick; class Calls{void run(){pick(1);}}";
+    let mut p = project(s, &[INT]);
+    p.insert("Duplicate.java", "package lib; public class Api{public static int pick(int x){return x;}}");
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    for methods in [
+        vec![("pick", "(I)I", 0x101, None)],
+        vec![INT, ("pick", "(Ljava/lang/Object;)V", 0x109, Some("<T:Ljava/lang/Object;>(TT;)V"))],
+        vec![("pick", "(I)I", 0x10a, None)],
+        vec![("pick", "([I)I", 0x189, None)],
+    ] {
+        assert_ne!(query(&project(s, &methods), "pick(1)").status, ResolveStatus::Resolved);
+    }
+    for (name, flags) in [("lib/Api", 0x20), ("lib/Api$Inner", 0x21), ("Api", 0x21)] {
+        let canonical = name.replace(['/', '$'], ".");
+        let s = format!("import static {canonical}.pick; class Calls{{void run(){{pick(1);}}}}");
+        let mut p = Project::new();
+        p.insert("Calls.java", &s);
+        p.add_class_bytes("Object.class", &binary("java/lang/Object", None, 0x21, &[])).unwrap();
+        p.add_class_bytes("Other.class", &binary(name, Some("java/lang/Object"), flags, &[INT])).unwrap();
+        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    }
+}
+
+#[test]
+fn explicit_static_source_import_preserves_declaration_and_edit_versions() {
+    use java_engine::TextEdit;
+    let s = "import static lib.Api.pick; class Calls{void run(){pick(1);}}";
+    let build = |text: &str| {
+        let mut p = project(text, &[]);
+        // Use a different owner from the binary helper.
+        p.insert("Source.java", "package lib; public class Source{public static int pick(int x){return x;}}");
+        p
+    };
+    let s = s.replace("lib.Api", "lib.Source");
+    let mut p = build(&s);
+    let old = p.clone();
+    let prepared = old.prepare();
+    let r = query(&p, "pick(1)");
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets[0].owner, "lib.Source");
+    assert_eq!(r.targets[0].path, "Source.java");
+    let at = s.find("lib.Source").unwrap();
+    p.edit("Calls.java", TextEdit { start_byte: at as u32, end_byte: (at + 10) as u32, insert: "lost.Source".into() })
+        .unwrap();
+    assert_eq!(query(&p, "pick(1)"), query(&build(p.file("Calls.java").unwrap().text()), "pick(1)"));
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    assert_eq!(prepared.resolve_at("Calls.java", s.rfind("pick(1)").unwrap() as u32), r);
+    p.insert("Calls.java", &s);
+    assert_eq!(query(&p, "pick(1)"), r);
+}
+
+#[test]
+fn static_import_mixed_instance_family_is_conservative_without_changing_selector() {
+    let s = "import static lib.Api.pick; class Calls{void run(){pick(1);}}";
+    assert_ne!(query(&project(s, &[LONG, ("pick", "(I)I", 0x101, None)]), "pick(1)").status, ResolveStatus::Resolved);
+    selected(&project(s, &[INT, ("pick", "(J)J", 0x101, None)]), "pick(1)", "lib.Api", "(I)I");
+    let s = "import static lib.Api.pick; class lib{} class Calls{void run(){pick(1);}}";
+    selected(&project(s, &[INT]), "pick(1)", "lib.Api", "(I)I");
+}
+
+#[test]
+fn static_import_refuses_cycles_inherited_imports_and_broken_headers() {
+    let s = "import static lib.Api.pick; class Calls extends Parent{void run(){pick(1);}}";
+    let mut p = project(s, &[INT]);
+    p.insert("Parent.java", "class Parent extends Calls{}");
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    let s = "import static lib.Api.pick; class Calls{void run(){pick(1);}}";
+    let mut p = project(s, &[]);
+    p.add_class_bytes("Parent.class", &binary("lib/Parent", Some("java/lang/Object"), 0x21, &[INT])).unwrap();
+    p.add_class_bytes("Api.class", &binary("lib/Api", Some("lib/Parent"), 0x21, &[])).unwrap();
+    assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
+    for s in [
+        "import static lib.Api.pick class Calls{void run(){pick(1);}}",
+        "import static lib.Api.pick; class Calls{void run( {pick(1);}}",
+        "import static lib.Api.pick; class Calls{void run(){int x=;pick(1);}}",
+        "import static lib.Api.pick; class Calls{void run(){int x=pick;}}",
+    ] {
+        let p = project(s, &[INT]);
+        let marker = if s.contains("pick(1)") { "pick(1)" } else { "pick;" };
+        assert_ne!(query(&p, marker).status, ResolveStatus::Resolved);
+    }
 }
