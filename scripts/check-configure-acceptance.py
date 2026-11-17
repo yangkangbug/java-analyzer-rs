@@ -287,12 +287,15 @@ def gson_arguments(fixture, cwd):
     ]
 
 
-def preserve_commons_parser(parser, source_root, stage='labels'):
+def preserve_commons_parser(parser, source_root, stage='latest'):
     # Configuration changes must preserve the exact explicitly selected parser
     # stage, including every message/range, not merely its historical counts.
-    require(stage in ('baseline', 'switch', 'labels'), 'explicit Commons parser stage')
-    contract = load_tool('labeled-statement-parser-contract' if stage == 'labels' else 'traditional-switch-parser-contract')
-    expected, _ = contract.load('commons', 'labels' if stage == 'labels' else ('baseline' if stage == 'baseline' else 'candidate'))
+    require(stage in ('baseline', 'switch', 'labels', 'latest'), 'explicit Commons parser stage')
+    if stage == 'latest':
+        expected, _ = load_tool('current-parser-contract').load('commons')
+    else:
+        contract = load_tool('labeled-statement-parser-contract' if stage == 'labels' else 'traditional-switch-parser-contract')
+        expected, _ = contract.load('commons', 'labels' if stage == 'labels' else ('baseline' if stage == 'baseline' else 'candidate'))
     actual = copy.deepcopy(parser)
     for row in actual['files']:
         row['path'] = Path(row['path']).relative_to(source_root).as_posix()

@@ -36,6 +36,11 @@ class ReturnStageControls(unittest.TestCase):
             for report in row['reports']:
                 report['message'] = 'synthetic labels stage'
 
+        self.parsers['latest'] = copy.deepcopy(self.parsers['labels'])
+        for row in self.parsers['latest']['files']:
+            for report in row['reports']:
+                report['message'] = 'synthetic latest stage'
+
     def parser(self, inventory):
         report = {'classification': 'parser_limit_or_invalid_syntax', 'message': 'synthetic',
                   'range': dict(start_byte=0, end_byte=1, start_utf16=0, end_utf16=1)}
@@ -57,6 +62,9 @@ class ReturnStageControls(unittest.TestCase):
                                 sum(self.new.values()), sum(bool(n) for n in self.new.values())))
             patch(second, 'labeled_parser_contract',
                   return_value=(self.new, second.parser_result_digest(self.parsers['labels'], self.f),
+                                sum(self.new.values()), sum(bool(n) for n in self.new.values())))
+            patch(second, 'latest_parser_contract',
+                  return_value=(self.new, second.parser_result_digest(self.parsers['latest'], self.f),
                                 sum(self.new.values()), sum(bool(n) for n in self.new.values())))
             patch(second, 'reference_call_probes', return_value=([], {'parser_after': self.old}, old_digest))
             patch(second, 'constructor_expectations', return_value=[])
@@ -89,10 +97,10 @@ class ReturnStageControls(unittest.TestCase):
         for caller in [second.run_reference_call_acceptance, second.run_constructor_call_acceptance,
                        gate.strict.string.run, gate.strict.run, gate.run]:
             for baseline in [False, True]:
-                expected = ('baseline' if caller is not gate.run else 'current') if baseline else 'labels'
+                expected = ('baseline' if caller is not gate.run else 'current') if baseline else 'latest'
                 with self.subTest(caller=caller.__module__, baseline=baseline):
                     self.run_chain(caller, baseline, expected)
-                    for wrong_stage in {'baseline', 'current', 'switch', 'labels'} - {expected}:
+                    for wrong_stage in {'baseline', 'current', 'switch', 'labels', 'latest'} - {expected}:
                         with self.assertRaises(second.AcceptanceError):
                             self.run_chain(caller, baseline, wrong_stage)
 

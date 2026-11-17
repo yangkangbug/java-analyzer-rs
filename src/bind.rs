@@ -2208,7 +2208,11 @@ struct Hit<'a> {
 
 fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Option<Hit<'_>> {
     let end = start + node.utf8_len();
-    if node.kind() == SyntaxKind::SwitchLabel || byte < start || byte >= end {
+    if node.kind() == SyntaxKind::SwitchLabel
+        || node.kind() == SyntaxKind::SynchronizedStmt && node.message().is_some()
+        || byte < start
+        || byte >= end
+    {
         return None;
     }
     let mut child_at = start;
@@ -2477,7 +2481,7 @@ enum ScopeKind {
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     // Invalid direct labeled declarations and bounded-chain recovery cannot
     // introduce variables into the enclosing block. Valid labels add no scope.
-    if node.kind() == SyntaxKind::LabeledStmt && node.message().is_some() {
+    if matches!(node.kind(), SyntaxKind::LabeledStmt | SyntaxKind::SynchronizedStmt) && node.message().is_some() {
         return;
     }
     // Include anonymous bodies nested in constructor arguments, without
@@ -4032,6 +4036,7 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
         || path[4].0.kind() != SyntaxKind::Block
         || path[4..].iter().any(|(node, start)| {
             (node.kind() == SyntaxKind::NewExpr && array_dimension_context(node, *start, byte, &mut work).is_none())
+                || node.kind() == SyntaxKind::SynchronizedStmt && node.message().is_some()
                 || matches!(
                     node.kind(),
                     SyntaxKind::Annotation

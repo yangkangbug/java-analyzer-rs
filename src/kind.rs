@@ -206,6 +206,8 @@ pub enum SyntaxKind {
     ParamList,
     Error,
     Eof,
+    /// A synchronized statement with a monitor expression and required Block.
+    SynchronizedStmt,
 }
 
 impl SyntaxKind {

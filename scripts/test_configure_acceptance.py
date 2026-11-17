@@ -293,9 +293,12 @@ class InvocationControls(unittest.TestCase):
     def test_commons_exact_parser_stages_cannot_be_swapped_erased_or_invented(self):
         root = Path('/sources')
         contract = gate.load_tool('traditional-switch-parser-contract')
-        for stage in ('baseline', 'switch', 'labels'):
-            selected = gate.load_tool('labeled-statement-parser-contract') if stage == 'labels' else contract
-            parser, _ = selected.load('commons', 'labels' if stage == 'labels' else ('baseline' if stage == 'baseline' else 'candidate'))
+        for stage in ('baseline', 'switch', 'labels', 'latest'):
+            if stage == 'latest':
+                parser, _ = gate.load_tool('current-parser-contract').load('commons')
+            else:
+                selected = gate.load_tool('labeled-statement-parser-contract') if stage == 'labels' else contract
+                parser, _ = selected.load('commons', 'labels' if stage == 'labels' else ('baseline' if stage == 'baseline' else 'candidate'))
             for row in parser['files']:
                 row['path'] = str(root / row['path'])
             gate.preserve_commons_parser(parser, root, stage)

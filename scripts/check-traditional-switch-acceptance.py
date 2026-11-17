@@ -17,7 +17,7 @@ def module(name, file):
     return result
 
 switch_contract = module("switch_parser", "traditional-switch-parser-contract.py")
-label_contract = module("label_parser", "labeled-statement-parser-contract.py")
+latest_contract = module("latest_parser", "current-parser-contract.py")
 commons = module("switch_commons", "check-cli-acceptance.py")
 second = module("switch_second", "check-second-project.py")
 
@@ -35,8 +35,8 @@ def main():
     parser.add_argument("--baseline", action="store_true")
     args = parser.parse_args()
     native = args.native.resolve(strict=True)
-    stage = "baseline" if args.baseline else "labels"
-    contract = switch_contract if args.baseline else label_contract
+    stage = "baseline" if args.baseline else "latest"
+    contract = switch_contract if args.baseline else latest_contract
     spec = json.loads((ROOT / "scripts/acceptance-inputs.json").read_text())
     with tempfile.TemporaryDirectory(prefix="traditional-switch-acceptance-") as tmp:
         work = Path(tmp)

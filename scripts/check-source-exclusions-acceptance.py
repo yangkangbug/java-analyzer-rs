@@ -356,14 +356,14 @@ def preservation(runner, fixture, label):
         report[name] = second.portable_queries(response, fixture)
     configure_gate.missing_generated(report['original_16'], fixture)
     parser = runner.success(label + '-parser', 'parser-report', fixture)['result']
-    second.check_reference_parser(parser, fixture, historical, parser_digest, stage="labels")
+    second.check_reference_parser(parser, fixture, historical, parser_digest, stage="latest")
     portable = copy.deepcopy(parser)
     for file in portable['files']:
         file['path'] = Path(file['path']).relative_to(fixture.source_root).as_posix()
     report['parser'] = portable
-    _, _, count, affected = second.labeled_parser_contract(fixture)
-    same(portable['report_count'], count, 'labels parser count')
-    same(portable['files_with_reports'], affected, 'labels parser affected count')
+    _, _, count, affected = second.latest_parser_contract(fixture)
+    same(portable['report_count'], count, 'latest parser count')
+    same(portable['files_with_reports'], affected, 'latest parser affected count')
     return report
 
 

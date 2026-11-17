@@ -721,6 +721,7 @@ impl<'a> Parser<'a> {
             }
             SyntaxKind::If => self.parse_if(),
             SyntaxKind::While => self.parse_while(),
+            SyntaxKind::Synchronized => self.parse_synchronized(),
             SyntaxKind::Do => self.parse_do(),
             SyntaxKind::For => self.parse_for(),
             SyntaxKind::Return => self.parse_jump(SyntaxKind::ReturnStmt, true),
@@ -844,6 +845,64 @@ impl<'a> Parser<'a> {
         self.parse_stmt();
         if self.eat(SyntaxKind::Else) {
             self.parse_stmt();
+        }
+        self.finish();
+    }
+
+    fn parse_synchronized(&mut self) {
+        self.open(SyntaxKind::SynchronizedStmt);
+        self.bump();
+        self.expect(SyntaxKind::LParen, "expected '('");
+        if matches!(
+            self.kind(),
+            SyntaxKind::LBrace
+                | SyntaxKind::RBrace
+                | SyntaxKind::Else
+                | SyntaxKind::Catch
+                | SyntaxKind::Finally
+                | SyntaxKind::Case
+                | SyntaxKind::Default
+                | SyntaxKind::Eof
+        ) {
+            // Preserve the required body or enclosing statement boundary.
+            self.open(SyntaxKind::Error);
+            self.set_message("expected monitor expression");
+            self.finish();
+        } else {
+            self.parse_expr();
+        }
+        self.expect(SyntaxKind::RParen, "expected ')'");
+        // Only the already-built header is checked, never the body.
+        let invalid_header = self
+            .stack
+            .last()
+            .expect("synchronized frame")
+            .children
+            .iter()
+            .filter_map(GreenElement::as_node)
+            .any(|node| !crate::green::collect_errors(node).is_empty());
+        if invalid_header {
+            self.set_message("invalid synchronized header");
+        }
+        if self.at(SyntaxKind::LBrace) {
+            self.parse_block();
+        } else {
+            self.expect(SyntaxKind::LBrace, "expected synchronized block");
+            self.set_message("expected synchronized block");
+            // One recovered statement stays under the invalid node, so its
+            // declarations cannot enter the surrounding lexical scope.
+            if !matches!(
+                self.kind(),
+                SyntaxKind::RBrace
+                    | SyntaxKind::Else
+                    | SyntaxKind::Catch
+                    | SyntaxKind::Finally
+                    | SyntaxKind::Case
+                    | SyntaxKind::Default
+                    | SyntaxKind::Eof
+            ) {
+                self.parse_stmt();
+            }
         }
         self.finish();
     }

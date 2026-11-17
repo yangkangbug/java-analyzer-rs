@@ -120,6 +120,10 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
             // and catch-annotation validation, not just their nested block tree.
             if !matches!(node.kind(), SyntaxKind::SwitchLabel | SyntaxKind::Annotation)
                 && (node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody)
+                // Monitor errors determine the synchronized header's validity.
+                // Recheck that ancestor instead of splicing a lambda/anonymous
+                // body inside the monitor. Its ordinary body remains eligible.
+                && (node.kind() != SyntaxKind::SynchronizedStmt || child.kind() == SyntaxKind::Block)
             {
                 path.push(index);
                 collect(child, offset, edit_start, edit_end, path, hits);
