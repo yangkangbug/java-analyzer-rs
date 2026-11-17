@@ -22,8 +22,10 @@ type arguments retain the receiver declaration's context.
 [JLS 4.5.2](https://docs.oracle.com/javase/specs/jls/se25/html/jls-4.html#jls-4.5.2)
 describes substitution for members of parameterized types. Here only class formals
 with an explicit Object class-file bound are accepted. Each actual must prove a
-conversion to the supplied Object identity in the binary owner's scope. Separate
-closed hierarchies or matching names are not a cross-scope bound certificate.
+conversion to the supplied Object in the binary owner's scope. The
+[query-local conversion certificate](BINARY_ARGUMENT_COMPATIBILITY.md) may bridge
+a strictly reachable binary ancestor with matching complete evidence; separate
+closed hierarchies, matching names or paths alone are not a bound certificate.
 
 The existing selector checks the complete same-name family, substitutes
 parameters and return types, and reuses strict applicability and specificity.

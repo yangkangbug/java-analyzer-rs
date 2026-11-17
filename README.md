@@ -111,9 +111,10 @@ arrays, generics, boxing and additional expression inference are not enabled.
 That phase's sole new real-Gson success was `set(0, null)`; its predicted
 `add(propertyName, null)` target was explicitly deferred rather than counted as
 success. The later [exact binary argument compatibility proof](docs/BINARY_ARGUMENT_COMPATIBILITY.md)
-addresses the ordinary binary-root cross-scope gap using selected-origin and
-complete modeled inheritance-closure evidence, without global type unification
-or cross-scope subtype widening. Independent signature comparison is budgeted;
+addresses ordinary binary-root and strictly reachable binary-ancestor cross-scope
+conversions using selected-origin and complete modeled inheritance-closure
+evidence, without global type unification or unknown generic-path widening.
+Independent signature comparison is budgeted;
 small complete closures support both shared and independent parses, while shared
 signatures can allow proofs that oversized independent copies must refuse.
 

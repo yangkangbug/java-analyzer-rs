@@ -270,7 +270,7 @@ fn source_owner_formal_limits_are_closed() {
     refused(&source_box(&declaration, "Box<A> box", "box.get().hit()"));
 }
 #[test]
-fn cross_compilation_requires_the_real_bound_identity() {
+fn cross_compilation_compatible_bound_keeps_actual_result_identity() {
     use java_engine::{
         ClasspathEntry, CompilationConfig, CompilationId, ProjectConfig, WorkspaceConfig, WorkspaceSnapshot,
     };
@@ -312,13 +312,30 @@ fn cross_compilation_requires_the_real_bound_identity() {
     let workspace = WorkspaceSnapshot::load(&config).unwrap();
     let prepared = workspace.prepare();
     let path = root.join("app/Calls.java").canonicalize().unwrap().to_str().unwrap().to_owned();
-    for (at, success) in [(caller.find("hit();").unwrap(), true), (caller.rfind("hit();").unwrap(), false)] {
+    for (at, owner) in [(caller.find("hit();").unwrap(), "api.Item"), (caller.rfind("hit();").unwrap(), "Local")] {
         let fresh = workspace.scope(&app).unwrap().resolve_at(&path, at as u32);
         assert_eq!(fresh, prepared.scope(&app).unwrap().resolve_at(&path, at as u32));
-        assert_eq!(fresh.status == ResolveStatus::Resolved, success, "{fresh:?}");
-        if success {
-            assert_eq!(fresh.targets[0].owner, "api.Item");
+        assert_eq!(fresh.status, ResolveStatus::Resolved, "{fresh:?}");
+        assert_eq!(fresh.targets.len(), 1);
+        assert_eq!(fresh.targets[0].owner, owner);
+        if owner == "Local" {
+            assert_eq!(fresh.targets[0].path, path);
+            assert_eq!(fresh.targets[0].start_byte, caller.find("hit(){}").unwrap() as u32);
         }
     }
+    // Equal names/bytes from a different platform origin are not this
+    // compatibility certificate. The retained original snapshot stays valid.
+    fs::create_dir_all(root.join("other-platform/java/lang")).unwrap();
+    fs::write(root.join("other-platform/java/lang/Object.class"), binary("java/lang/Object", None, 0x21, None, &[]))
+        .unwrap();
+    let mut different = config.clone();
+    different.compilations.iter_mut().find(|c| c.id == app).unwrap().inputs.classpath =
+        vec![ClasspathEntry::Directory(root.join("other-platform"))];
+    let incompatible = WorkspaceSnapshot::load(&different).unwrap();
+    let at = caller.rfind("hit();").unwrap() as u32;
+    let refused = incompatible.scope(&app).unwrap().resolve_at(&path, at);
+    assert_ne!(refused.status, ResolveStatus::Resolved);
+    assert_eq!(refused, incompatible.prepare().scope(&app).unwrap().resolve_at(&path, at));
+    assert_eq!(prepared.scope(&app).unwrap().resolve_at(&path, at).status, ResolveStatus::Resolved);
     fs::remove_dir_all(root).unwrap();
 }

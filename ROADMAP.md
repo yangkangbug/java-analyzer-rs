@@ -57,6 +57,14 @@ Source declaration context, complete competitors and erased parameter identities
 feed the existing selector; no shared graph or cross-compilation identity rules
 are relaxed. See [source receiver boundaries](docs/SOURCE_GENERIC_RECEIVERS.md).
 
+## Query-local cross-compilation conversions
+
+A single conversion entry can bridge a strictly reachable binary ancestor to a
+unique corresponding binary formal using complete selected-origin/signature
+closure evidence. Applicability, generic bounds and specificity share this proof;
+contextual declaration identities and unknown generic paths are unchanged.
+See [scope and historical evidence](docs/BINARY_ARGUMENT_COMPATIBILITY.md).
+
 ## Complete negative conversion evidence
 
 Strict overload selection reuses its complete nominal ancestor graph to exclude

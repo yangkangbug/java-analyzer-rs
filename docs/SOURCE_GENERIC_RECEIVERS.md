@@ -51,12 +51,11 @@ superclasses, generic inheritance, wildcard/unknown actuals, bounded capture,
 parameterized actuals/results, boxing and method-type inference remain outside
 this slice. Existing ordinary caller-context and access limits still apply.
 
-The declaration's Object bound is a real identity requirement. Source arguments
-owned by a dependency compilation can work when their graph reaches that owner's
-Object. A caller-local argument linked to another compilation's Object does not
-become interchangeable merely because both platform inputs have the same path,
-bytes or name. This conservative boundary can leave normal multi-module Java
-calls unresolved; no graph/identity rules were relaxed for this feature.
+The declaration's Object bound still resolves to the owner's exact binary Object.
+Actuals may satisfy that bound through the shared
+[query-local conversion certificate](BINARY_ARGUMENT_COMPATIBILITY.md), without
+changing their identities or treating equal names/paths as equivalence. Unknown
+parameterized paths and incompatible selected binary closures still refuse.
 
 ## Validation boundary
 
@@ -71,7 +70,9 @@ queries. A new probe in an existing compilation is not a claim that the original
 project's tests, cross-compilation calls or general generics now work. There is no
 new public API, schema, runtime JVM dependency or broad semantic-completeness claim.
 
-For the pinned Gson inputs, four original TypeAdapterTest calls retain their
+The following records the initial source-template stage, not current overall
+coverage. Later negative-conversion and cross-compilation conversion work have
+separate evidence. For the pinned Gson inputs, four original TypeAdapterTest calls retain their
 complete prior results. A separately added diagnostic caller in the existing
 `gson/main` compilation newly selects TypeAdapter.toJson(T) with a String actual;
 the original 226 upstream files stay byte-for-byte unchanged. The corresponding

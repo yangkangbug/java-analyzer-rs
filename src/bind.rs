@@ -6341,8 +6341,9 @@ impl<'a> ReferenceCallProof<'a> {
         local.primitive.filter(|value| value.rank == 0)
     }
 
-    // Flat-classpath compatibility for one exact binary argument root only:
-    // both scopes must select identical modeled signatures/origins throughout
+    // Flat-classpath compatibility between corresponding nongeneric binary
+    // roots, used by both exact-root and strictly reached ancestor conversions.
+    // Both scopes must select identical modeled signatures/origins throughout
     // their complete inheritance closures. Not global Java type identity.
     fn binary_closure_evidence(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<()> {
         let left = self.graph(actual)?;
@@ -6418,7 +6419,63 @@ impl<'a> ReferenceCallProof<'a> {
         Some(plain)
     }
 
+    // Compatibility is a bounded conversion certificate, never declaration identity.
+    // Collect every possible spelling collision before testing bridge eligibility.
     fn converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
+        let graph = self.graph(actual)?;
+        self.graph(formal)?;
+        // Exact declaration identity can only be reached by the strict path.
+        // When it is absent, avoid a traversal that cannot prove conversion.
+        let mut identity_present = false;
+        for ancestor in &graph {
+            self.charge(1)?;
+            identity_present |= same_class(ancestor, formal);
+        }
+        if identity_present {
+            let strict = self.strict_converts(actual, formal);
+            return if self.exhausted { None } else { strict };
+        }
+        let raw = self.negative_raw_name(formal)?;
+        self.charge(formal.package.len() + formal.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+        let dotted = formal.dotted();
+        let mut candidate = None;
+        for ancestor in graph {
+            self.charge(1)?;
+            let raw_match = self.negative_raw_name(ancestor)? == raw;
+            let dotted_match = if ancestor.scope != formal.scope {
+                self.charge(ancestor.package.len() + ancestor.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+                ancestor.dotted() == dotted
+            } else {
+                false
+            };
+            if raw_match || dotted_match {
+                if candidate.is_some() {
+                    return None;
+                }
+                candidate = Some(ancestor);
+            }
+        }
+        // Both graphs are complete, and the charged scans excluded exact
+        // identity and every raw/dotted collision. This is sufficient negative
+        // evidence even when a parameterized path cannot prove a conversion.
+        // Reuse that certificate instead of repeating the strict traversal.
+        let Some(ancestor) = candidate else { return Some(false) };
+        if !ancestor.binary
+            || !formal.binary
+            || ancestor.reference_generic
+            || formal.reference_generic
+            || ancestor.scope == formal.scope
+            || (!same_class(actual, ancestor) && (ancestor.nesting.len() != 1 || formal.nesting.len() != 1))
+            || ancestor.binary_signature.as_ref()?.binary_name != formal.binary_signature.as_ref()?.binary_name
+            || self.strict_converts(actual, ancestor) != Some(true)
+        {
+            return None;
+        }
+        self.binary_closure_evidence(ancestor, formal)?;
+        Some(true)
+    }
+
+    fn strict_converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
         let complete = self.graph(actual)?;
         self.graph(formal)?;
         let mut todo = vec![(actual, 0)];
@@ -7433,33 +7490,7 @@ impl<'a> ReferenceCallProof<'a> {
                         actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 })
                     }
                     (StrictActual::Reference(actual), ReferenceFormal::Reference(formal)) => {
-                        if actual.class.binary
-                            && formal.binary
-                            && !actual.class.reference_generic
-                            && !formal.reference_generic
-                            && actual.class.scope != formal.scope
-                            && actual.class.binary_signature.as_ref()?.binary_name
-                                == formal.binary_signature.as_ref()?.binary_name
-                        {
-                            self.binary_closure_evidence(actual.class, formal)?;
-                            true
-                        } else {
-                            let converts = self.converts(actual.class, formal)?;
-                            if !converts {
-                                // An unsupported cross-scope ancestor match is
-                                // unknown, not evidence that this competitor
-                                // is inapplicable. Include source replacements:
-                                // refusing is not declaring these names equal.
-                                let name = formal.dotted();
-                                for ancestor in self.graph(actual.class)? {
-                                    self.charge(1)?;
-                                    if ancestor.scope != formal.scope && ancestor.dotted() == name {
-                                        return None;
-                                    }
-                                }
-                            }
-                            converts
-                        }
+                        self.converts(actual.class, formal)?
                     }
                     // Strict invocation neither boxes nor unboxes. Do not skip
                     // the other slots: they still need complete evidence.

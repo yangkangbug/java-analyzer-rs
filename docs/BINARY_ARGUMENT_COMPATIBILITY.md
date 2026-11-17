@@ -1,4 +1,63 @@
-# Exact binary argument compatibility across compilation scopes
+# Query-local binary conversion compatibility across compilation scopes
+
+## Bounded ancestor conversion
+
+The strict invocation proof now has one conversion entry for applicability,
+class-formal bounds and specificity. Its original strict conversion remains a
+separate nonrecursive proof. A complete actual graph containing the exact formal
+identity uses that proof alone. Otherwise, a charged identity scan avoids a
+necessarily unsuccessful first strict search, and the complete graph may identify
+a unique corresponding declaration in another compilation. Every potential raw JVM-name match and cross-scope dotted
+match is collected before eligibility is checked: source replacements, generic
+declarations, dollar-name projections and competing correspondences cannot be
+filtered away to manufacture a unique binary candidate.
+
+For a new ancestor bridge, both corresponding endpoints must be nongeneric,
+top-level binary declarations with the exact same raw binary name. The actual
+must independently convert to that ancestor using only the original strict
+proof, not another bridge or an unknown parameterized edge. The ancestor and
+formal then undergo the existing complete binary closure comparison described
+below. An exact-root bridge retains its previous nongeneric binary qualification;
+this does not newly enable nested-ancestor conversion.
+
+Any candidate that cannot be certified stays unknown, rather than becoming an
+inapplicable competitor. Multiple correspondences, missing/ambiguous/cyclic
+graphs, unequal selected origins or modeled metadata, and exhausted proof work
+all refuse. When exact identity and every possible correspondence are absent
+from the complete graph, that completed nominal negative certificate rules out
+the conversion without repeating the strict traversal. This is sufficient
+negative evidence, not a claim of identical budget outcomes to the old traversal.
+Scanning, name work and closure comparison consume the existing shared budget, without a larger
+limit or cross-query compatibility cache.
+
+This is a conversion certificate, not declaration equality. ClassIdentity,
+same_class, erased duplicate checks and override identity are unchanged. Generic
+actual slots retain their original caller/declaration identities; nominal method
+returns still use their declaring context. The certificate is not an Object
+exception, a shared platform domain, arbitrary library equivalence, JPMS, runtime
+classloader equivalence or generic inheritance support.
+
+## Measured boundary
+
+An optional independent compiler comparison checks seven exact source targets
+across explicit library/application compilations. The original Gson
+`TypeAdapterTest.toJson(null)` query now selects `TypeAdapter.toJson` at bytes
+8696..8702, matching javac. The neighboring `fromJson` query and two calls needing
+boxing remain refused. Four same-compilation probes and a broader fixed
+393-query inventory retain their complete previous results. These checks are
+bounded evidence, not whole-project coverage or IntelliJ parity.
+
+The first schedule repeated negative proofs and regressed an existing chained
+`fromJson(...).length()` target and `JsonArray.add((Number)null)`. Reusing the
+already-complete negative certificate removed that redundant work; the exact old
+successes were restored without raising the work limit. Queries still refuse when
+the shared proof budget is exhausted; a nearby edit can change that outcome.
+
+## Historical exact-root stage
+
+The following describes the original narrower stage and its retained evidence;
+the bounded ancestor conversion above supersedes only its explicit prohibition
+on cross-scope widening and its argument-only integration.
 
 This slice adds a bounded flat-classpath invocation compatibility proof, not a
 new global Java type identity. It applies only to a strict reference argument

@@ -29,7 +29,8 @@ class BinaryArgumentOracleTests(unittest.TestCase):
         for case in c.CASES:
             self.assertEqual(c.statuses(case, True), ['CallNotResolved'] * 3)
             expected = c.statuses(case)
-            self.assertEqual(expected[2], 'CallNotResolved')
+            self.assertEqual(expected[2] == 'Resolved', case in (
+                'same_artifact', 'different_origin', 'different_ancestor', 'multi_release', 'shared_platform'))
             self.assertEqual(expected[1] == 'Resolved', case in ('same_artifact', 'shared_platform'))
             self.assertEqual(expected[0] == 'Resolved', case == 'shared_platform')
         for case, baseline in [('wrong', False), ('same_artifact', 1), ('same_artifact', 'old')]:

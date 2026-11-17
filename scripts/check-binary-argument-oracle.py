@@ -52,7 +52,9 @@ def statuses(case, baseline=False):
     assert case in CASES and type(baseline) is bool
     if baseline or case == 'missing_platform': return ['CallNotResolved'] * 3
     return ['Resolved' if case == 'shared_platform' else 'CallNotResolved',
-            'Resolved' if case in ('same_artifact', 'shared_platform') else 'CallNotResolved', 'CallNotResolved']
+            'Resolved' if case in ('same_artifact', 'shared_platform') else 'CallNotResolved',
+            'Resolved' if case in ('same_artifact', 'different_origin', 'different_ancestor',
+                                   'multi_release', 'shared_platform') else 'CallNotResolved']
 
 
 def utf16(data, offset):
