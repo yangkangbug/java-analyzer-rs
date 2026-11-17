@@ -279,8 +279,8 @@ fn nested_expression_proof_respects_scope_boundaries() {
         let p = project(&format!(
             "class Calls {{ static float inner(float a) {{ return a; }} static void outer(float a) {{}} static void outer(double a) {{}} {caller} }}"
         ));
-        if caller.contains("class Local") {
-            // Opaque local-type bodies cannot borrow enclosing method candidates.
+        if caller.contains("class Local") || caller.contains("new Object() {") {
+            // Opaque local and anonymous bodies cannot borrow enclosing method candidates.
             refused(&p, call, ResolveStatus::Unresolved, &[]);
         } else {
             refused(&p, call, ResolveStatus::OverloadNotResolved, &["outer(float a", "outer(double a"]);

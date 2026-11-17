@@ -404,7 +404,7 @@ struct FileRec {
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
     local_types: Vec<LocalTypeRec>,
-    opaque_enum_bodies: Vec<(u32, u32)>,
+    opaque_class_bodies: Vec<(u32, u32)>,
     syntax_valid: bool,
     call_inventory_valid: bool,
 }
@@ -578,7 +578,7 @@ impl Index {
         let Some(file) = self.files.iter().find(|file| file.path == path) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
-        if file.opaque_enum_bodies.iter().any(|&(start, end)| start <= byte && byte < end)
+        if file.opaque_class_bodies.iter().any(|&(start, end)| start <= byte && byte < end)
             || file.local_types.iter().any(|local| local.start <= byte && byte < local.end)
         {
             return ResolveResult::none(ResolveStatus::Unresolved);
@@ -2455,7 +2455,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         classes: Vec::new(),
         locals: Vec::new(),
         local_types: Vec::new(),
-        opaque_enum_bodies: Vec::new(),
+        opaque_class_bodies: Vec::new(),
         syntax_valid,
         call_inventory_valid: syntax_valid && valid_call_inventory(parsed.root(), 0),
     };
@@ -2471,6 +2471,9 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
 // Recomputed from the current syntax tree when indexing, never cached on a
 // parser ancestor. The interval is a conservative refusal bound, not flow scope.
 fn index_pattern_guards(node: &GreenNode, start: u32, unit_end: Option<u32>, file: &mut FileRec) {
+    if node.kind() == SyntaxKind::ClassBody && file.opaque_class_bodies.contains(&(start, start + node.utf8_len())) {
+        return;
+    }
     let unit_end = if matches!(
         node.kind(),
         SyntaxKind::Method
@@ -2540,7 +2543,7 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     // Include anonymous bodies nested in constructor arguments, without
     // changing general NewExpr behavior outside enum constants.
     if ctx.enum_constant_depth > 0 && node.kind() == SyntaxKind::ClassBody {
-        ctx.file.opaque_enum_bodies.push((start, start + node.utf8_len()));
+        ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
         return;
     }
     match node.kind() {
@@ -2607,7 +2610,14 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let mut offset = start;
     for child in node.children() {
         if let Some(child) = child.as_node() {
-            index_node(child, offset, ctx);
+            // An anonymous class has no modeled owner. Its declarations must
+            // never be indexed into the enclosing named class. Arguments stay
+            // outside this boundary, including their nested new expressions.
+            if node.kind() == SyntaxKind::NewExpr && child.kind() == SyntaxKind::ClassBody {
+                ctx.file.opaque_class_bodies.push((offset, offset + child.utf8_len()));
+            } else {
+                index_node(child, offset, ctx);
+            }
         }
         offset += child.utf8_len();
     }
@@ -7643,5 +7653,23 @@ mod pattern_guard_proof_tests {
         let file = &index.files[0];
         let mut proof = ReferenceCallProof::new(&index, file, None);
         assert!(proof.static_type_owner("value", s.rfind("value.hit").unwrap() as u32).is_none());
+    }
+}
+
+#[cfg(test)]
+mod anonymous_boundary_proof_tests {
+    use super::*;
+    #[test]
+    fn guard_pass_reuses_opaque_body_boundaries_but_keeps_arguments() {
+        for (expression, expected) in [
+            ("new Object(){boolean b=input instanceof String value;}", 0),
+            ("new X(input instanceof String value){}", 1),
+        ] {
+            let mut p = Project::new();
+            p.insert("C.java", &format!("class C{{Object f(Object input){{return {expression};}}}}"));
+            let index = Index::build(&p.files, &p.binaries);
+            assert_eq!(index.files[0].locals.iter().filter(|local| local.guard_only).count(), expected);
+            assert_eq!(index.files[0].opaque_class_bodies.len(), 1);
+        }
     }
 }

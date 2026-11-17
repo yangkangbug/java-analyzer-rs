@@ -1,0 +1,67 @@
+{
+  "format_version": 1,
+  "reason": "Intentional navigation regression: legal captures inside unmodeled anonymous class bodies are refused to prevent incorrect owner/member binding. Outside uses are preserved. This is not an accuracy or success-rate gain.",
+  "source_sha256": "24eab771c94196f4a0ffe95e625b4bb41ee5701a5b84e987529ce1a38bb929df",
+  "changes": [
+    {
+      "before": {
+        "id": "thread_adapter_capture",
+        "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+        "byte": 5477,
+        "spelling": "threadAdapter",
+        "compilation": {
+          "project": "gson",
+          "source_set": "test"
+        },
+        "expected": {
+          "status": "Resolved",
+          "targets": [
+            {
+              "origin": "source",
+              "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+              "kind": "Local",
+              "owner": "",
+              "name": "threadAdapter",
+              "start": 4740,
+              "end": 4753
+            }
+          ]
+        }
+      },
+      "after": {
+        "status": "Unresolved",
+        "targets": []
+      }
+    },
+    {
+      "before": {
+        "id": "adapter_counter_capture",
+        "file": "gson/src/test/java/com/google/gson/GsonTest.java",
+        "byte": 5834,
+        "spelling": "adapterInstancesCreated",
+        "compilation": {
+          "project": "gson",
+          "source_set": "test"
+        },
+        "expected": {
+          "status": "Resolved",
+          "targets": [
+            {
+              "origin": "source",
+              "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+              "kind": "Local",
+              "owner": "",
+              "name": "adapterInstancesCreated",
+              "start": 4650,
+              "end": 4673
+            }
+          ]
+        }
+      },
+      "after": {
+        "status": "Unresolved",
+        "targets": []
+      }
+    }
+  ]
+}

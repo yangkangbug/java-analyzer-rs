@@ -512,7 +512,27 @@ def run_acceptance(native, fixture):
             'persistent_reload': False, 'upstream_tests_executed': False}
 
 
-def local_type_probes(fixture):
+def current_local_type_probes(probes):
+    """Exact intentional contractions; keep the frozen historical input intact."""
+    spec = json.loads((CORPUS / 'anonymous-body-contractions.json').read_text())
+    same(spec['format_version'], 1, 'anonymous boundary contract version')
+    same(spec['source_sha256'], '24eab771c94196f4a0ffe95e625b4bb41ee5701a5b84e987529ce1a38bb929df',
+         'anonymous boundary original GsonTest hash')
+    changes = spec['changes']
+    same([row['before']['id'] for row in changes],
+         ['thread_adapter_capture', 'adapter_counter_capture'], 'exact anonymous capture contractions')
+    result = copy.deepcopy(probes)
+    for change in changes:
+        indexes = [i for i, row in enumerate(result) if row['id'] == change['before']['id']]
+        same(len(indexes), 1, 'unique anonymous capture query')
+        index = indexes[0]
+        same(result[index], change['before'], 'complete historical capture query and target')
+        same(change['after'], {'status': 'Unresolved', 'targets': []}, 'opaque body refusal')
+        result[index]['expected'] = copy.deepcopy(change['after'])
+    return result
+
+
+def local_type_probes(fixture, *, historical=False):
     """Independent additive positions; never replace the original 16 goldens."""
     spec = json.loads((CORPUS / 'local-type-probes.json').read_text())
     probes = spec['queries']
@@ -527,7 +547,8 @@ def local_type_probes(fixture):
         for target in query['expected']['targets']:
             same(data[target['start']:target['end']], target['name'].encode(), 'local declaration token')
             same((target['kind'], target['owner']), ('Local', ''), 'local target convention')
-    return probes
+    require(type(historical) is bool, 'local contract historical flag')
+    return probes if historical else current_local_type_probes(probes)
 
 
 def check_local_type_response(response, probes, fixture):
@@ -538,7 +559,7 @@ def check_local_type_response(response, probes, fixture):
 
 
 def run_local_type_acceptance(native, fixture, capture_baseline=False):
-    probes = local_type_probes(fixture)
+    probes = local_type_probes(fixture, historical=capture_baseline)
     request = document(fixture, 'local-type-requests.json', {'schema_version': 1, 'queries': [
         {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
          'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in probes]})
@@ -833,7 +854,7 @@ def run_reference_call_acceptance(native, fixture, capture_baseline=False, *, pr
     check_reference_call_response(response, probes, fixture, stage)
     original = successful(native, fixture, 'declaration')
     check_response('declaration', original, fixture, historical_constructor=capture_baseline, proof_stage=proof_stage)
-    local_probes = local_type_probes(fixture)
+    local_probes = local_type_probes(fixture, historical=capture_baseline)
     local_request = document(fixture, 'reference-local-type-requests.json', {
         'schema_version': 1, 'queries': [
             {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
@@ -935,13 +956,13 @@ def run_constructor_call_acceptance(native, fixture, capture_baseline=False, *, 
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in reference_probes]})
     reference = successful(native, fixture, 'declaration', requests=reference_request, strict_json=True)
     check_reference_call_response(reference, reference_probes, fixture)
-    local_probes = local_type_probes(fixture)
+    local_probes = local_type_probes(fixture, historical=capture_baseline)
     local_request = document(fixture, 'constructor-local-requests.json', {
         'schema_version': 1, 'queries': [
             {'compilation': q['compilation'], 'file': 'sources/' + q['file'],
              'position': {'encoding': 'utf8', 'offset': q['byte']}} for q in local_probes]})
     local = successful(native, fixture, 'declaration', requests=local_request, strict_json=True)
-    # Reuse strict full-row checking for the five preserved local declarations.
+    # Compare all five exact rows, including the explicit current anonymous-body refusals.
     check_reference_call_response(local, local_probes, fixture)
     parser = successful(native, fixture, 'parser-report', strict_json=True)['result']
     inventory = check_reference_parser(parser, fixture, historical, parser_digest,

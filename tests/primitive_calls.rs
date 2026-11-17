@@ -402,8 +402,8 @@ fn unsupported_competitors_and_contexts_do_not_supply_proof() {
         "static void test(float a) { class Local { void run() { m(a); } } }",
     ] {
         let source = format!("class Calls {{ static void m(float a) {{}} static void m(double a) {{}} {caller} }}");
-        if caller.contains("class Local") {
-            // Local-type internals are an opaque binding boundary.
+        if caller.contains("class Local") || caller.contains("new Object() {") {
+            // Local and anonymous class internals are opaque binding boundaries.
             let result = query(&project(&source), "m(a)");
             assert_eq!(result.status, ResolveStatus::Unresolved);
             assert!(result.targets.is_empty());

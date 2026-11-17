@@ -100,6 +100,18 @@ omits switch expressions, arrow rules, patterns, switch semantic validation, mod
 support and some parameter/type-annotation syntax. See [switch boundaries](docs/TRADITIONAL_SWITCH.md).
 Local type declarations have an opaque containment boundary; their bindings
 remain unsupported rather than being indexed as ordinary members.
+Anonymous class bodies have the same conservative containment policy: their
+declarations do not enter the enclosing named class, and navigation inside the
+body is refused rather than guessed. Construction types and arguments remain
+outside that boundary. This does not implement anonymous-class ownership,
+inheritance or capture semantics.
+This intentionally retracts previously successful captures inside those bodies,
+including two fixed Gson probes (5477 and 5834 in GsonTest.java). Their complete
+before/after records are in
+[anonymous-body contractions](examples/second_project/anonymous-body-contractions.json);
+the frozen historical contract and both outside-body capture uses are preserved.
+Restoring such navigation requires anonymous-owner and inherited-shadowing evidence,
+not name or superclass whitelists.
 
 ### Return declaration inventory separation
 
