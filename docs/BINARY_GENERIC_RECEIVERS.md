@@ -7,6 +7,9 @@ can use its own `get(Object)` and `put(K,V)` family. There are no library-name
 special cases. This is a bounded member substitution step, not general Java
 generic inference or complete collection support.
 
+A separate [source direct-family slice](SOURCE_GENERIC_RECEIVERS.md) supports
+bounded explicit source receivers; the binary rules below remain unchanged.
+
 ## Representation and selection
 
 Receiver declarations preserve plain versus applied syntax. An applied receiver
@@ -120,7 +123,7 @@ identity/access/hierarchy proof. Public
 instance families only; binary interfaces require abstract methods. Existing
 caller-context restrictions remain.
 
-Deferred: source generic owners, inherited fields, branching generic member
+Still deferred: inherited fields, branching generic member
 selection, parameterized arguments/results, generic-method inference, non-Object
 bounds, bounded wildcards/capture, nested classes, arrays, annotations, raw/diamond or
 varargs receivers, boxing and arbitrary expression inference. A generic method,

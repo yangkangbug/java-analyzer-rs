@@ -46,8 +46,16 @@ evidence, while preserving exact declaration/caller linking identities. A bounde
 single-parent certificate supports inherited members and identity-mapped exact
 overrides. Explicit bare-wildcard receivers can prove own methods independent of
 unknown slots within an Object-only parent envelope; unknown-dependent competing
-members still refuse the complete proof. Branching generic inheritance, source generic owners, wildcard capture
+members still refuse the complete proof. Branching generic inheritance, general source generic inheritance, wildcard capture
 and inference remain deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
+
+## Bounded source generic receivers
+
+Explicit concrete receivers can substitute direct public method families of a
+top-level source class with Object-only bounds and no explicit parent clauses.
+Source declaration context, complete competitors and erased parameter identities
+feed the existing selector; no shared graph or cross-compilation identity rules
+are relaxed. See [source receiver boundaries](docs/SOURCE_GENERIC_RECEIVERS.md).
 
 ## Interface method navigation inheritance
 

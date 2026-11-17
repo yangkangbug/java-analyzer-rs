@@ -34,7 +34,7 @@ use crate::classfile::{
 mod instantiation;
 mod nested_types;
 
-use crate::green::GreenNode;
+use crate::green::{GreenElement, GreenNode};
 use crate::kind::SyntaxKind;
 use crate::{EditResult, ParsedFile, TextEdit};
 
@@ -290,6 +290,7 @@ struct ClassPayload {
     access: Access,
     reference_inventory: bool,
     reference_generic: bool,
+    source_formals: Option<Vec<SourceFormal>>,
     reference_final: bool,
     // Syntax-only eligibility, never inferred from a same-named method.
     reference_constructor_work: Option<usize>,
@@ -2751,6 +2752,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         access: read_access(node, start),
         reference_inventory: reference_class_inventory(node, start),
         reference_generic: child_kind(node, start, SyntaxKind::TypeParamList).is_some(),
+        source_formals: source_formals(node, start).filter(|_| ctx.class_stack.is_empty()),
         reference_final: child_kind(node, start, SyntaxKind::ModifierList)
             .is_some_and(|(n, _)| tokens(n, 0).iter().any(|t| t.0 == SyntaxKind::Final)),
         reference_constructor_work: reference_constructor_work(node, start),
@@ -3237,6 +3239,80 @@ fn source_type_shape(_node: &GreenNode, _start: u32) -> Shape {
     Shape::Unknown
 }
 
+// Syntax evidence only; Object bounds are resolved in the declaring scope at query time.
+#[derive(Clone, Debug)]
+struct SourceFormal {
+    name: String,
+    bound: Option<(Vec<String>, u32)>,
+    work: usize,
+}
+fn source_formals(node: &GreenNode, start: u32) -> Option<Vec<SourceFormal>> {
+    if node.kind() != SyntaxKind::Class {
+        return None;
+    }
+    if node
+        .children()
+        .iter()
+        .filter_map(|c| c.as_token())
+        .any(|t| matches!(t.kind(), SyntaxKind::Extends | SyntaxKind::Implements))
+    {
+        return None;
+    }
+    let (params, params_at) = child_kind(node, start, SyntaxKind::TypeParamList)?;
+    if params.utf8_len() > 4096 || !crate::green::collect_errors(params).is_empty() {
+        return None;
+    }
+    let mut result = Vec::new();
+    let mut state = 0;
+    let mut at = params_at;
+    for item in params.children() {
+        match item {
+            GreenElement::Token(t) if t.kind().is_trivia() => {}
+            GreenElement::Token(t) if state == 0 && t.kind() == SyntaxKind::Lt => state = 1,
+            GreenElement::Token(t) if state == 2 && t.kind() == SyntaxKind::Comma => state = 1,
+            GreenElement::Token(t) if state == 2 && t.kind() == SyntaxKind::Gt => state = 3,
+            GreenElement::Node(n) if state == 1 && n.kind() == SyntaxKind::TypeParam => {
+                if result.len() == 32 {
+                    return None;
+                }
+                let mut inner = 0;
+                let mut name = None;
+                let mut bound = None;
+                let mut offset = at;
+                for part in n.children() {
+                    match part {
+                        GreenElement::Token(t) if t.kind().is_trivia() => {}
+                        GreenElement::Token(t) if inner == 0 && t.kind() == SyntaxKind::Ident => {
+                            name = Some(t.text().to_owned());
+                            inner = 1;
+                        }
+                        GreenElement::Token(t) if inner == 1 && t.kind() == SyntaxKind::Extends => inner = 2,
+                        GreenElement::Node(ty)
+                            if inner == 2 && ty.kind() == SyntaxKind::Type && plain_reference_type(ty) =>
+                        {
+                            bound = Some((type_parts(ty, offset)?, offset));
+                            inner = 3;
+                        }
+                        _ => return None,
+                    }
+                    offset += part.utf8_len();
+                }
+                if !matches!(inner, 1 | 3) {
+                    return None;
+                }
+                result.push(SourceFormal { name: name?, bound, work: n.utf8_len() as usize });
+                state = 2;
+            }
+            _ => return None,
+        }
+        at += item.utf8_len();
+    }
+    if state != 3 || result.iter().map(|p| &p.name).collect::<BTreeSet<_>>().len() != result.len() {
+        return None;
+    }
+    Some(result)
+}
+
 fn type_variables(node: &GreenNode, start: u32) -> Vec<String> {
     let Some((params, at)) = child_kind(node, start, SyntaxKind::TypeParamList) else {
         return Vec::new();
@@ -3441,6 +3517,7 @@ fn class_from_signature(sig: &Arc<ClassFileData>) -> ClassPayload {
                 .map(|name| name.replace(['/', '$'], "."))
                 .eq(sig.interfaces.iter().cloned()),
         reference_generic: sig.signature.as_ref().is_some_and(|signature| signature.starts_with('<')),
+        source_formals: None,
         reference_final: sig.is_final,
         reference_constructor_work: None,
         reference_edges: Some(
@@ -3503,6 +3580,7 @@ struct SourceCall {
     // part of Shape/MethodIdentity. Shared invocation proof exposes the declared
     // primitive only after strict selection; it is never a constant-value inference.
     scalar_return: Option<Primitive>,
+    void_return: bool,
     reference_return: Option<Vec<String>>,
 }
 
@@ -3725,6 +3803,7 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
         varargs,
         override_facts: source_override_facts(node, start),
         scalar_return: primitive_method_return(node),
+        void_return: primitive_or_void_method_return(node) == Some(None),
         reference_return: reference_method_return(node),
     })
 }
@@ -3838,6 +3917,10 @@ fn source_override_facts(node: &GreenNode, start: u32) -> Option<OverrideFacts> 
 // In particular, dimensions after the name/parameters cannot become a scalar,
 // and a Type after `throws` is not the result type. Return bodies are not typed.
 fn primitive_method_return(node: &GreenNode) -> Option<Primitive> {
+    primitive_or_void_method_return(node).flatten()
+}
+
+fn primitive_or_void_method_return(node: &GreenNode) -> Option<Option<Primitive>> {
     if node.kind() != SyntaxKind::Method {
         return None;
     }
@@ -3864,8 +3947,13 @@ fn primitive_method_return(node: &GreenNode) -> Option<Primitive> {
                     }
                     let mut parts =
                         child.children().iter().filter_map(|part| part.as_token()).filter(|t| !t.kind().is_trivia());
-                    result = Primitive::source(parts.next()?.text());
-                    if result.is_none() || parts.next().is_some() {
+                    let token = parts.next()?;
+                    result = if token.kind() == SyntaxKind::Void {
+                        Some(None)
+                    } else {
+                        Some(Some(Primitive::source(token.text())?))
+                    };
+                    if parts.next().is_some() {
                         return None;
                     }
                     1
@@ -5525,7 +5613,7 @@ impl<'a> ReferenceCallProof<'a> {
                 + arguments.iter().flatten().flatten().map(String::len).sum::<usize>(),
         )?;
         let owner = self.raw_type(self.file, name, declared_at)?;
-        if !owner.binary || !owner.reference_generic || owner.nesting.len() != 1 {
+        if !owner.reference_generic || owner.nesting.len() != 1 {
             return None;
         }
         self.accessible(owner)?;
@@ -5539,12 +5627,20 @@ impl<'a> ReferenceCallProof<'a> {
                 }
             }
         }
-        let sig = owner.binary_signature.as_ref()?;
-        let text = sig.signature.as_deref()?;
-        self.charge(text.len())?;
-        let parents: Vec<_> =
-            sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
-        let declaration = instantiation::ClassTemplate::parse(text, &parents)?;
+        let declaration = if owner.binary {
+            // Preserve the original binary entry's work accounting and template path.
+            let sig = owner.binary_signature.as_ref()?;
+            let text = sig.signature.as_deref()?;
+            self.charge(text.len())?;
+            let parents: Vec<_> =
+                sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
+            instantiation::ClassTemplate::parse(text, &parents)?
+        } else {
+            self.class_template(owner)?
+        };
+        if !owner.binary && arguments.iter().any(Option::is_none) {
+            return None;
+        }
         if declaration.parameters.len() != arguments.len() {
             return None;
         }
@@ -5568,7 +5664,7 @@ impl<'a> ReferenceCallProof<'a> {
         arguments: Vec<Option<&'a ClassRec>>,
     ) -> Option<ClassInstantiation<'a>> {
         self.charge(arguments.len().max(1))?;
-        if !owner.binary
+        if (!owner.binary && (owner.source_formals.is_none() || arguments.iter().any(Option::is_none)))
             || owner.nesting.len() != 1
             || declaration.parameters.len() != arguments.len()
             || owner.reference_generic == declaration.parameters.is_empty()
@@ -5592,6 +5688,34 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     fn class_template(&mut self, owner: &'a ClassRec) -> Option<instantiation::ClassTemplate> {
+        if !owner.binary {
+            let formals = owner.source_formals.as_ref()?;
+            self.charge(formals.iter().map(|f| f.work).sum::<usize>().max(1))?;
+            let graph = self.graph(owner)?;
+            let [first, object] = graph.as_slice() else { return None };
+            if !same_class(first, owner)
+                || !object.binary_root
+                || object.binary_signature.as_ref()?.binary_name != "java/lang/Object"
+            {
+                return None;
+            }
+            let file = self.index.files.iter().find(|f| f.scope == owner.scope && f.path == owner.path)?;
+            for formal in formals {
+                // A member class may legally hide an enclosing type variable.
+                if !self.named(owner.scope, &format!("{}.{}", owner.dotted(), formal.name))?.is_empty() {
+                    return None;
+                }
+                if let Some((parts, at)) = &formal.bound
+                    && !same_class(self.reference_type(file, parts, *at)?, object)
+                {
+                    return None;
+                }
+            }
+            return Some(instantiation::ClassTemplate {
+                parameters: formals.iter().map(|f| f.name.clone()).collect(),
+                parents: Vec::new(),
+            });
+        }
         let sig = owner.binary_signature.as_ref()?;
         let parents: Vec<_> =
             sig.binary_super_class.iter().chain(sig.binary_interfaces.iter()).map(String::as_str).collect();
@@ -5815,6 +5939,32 @@ impl<'a> ReferenceCallProof<'a> {
             return Some(StrictActual::Reference(ReferenceValue { class }));
         }
         evidence.primitive.filter(|v| v.rank == 0).map(StrictActual::Primitive)
+    }
+
+    // Both nominal identities and formal slots belong to the declaration, never caller imports.
+    fn source_template_reference(
+        &mut self,
+        file: &'a FileRec,
+        owner: &'a ClassRec,
+        env: &ClassInstantiation<'a>,
+        parts: &[String],
+        at: u32,
+    ) -> Option<(&'a ClassRec, &'a ClassRec)> {
+        self.charge(parts.iter().map(String::len).sum::<usize>() + env.declaration.parameters.len())?;
+        if let Some(index) = env.declaration.parameters.iter().position(|name| Some(name) == parts.first()) {
+            if parts.len() != 1 {
+                return None;
+            }
+            let class = env.arguments.get(index).copied().flatten()?;
+            let object = self.unique_named(owner.scope, "java.lang.Object")?;
+            if !object.binary_root {
+                return None;
+            }
+            Some((class, object))
+        } else {
+            let class = self.reference_type(file, parts, at)?;
+            Some((class, class))
+        }
     }
 
     fn template_value(
@@ -6859,7 +7009,9 @@ impl<'a> ReferenceCallProof<'a> {
         let graph = self.graph(owner)?;
         let inherited = graph.iter().skip(1).any(|class| class.methods.iter().any(|m| m.name == name));
         if let Some(env) = env
-            && (mode != InvocationMode::Instance || !owner.binary || env.owner != ClassIdentity::of(owner))
+            && (mode != InvocationMode::Instance
+                || env.owner != ClassIdentity::of(owner)
+                || (!owner.binary && inherited))
         {
             return None;
         }
@@ -6945,6 +7097,7 @@ impl<'a> ReferenceCallProof<'a> {
         let mut formals = Vec::new();
         let mut instantiated_results = Vec::new();
         let mut erased_parameters: Vec<(&ClassRec, Vec<ParameterType>, usize)> = Vec::new();
+        let mut source_erased_parameters: Vec<Vec<ReferenceFormal<'a>>> = Vec::new();
         for (declaring, member) in &members {
             let declaration_env = if let Some(instances) = &inherited_envs {
                 self.charge(instances.len().max(1))?;
@@ -7066,7 +7219,7 @@ impl<'a> ReferenceCallProof<'a> {
                 {
                     return None;
                 }
-                if mode != InvocationMode::Instance {
+                if mode != InvocationMode::Instance || declaration_env.is_some() {
                     let slots: usize = parameters
                         .iter()
                         .map(|p| {
@@ -7081,15 +7234,51 @@ impl<'a> ReferenceCallProof<'a> {
                         return None;
                     }
                 }
+                let mut erased = Vec::new();
                 for parameter in parameters {
                     self.charge(1)?;
                     if parameter.unsupported || parameter.array_rank != 0 {
                         return None;
                     }
-                    types.push(match parameter.primitive {
-                        Some(primitive) => ReferenceFormal::Primitive(primitive),
-                        None => ReferenceFormal::Reference(self.reference_type(file, &parameter.name, member.start)?),
-                    });
+                    match parameter.primitive {
+                        Some(primitive) => {
+                            types.push(ReferenceFormal::Primitive(primitive));
+                            if declaration_env.is_some() {
+                                erased.push(ReferenceFormal::Primitive(primitive));
+                            }
+                        }
+                        None => {
+                            let (actual, erasure) = if let Some(env) = declaration_env {
+                                self.source_template_reference(file, declaring, env, &parameter.name, member.start)?
+                            } else {
+                                let class = self.reference_type(file, &parameter.name, member.start)?;
+                                (class, class)
+                            };
+                            types.push(ReferenceFormal::Reference(actual));
+                            if declaration_env.is_some() {
+                                erased.push(ReferenceFormal::Reference(erasure));
+                            }
+                        }
+                    }
+                }
+                if let Some(env) = declaration_env {
+                    for prior in &source_erased_parameters {
+                        self.charge(prior.len().max(erased.len()).max(1))?;
+                        if prior.len() == erased.len() && prior.iter().zip(&erased).all(|(a, b)| a.same_type(b)) {
+                            return None;
+                        }
+                    }
+                    source_erased_parameters.push(erased);
+                    instantiated_result = if let Some(p) = source.scalar_return {
+                        Some(StrictActual::Primitive(PrimitiveValue { primitive: p, rank: 0 }))
+                    } else if let Some(parts) = &source.reference_return {
+                        let (class, _) = self.source_template_reference(file, declaring, env, parts, member.start)?;
+                        Some(StrictActual::Reference(ReferenceValue { class }))
+                    } else if source.void_return {
+                        None
+                    } else {
+                        return None;
+                    };
                 }
             }
             formals.push(types);
@@ -8065,5 +8254,42 @@ mod call_inventory_context_tests {
         let e = file.call_inventory_for(None);
         assert!(e.allowed);
         assert_eq!(e.work, 0);
+    }
+}
+
+#[cfg(test)]
+mod source_generic_budget_tests {
+    use super::*;
+    #[test]
+    fn source_templates_and_substitution_share_existing_work_budget() {
+        let text = "class Item { public void hit(){} } class Box<T> { public T get(){return null;} } class Calls { void run(Box<Item> box){box.get().hit();} }";
+        let mut project = Project::new();
+        project.insert("C.java", text);
+        let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+        object.extend(b"java/lang/Object");
+        object.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        project.add_class_bytes("Object.class", &object).unwrap();
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        let at = text.find("box.get()").unwrap() as u32;
+        let caller = direct_caller(project.file("C.java").unwrap().root(), at).unwrap();
+        let reference =
+            ReferenceDeclaration::Applied { name: vec!["Box".into()], arguments: vec![Some(vec!["Item".into()])] };
+        let mut proof = ReferenceCallProof::new(&index, file, Some(caller));
+        let receiver = proof.declared_receiver(&reference, at).unwrap();
+        let used = REFERENCE_PROOF_WORK - proof.work_left;
+        let mut short = ReferenceCallProof::new(&index, file, Some(caller));
+        short.work_left = used - 1;
+        assert!(short.declared_receiver(&reference, at).is_none());
+        assert!(short.exhausted);
+        assert_eq!(short.work_left, 0);
+        let env = receiver.instantiation.as_ref().unwrap();
+        let declaration = index.files[0].classes.iter().find(|c| c.simple() == "Box").unwrap();
+        proof.work_left = 0;
+        assert!(
+            proof.source_template_reference(file, declaration, env, &["T".into()], declaration.name_start).is_none()
+        );
+        assert!(proof.exhausted);
+        assert_eq!(proof.work_left, 0);
     }
 }
