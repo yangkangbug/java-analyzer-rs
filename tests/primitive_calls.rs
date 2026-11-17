@@ -633,3 +633,86 @@ fn decimal_int_edits_match_fresh_and_preserve_old_prepared() {
         assert_eq!(prepared.resolve_at("Calls.java", at - 2), old_result);
     }
 }
+
+#[test]
+fn unrelated_switch_does_not_disable_existing_primitive_or_implicit_proofs() {
+    for modifier in ["static ", ""] {
+        let s = format!(
+            "class Calls{{{modifier}void m(int x){{}}{modifier}void m(long x){{}}{modifier}void run(){{m(1);}}void other(){{switch(1){{case 1:break;}}}}}}"
+        );
+        selected(&s, "m(1)", "m(int x)");
+        let s = format!(
+            "class Calls{{{modifier}void m(int x){{}}{modifier}void m(long x){{}}{modifier}void run(){{m(1);switch(1){{case 1:break;}}}}}}"
+        );
+        assert_ne!(query(&project(&s), "m(1)").status, ResolveStatus::Resolved);
+    }
+}
+
+#[test]
+fn switch_context_edits_preserve_other_caller_and_prepared_versions() {
+    use java_engine::TextEdit;
+    let s = "class Calls{static void m(int x){}static void m(long x){}static void run(){m(1);}void other(){}}";
+    let mut p = project(s);
+    let old = p.clone();
+    let prepared = old.prepare();
+    let expected = query(&p, "m(1)");
+    let at = s.find("other(){").unwrap() + 8;
+    for body in ["switch(1){case 1:break;}", "int broken=;", ""] {
+        let current = p.file("Calls.java").unwrap().text();
+        let end = current.rfind("}}").unwrap();
+        p.edit("Calls.java", TextEdit { start_byte: at as u32, end_byte: end as u32, insert: body.into() }).unwrap();
+        let fresh = project(p.file("Calls.java").unwrap().text());
+        assert_eq!(query(&p, "m(1)"), query(&fresh, "m(1)"));
+        if !body.contains("broken") {
+            assert_eq!(query(&p, "m(1)"), expected);
+        } else {
+            assert_ne!(query(&p, "m(1)").status, ResolveStatus::Resolved);
+        }
+        assert_eq!(prepared.resolve_at("Calls.java", s.find("m(1)").unwrap() as u32), expected);
+    }
+}
+
+#[test]
+fn unrelated_switch_preserves_legacy_singleton_proof_entry_points() {
+    // These are legacy name-navigation results, not new applicability proofs.
+    // An unrelated switch must not newly enable singleton proof failures.
+    for (parameters, actuals) in [("Token[] tokens, long n", "tokens, 0"), ("boolean b", "1")] {
+        let source = format!(
+            "class Calls{{static void m({parameters}){{}}static void run(Token[] tokens){{m({actuals});}}void other(){{switch(1){{case 1:break;}}}}}}"
+        );
+        selected(&source, &format!("m({actuals});"), &format!("m({parameters})"));
+        let mut rootless = Project::new();
+        rootless.insert("Calls.java", &source);
+        assert_eq!(query(&rootless, &format!("m({actuals});")).status, ResolveStatus::Resolved);
+    }
+    let locals = (0..4500).map(|i| format!("int v{i}=0;")).collect::<String>();
+    let source = format!(
+        "class Calls{{static void m(int x){{}}static void run(int value){{m(value);}}void other(){{{locals}switch(1){{case 1:break;}}}}}}"
+    );
+    selected(&source, "m(value)", "m(int x)");
+    // Existing globally valid contradictions remain rejected.
+    refused(
+        "class Calls{static void m(boolean b){}static void run(){m(1);}}",
+        "m(1)",
+        ResolveStatus::CallNotResolved,
+        1,
+    );
+}
+
+#[test]
+fn recovered_overload_still_requires_complete_applicability_and_budget() {
+    for (methods, actual, locals) in [
+        ("static void m(int x){}static void m(long x){}", "true", String::new()),
+        ("static void m(int x){}static void m(Unknown x){}", "1", String::new()),
+        (
+            "static void m(int x){}static void m(long x){}",
+            "value",
+            (0..4500).map(|i| format!("int v{i}=0;")).collect::<String>(),
+        ),
+    ] {
+        let source = format!(
+            "class Calls{{{methods}static void run(int value){{m({actual});}}void other(){{{locals}switch(1){{case 1:break;}}}}}}"
+        );
+        assert_ne!(query(&project(&source), &format!("m({actual});")).status, ResolveStatus::Resolved);
+    }
+}

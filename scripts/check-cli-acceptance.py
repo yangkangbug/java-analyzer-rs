@@ -313,6 +313,13 @@ def check_declarations(response, queries, targets, source_root, platform, source
                 target['path'] = target['path'].replace(str(platform), '@PLATFORM@')
             same(changed, expected, "q06 exact current full-record ancestor-hints migration")
             continue
+        if identifier == "q04" and effective_binary:
+            same(query, ["q04", "org/apache/commons/lang3/StringUtils.java", "59592", "isWhitespace", "OverloadNotResolved", "2"],
+                 "frozen q04 caller-isolation migration")
+            original = [t for t in targets if t[0] == identifier]
+            same(original, [["q04", "!/classes/java/lang/Character.class", "Method", "java.lang.Character", "isWhitespace", "0", "0"]] * 2,
+                 "frozen q04 original candidates")
+            status, count = "Resolved", "1"
         same(actual["query_index"], index, f"{identifier}: query order")
         same(actual["compilation"], COMPILATION, f"{identifier}: query compilation")
         same(actual["source_compilation"], COMPILATION, f"{identifier}: source ownership")
@@ -323,6 +330,8 @@ def check_declarations(response, queries, targets, source_root, platform, source
         same(actual["status"], status, f"{identifier}: status")
         same(len(actual["targets"]), int(count), f"{identifier}: candidate count")
         expected_targets = [target for target in targets if target[0] == identifier]
+        if identifier == "q04" and effective_binary:
+            expected_targets = expected_targets[:1]
         for candidate, expected in zip(actual["targets"], expected_targets):
             _, origin, kind, owner, name, start, end = expected
             same(candidate["kind"], kind, f"{identifier}: target kind")
@@ -576,6 +585,24 @@ def check_inherited_preservation(response, plan, source_root):
     same(rows, plan['queries'], 'complete Commons inherited source records, already resolved before this slice')
 
 
+
+def check_caller_isolation_details(response, source_root, platform):
+    """Current-only q04 compiler-verified overload; frozen default rows stay intact."""
+    same(response["result"], {"target_details_version": 1, "index_builds": 1, "queries": [{
+        "query_index": 0, "compilation": COMPILATION, "source_compilation": COMPILATION,
+        "file": str(source_root / "org/apache/commons/lang3/StringUtils.java"),
+        "position": {"encoding": "utf8", "offset": 59592}, "byte_offset": 59592,
+        "status": "Resolved", "targets": [{
+            "binary_name": "java/lang/Character", "descriptor": "(C)Z",
+            "identity_precision": "origin_binary_name_descriptor_linking_context",
+            "kind": "Method", "linking_context": COMPILATION,
+            "loaded_contexts": [COMPILATION], "name": "isWhitespace",
+            "origin": "binary", "owner": "java.lang.Character",
+            "path": str(platform) + "!/classes/java/lang/Character.class",
+            "source_available": False,
+        }],
+    }]}, "q04 exact caller-isolation detailed record")
+
 def comparator_controls(response, checker):
     """A missing result or a plausible wrong declaration must fail the gate."""
     missing_query = copy.deepcopy(response)
@@ -674,6 +701,20 @@ def main():
                 check_declarations(value, queries, targets, source_root, platform, sources, binary_baseline=args.capture_binary_method_baseline, effective_binary=not (historical or args.capture_effective_binary_baseline))
             check(declarations)
             comparator_controls(declarations, check)
+            if not (historical or args.capture_effective_binary_baseline):
+                isolated_requests = stage / "queries/caller-isolation.json"
+                write_json(isolated_requests, requests_for([queries[3]]))
+                detailed = run_cli(native, cwd, manifest, "declaration", args.timeout_seconds,
+                                   args.max_output_bytes, isolated_requests, target_details=True)
+                check_caller_isolation_details(detailed, source_root, platform)
+                wrong_overload = copy.deepcopy(detailed)
+                wrong_overload["result"]["queries"][0]["targets"][0]["descriptor"] = "(I)Z"
+                try:
+                    check_caller_isolation_details(wrong_overload, source_root, platform)
+                except AcceptanceError:
+                    pass
+                else:
+                    raise AcceptanceError("q04 wrong-overload negative control passed")
             inheritance = inherited_preservation_plan(source_root, platform)
             inherited_requests = stage / 'queries/inherited-preservation.json'
             write_json(inherited_requests, {'schema_version':1, 'queries':[

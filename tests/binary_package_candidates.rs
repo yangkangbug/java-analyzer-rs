@@ -247,3 +247,34 @@ fn same_binary_names_in_separate_compilations_keep_their_own_inventory() {
         );
     }
 }
+
+#[test]
+fn switch_isolation_preserves_package_competitor_exclusion_boundary() {
+    let sw = "switch(1){case 1:break;}";
+    let healthy = format!(
+        "package client;import lib.Api;class Calls{{void run(Api api,int value){{api.pick(value);}}void other(){{{sw}}}}}"
+    );
+    let r = query(&project(&healthy, &[PUBLIC, PACKAGE, ARRAY_HELPER]));
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets.len(), 1);
+    assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "(J)V");
+    for s in [
+        format!("package client;import lib.Api;class Calls{{void run(Api api,int value){{api.pick(value);{sw}}}}}"),
+        healthy.replace("case 1:break;", "case 1:int broken=;"),
+        healthy.replace("package client;", "package lib;"),
+    ] {
+        assert_ne!(query(&project(&s, &[PUBLIC, PACKAGE, ARRAY_HELPER])).status, ResolveStatus::Resolved, "{s}");
+    }
+    // A rootless field receiver already had this legacy name-navigation
+    // result in the published baseline. It is not strict applicability evidence.
+    let rootless = format!(
+        "package client;import lib.Api;class Calls{{int value;Api api;Object field=api.pick(value);void other(){{{sw}}}}}"
+    );
+    let legacy = query(&project(&rootless, &[PUBLIC, PACKAGE, ARRAY_HELPER]));
+    assert_eq!(legacy.status, ResolveStatus::Resolved);
+    assert_eq!(legacy.targets.len(), 1);
+    assert_eq!(legacy.targets[0].binary.as_ref().unwrap().descriptor, "(J)V");
+    for bad in [("(I)V", 0x102, None), ("(I)V", 0x104, None), ("(I)V", 0x100, Some("<T:Ljava/lang/Object;>(I)V"))] {
+        assert_ne!(query(&project(&healthy, &[PUBLIC, bad])).status, ResolveStatus::Resolved);
+    }
+}

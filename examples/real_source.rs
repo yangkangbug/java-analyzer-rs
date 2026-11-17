@@ -54,8 +54,24 @@ fn check(query: &Query, result: &ResolveResult) {
     // The immutable TSV's q06 target is now independently justified by the
     // effective-binary proof. Its intermediate Ambiguous stage remains frozen
     // in binary-method-probes-v3.json and the CLI baseline verification mode.
-    let expected_targets = query.targets.clone();
-    let (status, count) = (f[4].as_str(), f[5].parse::<usize>().unwrap());
+    let mut expected_targets = query.targets.clone();
+    let (mut status, mut count) = (f[4].as_str(), f[5].parse::<usize>().unwrap());
+    // Keep the frozen TSV intact; caller isolation now proves the char overload.
+    if query.id == "q04" {
+        assert_eq!(
+            &f[1..],
+            &["org/apache/commons/lang3/StringUtils.java", "59592", "isWhitespace", "OverloadNotResolved", "2"]
+        );
+        assert_eq!(expected_targets.len(), 2);
+        assert_eq!(expected_targets[0], expected_targets[1]);
+        expected_targets.truncate(1);
+        status = "Resolved";
+        count = 1;
+        assert_eq!(result.targets.len(), 1);
+        let identity = result.targets[0].binary.as_ref().unwrap();
+        assert_eq!(identity.binary_name, "java/lang/Character");
+        assert_eq!(identity.descriptor, "(C)Z");
+    }
     if query.id == "q06" {
         assert_eq!(&f[1..], &["org/apache/commons/lang3/StringUtils.java", "15520", "length", "Resolved", "1"]);
         assert_eq!(result.targets.len(), 1);

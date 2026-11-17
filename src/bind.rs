@@ -409,6 +409,37 @@ struct FileRec {
     opaque_class_bodies: Vec<(u32, u32)>,
     syntax_valid: bool,
     call_inventory_valid: bool,
+    call_declarations_valid: bool,
+    switch_starts: Vec<u32>,
+}
+
+struct CallInventoryEligibility {
+    allowed: bool,
+    work: usize,
+}
+
+impl FileRec {
+    // Only existing call-inventory consumers use this contextual certificate.
+    // A verified direct caller is a top-level callable range; it cannot start
+    // inside a switch. None preserves the original whole-file barrier.
+    fn call_inventory_for(&self, caller: Option<(u32, u32)>) -> CallInventoryEligibility {
+        if self.call_inventory_valid {
+            return CallInventoryEligibility { allowed: true, work: 0 };
+        }
+        let Some((start, end)) = caller.filter(|(start, end)| start < end) else {
+            return CallInventoryEligibility { allowed: false, work: 0 };
+        };
+        if !self.call_declarations_valid {
+            return CallInventoryEligibility { allowed: false, work: 0 };
+        }
+        let first = self.switch_starts.partition_point(|at| *at < start);
+        CallInventoryEligibility {
+            allowed: self.switch_starts.get(first).is_none_or(|at| *at >= end),
+            // Conservative bound for a binary search over a machine-sized
+            // collection, including a possible final comparison.
+            work: usize::BITS as usize + 2,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -644,6 +675,8 @@ impl Index {
                         });
                     let primitive_mismatch =
                         caller.is_some_and(|DirectCaller { node: caller, start, end, work, .. }| {
+                            // Preserve legacy singleton navigation's proof entry:
+                            // caller isolation does not newly impose strict typing.
                             if !file.call_inventory_valid || source_call(caller, start).is_none() {
                                 return false;
                             }
@@ -702,7 +735,12 @@ impl Index {
                 }
             }
             let Some(object) = self.closed_primitive_owner(file, class, name) else { return result };
-            if !file.call_inventory_valid
+            // New contextual recovery only disambiguates an unresolved overload.
+            // Existing singleton strictness keeps its original whole-file gate.
+            let recovery_caller =
+                (result.status == ResolveStatus::OverloadNotResolved).then_some((caller_start, caller_end));
+            let eligibility = file.call_inventory_for(recovery_caller);
+            if !eligibility.allowed
                 || !caller_node.child_nodes().any(|node| node.kind() == SyntaxKind::Block)
                 || !source_call(caller_node, caller_start).is_some_and(|call| call.is_static)
                 || child_kind(caller_node, caller_start, SyntaxKind::TypeParamList).is_some()
@@ -713,7 +751,8 @@ impl Index {
                 return result;
             }
             let mut proof = PrimitiveProof::new(file, caller_start, caller_end, Some((class, object)));
-            let selected = proof.charge(work).and_then(|()| proof.call(name, args, args_at, 0));
+            let selected =
+                proof.charge(work.saturating_add(eligibility.work)).and_then(|()| proof.call(name, args, args_at, 0));
             if let Some(member) = selected {
                 return ResolveResult::one(ResolveStatus::Resolved, member_target(class, member));
             }
@@ -2465,6 +2504,9 @@ impl LocalRec {
 
 fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
     let syntax_valid = parsed.errors().is_empty();
+    let mut switch_starts = Vec::new();
+    let call_declarations_valid = syntax_valid && valid_call_inventory(parsed.root(), 0, &mut switch_starts);
+    let call_inventory_valid = call_declarations_valid && switch_starts.is_empty();
     let mut file = FileRec {
         scope: 0,
         path: path.to_string(),
@@ -2478,7 +2520,9 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         local_types: Vec::new(),
         opaque_class_bodies: Vec::new(),
         syntax_valid,
-        call_inventory_valid: syntax_valid && valid_call_inventory(parsed.root(), 0),
+        call_inventory_valid,
+        call_declarations_valid,
+        switch_starts,
     };
     index_node(
         parsed.root(),
@@ -3924,11 +3968,13 @@ fn plain_reference_rank(node: &GreenNode) -> Option<usize> {
     bracket_rank(&brackets).filter(|rank| *rank <= 255)
 }
 
-fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
-    // Traditional switches add syntax and lexical scope, not strict call-proof
-    // coverage. Preserve the previous opaque-switch inventory boundary rather
-    // than enabling unrelated strict proofs just because parser errors vanish.
-    if matches!(node.kind(), SyntaxKind::LocalType | SyntaxKind::SwitchStmt) {
+fn valid_call_inventory(node: &GreenNode, start: u32, switches: &mut Vec<u32>) -> bool {
+    // Preserve every declaration check. Switch context is recorded separately
+    // in source order so an unrelated callable does not poison the inventory.
+    if node.kind() == SyntaxKind::SwitchStmt {
+        switches.push(start);
+    }
+    if node.kind() == SyntaxKind::LocalType {
         return false;
     }
     if matches!(node.kind(), SyntaxKind::Method | SyntaxKind::Constructor) && source_call(node, start).is_none() {
@@ -3937,7 +3983,7 @@ fn valid_call_inventory(node: &GreenNode, start: u32) -> bool {
     let mut at = start;
     for child in node.children() {
         if let Some(child) = child.as_node()
-            && !valid_call_inventory(child, at)
+            && !valid_call_inventory(child, at, switches)
         {
             return false;
         }
@@ -5003,6 +5049,11 @@ impl<'a> ReferenceCallProof<'a> {
                 None
             }
         }
+    }
+    fn call_inventory(&mut self) -> Option<()> {
+        let eligibility = self.file.call_inventory_for(self.caller_kind.map(|_| (self.caller_start, self.caller_end)));
+        self.charge(eligibility.work)?;
+        eligibility.allowed.then_some(())
     }
     fn accessible(&mut self, class: &ClassRec) -> Option<()> {
         self.charge(1)?;
@@ -6344,7 +6395,8 @@ impl<'a> ReferenceCallProof<'a> {
     // Import owners are canonical names, not expression receivers. This proof
     // is deliberately direct-navigation-only: no imported invocation values.
     fn static_import_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
-        if !self.file.call_inventory_valid || at < self.caller_start || at >= self.caller_end {
+        self.call_inventory()?;
+        if at < self.caller_start || at >= self.caller_end {
             return None;
         }
         self.charge(self.file.static_imports.len().max(1))?;
@@ -6397,9 +6449,7 @@ impl<'a> ReferenceCallProof<'a> {
     // Shared by direct navigation and nested invocation typing. A failed value
     // proof is never sufficient evidence that the same spelling is a type.
     fn static_type_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
-        if !self.file.call_inventory_valid {
-            return None;
-        }
+        self.call_inventory()?;
         self.charge(self.file.locals.len().max(1))?;
         if self.file.locals.iter().any(|local| {
             local.name == name && local.scope_start <= at && at < local.scope_end && local.visible_from <= at
@@ -6416,7 +6466,8 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     fn implicit_instance_owner(&mut self, at: u32) -> Option<&'a ClassRec> {
-        if !self.file.call_inventory_valid || at < self.caller_start || at >= self.caller_end {
+        self.call_inventory()?;
+        if at < self.caller_start || at >= self.caller_end {
             return None;
         }
         self.charge(self.file.classes.len().max(1))?;
@@ -6683,7 +6734,8 @@ impl<'a> ReferenceCallProof<'a> {
         owner: &'a ClassRec,
         members: &[(&'a ClassRec, &'a Member)],
     ) -> Option<Vec<bool>> {
-        if !self.file.call_inventory_valid || !owner.binary || owner.is_interface || owner.nesting.len() != 1 {
+        self.call_inventory()?;
+        if !owner.binary || owner.is_interface || owner.nesting.len() != 1 {
             return None;
         }
         let mut parameters: Vec<(Vec<ParameterType>, usize)> = Vec::new();
@@ -7948,5 +8000,65 @@ mod decimal_literal_proof_tests {
             assert_eq!(b.scalar_primitive_argument(&node, 0, 0), None);
             assert!(b.exhausted);
         }
+    }
+}
+
+#[cfg(test)]
+mod call_inventory_context_tests {
+    use super::*;
+    #[test]
+    fn nested_switches_keep_source_order_and_none_retains_global_barrier() {
+        let s = "class C{void good(){use();}void bad(){switch(1){case 1:switch(2){case 2:use();break;}break;}}void later(){use();}}";
+        let mut p = Project::new();
+        p.insert("C.java", s);
+        let index = Index::build(&p.files, &p.binaries);
+        let file = &index.files[0];
+        let parsed = p.file("C.java").unwrap();
+        assert!(file.call_declarations_valid);
+        assert!(!file.call_inventory_valid);
+        let starts: Vec<_> = s.match_indices("switch").map(|(at, _)| at as u32).collect();
+        assert_eq!(file.switch_starts, starts);
+        for at in [s.find("use()").unwrap(), s.rfind("use()").unwrap()] {
+            let caller = direct_caller(parsed.root(), at as u32).unwrap();
+            let e = file.call_inventory_for(Some((caller.start, caller.end)));
+            assert!(e.allowed);
+            assert!(e.work > 0);
+            let mut proof = ReferenceCallProof::new(&index, file, Some(caller));
+            proof.work_left = e.work - 1;
+            assert!(proof.call_inventory().is_none());
+            assert!(proof.exhausted);
+            let mut proof = ReferenceCallProof::new(&index, file, Some(caller));
+            proof.work_left = e.work;
+            assert!(proof.call_inventory().is_some());
+            assert_eq!(proof.work_left, 0);
+        }
+        let at = s.find("case 2:use()").unwrap() + 7;
+        let caller = direct_caller(parsed.root(), at as u32).unwrap();
+        let e = file.call_inventory_for(Some((caller.start, caller.end)));
+        assert!(!e.allowed);
+        assert!(e.work > 0);
+        let mut proof = ReferenceCallProof::new(&index, file, Some(caller));
+        proof.work_left = e.work;
+        assert!(proof.call_inventory().is_none());
+        assert!(!proof.exhausted);
+        assert_eq!(proof.work_left, 0);
+        assert!(!file.call_inventory_for(None).allowed);
+        assert!(ReferenceCallProof::new(&index, file, None).call_inventory().is_none());
+    }
+    #[test]
+    fn declaration_failures_after_switch_are_not_skipped() {
+        for broken in ["void broken(void x){}", "void broken(int x,){}", "int field=;", "void f(){class Local{}}"] {
+            let s = format!("class C{{void f(){{switch(1){{case 1:break;}}}}{broken}}}");
+            let parsed = ParsedFile::parse(&s);
+            let file = index_file("C.java", &parsed);
+            assert!(!file.call_inventory_valid);
+            assert!(!file.call_declarations_valid, "{broken}");
+            assert!(!file.call_inventory_for(Some((1, s.len() as u32))).allowed);
+        }
+        let parsed = ParsedFile::parse("class C{void f(){}}");
+        let file = index_file("C.java", &parsed);
+        let e = file.call_inventory_for(None);
+        assert!(e.allowed);
+        assert_eq!(e.work, 0);
     }
 }

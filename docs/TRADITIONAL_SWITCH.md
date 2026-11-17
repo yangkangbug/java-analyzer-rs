@@ -80,3 +80,42 @@ See [the frozen parser stage](../examples/traditional_switch/README.md) and
 [the independent scope oracle](../dev-tools/oracle/traditional-switch-v1/README.md).
 These are bounded parser, lexical-scope and preservation results, not general
 switch type checking or Java language conformance.
+
+
+## Caller-local inventory eligibility
+
+The pre-existing switch-sensitive invocation gates now distinguish declaration
+inventory from the current callable's unsupported control-flow context. A legal
+traditional switch in another method no longer disables an otherwise supported
+primitive, implicit-instance, static-qualified or explicitly static-imported call,
+or the existing binary foreign-package candidate-exclusion certificate.
+
+The index retains switch start positions in source order. A shared bounded
+lower-bound check determines whether the verified direct caller contains a switch.
+Only existing whole-file-gate consumers use this result. Their current
+caller still refuses when it contains a switch anywhere, including a nested body.
+Primitive recovery is limited to previously unresolved overloads. Singleton
+primitive positive and negative checks retain their original whole-file entry
+qualification, including the original exhaustion behavior when enabled. Existing
+single-name navigation is not reinterpreted as strict applicability verification.
+Proof objects without a caller retain the old whole-file gate. The additional
+search cost is charged to the existing proof budget only on this recovery path;
+the old globally valid path has zero additional cost.
+
+This is **not** a universal ban on calls in switches. Existing qualified instance
+paths which did not use the old gate remain unchanged, including successful calls
+inside case bodies. Legacy rootless name-navigation results also remain unchanged
+and do not constitute strict applicability proof.
+
+True parser errors, LocalType diagnostics, malformed method headers, damaged
+fields, anonymous-body containment, incomplete ancestors and complete competing
+declarations retain their previous boundaries. In particular this does not
+certify arbitrary damaged-body recovery or remove the source TypeStatic target
+file's syntax check. Switch positions and eligibility are snapshot-local index
+facts; no ancestor result cache or new public API is introduced.
+
+Regressions compare unrelated versus current-caller switches, existing instance
+successes, binary package-private competitors, explicit None fallback, nested
+switch ordering, shared-budget exhaustion, real syntax errors, incremental edits
+and old prepared snapshots. These checks are separate from switch semantics and
+do not claim that arbitrary switch bodies are fully analyzed.

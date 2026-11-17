@@ -416,3 +416,29 @@ fn static_import_refuses_cycles_inherited_imports_and_broken_headers() {
         assert_ne!(query(&p, marker).status, ResolveStatus::Resolved);
     }
 }
+
+#[test]
+fn unrelated_switch_restores_static_paths_but_preserves_existing_instance_paths() {
+    let sw = "switch(1){case 1:break;}";
+    for invocation in ["Api.pick(1)", "pick(1)"] {
+        let s = format!(
+            "import lib.Api;import static lib.Api.pick;class Calls{{void run(){{{invocation};}}void other(){{{sw}}}}}"
+        );
+        selected(&project(&s, &[INT, LONG]), "pick(1)", "lib.Api", "(I)I");
+        let s = format!("import lib.Api;import static lib.Api.pick;class Calls{{void run(){{{invocation};{sw}}}}}");
+        assert_ne!(query(&project(&s, &[INT, LONG]), "pick(1)").status, ResolveStatus::Resolved);
+    }
+    for body in ["api.pick(1);", "api.pick(1);switch(1){case 1:break;}", "switch(1){case 1:api.pick(1);break;}"] {
+        let s = format!("import lib.Api;class Calls{{void run(Api api){{{body}}}}}");
+        selected(
+            &project(&s, &[("pick", "(I)I", 0x101, None), ("pick", "(J)J", 0x101, None)]),
+            "pick(1)",
+            "lib.Api",
+            "(I)I",
+        );
+    }
+    for body in ["int broken=;", "class Local{}"] {
+        let s = format!("import static lib.Api.pick;class Calls{{void run(){{pick(1);}}void other(){{{body}}}}}");
+        assert_ne!(query(&project(&s, &[INT]), "pick(1)").status, ResolveStatus::Resolved);
+    }
+}
