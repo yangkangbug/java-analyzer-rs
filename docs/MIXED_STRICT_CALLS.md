@@ -70,3 +70,17 @@ baseline or add call-result arguments to the mixed invocation proof.
 The subsequent [plain-null slice](NULL_STRICT_CALLS.md) adds a separate null
 actual category while preserving this phase's frozen evidence and strict formal
 vector selection. Unknown expressions are not reclassified as null.
+
+
+## Boolean keyword actuals
+
+The later shared Boolean-leaf proof accepts complete `true` and `false` tokens,
+including already-supported parentheses, in both primitive and mixed/reference
+invocation paths. Boolean remains a scalar identity type: it does not widen to a
+numeric type, box to Boolean/Object, or enable logical/comparison expressions.
+All declaration-family, scope, access and work/depth checks remain in force.
+The older primitive selector retains its existing fixed-array treatment of
+primitive varargs; this does not add variable-arity expansion. Static-import
+application is still unsupported. JUnit type-qualified assertTrue/assertFalse
+are separately checked against the pinned binary methods, not evidence of full
+Java overload resolution.

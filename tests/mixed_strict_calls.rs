@@ -192,3 +192,13 @@ fn mixed_argument_scopes_do_not_borrow_expired_or_overlapping_bindings() {
         }
     }
 }
+
+#[test]
+fn boolean_literals_share_reference_call_argument_classification() {
+    for value in ["true", "false", "((true))"] {
+        let source = format!(
+            "class A{{}} class Box{{public void pick(boolean b,A a){{}} public void pick(int i,A a){{}}}} class Calls{{void run(Box box,A a){{box.pick({value},a);}}}}"
+        );
+        winner(&source, &format!("pick({value},a)"), "pick(boolean");
+    }
+}

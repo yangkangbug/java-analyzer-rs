@@ -247,3 +247,36 @@ fn same_binary_name_in_separate_compilations_keeps_static_result_identity() {
         );
     }
 }
+
+#[test]
+fn boolean_literal_binary_static_overloads_keep_exact_descriptors() {
+    const BOOLEAN: Method<'static> = ("pick", "(Z)Z", 0x109, None);
+    for value in ["true", "false", "((true))"] {
+        let s = format!("import lib.Api; class Calls{{void run(){{Api.pick({value});}}}}");
+        selected(&project(&s, &[BOOLEAN, INT, LONG]), &format!("pick({value})"), "lib.Api", "(Z)Z");
+        assert_ne!(query(&project(&s, &[INT, LONG]), &format!("pick({value})")).status, ResolveStatus::Resolved);
+    }
+    let s = "import lib.Api; class Calls{void run(){Api.pick(Api.pick(true));}}";
+    selected(&project(s, &[BOOLEAN, INT, LONG]), "pick(Api.pick(true))", "lib.Api", "(Z)Z");
+}
+#[test]
+fn boolean_literal_edits_keep_prepared_versions_and_fresh_selection() {
+    use java_engine::TextEdit;
+    const BOOLEAN: Method<'static> = ("pick", "(Z)Z", 0x109, None);
+    let s = "import lib.Api; class Calls{void run(){Api.pick(true);}}";
+    let mut p = project(s, &[BOOLEAN, INT, LONG]);
+    let old = p.clone();
+    let old_prepared = old.prepare();
+    let at = s.find("true").unwrap();
+    p.edit("Calls.java", TextEdit { start_byte: at as u32, end_byte: (at + 4) as u32, insert: "1".into() }).unwrap();
+    selected(&p, "pick(1)", "lib.Api", "(I)I");
+    let changed = p.file("Calls.java").unwrap().text();
+    let fresh = project(changed, &[BOOLEAN, INT, LONG]);
+    assert_eq!(query(&p, "pick(1)"), query(&fresh, "pick(1)"));
+    let before = old_prepared.resolve_at("Calls.java", s.find("pick(true)").unwrap() as u32);
+    assert_eq!(before.status, ResolveStatus::Resolved);
+    assert_eq!(before.targets[0].binary.as_ref().unwrap().descriptor, "(Z)Z");
+    p.edit("Calls.java", TextEdit { start_byte: at as u32, end_byte: (at + 1) as u32, insert: "false".into() })
+        .unwrap();
+    selected(&p, "pick(false)", "lib.Api", "(Z)Z");
+}

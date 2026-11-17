@@ -530,3 +530,32 @@ fn switch_structure_does_not_expand_the_strict_call_proof_inventory() {
     let wrong_arity = source.replace("m(tokens, 0);", "m(tokens);");
     refused(&wrong_arity, "m(tokens", ResolveStatus::CallNotResolved, 1);
 }
+
+#[test]
+fn boolean_literals_select_boolean_overloads_and_reject_numeric_targets() {
+    for literal in ["true", "false", "(true)", "((false))"] {
+        let source = format!(
+            "class Calls{{static void m(boolean b){{}} static void m(int i){{}} static void m(long l){{}} static void test(){{m({literal});}}}}"
+        );
+        selected(&source, &format!("m({literal})"), "m(boolean");
+        let fixed_array = format!(
+            "class Calls{{static void m(boolean b){{}} static void m(boolean... xs){{}} static void test(){{m({literal});}}}}"
+        );
+        selected(&fixed_array, &format!("m({literal})"), "m(boolean b");
+        let wrong = format!("class Calls{{static void m(int i){{}} static void test(){{m({literal});}}}}");
+        refused(&wrong, &format!("m({literal})"), ResolveStatus::CallNotResolved, 1);
+    }
+}
+#[test]
+fn boolean_literal_evidence_does_not_add_operators_boxing_or_ignore_competitors() {
+    for extra in ["static void m(Missing x){}", "static <T> void m(T x){}", "static void m(Object... xs){}"] {
+        let source = format!("class Calls{{static void m(boolean b){{}} {extra} static void test(){{m(true);}}}}");
+        assert_ne!(query(&project(&source), "m(true)").status, ResolveStatus::Resolved);
+    }
+    for value in ["!true", "true && false", "1 == 1", "unknown"] {
+        let source = format!("class Calls{{static void m(boolean b){{}} static void test(){{m({value});}}}}");
+        assert_ne!(query(&project(&source), &format!("m({value})")).status, ResolveStatus::Resolved);
+    }
+    let source = "class Calls{static void m(Object b){} static void test(){m(true);}}";
+    refused(source, "m(true)", ResolveStatus::CallNotResolved, 1);
+}

@@ -3981,6 +3981,25 @@ fn postfix_declaration_end(node: &GreenNode, start: u32, name_at: u32) -> Option
     (state == 5 && selected).then_some(start + node.utf8_len())
 }
 
+// One complete keyword leaf, shared by both invocation proof paths.
+fn boolean_literal(node: &GreenNode) -> Option<PrimitiveValue> {
+    if node.kind() != SyntaxKind::LiteralExpr {
+        return None;
+    }
+    let mut found = false;
+    for child in node.children() {
+        let token = child.as_token()?;
+        if token.kind().is_trivia() {
+            continue;
+        }
+        if found || !matches!((token.kind(), token.text()), (SyntaxKind::True, "true") | (SyntaxKind::False, "false")) {
+            return None;
+        }
+        found = true;
+    }
+    found.then_some(PrimitiveValue { primitive: Primitive::Boolean, rank: 0 })
+}
+
 fn primitive_declaration(node: &GreenNode, start: u32, name_at: u32) -> Option<PrimitiveValue> {
     let (ty, _) = child_kind(node, start, SyntaxKind::Type)?;
     // Annotated/parameterized/other unmodeled type trees do not borrow a token.
@@ -4276,6 +4295,7 @@ impl<'a> PrimitiveProof<'a> {
         self.enter(depth)?;
         self.charge(node.children().len())?;
         match node.kind() {
+            SyntaxKind::LiteralExpr => boolean_literal(node),
             SyntaxKind::ReferenceExpr => {
                 self.charge(self.file.locals.len())?;
                 let name = token_name(node);
@@ -5925,7 +5945,7 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     // A fallback after reference typing fails: explicit scalar declarations,
-    // range-checked decimal int tokens and bounded integral +/- compositions.
+    // Boolean keyword leaves, range-checked decimal int tokens and bounded integral +/- compositions.
     // No field/array operands, call-result leaves, boxing or general inference.
     fn scalar_primitive_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
         if depth > REFERENCE_PROOF_DEPTH {
@@ -6042,6 +6062,9 @@ impl<'a> ReferenceCallProof<'a> {
             return Some(PrimitiveValue { primitive, rank: 0 });
         }
         if node.kind() == SyntaxKind::LiteralExpr {
+            if let Some(value) = boolean_literal(node) {
+                return Some(value);
+            }
             let mut literal = None;
             for child in node.children() {
                 let token = child.as_token()?;
@@ -7670,6 +7693,57 @@ mod anonymous_boundary_proof_tests {
             let index = Index::build(&p.files, &p.binaries);
             assert_eq!(index.files[0].locals.iter().filter(|local| local.guard_only).count(), expected);
             assert_eq!(index.files[0].opaque_class_bodies.len(), 1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod boolean_literal_proof_tests {
+    use super::*;
+    use crate::{GreenElement, GreenToken};
+    #[test]
+    fn both_boolean_proof_entries_obey_the_existing_work_budget() {
+        let node = GreenNode::from_parts(
+            SyntaxKind::LiteralExpr,
+            vec![GreenElement::Token(GreenToken::new(SyntaxKind::True, "true".into()))],
+            None,
+        );
+        let mut p = Project::new();
+        p.insert("C.java", "class C{}");
+        let index = Index::build(&p.files, &p.binaries);
+        let file = &index.files[0];
+        let expected = Some(PrimitiveValue { primitive: Primitive::Boolean, rank: 0 });
+        let mut primitive = PrimitiveProof::new(file, 0, 100, None);
+        assert_eq!(primitive.expression(&node, 0, 0), expected);
+        primitive.work_left = 0;
+        assert_eq!(primitive.expression(&node, 0, 0), None);
+        assert!(primitive.exhausted);
+        let mut reference = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(reference.scalar_primitive_argument(&node, 0, 0), expected);
+        reference.work_left = 0;
+        assert_eq!(reference.scalar_primitive_argument(&node, 0, 0), None);
+        assert!(reference.exhausted);
+    }
+
+    #[test]
+    fn boolean_leaf_requires_one_exact_keyword_and_no_nested_nodes() {
+        let token = |kind, text: &str| GreenElement::Token(GreenToken::new(kind, text.into()));
+        for (kind, text) in [(SyntaxKind::True, "true"), (SyntaxKind::False, "false")] {
+            let node = GreenNode::from_parts(SyntaxKind::LiteralExpr, vec![token(kind, text)], None);
+            assert_eq!(boolean_literal(&node), Some(PrimitiveValue { primitive: Primitive::Boolean, rank: 0 }));
+        }
+        let nested = GreenNode::from_parts(SyntaxKind::LiteralExpr, vec![token(SyntaxKind::True, "true")], None);
+        for children in [
+            vec![],
+            vec![token(SyntaxKind::True, "false")],
+            vec![token(SyntaxKind::False, "true")],
+            vec![token(SyntaxKind::Ident, "true")],
+            vec![token(SyntaxKind::True, "truex")],
+            vec![token(SyntaxKind::True, "true"), token(SyntaxKind::False, "false")],
+            vec![GreenElement::Node(nested)],
+        ] {
+            let node = GreenNode::from_parts(SyntaxKind::LiteralExpr, children, None);
+            assert_eq!(boolean_literal(&node), None);
         }
     }
 }
