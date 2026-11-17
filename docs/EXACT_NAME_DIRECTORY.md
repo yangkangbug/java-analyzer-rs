@@ -89,3 +89,25 @@ fresh inputs, old retained views, and an unreferenced compilation's invisible
 candidate. Optional pinned-javac controls distinguish duplicate identical imports,
 conflicting/missing imports and legal member/local shadowing; Java remains absent
 from the library and mandatory native regressions.
+
+
+## Member-type competition boundary
+
+Ordinary simple-type navigation collects all matching member-type declarations
+from the nearest enclosing lexical owner with any matches. Different declarations
+retain their source ranges even when their dotted names are identical. One match
+keeps its exact target; multiple matches remain ambiguous without searching an
+outer scope or an import for a replacement candidate.
+
+Ambiguity remains terminal across subsequent expression selectors. Multi-part
+type-name and declared-receiver lookup also reject a competing member-type prefix
+rather than reinterpret it as an identically spelled package. This does not add
+new nested-type or inherited-member resolution, make duplicate declarations valid, or change the strict invocation proof's existing candidate checks.
+Unshadowed package lookup and unique nearest-scope navigation retain their paths.
+
+Native controls cover declaration order, class/interface competition, nested
+scope shadowing, package-name collisions, receiver chains, old prepared views,
+and duplicate insertion/removal compared with fresh indexing. Optional javac
+controls distinguish illegal duplicate members from legal nearest-scope shadowing
+and equal names owned by distinct classes. This fixes a false unique navigation
+result; it is not a percentage of complete Java support.

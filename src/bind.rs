@@ -800,8 +800,9 @@ impl Index {
         if local_type_shadows(file, name, byte) {
             return TypeLookup::MissingImport;
         }
-        if let Some(member) = member_type_here(file, byte, name) {
-            return TypeLookup::One(member);
+        match member_type_here(file, byte, name) {
+            TypeLookup::None => {}
+            member => return member,
         }
         let imports: BTreeSet<_> =
             file.singles.iter().filter(|(simple, _)| simple == name).map(|(_, full)| full).collect();
@@ -867,6 +868,11 @@ impl Index {
                 }
                 TypeLookup::None | TypeLookup::MissingImport => ResolveResult::none(ResolveStatus::Unresolved),
             };
+        }
+        // A contested lexical type prefix cannot be reinterpreted as a package
+        // merely because an identically spelled qualified class is available.
+        if matches!(member_type_here(file, byte, &prefix[0]), TypeLookup::Many(_)) {
+            return ResolveResult::none(ResolveStatus::Ambiguous);
         }
         self.qualify(file, &prefix, false, byte)
     }
@@ -1275,7 +1281,11 @@ impl Index {
         byte: u32,
     ) -> ResolveResult {
         match base.status {
-            ResolveStatus::Resolved | ResolveStatus::Ambiguous if base.targets.len() == 1 => {
+            // A competing lexical base is not a package prefix. Keep ambiguity
+            // terminal across every following selector instead of qualifying a
+            // spelling taken from an arbitrary first candidate.
+            ResolveStatus::Ambiguous => ResolveResult::none(ResolveStatus::Ambiguous),
+            ResolveStatus::Resolved if base.targets.len() == 1 => {
                 let target = &base.targets[0];
                 match target.kind {
                     TargetKind::Class => {
@@ -1388,6 +1398,11 @@ impl Index {
         }
         if parts.len() == 1 {
             return self.simple_type(file, &parts[0], byte);
+        }
+        if let Some(first) = parts.first()
+            && let ambiguity @ TypeLookup::Many(_) = member_type_here(file, byte, first)
+        {
+            return ambiguity;
         }
         let found = self.legacy_named(file.scope, &parts.join("."));
         match found.len() {
@@ -2130,17 +2145,24 @@ fn enclosing_classes(file: &FileRec, byte: u32) -> Vec<&ClassRec> {
     classes
 }
 
-fn member_type_here<'a>(file: &'a FileRec, byte: u32, name: &str) -> Option<&'a ClassRec> {
+fn member_type_here<'a>(file: &'a FileRec, byte: u32, name: &str) -> TypeLookup<'a> {
     for class in enclosing_classes(file, byte) {
-        if let Some(inner) = file.classes.iter().find(|inner| {
-            inner.nesting.len() == class.nesting.len() + 1
-                && inner.nesting[..class.nesting.len()] == class.nesting[..]
-                && inner.simple() == name
-        }) {
-            return Some(inner);
+        let members: Vec<_> = file
+            .classes
+            .iter()
+            .filter(|inner| {
+                inner.nesting.len() == class.nesting.len() + 1
+                    && inner.nesting[..class.nesting.len()] == class.nesting[..]
+                    && inner.simple() == name
+            })
+            .collect();
+        match members.len() {
+            0 => {}
+            1 => return TypeLookup::One(members[0]),
+            _ => return TypeLookup::Many(members),
         }
     }
-    None
+    TypeLookup::None
 }
 
 fn is_package_prefix<'a>(classes: impl Iterator<Item = &'a ClassRec>, parts: &[String]) -> bool {
