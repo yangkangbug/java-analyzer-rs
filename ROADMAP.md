@@ -167,6 +167,14 @@ One-dimensional plain reference local/parameter arrays now supply checked elemen
 types to invocation arguments and receivers without treating an array as a scalar.
 See [boundaries and validation](docs/REFERENCE_ARRAY_ELEMENTS.md).
 
+## Explicit static field value names
+
+Direct value references and field initializers can select supported own static
+fields from named imports. Complete ancestry protects lexical shadowing, while
+import-site access and declaration identity guard selection. Qualified receivers,
+inherited imports and field-type propagation remain deferred. See
+[the boundaries and original-source checks](docs/STATIC_IMPORT_FIELDS.md).
+
 ## M0: reproducible independent project
 
 Gate: independent manifest/lockfile/toolchain; preserved licensing/provenance;

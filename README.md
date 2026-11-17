@@ -47,6 +47,10 @@ Ordinary constructor bodies reuse existing strict call proofs through a separate
 [caller certificate](docs/CONSTRUCTOR_CALL_CONTEXTS.md), without constructor
 selection or early-construction support.
 
+[Explicit static field imports](docs/STATIC_IMPORT_FIELDS.md) can navigate direct
+value references to supported own declarations, preserving lexical shadowing and
+keeping field type inference and inherited imports outside this slice.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`

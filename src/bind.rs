@@ -632,6 +632,8 @@ impl Index {
                 let name = token_name(hit.node);
                 if hit.call {
                     self.simple_call(file, parsed, byte, &name, hit.arguments)
+                } else if hit.imported_value {
+                    self.direct_reference(file, byte, &name)
                 } else {
                     self.simple_name(file, byte, &name, false)
                 }
@@ -640,6 +642,25 @@ impl Index {
             SyntaxKind::FieldExpr => self.resolve_field(file, parsed, hit, byte),
             SyntaxKind::MethodRefExpr => self.resolve_method_ref(file, parsed, hit, byte),
             _ => ResolveResult::none(ResolveStatus::Unresolved),
+        }
+    }
+
+    // Only standalone value references opt into imported fields. Qualified
+    // receivers, type names and calls retain their existing namespace paths.
+    fn direct_reference(&self, file: &FileRec, byte: u32, name: &str) -> ResolveResult {
+        if !file.static_imports.iter().any(|(_, member)| member.as_deref() == Some(name)) {
+            return self.simple_name(file, byte, name, false);
+        }
+        if let Some(local) = self.locals_named(file, byte, name) {
+            return local;
+        }
+        if let Some(field) = self.fields_named(file, byte, name) {
+            return field;
+        }
+        let mut proof = ReferenceCallProof::new(self, file, None);
+        match proof.imported_own_field(name, byte) {
+            Some(target) if !proof.exhausted => ResolveResult::one(ResolveStatus::Resolved, target),
+            _ => ResolveResult::none(ResolveStatus::StaticImportNotApplied),
         }
     }
 
@@ -2269,6 +2290,9 @@ struct Hit<'a> {
     start: u32,
     call: bool,
     arguments: Option<(&'a GreenNode, u32)>,
+    imported_value: bool,
+    // True only through transparent parentheses around this reference.
+    wrapped_reference: bool,
 }
 
 fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Option<Hit<'_>> {
@@ -2285,8 +2309,16 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
     for child in node.children() {
         if let Some(child_node) = child.as_node() {
             let child_called = node.kind() == SyntaxKind::CallExpr && !saw_node;
+            let child_receiver = !saw_node
+                && matches!(node.kind(), SyntaxKind::FieldExpr | SyntaxKind::MethodRefExpr | SyntaxKind::IndexExpr);
             saw_node = true;
             if let Some(mut hit) = innermost_ref(child_node, child_at, byte, child_called) {
+                if hit.wrapped_reference {
+                    if child_receiver || child_called {
+                        hit.imported_value = false;
+                    }
+                    hit.wrapped_reference = node.kind() == SyntaxKind::ParenExpr;
+                }
                 if child_called && hit.call && std::ptr::eq(hit.node, child_node.as_ref()) {
                     hit.arguments = child_kind(node, start, SyntaxKind::ArgList);
                 }
@@ -2299,7 +2331,14 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
         node.kind(),
         SyntaxKind::ReferenceExpr | SyntaxKind::Name | SyntaxKind::FieldExpr | SyntaxKind::MethodRefExpr
     ) {
-        Some(Hit { node, start, call: called, arguments: None })
+        Some(Hit {
+            node,
+            start,
+            call: called,
+            arguments: None,
+            imported_value: node.kind() == SyntaxKind::ReferenceExpr,
+            wrapped_reference: node.kind() == SyntaxKind::ReferenceExpr,
+        })
     } else {
         None
     }
@@ -6642,6 +6681,85 @@ impl<'a> ReferenceCallProof<'a> {
             .or_else(|| self.scalar_primitive_argument(node, at, depth).map(StrictActual::Primitive))
             .or_else(|| self.null_argument(node, at, depth).map(|()| StrictActual::Null))
             .or_else(|| self.cast_null_argument(node, at, depth).map(StrictActual::Reference))
+    }
+
+    // The caller already established a relevant explicit import. None is
+    // unknown/unsupported, never absence permitting a same-named type fallback.
+    // This is navigation, not field type evidence.
+    fn imported_own_field(&mut self, name: &str, at: u32) -> Option<Target> {
+        self.charge(self.file.static_imports.len().max(1))?;
+        if self.file.static_imports.iter().any(|(_, member)| member.is_none()) {
+            return None;
+        }
+        self.charge(self.file.classes.len().max(1))?;
+        for lexical in enclosing_classes(self.file, at) {
+            for class in self.graph(lexical)? {
+                self.charge(class.fields.len().max(1))?;
+                // An inaccessible or otherwise uncertain lexical field must
+                // not disappear merely because legacy lookup returned empty.
+                if class.fields.iter().any(|field| field.name == name) {
+                    return None;
+                }
+            }
+        }
+        let mut selected: Option<(&ClassRec, usize)> = None;
+        let mut owners = BTreeSet::new();
+        for (imported, member) in &self.file.static_imports {
+            self.charge(imported.len() + member.as_ref().map_or(0, String::len) + 1)?;
+            if member.as_deref() != Some(name) {
+                continue;
+            }
+            let owner = self.unique_named(self.file.scope, imported)?;
+            self.accessible(owner)?;
+            let (package, simple) = imported.rsplit_once('.')?;
+            if owner.is_interface || package.is_empty() || owner.package != package || owner.simple() != simple {
+                return None;
+            }
+            if let Some(sig) = &owner.binary_signature {
+                self.charge(sig.binary_name.len() + imported.len())?;
+                if sig.binary_name != imported.replace('.', "/") {
+                    return None;
+                }
+            }
+            self.graph(owner)?;
+            if !owners.insert(ClassIdentity::of(owner)) {
+                continue;
+            }
+            self.charge(owner.fields.len().max(1))?;
+            let mut fields = owner.fields.iter().enumerate().filter(|(_, field)| field.name == name);
+            if let Some((ordinal, field)) = fields.next() {
+                if fields.next().is_some() || !self.import_field_access(field, owner) {
+                    return None;
+                }
+                let is_static = match &field.shape {
+                    Shape::Binary { flags, .. } => {
+                        if flags & !0x00df != 0 || (flags & 7).count_ones() > 1 || flags & 0x50 == 0x50 {
+                            return None;
+                        }
+                        flags & 8 != 0
+                    }
+                    _ => field.source_field.as_ref()?.is_static,
+                };
+                if !is_static {
+                    return None;
+                }
+                if selected.is_some_and(|(prior, slot)| !same_class(prior, owner) || slot != ordinal) {
+                    return None;
+                }
+                selected = Some((owner, ordinal));
+                continue;
+            }
+            // No own field is unsupported in this value-only slice, including
+            // inherited fields, method-only imports and static member types.
+            // Legal type/call/qualified contexts never enter this path.
+            return None;
+        }
+        selected.map(|(owner, ordinal)| member_target(owner, &owner.fields[ordinal]))
+    }
+
+    fn import_field_access(&self, field: &Member, owner: &ClassRec) -> bool {
+        field.access == Access::Public
+            || (matches!(field.access, Access::Package | Access::Protected) && owner.package == self.file.package)
     }
 
     // Import owners are canonical names, not expression receivers. This proof
