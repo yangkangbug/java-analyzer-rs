@@ -6419,7 +6419,7 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     fn converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
-        self.graph(actual)?;
+        let complete = self.graph(actual)?;
         self.graph(formal)?;
         let mut todo = vec![(actual, 0)];
         let mut visited = BTreeSet::new();
@@ -6455,8 +6455,48 @@ impl<'a> ReferenceCallProof<'a> {
                 todo.push((parent, depth + 1));
             }
         }
-        if unknown { None } else { Some(false) }
+        if unknown {
+            // An unproved parameterized edge cannot establish a positive
+            // conversion. Its complete nominal closure can still exclude an
+            // unrelated target, without erasing the edge or inventing identity.
+            self.charge(formal.package.len() + formal.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+            let name = formal.dotted();
+            let raw_name = self.negative_raw_name(formal)?;
+            for ancestor in complete {
+                self.charge(1)?;
+                if same_class(ancestor, formal) || self.negative_raw_name(ancestor)? == raw_name {
+                    return None;
+                }
+                if ancestor.scope != formal.scope {
+                    self.charge(ancestor.package.len() + ancestor.nesting.iter().map(String::len).sum::<usize>() + 1)?;
+                    if ancestor.dotted() == name {
+                        return None;
+                    }
+                }
+            }
+        }
+        Some(false)
     }
+    // Only a conservative collision guard for negative conversion evidence.
+    // Equal raw names do not establish declaration identity or a conversion.
+    fn negative_raw_name(&mut self, class: &ClassRec) -> Option<String> {
+        if class.binary {
+            let name = &class.binary_signature.as_ref()?.binary_name;
+            self.charge(name.len().saturating_add(1))?;
+            Some(name.clone())
+        } else {
+            self.charge(
+                class.package.len() + class.nesting.iter().map(String::len).sum::<usize>() + class.nesting.len() + 1,
+            )?;
+            let nested = class.nesting.join("$");
+            Some(if class.package.is_empty() {
+                nested
+            } else {
+                format!("{}/{}", class.package.replace('.', "/"), nested)
+            })
+        }
+    }
+
     fn check_depth(&mut self, depth: usize) -> Option<()> {
         if depth > REFERENCE_PROOF_DEPTH {
             self.work_left = 0;
@@ -8291,5 +8331,117 @@ mod source_generic_budget_tests {
         );
         assert!(proof.exhausted);
         assert_eq!(proof.work_left, 0);
+    }
+}
+
+#[cfg(test)]
+mod negative_conversion_tests {
+    use super::*;
+
+    fn project(text: &str) -> Project {
+        let mut project = Project::new();
+        project.insert("C.java", text);
+        let mut object = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+        object.extend(b"java/lang/Object");
+        object.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        project.add_class_bytes("Object.class", &object).unwrap();
+        project
+    }
+
+    #[test]
+    fn closed_negative_evidence_does_not_erase_unknown_paths_or_broken_graphs() {
+        for (text, expected) in [
+            ("class Other {} class G<T> {} class Actual extends G<Actual> {}", Some(false)),
+            ("class Other {} class G<T> extends Other {} class Actual extends G<Actual> {}", None),
+            ("interface Other {} interface G<T> extends Other {} class Actual implements G<Actual> {}", None),
+            ("class Other {} class Actual extends Missing<Actual> {}", None),
+            ("class Other {} class G<T> extends Actual {} class Actual extends G<Actual> {}", None),
+            ("class Other {} interface G<T> {} class Actual implements G<Actual>, G<Actual> {}", None),
+            ("class Other {} class G<T> {} class G<T> {} class Actual extends G<Actual> {}", None),
+        ] {
+            let p = project(text);
+            let index = Index::build(&p.files, &p.binaries);
+            let file = &index.files[0];
+            let actual = file.classes.iter().find(|c| c.simple() == "Actual").unwrap();
+            let formal = file.classes.iter().find(|c| c.simple() == "Other").unwrap();
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            assert_eq!(proof.converts(actual, formal), expected, "{text}");
+        }
+    }
+
+    #[test]
+    fn cross_scope_nominal_ancestor_is_not_negative_evidence() {
+        let left = project("class Other {} class G<T> extends Other {} class Actual extends G<Actual> {}");
+        let right = project("class Other {}");
+        let index = Index::scoped(&[&left, &right], &[BTreeSet::from([0]), BTreeSet::from([1])]);
+        let file = &index.files[0];
+        let actual = file.classes.iter().find(|c| c.simple() == "Actual").unwrap();
+        let formal = index.files[1].classes.iter().find(|c| c.simple() == "Other").unwrap();
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.converts(actual, formal), None);
+    }
+
+    #[test]
+    fn closed_negative_scan_charges_even_with_warm_graphs() {
+        let p = project("class Other {} class G<T> {} class Actual extends G<Actual> {}");
+        let index = Index::build(&p.files, &p.binaries);
+        let file = &index.files[0];
+        let actual = file.classes.iter().find(|c| c.simple() == "Actual").unwrap();
+        let formal = file.classes.iter().find(|c| c.simple() == "Other").unwrap();
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        proof.graph(actual).unwrap();
+        proof.graph(formal).unwrap();
+        let before = proof.work_left;
+        assert_eq!(proof.converts(actual, formal), Some(false));
+        let used = before - proof.work_left;
+        proof.work_left = used - 1;
+        assert_eq!(proof.converts(actual, formal), None);
+        assert!(proof.exhausted);
+        assert_eq!(proof.work_left, 0);
+    }
+    // Raw JVM names can collide although source '$' and binary nesting project
+    // to different dotted lookup names. This must not become negative evidence.
+    #[test]
+    fn raw_jvm_name_collision_is_not_negative_evidence() {
+        fn binary(name: &str, parent: &str, signature: Option<&str>) -> Vec<u8> {
+            fn utf(out: &mut Vec<u8>, text: &str) {
+                out.push(1);
+                out.extend((text.len() as u16).to_be_bytes());
+                out.extend(text.as_bytes());
+            }
+            let mut out = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61];
+            out.extend((if signature.is_some() { 7u16 } else { 5 }).to_be_bytes());
+            utf(&mut out, name);
+            out.extend([7, 0, 1]);
+            utf(&mut out, parent);
+            out.extend([7, 0, 3]);
+            if let Some(signature) = signature {
+                utf(&mut out, "Signature");
+                utf(&mut out, signature);
+            }
+            out.extend([0, 0x21, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0]);
+            if signature.is_some() {
+                out.extend([0, 1, 0, 5, 0, 0, 0, 2, 0, 6]);
+            } else {
+                out.extend([0, 0]);
+            }
+            out
+        }
+        for same_scope in [false, true] {
+            for (name, expected) in [("A$B", None), ("A$C", Some(false))] {
+                let source = format!("package p; public class {name} {{}}");
+                let mut left = project(if same_scope { &source } else { "class Calls {}" });
+                left.add_class_bytes("Parent.class", &binary("p/A$B", "java/lang/Object", None)).unwrap();
+                left.add_class_bytes("Actual.class", &binary("Actual", "p/A$B", Some("Lp/A$B<LActual;>;"))).unwrap();
+                let right = project(&source);
+                let index = Index::scoped(&[&left, &right], &[BTreeSet::from([0]), BTreeSet::from([1])]);
+                let file = &index.files[usize::from(!same_scope)];
+                let actual = index.binaries.iter().find(|c| c.scope == 0 && c.simple() == "Actual").unwrap();
+                let formal = file.classes.iter().find(|c| c.simple() == name).unwrap();
+                let mut proof = ReferenceCallProof::new(&index, file, None);
+                assert!(proof.graph(actual).is_some(), "fixture graph must be complete");
+                assert_eq!(proof.converts(actual, formal), expected, "same_scope={same_scope}, name={name}");
+            }
+        }
     }
 }

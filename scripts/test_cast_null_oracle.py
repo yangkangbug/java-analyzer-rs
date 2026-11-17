@@ -35,6 +35,22 @@ class CastNullOracleTests(unittest.TestCase):
         self.assertEqual(old['plain_null'], current['plain_null'])
         self.assertEqual(len([q for q in current if current[q] != old[q]]), 3)
 
+    def test_closed_negative_projection_preserves_history_and_exact_target(self):
+        original = copy.deepcopy(self.expected)
+        current = c.current_expectations(self.expected)
+        self.assertEqual(self.expected, original)
+        self.assertEqual({q for q in current if current[q] != original[q]}, {'string_competitor'})
+        self.compare(self.native(current), current)
+        with self.assertRaises(AssertionError):
+            self.compare(self.native(original), current)
+        bad = self.native(current)
+        bad['string_competitor'][2] = c.o.reference_target(self.ds, 'comparable@casts.Target', self.platform)
+        with self.assertRaises(AssertionError):
+            self.compare(bad, current)
+        changed = dict(original); changed['string_competitor'] = current['string_competitor']
+        with self.assertRaises(AssertionError):
+            c.current_expectations(changed)
+
     def test_typed_parent_cannot_select_child_or_plain_null(self):
         rows = self.native(self.expected)
         for q in ('typed_parent', 'parenthesized'):

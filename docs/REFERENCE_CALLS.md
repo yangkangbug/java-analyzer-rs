@@ -226,3 +226,46 @@ and original dependency sources (including the checked-in GsonBuildConfig Java
 template, whose version literal is irrelevant to these targets). The other 564
 rows and the separate 30-query generic set are unchanged. These fixed sets are
 regression diagnostics, not a Java coverage rate or a full Gson build claim.
+
+
+## Closed negative conversion evidence
+
+Later strict selection distinguishes an unproved positive conversion from a
+proved absence of any possible nominal ancestor. When a parameterized edge
+makes the ordinary conversion traversal unknown, the existing complete, unique,
+acyclic ancestor graph may prove a target absent. The target's declaration
+identity must not occur anywhere in that graph; a same-named ancestor in another
+compilation also keeps the result unknown. A raw JVM-name collision remains
+unknown in any compilation, including a legal source `$` name versus a binary
+nested-name projection. This is refusal evidence, not identity unification.
+Every scanned node and compared name
+uses the existing proof budget. Missing, ambiguous, cyclic or over-budget graphs
+cannot exclude a competitor.
+
+This changes only negative evidence. A target reachable through an unsupported
+generic path remains unknown, not convertible. No generic substitution, platform
+identity sharing, boxing, candidate skipping or new ancestor walker is added.
+The old cross-compilation guard after ordinary negative conversions remains in
+place. Complete method families and every argument slot are still checked.
+
+Native regressions cover source generic interfaces/superclasses, supplied binary
+String/Comparable metadata, unknown reachable targets, broken graphs, cross-scope
+names and budget exhaustion. Actual `Project::edit` ancestor changes and restoration
+are compared with fresh/prepared results while retaining the old prepared view.
+
+A separate real-JDK compiler comparison verifies four exact handwritten source
+targets: String/Reader overloads, mixed arguments, call-result composition and an
+explicit source generic receiver. The original four cross-compilation Gson probes
+and 393-query diagnostic set remain unchanged. In the explicitly same-compilation
+Gson diagnostic, `TypeAdapter<String>.fromJson(String)` now selects the original
+source declaration and its result supports `String.length()`. javac independently
+selects that fromJson declaration while analyzing the original Gson main sources
+and its repository-provided GsonBuildConfig template with an empty source path.
+This is a targeted compiler analysis, not a Maven build or whole-project coverage
+claim. Cross-compilation generic bounds and boxing remain unsupported.
+
+The existing frozen string and cast-null compiler fixtures also gain their exact
+String/unrelated and typed-null String/Number selections. Their hashed historical
+inputs and baseline expectations stay unchanged; small current-expectation
+projections assert the previous refusal before advancing those two rows. Offline
+mutations still reject wrong targets and unexpected historical changes.

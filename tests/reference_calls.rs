@@ -1056,3 +1056,85 @@ fn strict_reference_refresh_preserves_exact_target_ranges_and_access() {
         selected(&p, "m(a)", "C.java", "m(A x)");
     }
 }
+
+#[test]
+fn parameterized_edges_allow_only_closed_negative_conversion_evidence() {
+    for declarations in [
+        "interface G<T> {} class Actual implements G<Actual> {} class Other {}",
+        "class G<T> {} class Actual extends G<Actual> {} class Other {}",
+    ] {
+        let source = format!(
+            "{declarations} class C {{ public void m(Actual x) {{}} public void m(Other x) {{}} }} class Calls {{ void run(C c, Actual a) {{ c.m(a); }} }}"
+        );
+        selected(&project(&source), "m(a)", "Calls.java", "m(Actual x)");
+    }
+}
+
+#[test]
+fn negative_conversion_keeps_every_parameter_and_competitor() {
+    let prefix = "interface G<T> {} class Actual implements G<Actual> {} class Other {}";
+    for methods in [
+        "public void m(Actual a, Other b){} public void m(Other a, Actual b){}",
+        "public void m(Other a, Actual b){} public void m(Actual a, Other b){}",
+    ] {
+        let source = format!(
+            "{prefix} class C {{ {methods} }} class Calls {{ void run(C c, Actual a, Other b) {{ c.m(a,b); }} }}"
+        );
+        selected(&project(&source), "m(a,b)", "Calls.java", "m(Actual a, Other b)");
+    }
+    let source = format!(
+        "{prefix} class C {{ public void m(Actual a, Actual b){{}} public void m(Other a, Missing b){{}} }} class Calls {{ void run(C c, Actual a) {{ c.m(a,a); }} }}"
+    );
+    assert_ne!(query(&project(&source), "Calls.java", "m(a,a)").status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn binary_parameterized_interface_does_not_poison_unrelated_overload() {
+    let source = r#"class Other {} class C { public void m(String x) {} public void m(Other x) {} } class Calls { void run(C c) { c.m("x"); } }"#;
+    let mut p = project(source);
+    p.add_class_bytes(
+        "String.class",
+        &literal_string_binary(
+            0x31,
+            Some("Ljava/lang/Object;Ljava/lang/Comparable<Ljava/lang/String;>;"),
+            &["java/lang/Comparable"],
+        ),
+    )
+    .unwrap();
+    let mut comparable = binary("java/lang/Comparable", Some("java/lang/Object"), &[], true);
+    let access = 10 + 3 + "java/lang/Comparable".len() + 3 + 3 + "java/lang/Object".len() + 3;
+    comparable[access..access + 2].copy_from_slice(&0x601u16.to_be_bytes());
+    p.add_class_bytes("Comparable.class", &comparable).unwrap();
+    selected(&p, r#"m("x")"#, "Calls.java", "m(String x)");
+    p.insert("Calls.java", &source.replace("m(Other x)", "m(java.lang.Comparable x)"));
+    assert_ne!(query(&p, "Calls.java", r#"m("x")"#).status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn negative_conversion_incremental_edit_fresh_and_restore_agree() {
+    let source = "class Other {} class G<T> {} class Actual extends G<Actual> {} class C { public void m(Actual x) {} public void m(Other x) {} } class Calls { void run(C c, Actual a) { c.m(a); } }";
+    let original = project(source);
+    let old = original.prepare();
+    let old_at = source.rfind("m(a)").unwrap() as u32;
+    let original_result = query(&original, "Calls.java", "m(a)");
+    assert_eq!(original_result.status, ResolveStatus::Resolved);
+    let mut edited = original.clone();
+    let at = (source.find("class G<T>").unwrap() + "class G<T>".len()) as u32;
+    let insertion = " extends Other";
+    edited
+        .edit("Calls.java", java_engine::TextEdit { start_byte: at, end_byte: at, insert: insertion.into() })
+        .unwrap();
+    let changed = source.replacen("class G<T>", "class G<T> extends Other", 1);
+    let changed_result = query(&edited, "Calls.java", "m(a)");
+    assert_eq!(changed_result, query(&project(&changed), "Calls.java", "m(a)"));
+    assert_ne!(changed_result.status, ResolveStatus::Resolved);
+    assert_eq!(old.resolve_at("Calls.java", old_at), original_result);
+    edited
+        .edit(
+            "Calls.java",
+            java_engine::TextEdit { start_byte: at, end_byte: at + insertion.len() as u32, insert: String::new() },
+        )
+        .unwrap();
+    assert_eq!(query(&edited, "Calls.java", "m(a)"), query(&project(source), "Calls.java", "m(a)"));
+    assert_eq!(query(&edited, "Calls.java", "m(a)"), original_result);
+}

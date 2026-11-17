@@ -96,11 +96,11 @@ class StringOracleTests(unittest.TestCase):
         self.assertEqual(c.baseline_expectations(expected), baseline)
         self.assertTrue(all(row[0] != 'Resolved' for row in baseline.values()))
         self.assertEqual({q for q in prior if prior[q] != current[q]},
-                         {'string_object', 'string_choose', 'string_result', 'string_field'})
-        for q in ('string_object', 'string_choose', 'string_result', 'string_field'):
+                         {'string_object', 'string_choose', 'string_result', 'string_field', 'string_other'})
+        for q in ('string_object', 'string_choose', 'string_result', 'string_field', 'string_other'):
             self.assertEqual(current[q], ('Resolved', prior[q][1], prior[q][1]))
         self.assertEqual(current['string_null'], prior['string_null'])
-        for q in ('string_object', 'string_choose', 'string_result', 'string_field'):
+        for q in ('string_object', 'string_choose', 'string_result', 'string_field', 'string_other'):
             changed = dict(prior)
             changed[q] = ('Resolved', prior[q][1], prior[q][2])
             with patch.object(c.o, 'current_null_expectations', return_value=changed):
@@ -122,7 +122,7 @@ class StringOracleTests(unittest.TestCase):
         def compare(n):
             c.compare(expected, qs, ds, compiler, n, Path('/unused'))
         compare(native)
-        for q in ('string_object', 'string_choose', 'string_result', 'string_field'):
+        for q in ('string_object', 'string_choose', 'string_result', 'string_field', 'string_other'):
             mutations = []
             bad = copy.deepcopy(native); bad[q][0] = 'CallNotResolved'; mutations.append(bad)
             bad = copy.deepcopy(native); bad[q][1] = '2'; mutations.append(bad)

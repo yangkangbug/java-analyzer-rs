@@ -57,6 +57,14 @@ Source declaration context, complete competitors and erased parameter identities
 feed the existing selector; no shared graph or cross-compilation identity rules
 are relaxed. See [source receiver boundaries](docs/SOURCE_GENERIC_RECEIVERS.md).
 
+## Complete negative conversion evidence
+
+Strict overload selection reuses its complete nominal ancestor graph to exclude
+unrelated targets even when parameterized edges prevent positive conversion
+proofs. Unknown reachable targets, cross-compilation names and incomplete graphs
+still refuse; no identity unification or new inheritance walker is introduced.
+See [conversion evidence](docs/REFERENCE_CALLS.md#closed-negative-conversion-evidence).
+
 ## Interface method navigation inheritance
 
 Navigation no longer inherits static/private interface methods through classes
