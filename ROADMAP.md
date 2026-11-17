@@ -59,7 +59,9 @@ filter, while strict raw inventories stay unchanged. See
 Field lookup constructs direct-edge effective member sets before caller access,
 replacing depth-based selection. Hidden inaccessible fields cannot expose ancestor
 fallbacks; unrelated paths remain ambiguous and same-declaration diamonds coalesce.
-Source interface fields carry implicit public access. Strict field typing stays
+Source interface fields carry implicit public access. Known protected instance-field
+receivers receive a conservative cross-package access guard; unknown facts and
+incomplete graphs retain navigation competitors. Strict field typing stays
 separate. See [field navigation boundaries](docs/FIELD_MEMBER_NAVIGATION.md).
 
 ## Exact-name directory reuse

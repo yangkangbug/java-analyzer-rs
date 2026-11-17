@@ -1519,6 +1519,11 @@ impl Index {
         for field in members {
             match self.can_see(field.member, field.owner, class, site, byte) {
                 Ok(true) => {
+                    match self.protected_field_receiver(field.member, field.owner, class, site, byte) {
+                        Ok(false) => continue,
+                        Ok(true) => {}
+                        Err(err) => return walk_error(err),
+                    }
                     uncertain |= field.member.access == Access::Unspecified;
                     targets.push(member_target(field.owner, field.member));
                 }
@@ -1536,6 +1541,48 @@ impl Index {
             }
         };
         ResolveResult::many(status, targets)
+    }
+
+    // Additional negative guard for ordinary field navigation only. Unknown
+    // declaration facts or incomplete ancestry must retain competitors, not
+    // manufacture a unique target. This is not strict field type evidence.
+    fn protected_field_receiver(
+        &self,
+        member: &Member,
+        declaring: &ClassRec,
+        receiver: &ClassRec,
+        site: &FileRec,
+        byte: u32,
+    ) -> Result<bool, WalkError> {
+        if member.access != Access::Protected || site.package == declaring.package {
+            return Ok(true);
+        }
+        let is_static = if let Shape::Binary { flags, .. } = member.shape {
+            // Known legal field modifiers only; contradictory/unknown flags
+            // cannot authorize removal of a navigation candidate.
+            (flags & 7 == 4 && flags & !0x10dc == 0 && flags & 0x50 != 0x50).then_some(flags & 8 != 0)
+        } else {
+            member.source_field.as_ref().map(|field| field.is_static)
+        };
+        if is_static != Some(false) {
+            return Ok(true);
+        }
+        let (receiver_graph, receiver_complete) = self.hierarchy_complete(receiver)?;
+        let mut unknown = false;
+        for caller in enclosing_classes(site, byte) {
+            let (caller_graph, caller_complete) = self.hierarchy_complete(caller)?;
+            let subclass = caller_graph.iter().any(|s| same_class(s.class, declaring));
+            let qualifying = receiver_graph.iter().any(|s| same_class(s.class, caller));
+            if subclass && qualifying {
+                return Ok(true);
+            }
+            // Three-valued AND for this enclosing class, then existential OR:
+            // one proven No defeats this pair; otherwise retain an unknown pair.
+            if (!receiver_complete || qualifying) && (!caller_complete || subclass) {
+                unknown = true;
+            }
+        }
+        Ok(unknown)
     }
 
     // JLS 8.3 / 9.3: inheritance is a direct-edge operation, not a nearest
@@ -1637,11 +1684,15 @@ impl Index {
     }
 
     fn hierarchy<'a>(&'a self, start: &'a ClassRec) -> Result<Vec<Step<'a>>, WalkError> {
+        self.hierarchy_complete(start).map(|(steps, _)| steps)
+    }
+
+    fn hierarchy_complete<'a>(&'a self, start: &'a ClassRec) -> Result<(Vec<Step<'a>>, bool), WalkError> {
         let mut out = Vec::new();
         let mut gray = Vec::new();
         let mut black = BTreeSet::new();
-        self.walk(start, 0, false, &mut gray, &mut black, &mut out)?;
-        Ok(out)
+        let complete = self.walk(start, 0, false, &mut gray, &mut black, &mut out)?;
+        Ok((out, complete))
     }
 
     fn method_hierarchy<'a>(&'a self, start: &'a ClassRec) -> Result<Vec<Step<'a>>, WalkError> {
@@ -1658,13 +1709,13 @@ impl Index {
         gray: &mut Vec<(usize, String, String)>,
         black: &mut BTreeSet<(usize, String, String)>,
         out: &mut Vec<Step<'a>>,
-    ) -> Result<(), WalkError> {
+    ) -> Result<bool, WalkError> {
         let name = (class.scope, class.path.clone(), class.dotted());
         if gray.iter().any(|seen| seen == &name) {
             return Err(WalkError::Cycle);
         }
         if !black.insert(name.clone()) {
-            return Ok(());
+            return Ok(true);
         }
         gray.push(name);
         out.push(Step { class, depth });
@@ -1675,17 +1726,20 @@ impl Index {
             edges.push(super_parts.clone());
         }
         edges.extend(class.interface_parts.iter().cloned());
+        let mut complete = true;
         for edge in edges {
             match self.resolve_edge(class, &edge) {
-                Named::None => {}
+                Named::None => complete = false,
                 Named::Many(classes) => {
                     return Err(WalkError::Ambiguous(classes.into_iter().map(ClassRec::target).collect()));
                 }
-                Named::One(next) => self.walk(next, depth + 1, method_inheritance, gray, black, out)?,
+                Named::One(next) => {
+                    complete &= self.walk(next, depth + 1, method_inheritance, gray, black, out)?;
+                }
             }
         }
         gray.pop();
-        Ok(())
+        Ok(complete)
     }
 
     fn can_see(

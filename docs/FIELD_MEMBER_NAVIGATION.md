@@ -28,6 +28,28 @@ ambiguous parent declarations remain errors even when an own field exists.
 Missing supertypes retain the existing navigation behavior and contribute no
 members. Interfaces do not inherit fields from a class-file Object superclass.
 
+## Known protected instance-field receivers
+
+After existing caller visibility, ordinary cross-package field navigation rejects
+an instance-field candidate only when the known receiver type cannot be the
+accessing subclass (or one of its subclasses). All lexically enclosing classes
+participate, so a nested class may use its enclosing subclass's access. Static
+fields and same-package accesses retain their existing rules. See
+[JLS 6.6.2.1](https://docs.oracle.com/javase/specs/jls/se25/html/jls-6.html#jls-6.6.2.1).
+
+This is a negative guard, not a general permission framework. It reuses existing
+validated source-field metadata and known legal binary field flags. Missing source
+facts, contradictory flags or incomplete parent graphs cannot justify deleting a
+candidate. An already known ancestry relation stays positive; a negative needs a
+complete graph, including registered Object. Unknown candidates remain alongside
+public competitors rather than silently making them unique. The existing walker
+now reports completeness separately; other callers retain their previous behavior.
+
+Method navigation, strict proofs, private nest access and unsupported `super`
+expressions are unchanged. In particular, navigation of annotated/unsupported
+source fields or incomplete projects may still retain the older target hints;
+this guard does not turn such hints into verified Java access.
+
 ## Contract and limits
 
 This changes navigation targets for incorrectly resolved or inaccessible fields;
@@ -39,7 +61,7 @@ certificate.
 
 Method collection and strict method/field type proofs are separate and unchanged.
 A navigation success does not certify a field's type or legal use in every Java
-context. General protected receiver restrictions, private nest access, static
+context. Protected method access, unknown protected-field facts, private nest access, static
 context checking, `super` field expressions, malformed declaration validation and
 missing-parent completeness are not implemented by this change. Inherited fields
 do not become new strict invocation actuals or receivers.
@@ -54,3 +76,11 @@ start a JVM. Separate pinned javac checks compare five legal declaration targets
 and six rejected cases; ten cases also use real compiled dependency class files
 and compare native source/binary outcomes. This is a correctness repair, not a
 full Java conformance or coverage-rate claim.
+
+Eight additional native groups cover known protected-field receiver restrictions,
+static/same-package/implicit access, enclosing subclasses, missing ancestry,
+unknown source facts and binary flags, competing public fields, `super` refusal
+and edit/fresh/old-snapshot parity. A separate compiler comparison checks eight
+legal exact targets and three illegal controls; all eleven also match native
+results using real compiled dependency classes. No method applicability expansion
+or strict field-type coverage increase is claimed.
