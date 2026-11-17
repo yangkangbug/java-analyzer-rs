@@ -347,6 +347,7 @@ impl ClassRec {
 
 #[derive(Clone, Debug)]
 struct LocalRec {
+    owner: Option<usize>,
     // A refusal record, never evidence of a proven local declaration/scope.
     guard_only: bool,
     name: String,
@@ -395,6 +396,14 @@ fn local_type_shadows(file: &FileRec, name: &str, byte: u32) -> bool {
 }
 
 #[derive(Clone, Debug)]
+struct LexicalOwner {
+    start: u32,
+    end: u32,
+    anonymous: bool,
+    methods: Vec<(u32, u32)>,
+}
+
+#[derive(Clone, Debug)]
 struct FileRec {
     scope: usize,
     path: String,
@@ -406,6 +415,8 @@ struct FileRec {
     static_imports: Vec<(String, Option<String>)>,
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
+    named_local_count: usize,
+    lexical_owners: Vec<LexicalOwner>,
     local_types: Vec<LocalTypeRec>,
     opaque_class_bodies: Vec<(u32, u32)>,
     syntax_valid: bool,
@@ -420,6 +431,21 @@ struct CallInventoryEligibility {
 }
 
 impl FileRec {
+    // The single inventory is stably partitioned after indexing. Legacy typed
+    // consumers scan (and charge for) precisely their original named inventory.
+    fn named_locals(&self) -> &[LocalRec] {
+        &self.locals[..self.named_local_count]
+    }
+
+    fn lexical_owner(&self, byte: u32) -> Option<usize> {
+        self.lexical_owners
+            .iter()
+            .enumerate()
+            .filter(|(_, owner)| owner.start <= byte && byte < owner.end)
+            .min_by_key(|(_, owner)| owner.end - owner.start)
+            .map(|(id, _)| id)
+    }
+
     // Only existing call-inventory consumers use this contextual certificate.
     // A verified direct caller is a top-level callable range; it cannot start
     // inside a switch. None preserves the original whole-file barrier.
@@ -616,6 +642,38 @@ impl Index {
             || file.local_types.iter().any(|local| local.start <= byte && byte < local.end)
         {
             return ResolveResult::none(ResolveStatus::Unresolved);
+        }
+        if let Some(owner_id) = file.lexical_owner(byte)
+            && file.lexical_owners[owner_id].anonymous
+        {
+            let owner = &file.lexical_owners[owner_id];
+            if !owner.methods.iter().any(|&(start, end)| start <= byte && byte < end) {
+                return ResolveResult::none(ResolveStatus::Unresolved);
+            }
+            // This terminal lexical entry never enters a member/type/call proof.
+            // The ordinary selector retains declaration order, shadowing and guards.
+            if let Some(hit) = innermost_ref(parsed.root(), 0, byte, false) {
+                return if hit.node.kind() == SyntaxKind::ReferenceExpr && !hit.call {
+                    local_resolution(
+                        file.locals.iter().filter(|local| local.owner == Some(owner_id)),
+                        byte,
+                        &token_name(hit.node),
+                    )
+                    .unwrap_or_else(|| ResolveResult::none(ResolveStatus::Unresolved))
+                } else {
+                    ResolveResult::none(ResolveStatus::Unresolved)
+                };
+            }
+            return file
+                .locals
+                .iter()
+                .find(|local| {
+                    local.owner == Some(owner_id) && !local.guard_only && local.start <= byte && byte < local.end
+                })
+                .map_or_else(
+                    || ResolveResult::none(ResolveStatus::Unresolved),
+                    |local| ResolveResult::one(ResolveStatus::Resolved, local.target()),
+                );
         }
         if let Some(hit) = innermost_ref(parsed.root(), 0, byte, false) {
             return self.resolve_hit(file, parsed, byte, hit);
@@ -864,7 +922,7 @@ impl Index {
     }
 
     fn locals_named(&self, file: &FileRec, byte: u32, name: &str) -> Option<ResolveResult> {
-        local_resolution(file.locals.iter(), byte, name)
+        local_resolution(file.named_locals().iter(), byte, name)
     }
 
     fn fields_named(&self, file: &FileRec, byte: u32, name: &str) -> Option<ResolveResult> {
@@ -1111,7 +1169,7 @@ impl Index {
         let caller = direct_caller(parsed.root(), byte);
         let (caller_start, caller_end) = caller.map_or((0, 0), |c| (c.start, c.end));
         let mut proof = ReferenceCallProof::new(self, file, caller);
-        if proof.charge(file.locals.len().max(1)).is_none() {
+        if proof.charge(file.named_locals().len().max(1)).is_none() {
             return Some(ResolveResult::none(ResolveStatus::ReceiverNotBound));
         }
         // This complete scan already inspects every declaration. Reuse only
@@ -1119,7 +1177,7 @@ impl Index {
         // innermost-scope policy, while strict expression proof checks overlaps.
         let mut caller_locals = Vec::new();
         let locals = local_resolution(
-            file.locals.iter().inspect(|local| {
+            file.named_locals().iter().inspect(|local| {
                 if local.guard_only || local.start >= caller_start && local.end <= caller_end {
                     caller_locals.push(*local);
                 }
@@ -2223,7 +2281,7 @@ fn declared_of<'a>(file: &'a FileRec, target: &Target) -> Option<&'a QualName> {
     }
     match target.kind {
         TargetKind::Local | TargetKind::Parameter | TargetKind::Resource => file
-            .locals
+            .named_locals()
             .iter()
             .find(|local| {
                 local.kind == target.kind
@@ -2517,7 +2575,9 @@ fn token_name(node: &GreenNode) -> String {
 }
 
 fn declaration_at(file: &FileRec, byte: u32) -> Option<Target> {
-    if let Some(local) = file.locals.iter().find(|local| !local.guard_only && local.start <= byte && byte < local.end) {
+    if let Some(local) =
+        file.named_locals().iter().find(|local| !local.guard_only && local.start <= byte && byte < local.end)
+    {
         return Some(local.target());
     }
     for class in &file.classes {
@@ -2562,6 +2622,8 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         static_imports: Vec::new(),
         classes: Vec::new(),
         locals: Vec::new(),
+        named_local_count: 0,
+        lexical_owners: Vec::new(),
         local_types: Vec::new(),
         opaque_class_bodies: Vec::new(),
         syntax_valid,
@@ -2572,16 +2634,28 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
     index_node(
         parsed.root(),
         0,
-        &mut IndexCtx { file: &mut file, class_stack: Vec::new(), scope_stack: Vec::new(), enum_constant_depth: 0 },
+        &mut IndexCtx {
+            file: &mut file,
+            class_stack: Vec::new(),
+            scope_stack: Vec::new(),
+            enum_constant_depth: 0,
+            lexical_owner: None,
+        },
     );
     index_pattern_guards(parsed.root(), 0, None, &mut file);
+    let (named, anonymous): (Vec<_>, Vec<_>) = std::mem::take(&mut file.locals)
+        .into_iter()
+        .partition(|local| !local.owner.is_some_and(|id| file.lexical_owners[id].anonymous));
+    file.named_local_count = named.len();
+    file.locals = named;
+    file.locals.extend(anonymous);
     file
 }
 
 // Recomputed from the current syntax tree when indexing, never cached on a
 // parser ancestor. The interval is a conservative refusal bound, not flow scope.
 fn index_pattern_guards(node: &GreenNode, start: u32, unit_end: Option<u32>, file: &mut FileRec) {
-    if node.kind() == SyntaxKind::ClassBody && file.opaque_class_bodies.contains(&(start, start + node.utf8_len())) {
+    if file.opaque_class_bodies.contains(&(start, start + node.utf8_len())) {
         return;
     }
     let unit_end = if matches!(
@@ -2601,6 +2675,7 @@ fn index_pattern_guards(node: &GreenNode, start: u32, unit_end: Option<u32>, fil
             && let Some((name, at, end)) = direct_ident(node, start)
         {
             file.locals.push(LocalRec {
+                owner: file.lexical_owner(at),
                 guard_only: true,
                 name,
                 kind: TargetKind::Local,
@@ -2633,6 +2708,7 @@ struct IndexCtx<'a> {
     class_stack: Vec<usize>,
     scope_stack: Vec<(u32, u32, ScopeKind)>,
     enum_constant_depth: usize,
+    lexical_owner: Option<usize>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -2655,6 +2731,30 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     if ctx.enum_constant_depth > 0 && node.kind() == SyntaxKind::ClassBody {
         ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
         return;
+    }
+    if ctx.lexical_owner.is_some_and(|id| ctx.file.lexical_owners[id].anonymous) {
+        match node.kind() {
+            SyntaxKind::Class
+            | SyntaxKind::Interface
+            | SyntaxKind::Enum
+            | SyntaxKind::Record
+            | SyntaxKind::Field
+            | SyntaxKind::Initializer
+            | SyntaxKind::Constructor
+            | SyntaxKind::LambdaExpr => {
+                ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
+                return;
+            }
+            SyntaxKind::Method => {
+                if crate::green::collect_errors(node).is_empty() {
+                    let id = ctx.lexical_owner.unwrap();
+                    ctx.file.lexical_owners[id].methods.push((start, start + node.utf8_len()));
+                    index_callable_contents(node, start, ctx);
+                }
+                return;
+            }
+            _ => {}
+        }
     }
     match node.kind() {
         // Labels have no modeled enum/constant semantics or declarations.
@@ -2720,11 +2820,10 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let mut offset = start;
     for child in node.children() {
         if let Some(child) = child.as_node() {
-            // An anonymous class has no modeled owner. Its declarations must
-            // never be indexed into the enclosing named class. Arguments stay
-            // outside this boundary, including their nested new expressions.
+            // Anonymous lexical ownership is separate from canonical classes.
+            // Arguments remain outside the body, including nested new expressions.
             if node.kind() == SyntaxKind::NewExpr && child.kind() == SyntaxKind::ClassBody {
-                ctx.file.opaque_class_bodies.push((offset, offset + child.utf8_len()));
+                index_anonymous_body(child, offset, ctx);
             } else {
                 index_node(child, offset, ctx);
             }
@@ -2734,6 +2833,29 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     if pushed.is_some() {
         ctx.scope_stack.pop();
     }
+}
+
+// The body alone changes lexical ownership; constructor arguments stay in the
+// creating execution context. No anonymous class is put in the type directory.
+fn index_anonymous_body(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
+    let previous_owner = ctx.lexical_owner;
+    let scopes = std::mem::take(&mut ctx.scope_stack);
+    let classes = std::mem::take(&mut ctx.class_stack);
+    ctx.lexical_owner = Some(ctx.file.lexical_owners.len());
+    ctx.file.lexical_owners.push(LexicalOwner {
+        start,
+        end: start + node.utf8_len(),
+        anonymous: true,
+        methods: Vec::new(),
+    });
+    if crate::green::collect_errors(node).is_empty() {
+        index_node(node, start, ctx);
+    } else {
+        ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
+    }
+    ctx.lexical_owner = previous_owner;
+    ctx.scope_stack = scopes;
+    ctx.class_stack = classes;
 }
 
 fn index_import(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
@@ -2811,6 +2933,14 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         context: BinaryLinkingContext::Standalone,
         data: ClassData::Source(Box::new(data)),
     });
+    let previous_owner = ctx.lexical_owner;
+    ctx.lexical_owner = Some(ctx.file.lexical_owners.len());
+    ctx.file.lexical_owners.push(LexicalOwner {
+        start,
+        end: start + node.utf8_len(),
+        anonymous: false,
+        methods: Vec::new(),
+    });
     ctx.class_stack.push(index);
     if node.kind() == SyntaxKind::Record
         && let Some((params, params_at)) = child_kind(node, start, SyntaxKind::ParamList)
@@ -2825,6 +2955,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         offset += child.utf8_len();
     }
     ctx.class_stack.pop();
+    ctx.lexical_owner = previous_owner;
 }
 
 // A constant denotes a public field of its enum, not the members of its
@@ -2930,6 +3061,11 @@ fn index_members(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, class_ind
             ctx.file.classes[class_index].source_data_mut().methods.push(member);
         }
     }
+    index_callable_contents(node, start, ctx);
+}
+
+// Shared lexical extraction for named members and admitted anonymous methods.
+fn index_callable_contents(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let scope = (start, start + node.utf8_len(), ScopeKind::Method);
     ctx.scope_stack.push(scope);
     let mut offset = start;
@@ -2990,6 +3126,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
     let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
     for (name, name_start, name_end, declared) in variable_declarators(node, start) {
         ctx.file.locals.push(LocalRec {
+            owner: ctx.lexical_owner,
             guard_only: false,
             name,
             kind,
@@ -3014,6 +3151,7 @@ fn index_catch(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
     let Some((name, name_start, name_end)) = direct_ident(node, start) else { return };
     ctx.file.locals.push(LocalRec {
+        owner: ctx.lexical_owner,
         guard_only: false,
         name,
         kind: TargetKind::Parameter,
@@ -3039,6 +3177,7 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     }
     if let Some((name, name_start, name_end)) = direct_ident(node, start) {
         ctx.file.locals.push(LocalRec {
+            owner: ctx.lexical_owner,
             guard_only: false,
             name,
             kind: TargetKind::Parameter,
@@ -4534,9 +4673,9 @@ impl<'a> PrimitiveProof<'a> {
                 decimal_int_literal(node)
             }
             SyntaxKind::ReferenceExpr => {
-                self.charge(self.file.locals.len())?;
+                self.charge(self.file.named_locals().len())?;
                 let name = token_name(node);
-                let mut locals = self.file.locals.iter().filter(|local| {
+                let mut locals = self.file.named_locals().iter().filter(|local| {
                     local.name == name
                         && (local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end)
                         && local.scope_start <= start
@@ -6622,9 +6761,9 @@ impl<'a> ReferenceCallProof<'a> {
             }
         };
         if self.caller_locals.is_none() {
-            self.charge(self.file.locals.len())?;
+            self.charge(self.file.named_locals().len())?;
             let mut subset = Vec::new();
-            for local in &self.file.locals {
+            for local in self.file.named_locals() {
                 if local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end {
                     subset.push(local);
                     // The initial full scan also answers this lookup. Do not
@@ -6820,8 +6959,8 @@ impl<'a> ReferenceCallProof<'a> {
     // proof is never sufficient evidence that the same spelling is a type.
     fn static_type_owner(&mut self, name: &str, at: u32) -> Option<&'a ClassRec> {
         self.call_inventory()?;
-        self.charge(self.file.locals.len().max(1))?;
-        if self.file.locals.iter().any(|local| {
+        self.charge(self.file.named_locals().len().max(1))?;
+        if self.file.named_locals().iter().any(|local| {
             local.name == name && local.scope_start <= at && at < local.scope_end && local.visible_from <= at
         }) {
             return None;
@@ -8037,14 +8176,14 @@ mod invocation_budget_tests {
         let nodes = delimited_nodes(args, args_at).unwrap();
         let (node, at) = nodes[0];
         let mut proof = ReferenceCallProof::new(&index, file, Some(context));
-        proof.work_left = file.locals.len() + 8;
+        proof.work_left = file.named_locals().len() + 8;
         assert!(matches!(
             proof.actual(node, at, 0),
             Some(StrictActual::Primitive(PrimitiveValue { primitive: Primitive::Int, rank: 0 }))
         ));
         assert!(!proof.exhausted);
         let mut exhausted = ReferenceCallProof::new(&index, file, Some(context));
-        exhausted.work_left = file.locals.len() - 1;
+        exhausted.work_left = file.named_locals().len() - 1;
         assert!(exhausted.actual(node, at, 0).is_none());
         assert!(exhausted.exhausted);
     }
@@ -8220,7 +8359,7 @@ mod anonymous_boundary_proof_tests {
             p.insert("C.java", &format!("class C{{Object f(Object input){{return {expression};}}}}"));
             let index = Index::build(&p.files, &p.binaries);
             assert_eq!(index.files[0].locals.iter().filter(|local| local.guard_only).count(), expected);
-            assert_eq!(index.files[0].opaque_class_bodies.len(), 1);
+            assert_eq!(index.files[0].lexical_owners.iter().filter(|owner| owner.anonymous).count(), 1);
         }
     }
 }
@@ -8592,5 +8731,42 @@ mod negative_conversion_tests {
                 assert_eq!(proof.converts(actual, formal), expected, "same_scope={same_scope}, name={name}");
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod lexical_owner_inventory_tests {
+    use super::*;
+    #[test]
+    fn anonymous_inventory_is_not_a_named_type_or_legacy_typed_local() {
+        let text = "class C{void outer(int kept){Object object=new X(){int field;void run(int own){int local=own;use(local);} class Hidden{}};use(kept);} class Named{void run(int last){use(last);}}}";
+        let file = index_file("C.java", &ParsedFile::parse(text));
+        assert_eq!(file.classes.iter().map(|c| c.dotted()).collect::<Vec<_>>(), vec!["C", "C.Named"]);
+        assert_eq!(
+            file.named_locals().iter().map(|l| l.name.as_str()).collect::<Vec<_>>(),
+            vec!["kept", "object", "last"]
+        );
+        let anonymous = file.locals[file.named_local_count..].iter().collect::<Vec<_>>();
+        assert_eq!(anonymous.iter().map(|l| l.name.as_str()).collect::<Vec<_>>(), vec!["own", "local"]);
+        for local in anonymous {
+            assert!(file.lexical_owners[local.owner.unwrap()].anonymous);
+            assert!(declared_of(&file, &local.target()).is_none());
+        }
+        assert!(!file.classes[0].fields.iter().any(|f| f.name == "field"));
+        assert!(!file.classes[0].methods.iter().any(|m| m.name == "run"));
+    }
+    #[test]
+    fn named_inventory_order_and_ranges_do_not_depend_on_anonymous_inventory_size() {
+        let prefix = "class C{void f(int before){Object x=new X(){";
+        let suffix = "};int after=before;use(after);}}";
+        let content = "void run(int own){int a=own;int b=a;use(b);}";
+        let full = index_file("C.java", &ParsedFile::parse(&format!("{prefix}{content}{suffix}")));
+        let empty = index_file("C.java", &ParsedFile::parse(&format!("{prefix}{}{suffix}", " ".repeat(content.len()))));
+        assert_eq!(
+            full.named_locals().iter().map(LocalRec::target).collect::<Vec<_>>(),
+            empty.named_locals().iter().map(LocalRec::target).collect::<Vec<_>>()
+        );
+        assert_eq!(full.named_local_count, empty.named_local_count);
+        assert_eq!(full.locals.len() - full.named_local_count, 3);
     }
 }

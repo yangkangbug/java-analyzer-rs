@@ -12,6 +12,14 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Anonymous lexical ownership
+
+Private source owners separate anonymous-method local declarations from named
+class inventories. Shared lexical rules support own parameters, locals, catches
+and resources; outer captures, fields, anonymous calls and general type semantics
+remain deferred. Existing named-query inventories and proof budgets are preserved.
+See [anonymous local navigation and refusal boundaries](docs/ANONYMOUS_LOCALS.md).
+
 ## Bounded binary invocation composition
 
 Selected nongeneric binary method results can supply primitive scalar or plain

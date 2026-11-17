@@ -51,6 +51,10 @@ selection or early-construction support.
 value references to supported own declarations, preserving lexical shadowing and
 keeping field type inference and inherited imports outside this slice.
 
+[Anonymous-method locals](docs/ANONYMOUS_LOCALS.md) have private lexical ownership
+and can navigate to their own declarations without borrowing outer captures or
+exporting anonymous classes as named types.
+
 ## Build and try it
 
 Install Rust 1.96.0 with rustfmt and Clippy. The pinned `rust-toolchain.toml`
