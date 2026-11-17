@@ -205,11 +205,22 @@ overload selection and generic instantiation are not implemented; see the
   (see `NOTICE`). Whether `(...)` before `->` is a lambda follows
   `parseLambdaAfterParenth` from the same commit. Any other edit parses the
   whole file again. `UpdateMode::Full` means a full parse.
+  Both retained and replacement roots must directly own their first opening and
+  final closing brace; lexical balance and complete fragment consumption alone
+  do not prove this after error recovery. Annotation contents and switch header/
+  label contents recheck their enclosing parse decisions rather than splicing an
+  interior block. A node with a direct Error child similarly stops descendant
+  selection, retaining its own eligible candidate or using an enclosing body.
+  This also handles undo after recovery has reclassified a declaration. It can
+  reparse a larger body when another direct error exists in that body, but does
+  not force every file with an error through full parsing.
 - `apply_edit` does not parse the file twice. `apply_edit_verified` does, and
   uses the full parse when the fragment tree differs. Tests call both and also
   compare the default path with a parse of the edited text. Those tests are
-  the cases in `tests/syntax.rs`. They are not a proof that every Java program
-  round-trips.
+  the cases in `tests/syntax.rs` and `tests/reparse_boundaries.rs`, including
+  consecutive edit/undo recovery and exact sibling sharing controls. The bounded
+  mutation matrix is not a proof that every Java program round-trips or that its
+  annotation and label expressions are legal Java.
 - Deleting a quote is a lexical-state change. If the new string swallows the
   closing brace, the brace check fails and the edit is a full parse. If the
   string ends at the newline and the braces still balance, the enclosing block

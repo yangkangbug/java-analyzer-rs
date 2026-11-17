@@ -135,8 +135,9 @@ impl ParsedFile {
     ///
     /// A block or type body is parsed again only when the edit is strictly
     /// inside its braces and the new token list still has balanced outer
-    /// braces. Otherwise the whole file is parsed. This path does not parse
-    /// the file a second time to compare trees. [`Self::apply_edit_verified`]
+    /// braces owned directly by the retained and replacement roots. Recovery
+    /// and enclosing-context boundaries can require a larger body or full parse.
+    /// This path does not parse the file twice. [`Self::apply_edit_verified`]
     /// does that comparison and is what the tests use.
     pub fn apply_edit(&self, edit: TextEdit) -> EditResult {
         self.edit(edit, false)

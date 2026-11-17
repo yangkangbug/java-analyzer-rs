@@ -80,9 +80,13 @@ pub fn reparse_root(
             continue;
         }
         let replacement = parse_fragment(hit.kind, slice);
-        // Recovery can stop at a nested closing brace. A balanced token slice
-        // alone does not prove the fragment parser consumed it completely.
-        if replacement.kind() != hit.kind || replacement.utf8_len() as usize != slice.len() {
+        // Recovery can stop early or consume the closing brace in a descendant.
+        // A balanced token slice and complete consumption do not prove the
+        // replacement root itself owns the fragment's opening/closing braces.
+        if replacement.kind() != hit.kind
+            || replacement.utf8_len() as usize != slice.len()
+            || brace_interior(&replacement, 0).is_none()
+        {
             continue;
         }
         return Some((splice(root, &hit.path, replacement), hit.kind));
@@ -98,6 +102,13 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
     {
         hits.push(Hit { path: path.clone(), kind: node.kind(), start: base, end: base + node.utf8_len() });
     }
+    // Recovery may have reclassified the surrounding construct (for example,
+    // a broken annotation becomes an error followed by an ordinary expression).
+    // Recheck that decision at this node or its nearest reparseable ancestor,
+    // rather than repairing a descendant while retaining stale recovery siblings.
+    if node.child_nodes().any(|child| child.kind() == SyntaxKind::Error) {
+        return;
+    }
     let mut offset = base;
     for (index, child) in node.children().iter().enumerate() {
         if let Some(child) = child.as_node() {
@@ -105,7 +116,9 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
             // the entire switch. Reparse its enclosing block rather than splice
             // a nested block without rechecking that commit boundary. Ordinary
             // statement blocks in the switch body remain independently eligible.
-            if node.kind() != SyntaxKind::SwitchLabel
+            // Annotation contents also affect enclosing declaration lookahead
+            // and catch-annotation validation, not just their nested block tree.
+            if !matches!(node.kind(), SyntaxKind::SwitchLabel | SyntaxKind::Annotation)
                 && (node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody)
             {
                 path.push(index);
@@ -118,23 +131,14 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
 }
 
 fn brace_interior(node: &GreenNode, base: u32) -> Option<(u32, u32)> {
-    let mut offset = base;
-    let mut open_end = None;
-    let mut close_start = None;
-    for child in node.children() {
-        if let Some(token) = child.as_token() {
-            if token.kind() == SyntaxKind::LBrace && open_end.is_none() {
-                open_end = Some(offset + token.utf8_len());
-            }
-            if token.kind() == SyntaxKind::RBrace {
-                close_start = Some(offset);
-            }
-        }
-        offset += child.utf8_len();
+    // Both the retained node and a replacement must directly own their exact
+    // boundary tokens. Recovery nodes inside either boundary cannot certify it.
+    let first = node.children().first()?.as_token()?;
+    let last = node.children().last()?.as_token()?;
+    if first.kind() != SyntaxKind::LBrace || last.kind() != SyntaxKind::RBrace {
+        return None;
     }
-    let open_end = open_end?;
-    let close_start = close_start?;
-    (open_end <= close_start).then_some((open_end, close_start))
+    Some((base + first.utf8_len(), base + node.utf8_len() - last.utf8_len()))
 }
 
 fn splice(node: &Arc<GreenNode>, path: &[usize], replacement: Arc<GreenNode>) -> Arc<GreenNode> {
