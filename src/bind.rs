@@ -363,7 +363,8 @@ struct LocalRec {
 #[derive(Clone, Debug)]
 enum ReferenceDeclaration {
     Plain(QualName),
-    Applied { name: Vec<String>, arguments: Vec<Vec<String>> },
+    // None is an explicit unbounded wildcard, never erased Object evidence.
+    Applied { name: Vec<String>, arguments: Vec<Option<Vec<String>>> },
 }
 impl ReferenceDeclaration {
     fn plain(&self) -> Option<&QualName> {
@@ -4363,7 +4364,7 @@ fn reference_source_edges(node: &GreenNode, start: u32) -> Option<Vec<(Vec<Strin
                     let parts = type_parts(n, at)?;
                     // Generic edges are raw inventory only, never substitutions.
                     let plain = plain_reference_type(n);
-                    if !plain && !raw_reference_header_type(n, 0) {
+                    if !plain && !raw_reference_header_type(n, 0, false) {
                         return None;
                     }
                     supers.push((parts, plain));
@@ -4384,10 +4385,17 @@ fn reference_source_edges(node: &GreenNode, start: u32) -> Option<Vec<(Vec<Strin
     Some(supers)
 }
 
-// Raw generic ancestry is inventory only. Accept a bounded, nonempty list of
-// plain reference arguments, enough for Iterable<Element>, not diamond,
-// wildcards, arrays, malformed bounds or inferred substitutions.
-fn raw_reference_header_type(node: &GreenNode, depth: usize) -> bool {
+// Recognize only a complete bare ? argument, never a bound or annotation.
+fn unbounded_type_argument(node: &GreenNode) -> bool {
+    node.kind() == SyntaxKind::Type
+        && node.child_nodes().next().is_none()
+        && tokens(node, 0).into_iter().filter(|t| !t.0.is_trivia()).map(|t| t.0).collect::<Vec<_>>()
+            == [SyntaxKind::Question]
+}
+
+// Raw ancestry stays wildcard-free. Receiver declarations may retain bare ?
+// as unknown inventory only; this never certifies a scalar argument type.
+fn raw_reference_header_type(node: &GreenNode, depth: usize, allow_unbounded: bool) -> bool {
     if depth > REFERENCE_PROOF_DEPTH {
         return false;
     }
@@ -4430,7 +4438,10 @@ fn raw_reference_header_type(node: &GreenNode, depth: usize) -> bool {
                         _ => return false,
                     };
                 } else if let Some(ty) = arg.as_node() {
-                    if arg_state != 1 || !raw_reference_header_type(ty, depth + 1) {
+                    if arg_state != 1
+                        || !((allow_unbounded && unbounded_type_argument(ty))
+                            || raw_reference_header_type(ty, depth + 1, allow_unbounded))
+                    {
                         return false;
                     }
                     arg_state = 2;
@@ -4520,7 +4531,7 @@ fn reference_declaration_type(node: &GreenNode, start: u32, name_at: u32) -> Opt
         return (array_rank <= 255)
             .then_some(ReferenceDeclaration::Plain(QualName { parts: type_parts(ty, at)?, array_rank }));
     }
-    if suffix_rank != 0 || !raw_reference_header_type(ty, 0) {
+    if suffix_rank != 0 || !raw_reference_header_type(ty, 0, true) {
         return None;
     }
     let (name, name_at) = child_kind(ty, at, SyntaxKind::Name)?;
@@ -4529,10 +4540,14 @@ fn reference_declaration_type(node: &GreenNode, start: u32, name_at: u32) -> Opt
     let mut offset = args_at;
     for child in args.children() {
         if let Some(arg) = child.as_node() {
-            if plain_reference_rank(arg)? != 0 {
-                return None;
+            if unbounded_type_argument(arg) {
+                arguments.push(None);
+            } else {
+                if plain_reference_rank(arg)? != 0 {
+                    return None;
+                }
+                arguments.push(Some(type_parts(arg, offset)?));
             }
-            arguments.push(type_parts(arg, offset)?);
         }
         offset += child.utf8_len();
     }
@@ -4692,7 +4707,7 @@ struct InvocationReceiver<'a> {
 struct ClassInstantiation<'a> {
     owner: ClassIdentity,
     declaration: instantiation::ClassTemplate,
-    arguments: Vec<&'a ClassRec>,
+    arguments: Vec<Option<&'a ClassRec>>,
 }
 
 struct ReferenceCallProof<'a> {
@@ -5201,7 +5216,8 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let ReferenceDeclaration::Applied { name, arguments } = reference else { return None };
         self.charge(
-            name.iter().map(String::len).sum::<usize>() + arguments.iter().flatten().map(String::len).sum::<usize>(),
+            name.iter().map(String::len).sum::<usize>()
+                + arguments.iter().flatten().flatten().map(String::len).sum::<usize>(),
         )?;
         let owner = self.raw_type(self.file, name, declared_at)?;
         if !owner.binary || !owner.reference_generic || owner.nesting.len() != 1 {
@@ -5229,7 +5245,10 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let mut resolved = Vec::new();
         for parts in arguments {
-            resolved.push(self.reference_type(self.file, parts, declared_at)?);
+            resolved.push(match parts {
+                Some(parts) => Some(self.reference_type(self.file, parts, declared_at)?),
+                None => None,
+            });
         }
         Some(InvocationReceiver {
             class: owner,
@@ -5241,13 +5260,22 @@ impl<'a> ReferenceCallProof<'a> {
         &mut self,
         owner: &'a ClassRec,
         declaration: instantiation::ClassTemplate,
-        arguments: Vec<&'a ClassRec>,
+        arguments: Vec<Option<&'a ClassRec>>,
     ) -> Option<ClassInstantiation<'a>> {
         self.charge(arguments.len().max(1))?;
         if !owner.binary
             || owner.nesting.len() != 1
             || declaration.parameters.len() != arguments.len()
             || owner.reference_generic == declaration.parameters.is_empty()
+        {
+            return None;
+        }
+        // Unknown arguments do not certify any parameterized parent edge.
+        // Limit this slice to the checked Object-only declaration envelope.
+        if arguments.iter().any(Option::is_none)
+            && (declaration.parents.len() != 1
+                || declaration.parents[0].name != "java/lang/Object"
+                || !declaration.parents[0].arguments.is_empty())
         {
             return None;
         }
@@ -5258,7 +5286,7 @@ impl<'a> ReferenceCallProof<'a> {
             return None;
         }
         self.graph(object)?;
-        for argument in &arguments {
+        for argument in arguments.iter().flatten() {
             // Same spelling or independently closed graphs do not prove the bound.
             if !self.converts(argument, object)? {
                 return None;
@@ -5302,6 +5330,10 @@ impl<'a> ReferenceCallProof<'a> {
         root: &ClassInstantiation<'a>,
     ) -> Option<Vec<ClassInstantiation<'a>>> {
         self.charge(root.arguments.len() + owner.binary_signature.as_ref()?.signature.as_ref().map_or(0, String::len))?;
+        // Wildcard capture/substitution across parent edges is not proved here.
+        if root.arguments.iter().any(Option::is_none) {
+            return None;
+        }
         let mut instances = vec![root.clone()];
         let mut seen = BTreeSet::from([ClassIdentity::of(owner)]);
         let mut current = owner;
@@ -5350,7 +5382,7 @@ impl<'a> ReferenceCallProof<'a> {
                     let Some(StrictActual::Reference(value)) = self.template_value(current, env, argument)? else {
                         return None;
                     };
-                    arguments.push(value.class);
+                    arguments.push(Some(value.class));
                 }
                 let instance = self.class_instantiation(parent, declaration, arguments)?;
                 next = Some((parent, instance));
@@ -5490,9 +5522,9 @@ impl<'a> ReferenceCallProof<'a> {
             TypeTemplate::Primitive(primitive) => {
                 Some(Some(StrictActual::Primitive(PrimitiveValue { primitive: *primitive, rank: 0 })))
             }
-            TypeTemplate::Parameter(index) => {
-                Some(Some(StrictActual::Reference(ReferenceValue { class: *env.arguments.get(*index)? })))
-            }
+            TypeTemplate::Parameter(index) => Some(Some(StrictActual::Reference(ReferenceValue {
+                class: env.arguments.get(*index).copied().flatten()?,
+            }))),
             TypeTemplate::Nominal(raw) => {
                 self.charge(raw.len())?;
                 let class = self.unique_named(owner.scope, &raw.replace('/', "."))?;

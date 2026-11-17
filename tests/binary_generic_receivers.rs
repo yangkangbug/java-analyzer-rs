@@ -315,3 +315,128 @@ fn object_bound_requires_identity_across_compilation_links() {
         }
     }
 }
+
+fn marked_query(p: &Project) -> ResolveResult {
+    let at = (p.file("Calls.java").unwrap().text().find("/*Q*/").unwrap() + 5) as u32;
+    let r = p.resolve_at("Calls.java", at);
+    assert_eq!(r, p.prepare().resolve_at("Calls.java", at));
+    r
+}
+#[test]
+fn unbounded_wildcard_own_family_without_unknown_types_is_proved() {
+    for interface in [false, true] {
+        let flags = if interface { 0x401 } else { 0x101 };
+        let p = project(BOX, &[("ready", "()Z", None, flags)], "Box<?> b", "b./*Q*/ready()", interface);
+        let r = marked_query(&p);
+        assert_eq!(r.status, ResolveStatus::Resolved, "{r:?}");
+        assert_eq!(r.targets.len(), 1);
+        assert_eq!(r.targets[0].owner, "api.Box");
+        assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "()Z");
+    }
+}
+#[test]
+fn unbounded_wildcard_never_becomes_object_or_void_evidence() {
+    for (methods, expr) in [
+        (vec![GET], "b./*Q*/get()"),
+        (vec![PUT], "b./*Q*/put(null)"),
+        (
+            vec![("ready", "()Z", None, 0x101), ("ready", "(Ljava/lang/Object;)Z", Some("(TT;)Z"), 0x101)],
+            "b./*Q*/ready()",
+        ),
+        (
+            vec![("ready", "()Z", None, 0x101), ("ready", "(I)Ljava/lang/Object;", Some("(I)TT;"), 0x101)],
+            "b./*Q*/ready()",
+        ),
+    ] {
+        let p = project(BOX, &methods, "Box<?> b", expr, false);
+        assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+    }
+}
+#[test]
+fn mixed_wildcard_slots_only_materialize_concrete_arguments() {
+    let sig = "<T:Ljava/lang/Object;U:Ljava/lang/Object;>Ljava/lang/Object;";
+    let methods = [("put", "(Ljava/lang/Object;)V", Some("(TT;)V"), 0x101)];
+    let p = project(sig, &methods, "Box<A,?> b, A a", "b./*Q*/put(a)", false);
+    assert_eq!(marked_query(&p).status, ResolveStatus::Resolved);
+    let p = project(sig, &methods, "Box<?,A> b, A a", "b./*Q*/put(a)", false);
+    assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+}
+#[test]
+fn wildcard_scope_keeps_bounds_rank_arity_and_source_owners_out() {
+    let methods = [("ready", "()Z", None, 0x101)];
+    for params in ["Box<? extends A> b", "Box<? super A> b", "Box<A,?> b", "Box<?>[] b", "Box<@Deprecated ?> b"] {
+        assert_ne!(
+            marked_query(&project(BOX, &methods, params, "b./*Q*/ready()", false)).status,
+            ResolveStatus::Resolved,
+            "{params}"
+        );
+    }
+    for sig in [
+        "<T:Ljava/lang/Number;>Ljava/lang/Object;",
+        "<T:Ljava/lang/Object;:Ljava/io/Serializable;>Ljava/lang/Object;",
+        "<T:TT;>Ljava/lang/Object;",
+    ] {
+        assert_ne!(
+            marked_query(&project(sig, &methods, "Box<?> b", "b./*Q*/ready()", false)).status,
+            ResolveStatus::Resolved
+        );
+    }
+    let mut p = project(BOX, &methods, "Box<?> b", "b./*Q*/ready()", false);
+    p.remove_class("Box.class");
+    p.insert("Box.java", "package api; public class Box<T> {public boolean ready(){return true;}}");
+    assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+}
+#[test]
+fn wildcard_parent_edges_do_not_gain_substitution_certificates() {
+    for own in [false, true] {
+        let mut p = project(BOX, &[], "Box<?> b", "b./*Q*/ready()", false);
+        p.add_class_bytes(
+            "Parent.class",
+            &binary("api/Parent", Some("java/lang/Object"), 0x21, Some(BOX), &[("ready", "()Z", None, 0x101)]),
+        )
+        .unwrap();
+        let methods = if own { vec![("ready", "()Z", None, 0x101)] } else { vec![] };
+        p.add_class_bytes(
+            "Box.class",
+            &binary("api/Box", Some("api/Parent"), 0x21, Some("<T:Ljava/lang/Object;>Lapi/Parent<TT;>;"), &methods),
+        )
+        .unwrap();
+        assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+    }
+    let mut p = project(BOX, &[("ready", "()Z", None, 0x101)], "Box<?> b", "b./*Q*/ready()", false);
+    let text = p.file("Calls.java").unwrap().text().replace("class Calls {", "class Calls extends Box<?> {");
+    p.insert("Calls.java", &text);
+    assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+}
+#[test]
+fn wildcard_source_edit_preserves_old_snapshot_and_fresh_result() {
+    use java_engine::TextEdit;
+    let mut p = project(BOX, &[GET], "Box<A> b", "b.get()./*Q*/hit()", false);
+    let old = p.clone();
+    let before = marked_query(&old);
+    assert_eq!(before.status, ResolveStatus::Resolved);
+    let text = p.file("Calls.java").unwrap().text();
+    let at = text.find("Box<A>").unwrap() as u32 + 4;
+    p.edit("Calls.java", TextEdit { start_byte: at, end_byte: at + 1, insert: "?".into() }).unwrap();
+    assert_ne!(marked_query(&p).status, ResolveStatus::Resolved);
+    let fresh = project(BOX, &[GET], "Box<?> b", "b.get()./*Q*/hit()", false);
+    assert_eq!(marked_query(&p), marked_query(&fresh));
+    assert_eq!(marked_query(&old), before);
+}
+#[test]
+fn wildcard_receiver_evidence_is_not_a_scalar_argument_or_source_formal() {
+    for formal in ["Object value", "api.Box<?> value"] {
+        let mut p = project(BOX, &[], "Box<?> b, Sink sink", "sink./*Q*/take(b)", false);
+        p.insert("Sink.java", &format!("class Sink {{ public void take({formal}) {{}} }}"));
+        assert_ne!(marked_query(&p).status, ResolveStatus::Resolved, "{formal}");
+    }
+}
+#[test]
+fn wildcard_owned_fields_share_receiver_boundary() {
+    for expression in ["saved./*Q*/ready()", "this.saved./*Q*/ready()"] {
+        let mut p = project(BOX, &[("ready", "()Z", None, 0x101)], "", expression, false);
+        let text = p.file("Calls.java").unwrap().text().replace("class Calls {", "class Calls { api.Box<?> saved;");
+        p.insert("Calls.java", &text);
+        assert_eq!(marked_query(&p).status, ResolveStatus::Resolved);
+    }
+}

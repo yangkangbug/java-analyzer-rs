@@ -44,7 +44,9 @@ instance method families with Object-bounded formals and plain reference type
 arguments. Substitution reuses strict selection and carries instantiated return
 evidence, while preserving exact declaration/caller linking identities. A bounded
 single-parent certificate supports inherited members and identity-mapped exact
-overrides. Branching generic inheritance, source generic owners, wildcard capture
+overrides. Explicit bare-wildcard receivers can prove own methods independent of
+unknown slots within an Object-only parent envelope; unknown-dependent competing
+members still refuse the complete proof. Branching generic inheritance, source generic owners, wildcard capture
 and inference remain deferred. See [scope and validation](docs/BINARY_GENERIC_RECEIVERS.md).
 
 ## Interface method navigation inheritance

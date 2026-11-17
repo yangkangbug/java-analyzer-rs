@@ -64,18 +64,49 @@ For example, the JDK List/SequencedCollection/Collection chain can select
 ArrayList's multiple-parent paths, default methods, bridges or covariant returns.
 No runtime JVM, build import, general inference or public result schema is added.
 
+## Independent own methods on explicit unbounded wildcards
+
+A bare `?` receiver argument is retained as unknown, never replaced with Object
+or treated as a concrete capture type. An accessible top-level binary declaration
+must have only its validated Object parent and Object-bounded formals. Every
+same-name method's parameter and return template must materialize without using
+an unknown slot before the existing selector may choose a target. An unknown-
+dependent competitor refuses the whole proof, even when its arity differs.
+Mixed concrete/unknown slots can use the concrete slots without assigning a type
+to the unknown ones. No capture conversion or generic inference is implemented.
+
+For example, `Iterator<?>.hasNext()`, `Map<?,?>.isEmpty()` and
+`Map<?,?>.containsKey(Object)` may be proved. `Iterator<?>.next()` and
+`Map<?,?>.put(null,null)` remain unproved even though Java permits those calls.
+This is a deliberate analysis limit, not a Java error diagnosis. Bounds other than
+bare `?`, annotations, nested applied arguments and source generic owners remain
+outside this slice. Unknown slots cannot supply scalar actuals or source-formal
+evidence. They cannot follow parent substitutions; source ancestry syntax retains
+its old wildcard-free boundary. Concrete-argument inherited proofs are unchanged.
+
+Eight additional native groups cover own class/interface targets, unknown-dependent
+parameters/returns/competitors, mixed slots, declaration bounds/arity/rank, source
+owners, parent edges, scalar/formal isolation, own fields and edit/fresh/old versions.
+Real JDK classes and javac confirm three exact allowed targets, four Java-legal
+but intentionally unsupported cases, and three Java-invalid controls. Two original
+Commons StringUtils `Iterator<?>.hasNext()` sites now match javac owner/descriptors
+when analyzing the original file and dependencies. The remaining 28 entries in
+that diagnostic set and all 577 entries in the other fixed set remain unchanged;
+these are not coverage percentages or full-project build claims.
+
 ## Limits
 
 Only visible, unique, explicitly declared rank-zero locals/parameters (or supported
 own source fields) with plain
-nongeneric reference type arguments are accepted. All receiver arguments, formals
-and nonvoid results must have complete identity/access/hierarchy proof. Public
+nongeneric reference type arguments, or the bounded unknown slots described above,
+are accepted. Concrete arguments, formals and nonvoid results must have complete
+identity/access/hierarchy proof. Public
 instance families only; binary interfaces require abstract methods. Existing
 caller-context restrictions remain.
 
 Deferred: source generic owners, inherited fields, branching generic member
 selection, parameterized arguments/results, generic-method inference, non-Object
-bounds, wildcards/capture, nested classes, arrays, annotations, raw/diamond or
+bounds, bounded wildcards/capture, nested classes, arrays, annotations, raw/diamond or
 varargs receivers, boxing and arbitrary expression inference. A generic method,
 bridge, synthetic or varargs same-name competitor refuses the whole family.
 These are conservative analysis limits, not claims that such Java is invalid.
