@@ -218,6 +218,12 @@ pub enum SyntaxKind {
     AnnotationDefault,
     /// Expression-qualified inner class creation; its created type is not a lexical name.
     QualifiedNewExpr,
+    /// Non-pattern switch expression; its result type is not inferred.
+    SwitchExpr,
+    /// Non-pattern arrow rule; its body is not an independent reparse root.
+    SwitchRule,
+    /// Contextual switch-expression yield, not a value reference.
+    YieldStmt,
 }
 
 impl SyntaxKind {

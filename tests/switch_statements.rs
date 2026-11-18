@@ -29,7 +29,7 @@ fn labels_do_not_bind_as_ordinary_values_but_selector_and_body_do() {
 }
 #[test]
 fn unsupported_switches_are_opaque_and_do_not_export_locals() {
-    for label in ["case 1 ->", "case 1, 2:", "case String value:", "case null:", "case String value when true:"] {
+    for label in ["case String value:", "case null:", "case String value when true:"] {
         let s = format!(
             "class C {{ void m(int k) {{ switch(k) {{ {label} {{ int hidden=0; hidden++; }} }} int after=1; after++; }} }}"
         );
@@ -39,6 +39,10 @@ fn unsupported_switches_are_opaque_and_do_not_export_locals() {
         assert_eq!(query(&s, "hidden++;").status, ResolveStatus::Unresolved, "{label}");
         assert_eq!(query(&s, "after++;").status, ResolveStatus::Resolved, "{label}");
     }
+}
+
+#[test]
+fn switch_expressions_preserve_local_navigation_and_following_statements() {
     for expr in [
         "return switch(k) { case 0: int hidden=0; yield hidden; default: yield 1; };",
         "int x=switch(k) { case 0 -> { int hidden=0; yield hidden; } default -> 1; };",
@@ -47,11 +51,11 @@ fn unsupported_switches_are_opaque_and_do_not_export_locals() {
     ] {
         let s = format!("class C {{ int m(int k) {{ {expr} int after=1; after++; }} }}");
         let p = ParsedFile::parse(&s);
-        assert!(!p.errors().is_empty(), "{expr}");
+        assert!(p.errors().is_empty(), "{expr}: {}", p.dump());
         assert!(p.tokens_cover_text(), "{expr}");
-        assert_eq!(query(&s, "hidden;").status, ResolveStatus::Unresolved, "{expr}");
+        assert_eq!(query(&s, "hidden;").status, ResolveStatus::Resolved, "{expr}");
         assert_eq!(query(&s, "after++;").status, ResolveStatus::Resolved, "{expr}");
-        assert!(!p.dump().contains("SwitchStmt"), "{expr}: {}", p.dump());
+        assert!(p.dump().contains("SwitchExpr"), "{expr}: {}", p.dump());
     }
 }
 #[test]
@@ -104,16 +108,16 @@ fn switch_edits_match_full_parse_including_utf8_and_unsupported_transitions() {
 }
 
 #[test]
-fn opaque_switch_expression_skips_selector_braces_and_preserves_next_statement() {
+fn switch_expression_preserves_selector_braces_and_next_statement() {
     for selector in ["new C() { int member; }.hashCode()", "call(new int[] {1, 2})"] {
         let s = format!(
             "class C {{ void m() {{ int x=switch({selector}) {{ case 0: int hidden=0; yield hidden; default: yield 1; }}; int after=0; after++; }} }}"
         );
         let p = ParsedFile::parse(&s);
         assert!(p.tokens_cover_text());
-        assert!(!p.errors().is_empty());
-        assert!(!p.dump().contains("SwitchStmt"));
-        assert_eq!(query(&s, "hidden;").status, ResolveStatus::Unresolved);
+        assert!(p.errors().is_empty(), "{}", p.dump());
+        assert!(p.dump().contains("SwitchExpr"));
+        assert_eq!(query(&s, "hidden;").status, ResolveStatus::Resolved);
         assert_eq!(query(&s, "after++;").status, ResolveStatus::Resolved);
     }
 }

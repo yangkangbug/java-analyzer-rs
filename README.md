@@ -1,5 +1,9 @@
 # java-analyzer-rs
 
+[Non-pattern switch syntax](docs/SWITCH_EXPRESSIONS.md) adds expression/arrow-rule
+structure and contextual yield with conservative scope, value-proof and reparse
+boundaries. Version 0.8.0 adds three public SyntaxKind variants.
+
 [Shared own-static invocation](docs/OWN_STATIC_INVOCATION.md) routes overloaded
 bare static calls through complete fixed-arity selection, preserving singleton
 name-level navigation and existing proof limits.
@@ -83,9 +87,10 @@ selected nongeneric binary calls as existing qualified receivers and arguments.
 The [exact-name directory](docs/EXACT_NAME_DIRECTORY.md) reuses prepared declaration
 locations for legacy type lookup while retaining candidate order and ambiguity.
 
-Traditional colon-label switch statements now preserve structure and one shared
-lexical scope. Switch expressions, arrow/pattern labels, label binding and
-control-flow validation remain unsupported; see [switch boundaries](docs/TRADITIONAL_SWITCH.md).
+Non-pattern colon and arrow switches preserve syntax and lexical navigation.
+Colon groups share one body scope; arrow blocks have separate local scopes.
+Patterns, label binding, switch-result typing and control-flow validation remain
+unsupported; see [switch boundaries](docs/SWITCH_EXPRESSIONS.md).
 
 Source enum constants now retain exact field navigation targets while constant-specific
 anonymous bodies stay isolated; see [enum boundaries](docs/SOURCE_ENUM_CONSTANTS.md).
@@ -266,7 +271,7 @@ overload selection and generic instantiation are not implemented; see the
   recovery. See [catch parsing](docs/CATCH_PARAMETERS.md) for syntax versus type
   legality, union-typing limits, and recovery boundaries.
 - Error nodes. A broken statement does not have to discard the rest of the block.
-  `switch` is still an error node that skips one brace group. Patterns, modules,
+  Unsupported pattern/null/guard switches remain opaque error nodes. Patterns, modules,
   and explicit type arguments on a call (`Collections.<String>emptyList()`) are
   outside this subset.
 - After an edit, a `{ ... }` block or type body is parsed again when the edit

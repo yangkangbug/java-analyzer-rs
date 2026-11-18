@@ -13,7 +13,9 @@
 //! fields, methods, constructors, initializers, and nested types. Statements
 //! include blocks, `if` / `while` / `do` / `for` / foreach, `return`, `throw`,
 //! `break`, `continue`, `assert`, `try` / `catch` / `finally`, local variables,
-//! and expression statements. Types include primitives, names, type arguments,
+//! and expression statements. Non-pattern colon/arrow switches include switch
+//! expressions and contextual yield, without result typing or flow validation.
+//! Types include primitives, names, type arguments,
 //! wildcards, and arrays. Expressions include assignment, `?:`, the JLS
 //! binary operators, `instanceof`, unary and postfix operators, calls, field
 //! access, `new`, casts, array initializers, lambdas, and method references.
@@ -23,9 +25,10 @@
 //!
 //! # What it does not do
 //!
-//! `switch`, patterns, modules, and explicit type arguments on a call
-//! (`Collections.<String>emptyList()`) are outside this subset. `switch` is
-//! skipped as an error node. Try-with-resources declares the resource names.
+//! Pattern/null/guard switch labels, modules, and explicit type arguments on a call
+//! (`Collections.<String>emptyList()`) are outside this subset.
+//! Unsupported or structurally malformed switches remain opaque errors.
+//! Try-with-resources declares the resource names.
 //! [`Project`] binds simple and qualified names across source files and class
 //! files that were added explicitly. It walks `extends` and `implements` for
 //! fields and methods. It does not choose among overloads or instantiate

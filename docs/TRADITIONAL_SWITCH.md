@@ -1,5 +1,9 @@
 # Traditional switch statement structure
 
+Historical stage: the original opaque expression/arrow boundary below is extended
+by [non-pattern switch expressions](SWITCH_EXPRESSIONS.md) in 0.8.0. Its original
+validation records remain historical evidence, not the current capability list.
+
 This slice parses traditional colon-label switch statements as lossless syntax
 instead of treating their complete bodies as opaque errors. It does not implement
 switch expressions, arrow rules, pattern matching, label constant evaluation,

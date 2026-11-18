@@ -17,10 +17,11 @@ enum NameRole {
 }
 
 fn is_identifier(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::Ident | SyntaxKind::Var)
+    matches!(kind, SyntaxKind::Ident | SyntaxKind::Var | SyntaxKind::Yield)
 }
 fn type_segment(kind: SyntaxKind, next: SyntaxKind, type_boundary: bool) -> bool {
-    kind == SyntaxKind::Ident || kind == SyntaxKind::Var && next == SyntaxKind::Dot && !type_boundary
+    kind == SyntaxKind::Ident
+        || matches!(kind, SyntaxKind::Var | SyntaxKind::Yield) && next == SyntaxKind::Dot && !type_boundary
 }
 
 pub fn parse_file(text: &str) -> Arc<GreenNode> {
@@ -321,7 +322,9 @@ impl<'a> Parser<'a> {
             let invalid_owner = static_owner
                 && self.nth(1) == SyntaxKind::Dot
                 && (self.nth(2) == SyntaxKind::Star || self.nth(3) != SyntaxKind::Dot);
-            if self.at(SyntaxKind::Var) && (terminal_type && self.nth(1) != SyntaxKind::Dot || invalid_owner) {
+            if matches!(self.kind(), SyntaxKind::Var | SyntaxKind::Yield)
+                && (terminal_type && self.nth(1) != SyntaxKind::Dot || invalid_owner)
+            {
                 self.expect(SyntaxKind::Ident, "expected type name");
                 self.bump();
             } else {
@@ -962,8 +965,9 @@ impl<'a> Parser<'a> {
             SyntaxKind::Continue => self.parse_jump(SyntaxKind::ContinueStmt, false),
             SyntaxKind::Assert => self.parse_assert(),
             SyntaxKind::Try => self.parse_try(),
-            SyntaxKind::Switch => self.parse_switch(),
-            SyntaxKind::Ident | SyntaxKind::Var if self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
+            SyntaxKind::Switch => self.parse_switch(false),
+            SyntaxKind::Yield if self.yield_statement_start() => self.parse_yield(),
+            _ if is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
             _ if self.looks_like_local_type_decl() => self.parse_local_type(),
             _ if self.local_declaration_start() => self.parse_local(true),
             _ if self.can_start_expr() => {
@@ -1215,35 +1219,7 @@ impl<'a> Parser<'a> {
             if self.can_start_expr() && !self.at(SyntaxKind::LBrace) {
                 self.parse_expr();
                 let expression = self.pop();
-                let valid = expression.as_node().is_some_and(|node| match node.kind() {
-                    SyntaxKind::CallExpr => true,
-                    SyntaxKind::NewExpr | SyntaxKind::QualifiedNewExpr => {
-                        node.child_nodes().any(|n| n.kind() == SyntaxKind::ArgList)
-                    }
-                    SyntaxKind::UnaryExpr => node
-                        .children()
-                        .iter()
-                        .filter_map(GreenElement::as_token)
-                        .any(|t| matches!(t.kind(), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus)),
-                    SyntaxKind::BinaryExpr => node.children().iter().filter_map(GreenElement::as_token).any(|t| {
-                        matches!(
-                            t.kind(),
-                            SyntaxKind::Eq
-                                | SyntaxKind::PlusEq
-                                | SyntaxKind::MinusEq
-                                | SyntaxKind::StarEq
-                                | SyntaxKind::SlashEq
-                                | SyntaxKind::PercentEq
-                                | SyntaxKind::AmpEq
-                                | SyntaxKind::PipeEq
-                                | SyntaxKind::CaretEq
-                                | SyntaxKind::LtLtEq
-                                | SyntaxKind::GtGtEq
-                                | SyntaxKind::GtGtGtEq
-                        )
-                    }),
-                    _ => false,
-                });
+                let valid = expression.as_node().is_some_and(|node| Self::statement_expression(node));
                 if valid {
                     self.push(expression);
                 } else {
@@ -1261,6 +1237,95 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+    }
+
+    fn statement_expression(node: &GreenNode) -> bool {
+        match node.kind() {
+            SyntaxKind::CallExpr => true,
+            SyntaxKind::NewExpr | SyntaxKind::QualifiedNewExpr => {
+                node.child_nodes().any(|n| n.kind() == SyntaxKind::ArgList)
+            }
+            SyntaxKind::UnaryExpr => node
+                .children()
+                .iter()
+                .filter_map(GreenElement::as_token)
+                .any(|t| matches!(t.kind(), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus)),
+            SyntaxKind::BinaryExpr => node.children().iter().filter_map(GreenElement::as_token).any(|t| {
+                matches!(
+                    t.kind(),
+                    SyntaxKind::Eq
+                        | SyntaxKind::PlusEq
+                        | SyntaxKind::MinusEq
+                        | SyntaxKind::StarEq
+                        | SyntaxKind::SlashEq
+                        | SyntaxKind::PercentEq
+                        | SyntaxKind::AmpEq
+                        | SyntaxKind::PipeEq
+                        | SyntaxKind::CaretEq
+                        | SyntaxKind::LtLtEq
+                        | SyntaxKind::GtGtEq
+                        | SyntaxKind::GtGtGtEq
+                )
+            }),
+            _ => false,
+        }
+    }
+
+    fn in_yield_context(&self) -> bool {
+        self.stack
+            .iter()
+            .rev()
+            .find_map(|frame| match frame.kind {
+                SyntaxKind::SwitchExpr => Some(true),
+                SyntaxKind::LambdaExpr
+                | SyntaxKind::Method
+                | SyntaxKind::Constructor
+                | SyntaxKind::ClassBody
+                | SyntaxKind::InterfaceBody
+                | SyntaxKind::EnumBody
+                | SyntaxKind::RecordBody
+                | SyntaxKind::AnnotationBody
+                | SyntaxKind::LocalType => Some(false),
+                _ => None,
+            })
+            .unwrap_or(false)
+    }
+
+    fn yield_statement_start(&self) -> bool {
+        // A contextual identifier can still be an assignment target or a
+        // postfix expression. In contrast, yield ++x yields a prefix value.
+        !(matches!(
+            self.nth(1),
+            SyntaxKind::Eq
+                | SyntaxKind::PlusEq
+                | SyntaxKind::MinusEq
+                | SyntaxKind::StarEq
+                | SyntaxKind::SlashEq
+                | SyntaxKind::PercentEq
+                | SyntaxKind::AmpEq
+                | SyntaxKind::PipeEq
+                | SyntaxKind::CaretEq
+                | SyntaxKind::LtLtEq
+                | SyntaxKind::GtGtEq
+                | SyntaxKind::GtGtGtEq
+                | SyntaxKind::Dot
+                | SyntaxKind::LBracket
+                | SyntaxKind::Colon
+        ) || matches!(self.nth(1), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus) && self.nth(2) == SyntaxKind::Semi)
+    }
+
+    fn parse_yield(&mut self) {
+        if self.in_yield_context() {
+            self.open(SyntaxKind::YieldStmt);
+        } else {
+            self.open(SyntaxKind::Error);
+            self.set_message("yield outside switch expression");
+        }
+        self.bump();
+        // Unlike return, yield requires an operand.
+        self.parse_expr();
+        self.expect(SyntaxKind::Semi, "expected ';'");
+        self.finish();
     }
 
     fn parse_jump(&mut self, kind: SyntaxKind, expr: bool) {
@@ -1538,14 +1603,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_switch(&mut self) {
-        // Commit only a traditional colon statement. Unsupported labels remain
+    fn parse_switch(&mut self, expression: bool) {
+        // Commit only a non-pattern switch. Unsupported labels remain
         // one opaque recovery node, never ordinary declarations in the caller.
         self.drain();
         let pos = self.pos;
         let depth = self.stack.len();
         let children = self.stack.last().map_or(0, |frame| frame.children.len());
-        if !self.parse_switch_colon() {
+        if !self.parse_switch_body(expression) {
             self.stack.truncate(depth);
             if let Some(parent) = self.stack.last_mut() {
                 parent.children.truncate(children);
@@ -1555,8 +1620,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_switch_colon(&mut self) -> bool {
-        self.open(SyntaxKind::SwitchStmt);
+    fn parse_switch_body(&mut self, expression: bool) -> bool {
+        self.open(if expression { SyntaxKind::SwitchExpr } else { SyntaxKind::SwitchStmt });
         self.bump();
         if !self.eat(SyntaxKind::LParen) {
             return false;
@@ -1579,6 +1644,7 @@ impl<'a> Parser<'a> {
         self.open(SyntaxKind::SwitchBody);
         self.bump();
         let mut labeled = false;
+        let mut arrow_mode = None;
         while !self.eof() && !self.at(SyntaxKind::RBrace) {
             let before = self.pos;
             match self.kind() {
@@ -1587,19 +1653,45 @@ impl<'a> Parser<'a> {
                     let default = self.at(SyntaxKind::Default);
                     self.bump();
                     if !default {
-                        if self.at(SyntaxKind::Null) || !self.can_start_expr() {
+                        loop {
+                            if self.at(SyntaxKind::Null) || !self.can_start_expr() {
+                                return false;
+                            }
+                            self.parse_expr();
+                            if !self.eat(SyntaxKind::Comma) {
+                                break;
+                            }
+                        }
+                    }
+                    let arrow = self.at(SyntaxKind::Arrow);
+                    if !arrow && !self.eat(SyntaxKind::Colon) {
+                        return false;
+                    }
+                    if arrow_mode.is_some_and(|previous| previous != arrow) {
+                        return false;
+                    }
+                    arrow_mode = Some(arrow);
+                    let label = self.finish();
+                    // Top-level commas separate constant labels. Nested label
+                    // expressions retain the old unsupported-pattern boundary.
+                    let valid = label
+                        .children()
+                        .iter()
+                        .all(|child| child.as_node().is_none_or(|node| Self::traditional_switch_label(node)));
+                    if !crate::green::collect_errors(&label).is_empty() || !valid {
+                        return false;
+                    }
+                    if arrow {
+                        let label = self.pop();
+                        self.start(SyntaxKind::SwitchRule);
+                        self.push(label);
+                        self.bump(); // arrow belongs to the rule, not its label
+                        if !self.parse_switch_rule(expression) {
                             return false;
                         }
-                        self.parse_expr();
+                        self.finish();
                     }
-                    if !self.eat(SyntaxKind::Colon) {
-                        return false;
-                    }
-                    let label = self.finish();
-                    if !crate::green::collect_errors(&label).is_empty() || !Self::traditional_switch_label(&label) {
-                        return false;
-                    }
-                    labeled = true;
+                    labeled = !arrow;
                 }
                 _ if labeled => {
                     self.parse_stmt();
@@ -1615,6 +1707,43 @@ impl<'a> Parser<'a> {
         }
         self.finish();
         self.finish();
+        true
+    }
+
+    fn parse_switch_rule(&mut self, expression: bool) -> bool {
+        match self.kind() {
+            SyntaxKind::LBrace => {
+                self.parse_block();
+            }
+            SyntaxKind::Throw => {
+                self.open(SyntaxKind::ThrowStmt);
+                self.bump();
+                self.parse_expr();
+                if !self.eat(SyntaxKind::Semi) {
+                    return false;
+                }
+                let node = self.finish();
+                if !crate::green::collect_errors(&node).is_empty() {
+                    return false;
+                }
+            }
+            _ if self.can_start_expr() => {
+                self.open(SyntaxKind::ExprStmt);
+                self.parse_expr();
+                let value = self.pop();
+                if !value.as_node().is_some_and(|node| {
+                    crate::green::collect_errors(node).is_empty() && (expression || Self::statement_expression(node))
+                }) {
+                    return false;
+                }
+                self.push(value);
+                if !self.eat(SyntaxKind::Semi) {
+                    return false;
+                }
+                self.finish();
+            }
+            _ => return false,
+        }
         true
     }
 
@@ -1849,6 +1978,10 @@ impl<'a> Parser<'a> {
     /// `(a, b)`, `(a)`, modifiers or primitives, and a type followed by a name
     /// are lambdas only when `->` is next. A failed attempt is not parsed.
     fn lambda_decision(&self) -> Option<bool> {
+        // A top-level constant label followed by -> is not a lambda.
+        if self.stack.iter().any(|frame| frame.kind == SyntaxKind::SwitchLabel) {
+            return None;
+        }
         if is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Arrow {
             return Some(false);
         }
@@ -2010,7 +2143,13 @@ impl<'a> Parser<'a> {
             | SyntaxKind::Null => self.leaf_expr(SyntaxKind::LiteralExpr),
             SyntaxKind::This => self.leaf_expr(SyntaxKind::ThisExpr),
             SyntaxKind::Super => self.leaf_expr(SyntaxKind::SuperExpr),
-            SyntaxKind::Ident | SyntaxKind::Var => {
+            SyntaxKind::Yield if self.nth(1) == SyntaxKind::LParen => {
+                self.open(SyntaxKind::Error);
+                self.set_message("unqualified yield invocation is unsupported");
+                self.bump();
+                self.finish();
+            }
+            SyntaxKind::Ident | SyntaxKind::Var | SyntaxKind::Yield => {
                 self.open(SyntaxKind::ReferenceExpr);
                 self.bump_as(SyntaxKind::Ident);
                 self.finish();
@@ -2022,7 +2161,7 @@ impl<'a> Parser<'a> {
                 self.expect(SyntaxKind::RParen, "expected ')'");
                 self.finish();
             }
-            SyntaxKind::Switch => self.recover_switch(),
+            SyntaxKind::Switch => self.parse_switch(true),
             SyntaxKind::New => self.parse_new(),
             SyntaxKind::LBrace => self.parse_array_init(),
             _ => {
@@ -2252,7 +2391,8 @@ enum MemberShape {
 fn can_start_unary(kind: SyntaxKind) -> bool {
     matches!(
         kind,
-        SyntaxKind::Ident
+        SyntaxKind::Yield
+            | SyntaxKind::Ident
             | SyntaxKind::Var
             | SyntaxKind::IntLiteral
             | SyntaxKind::LongLiteral

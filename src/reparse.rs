@@ -116,9 +116,11 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
             // the entire switch. Reparse its enclosing block rather than splice
             // a nested block without rechecking that commit boundary. Ordinary
             // statement blocks in the switch body remain independently eligible.
+            // Expression/rule descendants also depend on contextual yield and
+            // arrow-rule commit decisions, so recheck their enclosing body.
             // Annotation contents also affect enclosing declaration lookahead
             // and catch-annotation validation, not just their nested block tree.
-            if !matches!(node.kind(), SyntaxKind::SwitchLabel | SyntaxKind::Annotation | SyntaxKind::AnnotationType | SyntaxKind::AnnotationDefault)
+            if !matches!(node.kind(), SyntaxKind::SwitchExpr | SyntaxKind::SwitchRule | SyntaxKind::SwitchLabel | SyntaxKind::Annotation | SyntaxKind::AnnotationType | SyntaxKind::AnnotationDefault)
                 && (node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody)
                 // Monitor errors determine the synchronized header's validity.
                 // Recheck that ancestor instead of splicing a lambda/anonymous

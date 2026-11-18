@@ -394,23 +394,30 @@ fn overloaded_ambiguous_and_package_results_are_not_fabricated_declarations() {
 
 #[test]
 fn parser_reports_never_claim_semantic_errors_and_filter_owned_sources() {
-    let f = Fixture::new();
-    f.write("src/A.java", "class A { void f(int n) { switch(n) { default -> n++; } } }");
-    let manifest = f.manifest();
-    let output = f.run(
-        &["parser-report", "--manifest", manifest.to_str().unwrap(), "--project", "app", "--source-set", "main"],
-        true,
-    );
-    let result = &output["result"];
-    assert_eq!(result["classification"], "parser_limit_or_invalid_syntax");
-    assert_eq!(result["java_semantic_diagnostics"], false);
-    assert_eq!(result["source_count"], 1);
-    assert_eq!(result["files_with_reports"], 1);
-    assert!(result["report_count"].as_u64().unwrap() > 0);
-    assert_eq!(result["scope"], "owned_sources_only");
-    for report in result["files"][0]["reports"].as_array().unwrap() {
-        assert_eq!(report["classification"], "parser_limit_or_invalid_syntax");
-        assert!(report["range"]["start_utf16"].is_number());
+    for (source, files_with_reports) in [
+        ("class A { void f(int n) { switch(n) { default -> n++; } } }", 0),
+        ("class A { void f(Object n) { switch(n) { case String s -> {} default -> {} } } }", 1),
+    ] {
+        let f = Fixture::new();
+        f.write("src/A.java", source);
+        let manifest = f.manifest();
+        let output = f.run(
+            &["parser-report", "--manifest", manifest.to_str().unwrap(), "--project", "app", "--source-set", "main"],
+            true,
+        );
+        let result = &output["result"];
+        assert_eq!(result["classification"], "parser_limit_or_invalid_syntax");
+        assert_eq!(result["java_semantic_diagnostics"], false);
+        assert_eq!(result["source_count"], 1);
+        assert_eq!(result["files_with_reports"], files_with_reports, "{source}");
+        assert_eq!(result["report_count"].as_u64().unwrap() == 0, files_with_reports == 0, "{source}");
+        assert_eq!(result["scope"], "owned_sources_only");
+        for file in result["files"].as_array().unwrap() {
+            for report in file["reports"].as_array().unwrap() {
+                assert_eq!(report["classification"], "parser_limit_or_invalid_syntax");
+                assert!(report["range"]["start_utf16"].is_number());
+            }
+        }
     }
 }
 

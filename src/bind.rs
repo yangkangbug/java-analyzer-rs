@@ -1486,7 +1486,7 @@ impl Index {
         // discard an unsupported receiver and reinterpret its selector as a name.
         if has_super_receiver(hit.node)
             || has_class_literal_receiver(hit.node)
-            || has_qualified_creation_receiver(hit.node)
+            || has_unsupported_result_receiver(hit.node)
         {
             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
         }
@@ -2914,17 +2914,17 @@ fn qualified_creator_reference(node: &GreenNode, start: u32, byte: u32) -> Optio
 
 // Unsupported result provenance, not receiver typing. Constructor arguments,
 // qualifier-independent call arguments, and index operands do not taint a base.
-fn has_qualified_creation_receiver(node: &GreenNode) -> bool {
+fn has_unsupported_result_receiver(node: &GreenNode) -> bool {
     let mut pending = vec![node];
     let mut work = REFERENCE_PROOF_WORK;
     while let Some(node) = pending.pop() {
         // Bound both child/token scans and the pending stack. Exhaustion is
-        // unknown provenance, never evidence that qualified creation is absent.
+        // unknown provenance, never evidence that an explicitly unsupported result root is absent.
         let cost = node.children().len().saturating_mul(4).saturating_add(1);
         let Some(left) = work.checked_sub(cost) else { return true };
         work = left;
         match node.kind() {
-            SyntaxKind::QualifiedNewExpr => return true,
+            SyntaxKind::QualifiedNewExpr | SyntaxKind::SwitchExpr => return true,
             SyntaxKind::FieldExpr
             | SyntaxKind::MethodRefExpr
             | SyntaxKind::CallExpr
@@ -5021,7 +5021,7 @@ fn plain_reference_rank(node: &GreenNode) -> Option<usize> {
 fn valid_call_inventory(node: &GreenNode, start: u32, switches: &mut Vec<u32>) -> bool {
     // Preserve every declaration check. Switch context is recorded separately
     // in source order so an unrelated callable does not poison the inventory.
-    if node.kind() == SyntaxKind::SwitchStmt {
+    if matches!(node.kind(), SyntaxKind::SwitchStmt | SyntaxKind::SwitchExpr) {
         switches.push(start);
     }
     if node.kind() == SyntaxKind::LocalType {
@@ -10427,6 +10427,57 @@ mod own_field_array_budget_tests {
                 assert!(proof.actual(node, node_at, 0).is_some());
                 assert!(!proof.exhausted);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod switch_result_boundary_tests {
+    use super::*;
+
+    #[test]
+    fn unsupported_result_provenance_excludes_arguments_and_index_operands() {
+        let value = "switch(n){default -> n;}";
+        for (expression, expected) in [
+            (format!("({value}).x"), true),
+            (format!("c.call({value}).x"), false),
+            (format!("c[{value}].x"), false),
+            (format!("(c=({value})).x"), true),
+            (format!("(ok?c:({value})).x"), true),
+            (format!("(ok?({value}):c).x"), true),
+            (format!("((C)({value})).x"), true),
+            (format!("({value}).this.x"), true),
+        ] {
+            let text = format!("class C{{void f(){{use({expression});}}}}");
+            let parsed = crate::ParsedFile::parse(&text);
+            assert!(parsed.tokens_cover_text());
+            let at = text.rfind(".x").unwrap() as u32 + 1;
+            let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+            assert_eq!(has_unsupported_result_receiver(hit.node), expected, "{expression}");
+        }
+    }
+
+    #[test]
+    fn switch_reference_result_stays_unknown_even_with_one_identical_arm() {
+        for value in ["v", "switch(n){default -> v;}"] {
+            let text = format!("class C{{void f(C v,int n){{use({value});}}}}");
+            let mut p = Project::new();
+            p.insert("C.java", &text);
+            let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+            bytes.extend(b"java/lang/Object");
+            bytes.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+            p.add_class_bytes("Object.class", &bytes).unwrap();
+            let index = Index::build(&p.files, &p.binaries);
+            let file = index.files.iter().find(|f| f.path == "C.java").unwrap();
+            let parsed = p.file("C.java").unwrap();
+            let at = text.find("use(").unwrap() as u32;
+            let caller = direct_caller(parsed.root(), at);
+            let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+            let (args, args_at) = hit.arguments.unwrap();
+            let operands = delimited_nodes(args, args_at).unwrap();
+            let (node, node_at) = operands[0];
+            let mut proof = ReferenceCallProof::new(&index, file, caller);
+            assert_eq!(proof.actual(node, node_at, 0).is_some(), value == "v", "{value}");
         }
     }
 }
