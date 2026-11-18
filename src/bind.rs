@@ -5322,6 +5322,78 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
 const PRIMITIVE_PROOF_DEPTH: usize = 32;
 const PRIMITIVE_PROOF_WORK: usize = 4096;
 
+// One complete structural rule shared by both existing value-proof domains.
+// The caller charges every visited node before any child scan; no receiver
+// flattening, descendant search, or unbudgeted inner proof is permitted.
+fn array_length_root(
+    node: &GreenNode,
+    at: u32,
+    depth: usize,
+    mut visit: impl FnMut(usize, usize) -> Option<()>,
+) -> Option<(&GreenNode, u32, usize)> {
+    if node.kind() != SyntaxKind::FieldExpr {
+        return None;
+    }
+    visit(depth, node.children().len().max(1))?;
+    let mut receiver = None;
+    let mut state = 0;
+    let mut offset = at;
+    for child in node.children() {
+        if let Some(inner) = child.as_node() {
+            if state != 0 {
+                return None;
+            }
+            receiver = Some((inner.as_ref(), offset));
+            state = 1;
+        } else if let Some(token) = child.as_token()
+            && !token.kind().is_trivia()
+        {
+            state = match (state, token.kind()) {
+                (1, SyntaxKind::Dot) => 2,
+                (2, SyntaxKind::Ident) if token.text() == "length" => 3,
+                _ => return None,
+            };
+        }
+        offset += child.utf8_len();
+    }
+    if state != 3 {
+        return None;
+    }
+    let (mut root, mut at) = receiver?;
+    let mut depth = depth + 1;
+    loop {
+        visit(depth, root.children().len().max(1))?;
+        if root.kind() != SyntaxKind::ParenExpr {
+            break;
+        }
+        let expressions = delimited_nodes(root, at)?;
+        let [(inner, start)] = expressions.as_slice() else {
+            return None;
+        };
+        root = inner;
+        at = *start;
+        depth += 1;
+    }
+    if root.kind() != SyntaxKind::ReferenceExpr {
+        return None;
+    }
+    let mut ident = false;
+    for child in root.children() {
+        let token = child.as_token()?;
+        if token.kind().is_trivia() {
+            continue;
+        }
+        if ident || token.kind() != SyntaxKind::Ident {
+            return None;
+        }
+        ident = true;
+    }
+    ident.then_some((root, at, depth))
+}
+fn array_length_value(rank: usize) -> Option<PrimitiveValue> {
+    (rank > 0 && rank <= 255).then_some(PrimitiveValue { primitive: Primitive::Int, rank: 0 })
+}
+
 struct PrimitiveProof<'a> {
     file: &'a FileRec,
     caller_start: u32,
@@ -5421,6 +5493,22 @@ impl<'a> PrimitiveProof<'a> {
         selected
     }
 
+    fn local(&mut self, name: &str, at: u32) -> Option<&'a LocalRec> {
+        self.charge(self.file.named_locals().len())?;
+        let mut locals = self.file.named_locals().iter().filter(|local| {
+            local.name == name
+                && (local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end)
+                && local.scope_start <= at
+                && at < local.scope_end
+                && local.visible_from <= at
+        });
+        let one = locals.next()?;
+        if locals.next().is_some() || one.guard_only || !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
+            return None;
+        }
+        Some(one)
+    }
+
     fn expression(&mut self, node: &GreenNode, start: u32, depth: usize) -> Option<PrimitiveValue> {
         self.enter(depth)?;
         self.charge(node.children().len())?;
@@ -5432,25 +5520,20 @@ impl<'a> PrimitiveProof<'a> {
                 self.charge(node.utf8_len() as usize)?;
                 decimal_int_literal(node)
             }
-            SyntaxKind::ReferenceExpr => {
-                self.charge(self.file.named_locals().len())?;
-                let name = token_name(node);
-                let mut locals = self.file.named_locals().iter().filter(|local| {
-                    local.name == name
-                        && (local.guard_only || local.start >= self.caller_start && local.end <= self.caller_end)
-                        && local.scope_start <= start
-                        && start < local.scope_end
-                        && local.visible_from <= start
-                });
-                let one = locals.next()?;
-                if locals.next().is_some() {
+            SyntaxKind::FieldExpr => {
+                let (root, at, _) = array_length_root(node, start, depth, |depth, work| {
+                    self.enter(depth)?;
+                    self.charge(work)
+                })?;
+                // Reuse the primitive domain's existing unique caller-local
+                // lookup. It deliberately cannot prove reference components.
+                let local = self.local(&token_name(root), at)?;
+                if local.catch_origin {
                     return None;
                 }
-                if one.guard_only || !matches!(one.kind, TargetKind::Local | TargetKind::Parameter) {
-                    return None;
-                }
-                one.primitive
+                array_length_value(local.primitive?.rank)
             }
+            SyntaxKind::ReferenceExpr => self.local(&token_name(node), start)?.primitive,
             SyntaxKind::ParenExpr => {
                 let expressions = delimited_nodes(node, start)?;
                 let [(expression, at)] = expressions.as_slice() else { return None };
@@ -7165,9 +7248,33 @@ impl<'a> ReferenceCallProof<'a> {
         found.then_some(())
     }
 
+    // Bounded explicit local/parameter array length, not general array or field reads.
+    fn array_length(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
+        let (root, at, _) = array_length_root(node, at, depth, |depth, work| {
+            self.check_depth(depth)?;
+            self.charge(work)
+        })?;
+        let local = self.visible_argument_local(&token_name(root), at)?;
+        if local.guard_only || local.catch_origin || !matches!(local.kind, TargetKind::Local | TargetKind::Parameter) {
+            return None;
+        }
+        if let Some(reference) = &local.reference {
+            let plain = reference.plain()?;
+            let value = array_length_value(plain.array_rank)?;
+            // A bracket shape is not a component identity. Missing/formal/local
+            // and unsupported generic components retain the existing refusal.
+            let component = self.reference_type(self.file, &plain.parts, local.start)?;
+            self.accessible(component)?;
+            self.graph(component)?;
+            Some(value)
+        } else {
+            array_length_value(local.primitive?.rank)
+        }
+    }
+
     // A fallback after reference typing fails: explicit scalar declarations,
-    // Boolean keyword leaves, range-checked decimal int tokens and bounded integral +/- compositions.
-    // No field/array operands, call-result leaves, boxing or general inference.
+    // Boolean/int leaves, bounded integral compositions and the explicit array length above.
+    // No general field/array reads, call-result leaves or inference.
     fn scalar_primitive_argument(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<PrimitiveValue> {
         if depth > REFERENCE_PROOF_DEPTH {
             self.work_left = 0;
@@ -7175,6 +7282,9 @@ impl<'a> ReferenceCallProof<'a> {
             return None;
         }
         self.charge(node.children().len().max(1))?;
+        if node.kind() == SyntaxKind::FieldExpr {
+            return self.array_length(node, at, depth);
+        }
         if node.kind() == SyntaxKind::ParenExpr {
             let children = delimited_nodes(node, at)?;
             let [(inner, at)] = children.as_slice() else { return None };
@@ -7666,6 +7776,12 @@ impl<'a> ReferenceCallProof<'a> {
             return self.invocation_value(node, at, depth + 1);
         }
         if node.kind() == SyntaxKind::FieldExpr {
+            if let Some(value) = self.array_length(node, at, depth) {
+                return Some(StrictActual::Primitive(value));
+            }
+            if self.exhausted {
+                return None;
+            }
             let field = self.this_field(node, at)?;
             return self.field_actual(field);
         }

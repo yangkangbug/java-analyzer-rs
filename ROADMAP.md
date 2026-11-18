@@ -744,3 +744,11 @@ unchanged; source admission, budgets, graph and index construction still run.
 boxing/reference widening and unboxing/primitive widening. Two original Gson
 TypeAdapter calls have independent exact compiler targets; JsonObject controls
 remain refused. No varargs phase, inference, receiver expansion or budget change.
+
+### Explicit array length arguments
+
+[Shared length evidence](docs/ARRAY_LENGTH_ARGUMENTS.md) supplies scalar int for
+explicit local/parameter arrays in existing invocation proofs. The original
+167-query survey gains 38 independently compiler-certified targets (37 binary
+descriptors and one source declaration); old query sets remain unchanged.
+No synthetic length target, general array receiver model or budget change.

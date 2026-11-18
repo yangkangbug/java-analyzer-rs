@@ -1,5 +1,8 @@
 # java-analyzer-rs
 
+[Explicit array length arguments](docs/ARRAY_LENGTH_ARGUMENTS.md) share bounded
+local/parameter array evidence across invocation proofs, without type inference.
+
 [Fixed-arity loose invocation](docs/LOOSE_INVOCATION.md) adds bounded boxing and
 unboxing after a proved-empty strict applicability phase, without changing budgets.
 

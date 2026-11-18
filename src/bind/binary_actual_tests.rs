@@ -824,3 +824,275 @@ fn loose_phase_edit_fresh_and_retained_snapshot() {
     let prepared = PreparedScopedIndex::new(vec![&p], &visibility);
     assert_eq!(prepared.resolve_at(0, "C.java", position), before);
 }
+
+#[test]
+fn array_length_shared_primitive_and_reference_domains() {
+    for (ty, call) in [
+        ("int[]", "pick(array.length)"),
+        ("int[][]", "pick((array).length)"),
+        ("int[]", "C.pick(array.length)"),
+        ("java.lang.Object[]", "C.pick(array.length)"),
+    ] {
+        let mut p = loose_platform();
+        let text = format!(
+            "class C {{ public static void pick(int x){{}} public static void pick(long x){{}} static void run({ty} array){{{call};}} }}"
+        );
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let result = p.resolve_at("C.java", at as u32);
+        assert_eq!(result.status, ResolveStatus::Resolved, "{text}: {result:?}");
+        assert_eq!(result.targets[0].start_byte, text.find("pick(int").unwrap() as u32);
+    }
+}
+
+#[test]
+fn array_length_shape_components_and_phase_boundaries() {
+    for (prefix, params, body, call, expected) in [
+        ("", "int[] array", "", "C.pick(((array)).length)", Some("pick(int")),
+        ("", "", "int array[][] = null;", "C.pick(array.length)", Some("pick(int")),
+        ("", "", "java.lang.Object array[] = null;", "C.pick(array.length)", Some("pick(int")),
+        ("", "int[] array", "", "C.pick(array.length + 1)", Some("pick(int")),
+        ("", "int[] array", "", "C.pick(array.length - 1)", Some("pick(int")),
+        ("", "int[] array", "", "C.pick(array..length)", None),
+        ("", "int[] array", "", "C.pick(array.)", None),
+        ("", "int[] array", "", "C.pick(array.length.extra)", None),
+        ("", "int[][] array", "", "C.pick(array[0].length)", None),
+        ("", "Missing[] array", "", "C.pick(array.length)", None),
+        ("", "Scalar array", "", "C.pick(array.length)", None),
+        ("", "int[] array", "", "C.pick(new int[1].length)", None),
+        ("", "int[] array", "", "C.pick(get().length)", None),
+        ("int[] array;", "", "", "C.pick(array.length)", None),
+        ("int[] array;", "", "", "C.pick(this.array.length)", None),
+        ("long length;", "", "", "C.pick(this.length)", Some("pick(long")),
+    ] {
+        let mut p = loose_platform();
+        let text = format!(
+            "class Scalar {{ int length; }} class C {{ {prefix} public static void pick(int x){{}} public static void pick(long x){{}} int[] get(){{return null;}} void run({params}){{{body}{call};}} }}"
+        );
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let got = p.resolve_at("C.java", at as u32);
+        if let Some(name) = expected {
+            assert_eq!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+            assert_eq!(got.targets[0].start_byte, text.find(name).unwrap() as u32);
+        } else {
+            assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        }
+    }
+    for (methods, call, expected) in [
+        (
+            "public static void pick(long x){} public static void pick(java.lang.Integer x){}",
+            "C.pick(array.length)",
+            Some("pick(long"),
+        ),
+        (
+            "public static void pick(int x,int y){} public static void pick(long x,Missing y){}",
+            "C.pick(array.length,1)",
+            None,
+        ),
+    ] {
+        let mut p = loose_platform();
+        let text = format!("class C {{ {methods} void run(int[] array){{{call};}} }}");
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let got = p.resolve_at("C.java", at as u32);
+        if let Some(name) = expected {
+            assert_eq!(got.status, ResolveStatus::Resolved, "{got:?}");
+            assert_eq!(got.targets[0].start_byte, text.find(name).unwrap() as u32);
+        } else {
+            assert_ne!(got.status, ResolveStatus::Resolved, "{got:?}");
+        }
+    }
+}
+
+#[test]
+fn array_length_budget_and_unsupported_local_kinds() {
+    fn call_at(node: &GreenNode, start: u32, wanted: u32) -> Option<(&GreenNode, u32)> {
+        if start == wanted && node.kind() == SyntaxKind::CallExpr {
+            return Some((node, start));
+        }
+        let mut at = start;
+        for child in node.children() {
+            if let Some(inner) = child.as_node()
+                && let Some(found) = call_at(inner, at, wanted)
+            {
+                return Some(found);
+            }
+            at += child.utf8_len();
+        }
+        None
+    }
+
+    // A real long field remains the existing this_field path, never synthetic int.
+    let mut field_project = loose_platform();
+    let field_text = "class C { long length; void run() { take(this.length); } }";
+    field_project.insert("C.java", field_text);
+    let parsed = field_project.file("C.java").unwrap();
+    let wanted = field_text.find("take(").unwrap() as u32;
+    let caller = direct_caller(parsed.root(), wanted).unwrap();
+    let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
+    let (args, at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
+    let nodes = delimited_nodes(args, at).unwrap();
+    let (node, at) = nodes[0];
+    let field_index = Index::scoped(&[&field_project], &[BTreeSet::from([0])]);
+    let mut proof = ReferenceCallProof::new(&field_index, &field_index.files[0], Some(caller));
+    assert!(matches!(
+        proof.actual(node, at, 0),
+        Some(StrictActual::Primitive(PrimitiveValue { primitive: Primitive::Long, rank: 0 }))
+    ));
+    // actual can pay its own node scan but the new length shape scan exhausts.
+    // It must not fall through to this_field after that failed proof.
+    let mut proof = ReferenceCallProof::new(&field_index, &field_index.files[0], Some(caller));
+    proof.work_left = node.children().len().max(1);
+    assert!(proof.actual(node, at, 0).is_none());
+    assert!(proof.exhausted);
+    assert_eq!(proof.work_left, 0);
+
+    let mut p = loose_platform();
+    let text = "class C { void run(int[] array) { take((array).length); } }";
+    p.insert("C.java", text);
+    let parsed = p.file("C.java").unwrap();
+    let wanted = text.find("take(").unwrap() as u32;
+    let caller = direct_caller(parsed.root(), wanted).unwrap();
+    let (call, at) = call_at(parsed.root(), 0, wanted).unwrap();
+    let (args, at) = child_kind(call, at, SyntaxKind::ArgList).unwrap();
+    let nodes = delimited_nodes(args, at).unwrap();
+    let (node, at) = nodes[0];
+    let mut index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+    for variant in 0..4 {
+        let file = &mut index.files[0];
+        let local = file.locals.iter_mut().find(|l| l.name == "array").unwrap();
+        local.guard_only = variant == 1;
+        local.catch_origin = variant == 2;
+        local.kind = if variant == 3 { TargetKind::Resource } else { TargetKind::Parameter };
+        let mut proof = ReferenceCallProof::new(&index, &index.files[0], Some(caller));
+        let before = proof.work_left;
+        let result = proof.array_length(node, at, 0);
+        if variant == 0 {
+            assert_eq!(result, Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 }));
+            let used = before - proof.work_left;
+            for budget in [0, used - 1, used] {
+                let mut proof = ReferenceCallProof::new(&index, &index.files[0], Some(caller));
+                proof.work_left = budget;
+                assert_eq!(proof.array_length(node, at, 0), if budget == used { result } else { None });
+                if budget < used {
+                    assert!(proof.exhausted);
+                }
+            }
+            let mut proof = ReferenceCallProof::new(&index, &index.files[0], Some(caller));
+            assert!(proof.array_length(node, at, REFERENCE_PROOF_DEPTH).is_none());
+            assert!(proof.exhausted);
+        } else {
+            assert!(result.is_none(), "variant {variant}");
+        }
+    }
+}
+
+#[test]
+fn array_length_edit_fresh_and_retained_snapshot() {
+    let mut p = loose_platform();
+    let text = "class C { public static void pick(int x){} public static void pick(long x){} void run(int[] array){C.pick(array.length);} }";
+    p.insert("C.java", text);
+    let old = p.clone();
+    let at = text.rfind("pick(").unwrap() as u32;
+    let before = p.resolve_at("C.java", at);
+    assert_eq!(before.status, ResolveStatus::Resolved);
+    let dim = text.find("[]").unwrap() as u32;
+    p.edit("C.java", crate::TextEdit { start_byte: dim, end_byte: dim + 2, insert: "  ".into() }).unwrap();
+    let mut fresh = loose_platform();
+    fresh.insert("C.java", &text.replacen("[]", "  ", 1));
+    assert_eq!(p.resolve_at("C.java", at), fresh.resolve_at("C.java", at));
+    assert_ne!(p.resolve_at("C.java", at).status, ResolveStatus::Resolved);
+    assert_eq!(old.resolve_at("C.java", at), before);
+    p.edit("C.java", crate::TextEdit { start_byte: dim, end_byte: dim + 2, insert: "[]".into() }).unwrap();
+    assert_eq!(p.resolve_at("C.java", at), before);
+    let vis = [BTreeSet::from([0])];
+    let prepared = PreparedScopedIndex::new(vec![&p], &vis);
+    assert_eq!(prepared.resolve_at(0, "C.java", at), before);
+}
+
+#[test]
+fn array_length_lexical_component_and_caller_boundaries() {
+    for source in [
+        "class T{} class C<T>{void run(T[] array){Target.pick(array.length);}}",
+        "class C{void run(){class L{} L[] array=null;Target.pick(array.length);}}",
+        "class C{void run(){int[] array=null;int[] array=null;Target.pick(array.length);}}",
+        "class C{void run(int[] array){Object o=new Object(){void run(){Target.pick(array.length);}};}}",
+        "class C{void run(int[] array){Runnable r=()->{Target.pick(array.length);};}}",
+        "class C{void run(){int scalar=1;int array[]=null, other=1;Target.pick(other.length);}}",
+    ] {
+        let mut p = loose_platform();
+        p.insert(
+            "Target.java",
+            "public class Target {public static void pick(int x){} public static void pick(long x){}}",
+        );
+        p.insert("C.java", source);
+        let at = source.rfind("pick(").unwrap() as u32;
+        let got = p.resolve_at("C.java", at);
+        assert_ne!(got.status, ResolveStatus::Resolved, "{source}: {got:?}");
+    }
+}
+
+#[test]
+fn array_length_primitive_budget_and_sibling_dimensions() {
+    let text = "class C { public static void pick(int x){} public static void pick(long x){} static void run(){int array[]=null, scalar=0;pick(array.length);} }";
+    let mut p = loose_platform();
+    p.insert("C.java", text);
+    let pos = text.rfind("pick(").unwrap() as u32;
+    assert_eq!(p.resolve_at("C.java", pos).status, ResolveStatus::Resolved);
+    let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+    let file = &index.files[0];
+    let parsed = p.file("C.java").unwrap();
+    fn length(node: &GreenNode, at: u32) -> Option<(&GreenNode, u32)> {
+        if node.kind() == SyntaxKind::FieldExpr {
+            return Some((node, at));
+        }
+        let mut offset = at;
+        for c in node.children() {
+            if let Some(n) = c.as_node()
+                && let Some(found) = length(n, offset)
+            {
+                return Some(found);
+            }
+            offset += c.utf8_len();
+        }
+        None
+    }
+    let (node, at) = length(parsed.root(), 0).unwrap();
+    let mut proof = PrimitiveProof::new(file, 0, text.len() as u32, None);
+    let before = proof.work_left;
+    let value = proof.expression(node, at, 0);
+    assert_eq!(value, Some(PrimitiveValue { primitive: Primitive::Int, rank: 0 }));
+    let used = before - proof.work_left;
+    for work in [0, used - 1, used] {
+        let mut proof = PrimitiveProof::new(file, 0, text.len() as u32, None);
+        proof.work_left = work;
+        assert_eq!(proof.expression(node, at, 0), if work == used { value } else { None });
+        if work < used {
+            assert!(proof.exhausted);
+        }
+    }
+}
+
+#[test]
+fn array_length_preserves_existing_declaration_facts_not_annotation_inference() {
+    for source in [
+        "@interface A {} class C { void run(@A int[] array){Target.pick(array.length);} }",
+        "class C { void run(int... array){Target.pick(array.length);} }",
+    ] {
+        let mut p = loose_platform();
+        p.insert(
+            "Target.java",
+            "public class Target {public static void pick(int x){} public static void pick(long x){}}",
+        );
+        p.insert("C.java", source);
+        let result = p.resolve_at("C.java", source.rfind("pick(").unwrap() as u32);
+        assert_eq!(result.status, ResolveStatus::Resolved, "{source}: {result:?}");
+        assert_eq!(result.targets[0].start_byte, 40);
+    }
+    let mut p = loose_platform();
+    let source = "@java.lang.annotation.Target(java.lang.annotation.ElementType.TYPE_USE) @interface A {} class C { void run(int @A [] array){Target.pick(array.length);} }";
+    p.insert("Target.java", "public class Target {public static void pick(int x){} public static void pick(long x){}}");
+    p.insert("C.java", source);
+    assert_ne!(p.resolve_at("C.java", source.rfind("pick(").unwrap() as u32).status, ResolveStatus::Resolved);
+}
