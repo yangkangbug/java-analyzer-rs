@@ -34,6 +34,8 @@ CHANGES = {
 
 INVOCATION_CHANGES = json.loads(Path(__file__).with_name('explicit-invocation-parser-delta.json').read_text())
 
+ANNOTATION_CHANGES = json.loads(Path(__file__).with_name('annotation-structure-parser-delta.json').read_text())
+
 def prior_reports(offsets):
     return [{'classification': 'parser_limit_or_invalid_syntax', 'message': message,
              'range': {'start_byte': at, 'end_byte': at + width, 'start_utf16': at, 'end_utf16': at + width}}
@@ -58,6 +60,13 @@ def load(corpus, stage='latest'):
         require(rows[0] == {'path': change['path'],
                            'compilation': change['compilation'],
                            'reports': change['before']}, 'exact prior invocation parser records drift')
+        rows[0]['reports'] = copy.deepcopy(change['after'])
+    for change in ANNOTATION_CHANGES[corpus]:
+        rows = [row for row in expected['files'] if row['path'] == change['path']]
+        require(len(rows) == 1, 'exact annotation file identity drift')
+        require(rows[0] == {'path': change['path'],
+                           'compilation': change['compilation'],
+                           'reports': change['before']}, 'exact prior annotation parser records drift')
         rows[0]['reports'] = copy.deepcopy(change['after'])
     expected['report_count'] = sum(len(row['reports']) for row in expected['files'])
     expected['files_with_reports'] = sum(bool(row['reports']) for row in expected['files'])

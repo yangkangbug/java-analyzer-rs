@@ -11,7 +11,7 @@ spec.loader.exec_module(contract)
 
 class CurrentParserContractTests(unittest.TestCase):
     def test_exact_delta_and_history_unchanged(self):
-        for corpus, count in [('commons', 36), ('gson', 79)]:
+        for corpus, count in [('commons', 31), ('gson', 47)]:
             before, hashes = contract.previous.load(corpus)
             frozen = copy.deepcopy(before)
             actual, actual_hashes = contract.load(corpus)
@@ -25,6 +25,10 @@ class CurrentParserContractTests(unittest.TestCase):
                 if invocation:
                     self.assertEqual(expected['reports'], invocation['before'])
                     expected['reports'] = invocation['after']
+                annotation = next((c for c in contract.ANNOTATION_CHANGES[corpus] if c['path'] == old['path']), None)
+                if annotation:
+                    self.assertEqual(expected['reports'], annotation['before'])
+                    expected['reports'] = annotation['after']
                 self.assertEqual(new, expected)
             self.assertEqual(contract.previous.load(corpus)[0], frozen)
 
@@ -58,6 +62,27 @@ class CurrentParserContractTests(unittest.TestCase):
                 else: row['compilation']['project'] += 'wrong'
                 with self.subTest(corpus=corpus, operation=operation), mock.patch.object(contract.previous, 'load', return_value=(changed, hashes)), self.assertRaises(AssertionError):
                     contract.load(corpus)
+
+    def test_annotation_delta_is_exact_and_prior_records_cannot_drift(self):
+        for corpus, files, reports in [('gson', 7, 32), ('commons', 5, 5)]:
+            changes = contract.ANNOTATION_CHANGES[corpus]
+            self.assertEqual(len(changes), files)
+            self.assertEqual(sum(len(c['before']) for c in changes), reports)
+            self.assertTrue(all(not c['after'] for c in changes))
+            for change in changes:
+                for operation in ['path', 'owner', 'missing', 'extra', 'message',
+                                  'classification', 'start_byte', 'end_byte', 'start_utf16', 'end_utf16']:
+                    original, hashes = contract.previous.load(corpus)
+                    changed = copy.deepcopy(original)
+                    row = next(r for r in changed['files'] if r['path'] == change['path'])
+                    if operation == 'path': row['path'] += '.wrong'
+                    elif operation == 'owner': row['compilation']['source_set'] += '.wrong'
+                    elif operation == 'missing': row['reports'].pop()
+                    elif operation == 'extra': row['reports'].append(copy.deepcopy(row['reports'][0]))
+                    elif operation in ['message', 'classification']: row['reports'][0][operation] += '.wrong'
+                    else: row['reports'][0]['range'][operation] += 1
+                    with self.subTest(path=change['path'], operation=operation), mock.patch.object(contract.previous, 'load', return_value=(changed, hashes)), self.assertRaises(AssertionError):
+                        contract.load(corpus)
 
     def test_complete_current_output_and_source_hashes_checked(self):
         expected, _ = contract.load('gson')

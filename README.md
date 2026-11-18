@@ -9,6 +9,10 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Annotation declarations](docs/ANNOTATION_DECLARATIONS.md) have distinct syntax
+and conservative element inventories; defaults do not become executable scopes.
+The 0.4.0 migration adds four public syntax variants.
+
 [Explicit source generic receivers](docs/SOURCE_GENERIC_RECEIVERS.md) substitute
 bounded direct member families while preserving declaration and Object identities.
 

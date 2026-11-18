@@ -289,18 +289,110 @@ impl<'a> Parser<'a> {
         let mut look = Look::from(self);
         look.skip_mods();
         matches!(look.kind(), SyntaxKind::ClassKw | SyntaxKind::InterfaceKw | SyntaxKind::EnumKw | SyntaxKind::RecordKw)
+            || look.kind() == SyntaxKind::At && look.nth(1) == SyntaxKind::InterfaceKw
     }
 
     fn parse_type_decl(&mut self) {
         let mut look = Look::from(self);
         look.skip_mods();
         match look.kind() {
+            SyntaxKind::At if look.nth(1) == SyntaxKind::InterfaceKw => self.parse_annotation_type(),
             SyntaxKind::InterfaceKw => self.parse_class_like(SyntaxKind::Interface, SyntaxKind::InterfaceBody),
             SyntaxKind::EnumKw => self.parse_enum(),
             SyntaxKind::RecordKw => self.parse_record(),
             SyntaxKind::ClassKw => self.parse_class_like(SyntaxKind::Class, SyntaxKind::ClassBody),
             _ => self.error_one("expected type declaration"),
         }
+    }
+
+    fn parse_annotation_type(&mut self) {
+        self.start(SyntaxKind::AnnotationType);
+        self.parse_modifier_list();
+        self.expect(SyntaxKind::At, "expected '@'");
+        self.expect(SyntaxKind::InterfaceKw, "expected 'interface'");
+        self.expect(SyntaxKind::Ident, "expected annotation type name");
+        if self.at(SyntaxKind::Lt) {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation types cannot have type parameters");
+            self.parse_type_params();
+            self.finish();
+        }
+        while matches!(self.kind(), SyntaxKind::Extends | SyntaxKind::Implements) {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation types cannot declare parent types");
+            self.bump();
+            self.parse_type_list();
+            self.finish();
+        }
+        self.open(SyntaxKind::AnnotationBody);
+        self.expect(SyntaxKind::LBrace, "expected '{'");
+        while !self.eof() && !self.at(SyntaxKind::RBrace) {
+            let before = self.pos;
+            if self.at(SyntaxKind::Semi) {
+                self.bump();
+            } else {
+                match self.member_shape() {
+                    MemberShape::Type => self.parse_type_decl(),
+                    MemberShape::Field => self.parse_field(),
+                    _ => self.parse_annotation_element(),
+                }
+            }
+            if self.pos == before {
+                self.error_one("expected annotation member");
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "expected '}'");
+        self.finish();
+        self.finish();
+    }
+
+    fn parse_annotation_element(&mut self) {
+        self.open(SyntaxKind::AnnotationElement);
+        self.parse_modifier_list();
+        if self.at(SyntaxKind::Lt) {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation elements cannot have type parameters");
+            self.parse_type_params();
+            self.finish();
+        }
+        let is_void = self.at(SyntaxKind::Void);
+        self.parse_type();
+        if is_void {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation elements cannot return void");
+            self.finish();
+        }
+        self.expect(SyntaxKind::Ident, "expected annotation element name");
+        let empty = self.at(SyntaxKind::LParen) && self.nth(1) == SyntaxKind::RParen;
+        self.parse_params();
+        if !empty {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation elements require empty parameters");
+            self.finish();
+        }
+        self.parse_array_dimensions();
+        if self.at(SyntaxKind::Throws) {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation elements cannot declare throws");
+            self.bump();
+            self.parse_type_list();
+            self.finish();
+        }
+        if self.at(SyntaxKind::Default) {
+            self.open(SyntaxKind::AnnotationDefault);
+            self.bump();
+            self.parse_element_value();
+            self.finish();
+        }
+        if self.at(SyntaxKind::LBrace) {
+            self.open(SyntaxKind::Error);
+            self.set_message("annotation elements cannot have a body");
+            self.parse_block();
+            self.finish();
+        } else {
+            self.expect(SyntaxKind::Semi, "expected ';' after annotation element");
+        }
+        self.finish();
     }
 
     fn parse_class_like(&mut self, node: SyntaxKind, body: SyntaxKind) {
@@ -466,7 +558,8 @@ impl<'a> Parser<'a> {
         if matches!(
             look.kind(),
             SyntaxKind::ClassKw | SyntaxKind::InterfaceKw | SyntaxKind::EnumKw | SyntaxKind::RecordKw
-        ) {
+        ) || look.kind() == SyntaxKind::At && look.nth(1) == SyntaxKind::InterfaceKw
+        {
             return MemberShape::Type;
         }
         if look.kind() == SyntaxKind::Lt {
@@ -574,7 +667,7 @@ impl<'a> Parser<'a> {
             return;
         }
         self.open(SyntaxKind::ModifierList);
-        while self.at(SyntaxKind::At) || self.kind().is_modifier() {
+        while self.at(SyntaxKind::At) && self.nth(1) != SyntaxKind::InterfaceKw || self.kind().is_modifier() {
             if self.at(SyntaxKind::At) {
                 self.parse_annotation();
             } else {
@@ -585,7 +678,7 @@ impl<'a> Parser<'a> {
     }
 
     fn has_modifier(&self) -> bool {
-        self.at(SyntaxKind::At) || self.kind().is_modifier()
+        self.at(SyntaxKind::At) && self.nth(1) != SyntaxKind::InterfaceKw || self.kind().is_modifier()
     }
 
     fn parse_annotation(&mut self) {
@@ -629,7 +722,7 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::At) {
             self.parse_annotation();
         } else if self.at(SyntaxKind::LBrace) {
-            self.parse_array_init();
+            self.parse_array_values(true);
         } else {
             self.parse_expr();
         }
@@ -874,7 +967,11 @@ impl<'a> Parser<'a> {
         self.open(SyntaxKind::LocalType);
         self.set_message("local type bindings are unsupported");
         self.parse_modifier_list();
-        self.bump(); // class, interface, enum or record
+        if self.eat(SyntaxKind::At) {
+            self.expect(SyntaxKind::InterfaceKw, "expected 'interface'");
+        } else {
+            self.bump(); // class, interface, enum or record
+        }
         self.expect(SyntaxKind::Ident, "expected local type name");
         while !self.eof() && !matches!(self.kind(), SyntaxKind::RBrace | SyntaxKind::Semi) {
             match self.kind() {
@@ -1941,11 +2038,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_array_init(&mut self) {
+        self.parse_array_values(false);
+    }
+
+    fn parse_array_values(&mut self, annotation_values: bool) {
         self.open(SyntaxKind::ArrayInit);
         self.expect(SyntaxKind::LBrace, "expected '{'");
         if !self.at(SyntaxKind::RBrace) {
             loop {
-                if self.at(SyntaxKind::LBrace) {
+                if annotation_values {
+                    self.parse_element_value();
+                } else if self.at(SyntaxKind::LBrace) {
                     self.parse_array_init();
                 } else {
                     self.parse_expr();
@@ -2168,7 +2271,7 @@ impl<'a> Look<'a> {
 
     fn skip_mods(&mut self) {
         loop {
-            if self.kind() == SyntaxKind::At {
+            if self.kind() == SyntaxKind::At && self.nth(1) != SyntaxKind::InterfaceKw {
                 self.skip_annotation();
             } else if self.kind().is_modifier() {
                 self.bump();

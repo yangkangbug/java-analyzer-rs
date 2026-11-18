@@ -210,6 +210,12 @@ pub enum SyntaxKind {
     SynchronizedStmt,
     /// Recognized instanceof type pattern; flow-sensitive binding is unsupported.
     TypePattern,
+    /// Annotation declaration, distinct from annotation use and ordinary interface.
+    AnnotationType,
+    /// Initially reparsed only with its containing declaration/file.
+    AnnotationBody,
+    AnnotationElement,
+    AnnotationDefault,
 }
 
 impl SyntaxKind {

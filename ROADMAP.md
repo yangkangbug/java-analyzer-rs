@@ -12,6 +12,14 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Annotation declaration structure
+
+Distinct annotation types, bodies, elements and defaults preserve declaration
+identity and incomplete-edit recovery without claiming annotation type checking
+or executable method proofs. Shared annotation-value parsing handles nested
+annotation arrays. Defaults remain opaque to navigation and indexing.
+See [scope, evidence and 0.4.0 migration](docs/ANNOTATION_DECLARATIONS.md).
+
 ## Anonymous lexical ownership
 
 Private source owners separate anonymous-method local declarations from named

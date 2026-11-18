@@ -1,0 +1,496 @@
+{
+  "gson": [
+    {
+      "path": "extras/src/main/java/com/google/gson/interceptors/Intercept.java",
+      "compilation": {
+        "project": "extras",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1829,
+            "end_utf16": 1829,
+            "start_byte": 1829,
+            "start_utf16": 1829
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/annotations/Expose.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2887,
+            "end_utf16": 2887,
+            "start_byte": 2887,
+            "start_utf16": 2887
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3203,
+            "end_utf16": 3203,
+            "start_byte": 3203,
+            "start_utf16": 3203
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3211,
+            "end_utf16": 3211,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3215,
+            "end_utf16": 3215,
+            "start_byte": 3211,
+            "start_utf16": 3211
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3496,
+            "end_utf16": 3496,
+            "start_byte": 3496,
+            "start_utf16": 3496
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3504,
+            "end_utf16": 3504,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3508,
+            "end_utf16": 3508,
+            "start_byte": 3504,
+            "start_utf16": 3504
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/annotations/JsonAdapter.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3655,
+            "end_utf16": 3655,
+            "start_byte": 3655,
+            "start_utf16": 3655
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3961,
+            "end_utf16": 3961,
+            "start_byte": 3961,
+            "start_utf16": 3961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected type name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 3969,
+            "end_utf16": 3969,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected member",
+          "range": {
+            "end_byte": 3973,
+            "end_utf16": 3973,
+            "start_byte": 3969,
+            "start_utf16": 3969
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/annotations/SerializedName.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2912,
+            "end_utf16": 2912,
+            "start_byte": 2912,
+            "start_utf16": 2912
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected body or ';'",
+          "range": {
+            "end_byte": 3158,
+            "end_utf16": 3158,
+            "start_byte": 3158,
+            "start_utf16": 3158
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/annotations/Since.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2215,
+            "end_utf16": 2215,
+            "start_byte": 2215,
+            "start_utf16": 2215
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/annotations/Until.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2538,
+            "end_utf16": 2538,
+            "start_byte": 2538,
+            "start_utf16": 2538
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/test/java/com/google/gson/functional/ExclusionStrategyFunctionalTest.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 6849,
+            "end_utf16": 6849,
+            "start_byte": 6849,
+            "start_utf16": 6849
+          }
+        }
+      ],
+      "after": []
+    }
+  ],
+  "commons": [
+    {
+      "path": "org/apache/commons/lang3/builder/DiffExclude.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1182,
+            "end_utf16": 1182,
+            "start_byte": 1182,
+            "start_utf16": 1182
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "org/apache/commons/lang3/builder/EqualsExclude.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1223,
+            "end_utf16": 1223,
+            "start_byte": 1223,
+            "start_utf16": 1223
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "org/apache/commons/lang3/builder/HashCodeExclude.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1226,
+            "end_utf16": 1226,
+            "start_byte": 1226,
+            "start_utf16": 1226
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "org/apache/commons/lang3/builder/ToStringExclude.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1183,
+            "end_utf16": 1183,
+            "start_byte": 1183,
+            "start_utf16": 1183
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "org/apache/commons/lang3/builder/ToStringSummary.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1362,
+            "end_utf16": 1362,
+            "start_byte": 1362,
+            "start_utf16": 1362
+          }
+        }
+      ],
+      "after": []
+    }
+  ]
+}

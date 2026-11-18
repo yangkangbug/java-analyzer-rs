@@ -118,7 +118,7 @@ fn collect(node: &GreenNode, base: u32, edit_start: u32, edit_end: u32, path: &m
             // statement blocks in the switch body remain independently eligible.
             // Annotation contents also affect enclosing declaration lookahead
             // and catch-annotation validation, not just their nested block tree.
-            if !matches!(node.kind(), SyntaxKind::SwitchLabel | SyntaxKind::Annotation)
+            if !matches!(node.kind(), SyntaxKind::SwitchLabel | SyntaxKind::Annotation | SyntaxKind::AnnotationType | SyntaxKind::AnnotationDefault)
                 && (node.kind() != SyntaxKind::SwitchStmt || child.kind() == SyntaxKind::SwitchBody)
                 // Monitor errors determine the synchronized header's validity.
                 // Recheck that ancestor instead of splicing a lambda/anonymous

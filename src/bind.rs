@@ -2777,6 +2777,7 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             }
             SyntaxKind::Class
             | SyntaxKind::Interface
+            | SyntaxKind::AnnotationType
             | SyntaxKind::Enum
             | SyntaxKind::Record
             | SyntaxKind::Initializer
@@ -2797,6 +2798,31 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         }
     }
     match node.kind() {
+        SyntaxKind::AnnotationDefault => {
+            ctx.file.opaque_class_bodies.push((start, start + node.utf8_len()));
+            return;
+        }
+        SyntaxKind::AnnotationElement if !ctx.class_stack.is_empty() => {
+            let class = *ctx.class_stack.last().unwrap();
+            for mut member in source_members(node, start, TargetKind::Method, true) {
+                member.access = Access::Public;
+                member.shape = Shape::Unknown;
+                member.source_call = None;
+                ctx.file.classes[class].source_data_mut().methods.push(member);
+            }
+            let mut offset = start;
+            for child in node.children() {
+                if let Some(child) = child.as_node() {
+                    if child.kind() == SyntaxKind::AnnotationDefault {
+                        index_node(child, offset, ctx);
+                    } else if child.kind() == SyntaxKind::Error {
+                        ctx.file.opaque_class_bodies.push((offset, offset + child.utf8_len()));
+                    }
+                }
+                offset += child.utf8_len();
+            }
+            return;
+        }
         // Labels have no modeled enum/constant semantics or declarations.
         SyntaxKind::SwitchLabel => return,
         SyntaxKind::EnumConstant => {
@@ -2806,7 +2832,10 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         SyntaxKind::LocalType => {
             let mut header =
                 node.children().iter().filter_map(|child| child.as_token()).filter(|token| !token.kind().is_trivia());
-            header.next(); // declaration keyword; annotations/modifiers are child nodes
+            let keyword = header.next(); // annotations/modifiers are child nodes
+            if keyword.is_some_and(|token| token.kind() == SyntaxKind::At) {
+                header.next(); // local @interface remains an unsupported LocalType
+            }
             let name =
                 header.next().filter(|token| token.kind() == SyntaxKind::Ident).map(|token| token.text().to_string());
             ctx.file.local_types.push(LocalTypeRec {
@@ -2823,7 +2852,11 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             }
         }
         SyntaxKind::ImportDecl => index_import(node, start, ctx),
-        SyntaxKind::Class | SyntaxKind::Interface | SyntaxKind::Enum | SyntaxKind::Record => {
+        SyntaxKind::Class
+        | SyntaxKind::Interface
+        | SyntaxKind::AnnotationType
+        | SyntaxKind::Enum
+        | SyntaxKind::Record => {
             index_class(node, start, ctx);
             return;
         }
@@ -2944,7 +2977,7 @@ fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         interface_parts: Vec::new(),
         binary: false,
         binary_signature: None,
-        is_interface: node.kind() == SyntaxKind::Interface,
+        is_interface: matches!(node.kind(), SyntaxKind::Interface | SyntaxKind::AnnotationType),
         type_variables: type_variables(node, start),
         primitive_owner: node.kind() == SyntaxKind::Class
             && ctx.class_stack.is_empty()
@@ -3311,6 +3344,9 @@ fn declared_supers(node: &GreenNode, start: u32) -> (Option<Vec<String>>, Vec<Ve
     }
     let object = vec!["java".to_string(), "lang".to_string(), "Object".to_string()];
     match node.kind() {
+        SyntaxKind::AnnotationType => {
+            (None, vec![vec!["java".into(), "lang".into(), "annotation".into(), "Annotation".into()]])
+        }
         SyntaxKind::Interface => (Some(object), extends),
         SyntaxKind::Enum => (Some(vec!["java".to_string(), "lang".to_string(), "Enum".to_string()]), implements),
         SyntaxKind::Record => (Some(vec!["java".to_string(), "lang".to_string(), "Record".to_string()]), implements),
@@ -8818,5 +8854,58 @@ mod lexical_owner_inventory_tests {
         );
         assert_eq!(full.named_local_count, empty.named_local_count);
         assert_eq!(full.locals.len() - full.named_local_count, 3);
+    }
+}
+
+#[cfg(test)]
+mod annotation_owner_inventory_tests {
+    use super::*;
+    #[test]
+    fn annotation_owner_has_explicit_parent_and_complete_untyped_element_inventory() {
+        let text = "@interface A{int value() default 1;String value();int CONSTANT=2;}";
+        let file = index_file("A.java", &ParsedFile::parse(text));
+        let owner = &file.classes[0];
+        assert!(owner.is_interface);
+        assert_eq!(owner.super_parts, None);
+        assert_eq!(
+            owner.interface_parts,
+            vec![vec!["java".to_owned(), "lang".to_owned(), "annotation".to_owned(), "Annotation".to_owned()]]
+        );
+        assert!(!owner.reference_inventory);
+        assert!(owner.reference_edges.is_none());
+        assert_eq!(owner.methods.len(), 2);
+        for member in &owner.methods {
+            assert_eq!(member.name, "value");
+            assert_eq!(member.access, Access::Public);
+            assert!(matches!(member.shape, Shape::Unknown));
+            assert!(member.source_call.is_none());
+        }
+        assert_eq!(owner.fields.len(), 1);
+        assert_eq!(owner.fields[0].name, "CONSTANT");
+    }
+    #[test]
+    fn unsupported_element_headers_remain_competitors_not_phantom_fields() {
+        let text = "@interface A<T> extends Runnable{<U>U value() throws Exception;int value();void other();}";
+        let parsed = ParsedFile::parse(text);
+        assert!(!parsed.errors().is_empty());
+        let file = index_file("A.java", &parsed);
+        let owner = &file.classes[0];
+        assert!(owner.fields.is_empty());
+        assert_eq!(owner.methods.iter().map(|m| m.name.as_str()).collect::<Vec<_>>(), vec!["value", "value", "other"]);
+        assert!(owner.methods.iter().all(|m| matches!(m.shape, Shape::Unknown) && m.source_call.is_none()));
+        assert_eq!(
+            owner.interface_parts,
+            vec![vec!["java".to_owned(), "lang".to_owned(), "annotation".to_owned(), "Annotation".to_owned()]]
+        );
+    }
+    #[test]
+    fn default_value_does_not_export_nested_classes_members_or_locals() {
+        let text = "@interface A{Object value() default new Object(){int hidden;void run(int input){int local=input;}};}class C{}";
+        let file = index_file("A.java", &ParsedFile::parse(text));
+        assert_eq!(file.classes.iter().map(|c| c.dotted()).collect::<Vec<_>>(), vec!["A", "C"]);
+        assert!(file.locals.is_empty());
+        assert!(!file.lexical_owners.iter().any(|owner| owner.anonymous));
+        assert!(file.classes[0].fields.is_empty());
+        assert_eq!(file.classes[0].methods.len(), 1);
     }
 }
