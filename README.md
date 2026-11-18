@@ -1,5 +1,8 @@
 # java-analyzer-rs
 
+[Final-prefixed local recovery](docs/FINAL_LOCAL_RECOVERY.md) preserves real
+declaration names after damaged types without inventing receiver-type facts.
+
 [Enhanced-for variable scope](docs/ENHANCED_FOR_SCOPE.md) keeps header variables
 out of their iterable expression while preserving body and declaration navigation.
 

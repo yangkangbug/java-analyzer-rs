@@ -956,7 +956,7 @@ impl<'a> Parser<'a> {
             SyntaxKind::Switch => self.parse_switch(),
             SyntaxKind::Ident | SyntaxKind::Var if self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
             _ if self.looks_like_local_type_decl() => self.parse_local_type(),
-            _ if self.looks_like_decl() => self.parse_local(true),
+            _ if self.local_declaration_start() => self.parse_local(true),
             _ if self.can_start_expr() => {
                 self.open(SyntaxKind::ExprStmt);
                 self.parse_expr();
@@ -985,7 +985,7 @@ impl<'a> Parser<'a> {
             self.bump(); // colon (distinct from a method-reference :: token)
             labels += 1;
         }
-        if self.looks_like_local_type_decl() || self.looks_like_decl() {
+        if self.looks_like_local_type_decl() || self.local_declaration_start() {
             // Block statements include declarations; a labeled Statement does
             // not. Keep recovery contained without exporting its declarations.
             self.set_message("declaration cannot be a labeled statement");
@@ -1161,7 +1161,7 @@ impl<'a> Parser<'a> {
         self.bump();
         self.expect(SyntaxKind::LParen, "expected '('");
         if !self.at(SyntaxKind::Semi) && !self.at(SyntaxKind::RParen) {
-            if self.looks_like_decl() {
+            if self.local_declaration_start() {
                 self.parse_local(false);
             } else {
                 self.parse_for_expression_list();
@@ -1695,6 +1695,12 @@ impl<'a> Parser<'a> {
             self.expect(SyntaxKind::Semi, "expected ';'");
         }
         self.finish();
+    }
+
+    // Local declaration positions and labeled-declaration rejection commit on a leading final.
+    // General type lookahead and recovery-boundary probes remain strict.
+    fn local_declaration_start(&self) -> bool {
+        self.looks_like_decl() || (self.at(SyntaxKind::Final) && !self.looks_like_local_type_decl())
     }
 
     fn looks_like_decl(&self) -> bool {

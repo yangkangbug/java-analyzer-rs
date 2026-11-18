@@ -1,5 +1,13 @@
 # Native Java analysis roadmap
 
+## Final-prefixed declaration recovery
+
+Leading final can establish a local declaration despite damaged type lookahead.
+Actual names retain shadowing while unreliable type facts stay unavailable.
+Ordinary unmodified declaration recovery and general annotation support remain
+separate. See [scope and evidence](docs/FINAL_LOCAL_RECOVERY.md).
+
+
 ## Enhanced-for lexical visibility
 
 Header variables become visible at the actual body boundary, not in the iterable.
