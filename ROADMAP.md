@@ -1,5 +1,15 @@
 # Native Java analysis roadmap
 
+## Local-type declaration identity
+
+Lexical local class/enum/record names now have distinct source identities without
+entering the nominal class directory. The original 94-query census adds 30 exact
+declarations and 27 compiler-exact references; 37 results and all 3,393 formal
+queries remain unchanged. Opaque bodies, captures, members and all 30 unsupported
+parser reports remain outside this increment. See
+[scope and 0.7 Git migration](docs/LOCAL_TYPE_IDENTITY.md).
+
+
 ## Type-parameter declaration identity
 
 Shared lexical formal records now distinguish source type parameters from nominal

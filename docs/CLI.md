@@ -432,3 +432,12 @@ response structure or protocol version. Closed kind allowlists must accept it;
 do not interpret it as a nominal class, value parameter or binary attachment.
 Editor/LSP locations retain normal source provenance and UTF-16 conversion.
 See [type-parameter scope and migration](TYPE_PARAMETERS.md).
+
+
+### Lexical local-type targets (0.7)
+
+Declaration responses may contain `kind: "LocalType"`, empty `owner`, exact source
+path/name range and no binary identity. This is not a nominal Class or inferred
+qualified name. Closed kind allowlists and exhaustive Rust enum matches must be
+updated; JSON structure, source URI/UTF-16 LSP conversion and protocol versions
+are unchanged. See [supported scope and limitations](LOCAL_TYPE_IDENTITY.md).

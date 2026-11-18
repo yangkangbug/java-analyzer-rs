@@ -26,7 +26,13 @@ fn local_type_does_not_escape_method_or_export_members() {
 #[test]
 fn local_type_shadowing_is_lexical_and_receivers_refuse() {
     let s = "class L { int field; } class C { void m() { L before; { class L {} L inside; inside.field++; L.field++; } L outside; outside.field++; } void n() { L later; later.field++; } }";
-    assert_eq!(query(s, "L inside").status, ResolveStatus::Unresolved);
+    let local = query(s, "L inside");
+    assert_eq!(local.status, ResolveStatus::Resolved);
+    assert_eq!(local.targets[0].kind, TargetKind::LocalType);
+    assert_eq!(local.targets[0].path, "C.java");
+    assert!(local.targets[0].owner.is_empty());
+    assert_eq!(local.targets[0].start_byte, s.find("L {} L inside").unwrap() as u32);
+    assert_eq!(local.targets[0].end_byte, local.targets[0].start_byte + 1);
     assert_ne!(query(s, "field++; L.field").status, ResolveStatus::Resolved);
     assert_ne!(query(s, "field++; } L outside").status, ResolveStatus::Resolved);
     for marker in ["L before", "L outside", "L later", "field++; } void", "field++; } }"] {
@@ -113,7 +119,13 @@ fn same_names_in_other_methods_are_not_exported_as_member_types() {
     let s = "class L { int field; } class C { void a() { class L { int hidden; } L x; } void b() { L y; y.field++; class L {} L z; } }";
     assert_eq!(query(s, "L y").status, ResolveStatus::Resolved);
     assert_eq!(query(s, "field++").status, ResolveStatus::Resolved);
-    assert_eq!(query(s, "L z").status, ResolveStatus::Unresolved);
+    let local = query(s, "L z");
+    assert_eq!(local.status, ResolveStatus::Resolved);
+    assert_eq!(local.targets[0].kind, TargetKind::LocalType);
+    assert_eq!(local.targets[0].path, "C.java");
+    assert!(local.targets[0].owner.is_empty());
+    assert_eq!(local.targets[0].start_byte, s.find("L {} L z").unwrap() as u32);
+    assert_eq!(local.targets[0].end_byte, local.targets[0].start_byte + 1);
 }
 
 #[test]

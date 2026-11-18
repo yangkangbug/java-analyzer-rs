@@ -374,6 +374,7 @@ fn kind_name(kind: TargetKind) -> &'static str {
         TargetKind::Parameter => "Parameter",
         TargetKind::Resource => "Resource",
         TargetKind::TypeParameter => "TypeParameter",
+        TargetKind::LocalType => "LocalType",
     }
 }
 fn status_name(status: ResolveStatus) -> &'static str {

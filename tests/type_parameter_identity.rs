@@ -174,7 +174,9 @@ fn local_type_scope_is_terminal_before_formal() {
     for s in ["class C<T>{void f(){class T{} T x;}}", "class C{<T> void f(){class T{} T x;}}"] {
         let mut p = Project::new();
         p.insert("Use.java", s);
-        assert!(p.resolve_at("Use.java", s.find("T x").unwrap() as u32).targets.is_empty());
+        let result = p.resolve_at("Use.java", s.find("T x").unwrap() as u32);
+        assert_eq!(format!("{:?}", result.targets[0].kind), "LocalType");
+        assert_eq!(result.targets[0].start_byte, s.find("T{} T x").unwrap() as u32);
     }
 }
 

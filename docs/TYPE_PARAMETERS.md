@@ -31,8 +31,9 @@ covered. Class-header/bound scope is distinguished from the class body.
 
 An own callable formal shadows outer names. A class's own formal takes precedence
 over an inherited member type, while its directly declared member type can shadow
-the formal within the body, not in the header/bounds. Existing local-type shadow
-records remain terminal; an unsupported local type is not replaced by an outer T.
+the formal within the body, not in the header/bounds. Local-type shadow
+records remain terminal to nominal lookup; 0.7 can expose their bounded lexical
+[declaration identity](LOCAL_TYPE_IDENTITY.md) rather than replacing them by an outer T.
 Unsupported class-formal uses across static boundaries, incomplete/duplicate
 groups and unsupported cross-owner outer formal lookup are conservative refusals, not permission to borrow a same-spelled
 class or package. Nearer supported declarations and unrelated names keep their

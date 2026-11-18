@@ -122,7 +122,12 @@ fn opaque_switch_expression_skips_selector_braces_and_preserves_next_statement()
 fn switch_local_type_shadowing_ends_at_switch_body() {
     let s =
         "class L {} class C { void m(int k) { switch(k) { case 0: class L {} case 1: L inside; break; } L outside; } }";
-    assert_eq!(query(s, "L inside").status, ResolveStatus::Unresolved);
+    let local = query(s, "L inside");
+    assert_eq!(local.status, ResolveStatus::Resolved);
+    assert_eq!(format!("{:?}", local.targets[0].kind), "LocalType");
+    assert!(local.targets[0].owner.is_empty());
+    assert_eq!(local.targets[0].start_byte, s.find("L {} case").unwrap() as u32);
+    assert_eq!(local.targets[0].end_byte, local.targets[0].start_byte + 1);
     assert_eq!(query(s, "L outside").status, ResolveStatus::Resolved);
 }
 

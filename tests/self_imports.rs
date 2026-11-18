@@ -56,7 +56,13 @@ fn different_imported_type_and_lexical_shadowing_keep_existing_boundaries() {
     let near = p.resolve_at("p/Use.java", at(source, "/*near*/"));
     assert_eq!(near.status, ResolveStatus::Resolved);
     assert_eq!(near.targets[0].owner, "p.Item.Inner.Item");
-    assert_eq!(p.resolve_at("p/Use.java", at(source, "/*local*/")).status, ResolveStatus::Unresolved);
+    let local = p.resolve_at("p/Use.java", at(source, "/*local*/"));
+    assert_eq!(local.status, ResolveStatus::Resolved);
+    assert_eq!(format!("{:?}", local.targets[0].kind), "LocalType");
+    assert_eq!(local.targets[0].path, "p/Use.java");
+    assert!(local.targets[0].owner.is_empty());
+    assert_eq!(local.targets[0].start_byte, source.find("Item {} /*local*/").unwrap() as u32);
+    assert_eq!(local.targets[0].end_byte, local.targets[0].start_byte + 4);
 }
 
 #[test]

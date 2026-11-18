@@ -65,6 +65,25 @@ def compare(expected, queries, declarations, javac, native):
             raise AssertionError(f"unrecognized expectation status: {status}")
 
 
+def compare_current_local_types(expected, queries, declarations, javac, native):
+    """One explicit current identity delta; historical fixture stays immutable."""
+    assert expected["local_type_use"] == ("Unresolved", "local_type")
+    current = dict(expected)
+    current["local_type_use"] = ("Resolved", "local_type")
+    path, start, end, name = declarations["local_type"]
+    assert native["local_type_use"] == [
+        "Resolved", "1", f"{path}|LocalType||{name}|{start}|{end}"
+    ], "local_type_use: exact lexical identity differs"
+    assert javac["local_type_use"][1:3] == ["CLASS", "Hidden"]
+    # The generic comparator maps compiler CLASS to nominal Class. Normalize only
+    # after the complete restricted LocalType wire identity was checked above.
+    normalized = {key: list(value) for key, value in native.items()}
+    normalized["local_type_use"] = [
+        "Resolved", "1", f"{path}|Class|Hidden|{name}|{start}|{end}"
+    ]
+    compare(current, queries, declarations, javac, normalized)
+
+
 def local_type_suite(jdk, native_binary, env, work, helper, empty):
     """Contain unsupported local classes without claiming bindings inside them."""
     root = ORACLE / "local-type-v1"
@@ -97,10 +116,10 @@ def local_type_suite(jdk, native_binary, env, work, helper, empty):
         assert tuple(javac[query][1:3]) == compiler_targets[target], f"{query}: compiler kind/owner differs"
     for query in expected:
         print(query + "\tjavac=" + "|".join(javac[query]) + "\tnative=" + "|".join(native[query]))
-    compare(expected, queries, declarations, javac, native)
+    compare_current_local_types(expected, queries, declarations, javac, native)
     wrong = dict(expected)
     wrong["after_shadow"] = ("Resolved", "outer_field")
-    must_reject(lambda: compare(wrong, queries, declarations, javac, native), "local type wrong shadow target")
+    must_reject(lambda: compare_current_local_types(wrong, queries, declarations, javac, native), "local type wrong shadow target")
     for label in ("missing", "extra", "owner", "range", "unsupported_target"):
         changed = {key: list(value) for key, value in native.items()}
         if label == "missing":
@@ -116,8 +135,15 @@ def local_type_suite(jdk, native_binary, env, work, helper, empty):
             else:
                 parts[-2:] = ["0", "1"]
             changed["after_type"][2] = "|".join(parts)
-        must_reject(lambda: compare(expected, queries, declarations, javac, changed), "local type " + label)
-    print("PASS: 11 local-type surrounding bindings; four explicit unsupported type/body queries; mutation controls")
+        must_reject(lambda: compare_current_local_types(expected, queries, declarations, javac, changed), "local type " + label)
+    for label, value in [("kind", "Class"), ("owner", "Hidden"), ("range", "0")]:
+        changed = {key: list(value) for key, value in native.items()}
+        parts = changed["local_type_use"][2].split("|")
+        parts[{"kind": 1, "owner": 2, "range": 4}[label]] = value
+        changed["local_type_use"][2] = "|".join(parts)
+        must_reject(lambda: compare_current_local_types(expected, queries, declarations, javac, changed),
+                    "local declaration " + label)
+    print("PASS: 11 surrounding bindings, one exact local-type identity, three opaque-body refusals; mutation controls")
 
 
 def mixed_suite(jdk, native_binary, env, work, helper, empty):

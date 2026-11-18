@@ -1,4 +1,9 @@
-# Local-type containment, not local-type binding
+# Historical local-type containment boundary
+
+Version 0.7 adds [bounded declaration identity](LOCAL_TYPE_IDENTITY.md). The
+following records the original containment-only milestone. Exact names and
+supported outside-body type references can now navigate; the opaque body and
+member/capture restrictions below still apply.
 
 The pinned Gson workload exposed a false-navigation bug: a method-local class
 could terminate recovery of its surrounding method. Later local declarations and

@@ -98,5 +98,29 @@ class RealProbeControls(unittest.TestCase):
                 second.check_local_type_response({'result': {'queries': actual}}, [{}], None)
 
 
+
+
+class CurrentLocalTypeIdentityControls(unittest.TestCase):
+    def test_exact_delta_and_mutations(self):
+        expected = {"local_type_use": ("Unresolved", "local_type")}
+        declarations = {"local_type": ("Case.java", 20, 26, "Hidden")}
+        queries = {"local_type_use": ("Case.java", 80, 86, "Hidden")}
+        javac = {"local_type_use": ["Case.java", "CLASS", "Hidden", "Hidden", "14", "40"]}
+        native = {"local_type_use": ["Resolved", "1", "Case.java|LocalType||Hidden|20|26"]}
+        def check(records, historical=expected):
+            oracle.compare_current_local_types(historical, queries, declarations, javac, records)
+        check(native)
+        for target in ["Case.java|Class||Hidden|20|26", "Case.java|LocalType|Hidden|Hidden|20|26",
+                       "Case.java|LocalType||Hidden|21|26", "Other.java|LocalType||Hidden|20|26"]:
+            with self.subTest(target=target), self.assertRaises(AssertionError):
+                check({"local_type_use": ["Resolved", "1", target]})
+        for records in [{}, {**native, "extra": native["local_type_use"]},
+                        {"local_type_use": ["Unresolved", "0"]}]:
+            with self.assertRaises((AssertionError, KeyError)):
+                check(records)
+        with self.assertRaises(AssertionError):
+            check(native, {"local_type_use": ("Resolved", "local_type")})
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -74,6 +74,7 @@ pub enum TargetKind {
     Parameter,
     Resource,
     TypeParameter,
+    LocalType,
 }
 
 /// Linking context of a declaration in this snapshot, not a persistent or runtime identity.
@@ -100,7 +101,7 @@ pub struct Target {
     pub kind: TargetKind,
     pub name: String,
     /// Dotted package plus nesting, such as `demo.Outer.Inner`.
-    /// Empty for locals/parameters/resources/type parameters and source fields
+    /// Empty for locals/parameters/resources/type parameters/local types and source fields
     /// of an anonymous owner. Empty does not mean a top-level field or a persistent identity;
     /// source declaration identity includes path and exact name range.
     pub owner: String,
@@ -388,9 +389,28 @@ impl ReferenceDeclaration {
 #[derive(Clone, Debug)]
 struct LocalTypeRec {
     name: Option<String>,
+    name_range: Option<(u32, u32)>,
+    scope_start: u32,
+    owner: Option<usize>,
+    complete: bool,
     start: u32,
     end: u32,
     scope_end: u32,
+}
+
+impl LocalTypeRec {
+    fn target(&self, file: &FileRec) -> Target {
+        let (start_byte, end_byte) = self.name_range.unwrap();
+        Target {
+            kind: TargetKind::LocalType,
+            name: self.name.clone().unwrap(),
+            path: file.path.clone(),
+            owner: String::new(),
+            start_byte,
+            end_byte,
+            binary: None,
+        }
+    }
 }
 
 fn local_type_shadows(file: &FileRec, name: &str, byte: u32) -> bool {
@@ -532,6 +552,7 @@ struct FormalScope {
     class_name: Option<String>,
     static_boundary: bool,
     parameters: Vec<TypeParameterRec>,
+    local_types: Vec<usize>,
     complete: bool,
     member_types: Vec<String>,
     member_types_complete: bool,
@@ -539,6 +560,7 @@ struct FormalScope {
 enum FormalName<'a> {
     Absent,
     Parameter(&'a TypeParameterRec),
+    Local(&'a LocalTypeRec),
     Unknown,
 }
 fn formal_name<'a>(file: &'a FileRec, name: &str, byte: u32) -> FormalName<'a> {
@@ -560,6 +582,36 @@ fn formal_name_charged<'a>(
         }
         if byte < scope.start || byte >= scope.end {
             continue;
+        }
+
+        if !charge(scope.local_types.len()) {
+            return FormalName::Unknown;
+        }
+        let mut local = None;
+        for &id in &scope.local_types {
+            let record = &file.local_types[id];
+            if record.start <= byte && record.name.as_deref() == Some(name) {
+                if crossed_class || !record.complete || local.is_some() {
+                    return FormalName::Unknown;
+                }
+                local = Some(record);
+            }
+        }
+        if let Some(record) = local {
+            if !charge(file.local_types.len()) {
+                return FormalName::Unknown;
+            }
+            let collisions = file
+                .local_types
+                .iter()
+                .filter(|other| {
+                    other.owner == record.owner
+                        && other.scope_start <= byte
+                        && byte < other.scope_end
+                        && other.name.as_deref() == Some(name)
+                })
+                .count();
+            return if collisions == 1 { FormalName::Local(record) } else { FormalName::Unknown };
         }
         if !charge(scope.parameters.len()) {
             return FormalName::Unknown;
@@ -595,12 +647,6 @@ fn formal_name_charged<'a>(
                     return FormalName::Absent;
                 }
             }
-            if !charge(file.local_types.len()) {
-                return FormalName::Unknown;
-            }
-            if local_type_shadows(file, name, byte) {
-                return FormalName::Unknown;
-            }
             return FormalName::Parameter(selected.unwrap());
         }
         static_context |= scope.static_boundary;
@@ -628,6 +674,8 @@ fn index_formal_scopes(
     start: u32,
     parent: Option<SyntaxKind>,
     outer_formals: bool,
+    outer_locals: bool,
+    locals: &BTreeMap<(u32, u32), Vec<usize>>,
     out: &mut Vec<FormalScope>,
 ) {
     let class = matches!(
@@ -647,7 +695,9 @@ fn index_formal_scopes(
             m.children().iter().any(|c| c.as_token().is_some_and(|t| t.kind() == SyntaxKind::Static))
         });
     let has_formals = child_kind(node, start, SyntaxKind::TypeParamList).is_some();
-    if has_formals || outer_formals && (class || static_boundary) {
+    let local_types = locals.get(&(start, start + node.utf8_len())).cloned().unwrap_or_default();
+    let has_locals = !local_types.is_empty();
+    if has_formals || has_locals || (outer_formals || outer_locals) && (class || static_boundary) {
         let parameters = type_parameter_records(node, start);
         let complete = child_kind(node, start, SyntaxKind::TypeParamList).is_none_or(|(p, _)| {
             crate::green::collect_errors(p).is_empty()
@@ -703,6 +753,7 @@ fn index_formal_scopes(
             static_boundary,
             class_name: class.then(|| direct_ident(node, start).map(|n| n.0)).flatten(),
             parameters,
+            local_types,
             complete,
             member_types,
             member_types_complete,
@@ -711,7 +762,15 @@ fn index_formal_scopes(
     let mut at = start;
     for child in node.children() {
         if let Some(n) = child.as_node() {
-            index_formal_scopes(n, at, Some(node.kind()), outer_formals || has_formals, out);
+            index_formal_scopes(
+                n,
+                at,
+                Some(node.kind()),
+                outer_formals || has_formals,
+                outer_locals || has_locals,
+                locals,
+                out,
+            );
         }
         at += child.utf8_len();
     }
@@ -949,6 +1008,13 @@ impl Index {
         let Some(file) = self.files.iter().find(|file| file.path == path) else {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
+        if let Some(local) = file
+            .local_types
+            .iter()
+            .find(|local| local.complete && local.name_range.is_some_and(|(a, b)| a <= byte && byte < b))
+        {
+            return ResolveResult::one(ResolveStatus::Resolved, local.target(file));
+        }
         if file.opaque_class_bodies.iter().any(|&(start, end)| start <= byte && byte < end)
             || file.local_types.iter().any(|local| local.start <= byte && byte < local.end)
         {
@@ -976,7 +1042,10 @@ impl Index {
                             FormalName::Parameter(p) if parts[0].1 <= byte && byte < parts[0].2 => {
                                 return ResolveResult::one(ResolveStatus::Resolved, p.target(file));
                             }
-                            FormalName::Parameter(_) | FormalName::Unknown => {
+                            FormalName::Local(local) if parts[0].1 <= byte && byte < parts[0].2 => {
+                                return ResolveResult::one(ResolveStatus::Resolved, local.target(file));
+                            }
+                            FormalName::Local(_) | FormalName::Parameter(_) | FormalName::Unknown => {
                                 return ResolveResult::none(ResolveStatus::Unresolved);
                             }
                             FormalName::Absent => {}
@@ -1367,7 +1436,10 @@ impl Index {
                 FormalName::Parameter(p) if prefix.len() == 1 => {
                     return ResolveResult::one(ResolveStatus::Resolved, p.target(file));
                 }
-                FormalName::Parameter(_) | FormalName::Unknown => {
+                FormalName::Local(local) if prefix.len() == 1 => {
+                    return ResolveResult::one(ResolveStatus::Resolved, local.target(file));
+                }
+                FormalName::Local(_) | FormalName::Parameter(_) | FormalName::Unknown => {
                     return ResolveResult::none(ResolveStatus::Unresolved);
                 }
                 FormalName::Absent => {}
@@ -1836,7 +1908,7 @@ impl Index {
                             }
                         }
                     }
-                    TargetKind::Method | TargetKind::TypeParameter => {
+                    TargetKind::Method | TargetKind::TypeParameter | TargetKind::LocalType => {
                         ResolveResult::none(ResolveStatus::ReceiverNotBound)
                     }
                 }
@@ -2681,7 +2753,7 @@ fn declared_of<'a>(file: &'a FileRec, target: &Target) -> Option<&'a QualName> {
                 })
             })
             .and_then(|field| field.declared.as_ref()),
-        TargetKind::Class | TargetKind::Method | TargetKind::TypeParameter => None,
+        TargetKind::Class | TargetKind::Method | TargetKind::TypeParameter | TargetKind::LocalType => None,
     }
 }
 
@@ -3130,7 +3202,11 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
             lexical_owner: None,
         },
     );
-    index_formal_scopes(parsed.root(), 0, None, false, &mut file.formal_scopes);
+    let mut local_groups: BTreeMap<(u32, u32), Vec<usize>> = BTreeMap::new();
+    for (id, local) in file.local_types.iter().enumerate() {
+        local_groups.entry((local.scope_start, local.scope_end)).or_default().push(id);
+    }
+    index_formal_scopes(parsed.root(), 0, None, false, false, &local_groups, &mut file.formal_scopes);
     file.formal_scopes.sort_by_key(|s| s.end - s.start);
     index_pattern_guards(parsed.root(), 0, None, &mut file);
     let (named, anonymous): (Vec<_>, Vec<_>) = std::mem::take(&mut file.locals)
@@ -3302,8 +3378,40 @@ fn index_node_with_local_visibility(
             }
             let name =
                 header.next().filter(|token| token.kind() == SyntaxKind::Ident).map(|token| token.text().to_string());
+            let mut offset = start;
+            let mut name_range = None;
+            let mut braces = 0usize;
+            let mut saw_body = false;
+            let mut closed = false;
+            for child in node.children() {
+                if let Some(token) = child.as_token() {
+                    if token.kind() == SyntaxKind::Ident && name_range.is_none() {
+                        name_range = Some((offset, offset + token.utf8_len()));
+                    }
+                    if token.kind() == SyntaxKind::LBrace {
+                        braces += 1;
+                        saw_body = true;
+                    }
+                    if token.kind() == SyntaxKind::RBrace {
+                        braces = braces.saturating_sub(1);
+                        closed = saw_body && braces == 0;
+                    }
+                }
+                offset += child.utf8_len();
+            }
+            let complete = keyword.is_some_and(|token| {
+                matches!(token.kind(), SyntaxKind::ClassKw | SyntaxKind::RecordKw | SyntaxKind::EnumKw)
+            }) && name.is_some()
+                && name_range.is_some()
+                && saw_body
+                && closed
+                && braces == 0;
             ctx.file.local_types.push(LocalTypeRec {
                 name,
+                name_range,
+                scope_start: ctx.scope_stack.last().map_or(start, |scope| scope.0),
+                owner: ctx.lexical_owner,
+                complete,
                 start,
                 end: start + node.utf8_len(),
                 scope_end: ctx.scope_stack.last().map_or(start + node.utf8_len(), |scope| scope.1),
@@ -9725,7 +9833,7 @@ mod type_parameter_inventory_tests {
             } else if name == "Other" {
                 assert!(matches!(got, FormalName::Absent));
             } else if text.contains("class T{}") {
-                assert!(matches!(got, FormalName::Unknown));
+                assert!(matches!(got, FormalName::Local(_)));
             } else {
                 assert!(matches!(got, FormalName::Parameter(_)));
             }

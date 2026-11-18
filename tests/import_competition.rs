@@ -87,7 +87,13 @@ fn lexical_shadowing_and_fully_qualified_types_keep_existing_precedence() {
     let member = p.resolve_at("Use.java", offset(source, "/*member*/"));
     assert_eq!(member.status, ResolveStatus::Resolved);
     assert_eq!(member.targets[0].owner, "Use.Item");
-    assert_eq!(p.resolve_at("Use.java", offset(source, "/*local*/")).status, ResolveStatus::Unresolved);
+    let local = p.resolve_at("Use.java", offset(source, "/*local*/"));
+    assert_eq!(local.status, ResolveStatus::Resolved);
+    assert_eq!(format!("{:?}", local.targets[0].kind), "LocalType");
+    assert_eq!(local.targets[0].path, "Use.java");
+    assert!(local.targets[0].owner.is_empty());
+    assert_eq!(local.targets[0].start_byte, source.find("Item {}").unwrap() as u32);
+    assert_eq!(local.targets[0].end_byte, local.targets[0].start_byte + 4);
     let qualified = "import a.Item; import b.Item; class Use { a./*qualified*/Item value; }";
     let p = project(qualified);
     let result = p.resolve_at("Use.java", offset(qualified, "/*qualified*/"));

@@ -2,7 +2,8 @@
 
 [Type-parameter declaration identity](docs/TYPE_PARAMETERS.md) resolves source
 formals without borrowing same-named classes or inferring generic receiver types.
-Version 0.6.0 adds the public TargetKind::TypeParameter Git-dependency migration.
+Version 0.7.0 adds the public TargetKind::LocalType Git-dependency migration.
+See [local-type identity and boundaries](docs/LOCAL_TYPE_IDENTITY.md); the 0.6 TypeParameter capability remains.
 
 [Final-prefixed local recovery](docs/FINAL_LOCAL_RECOVERY.md) preserves real
 declaration names after damaged types without inventing receiver-type facts.
