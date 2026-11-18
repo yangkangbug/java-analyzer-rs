@@ -583,6 +583,8 @@ mod tests {
                 .is_none()
         );
         assert!(binary_method_key("p/A", one, &Target { binary: None, ..target.clone() }).is_none());
+        // A field identity never grants method attachment admission.
+        assert!(binary_method_key("p/A", one, &Target { kind: TargetKind::Field, ..target.clone() }).is_none());
         assert!(binary_method_key("p/A", one, &Target { name: "<init>".into(), ..target.clone() }).is_none());
         assert!(binary_method_key("p/A", one, &Target { kind: TargetKind::Class, ..target }).is_none());
     }

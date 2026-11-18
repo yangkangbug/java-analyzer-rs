@@ -1,5 +1,9 @@
 # java-analyzer-rs
 
+[Binary field declaration identity](docs/BINARY_FIELD_IDENTITY.md) preserves existing
+field descriptors and declaration contexts without new resolution. Version 0.9.0
+expands the Rust metadata contract and opts into CLI target-details v2.
+
 [Non-pattern switch syntax](docs/SWITCH_EXPRESSIONS.md) adds expression/arrow-rule
 structure and contextual yield with conservative scope, value-proof and reparse
 boundaries. Version 0.8.0 adds three public SyntaxKind variants.

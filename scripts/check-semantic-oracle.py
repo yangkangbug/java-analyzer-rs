@@ -1188,15 +1188,17 @@ def binary_instance_compare_expected(actual, wanted):
     assert json.dumps(actual, sort_keys=True) == json.dumps(wanted, sort_keys=True), 'complete binary target/query contract'
 
 
-def binary_instance_compare_modes(default, detailed):
+def binary_instance_compare_modes(default, detailed, details_version=1):
     """Default schema-v1 target projection stays exact; do not deduplicate."""
     assert default['schema_version'] == detailed['schema_version'] == 1
     plain, rich = default['result'], detailed['result']
     assert 'target_details_version' not in plain
-    assert type(rich['target_details_version']) is int and rich['target_details_version'] == 1
+    assert details_version in (1, 2)
+    assert type(rich['target_details_version']) is int and rich['target_details_version'] == details_version
     assert set(rich) == set(plain) | {'target_details_version'}
     projected = {k: v for k, v in rich.items() if k != 'target_details_version'}
-    projected['queries'] = [dict(row, targets=[binary_instance_default_projection(t) for t in row['targets']]) for row in rich['queries']]
+    projection = binary_member_v2_default_projection if details_version == 2 else binary_instance_default_projection
+    projected['queries'] = [dict(row, targets=[projection(t) for t in row['targets']]) for row in rich['queries']]
     assert json.dumps(projected, sort_keys=True) == json.dumps(plain, sort_keys=True), 'exact v1 projection including multiplicity'
 
 
@@ -1424,6 +1426,44 @@ def binary_instance_current_expected(contract, label):
     return wanted
 
 
+def binary_member_v2_default_projection(target):
+    """Strict v2 projection; the separate v1 helper still accepts old plain fields."""
+    if target.get('origin') == 'binary' and target.get('kind') == 'Field':
+        assert isinstance(target.get('descriptor'), str) and target['descriptor']
+        assert target['identity_precision'] == 'origin_binary_name_descriptor_linking_context'
+        assert isinstance(target['linking_context'], dict)
+        result = dict(target)
+        del result['descriptor']
+        result['linking_context'] = None
+        result['identity_precision'] = 'origin_kind_owner_name_only'
+        return result
+    return binary_instance_default_projection(target)
+
+
+def binary_member_v2_expected(contract, label):
+    """Append metadata only to the unchanged frozen 0.8 historical projection."""
+    wanted = binary_instance_current_expected(contract, label)
+    assert wanted['target_details_version'] == 1
+    wanted['target_details_version'] = 2
+    for row in wanted['queries']:
+        for target in row['targets']:
+            if target.get('origin') != 'binary' or target['kind'] != 'Field':
+                continue
+            # This fixed fixture independently compiled both scopes' own
+            # dep/Methods input. Never generalize caller scope into declaration scope.
+            assert target['path'] == '@CLASSES@/dep/Methods.class'
+            assert target['binary_name'] == 'dep/Methods' and target['name'] == 'field'
+            assert target['linking_context'] is None
+            fields = contract['baseline']['class_data']['dep/Methods']['fields']
+            matches = [f for f in fields if f['name'] == 'field']
+            assert len(matches) == 1 and matches[0]['descriptor'] == 'I'
+            assert row['source_compilation']['project'] in ('first', 'second')
+            target.update(descriptor=matches[0]['descriptor'],
+                          linking_context=dict(row['source_compilation']),
+                          identity_precision='origin_binary_name_descriptor_linking_context')
+    return wanted
+
+
 def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
     """Two real linking contexts, source javap oracle, exact v1/opt-in contracts."""
     assert type(baseline) is bool
@@ -1444,9 +1484,9 @@ def binary_instance_suite(jdk, native_cli, env, work, baseline=False):
             binary_instance_compare_expected(normalized, historical['default'])
         else:
             detailed = binary_instance_query(native_cli, batch, details=True)
-            binary_instance_compare_modes(default, detailed)
+            binary_instance_compare_modes(default, detailed, details_version=2)
             rich = binary_instance_normalize(detailed['result'], prepared)
-            binary_instance_compare_expected(rich, binary_instance_current_expected(contract, label))
+            binary_instance_compare_expected(rich, binary_member_v2_expected(contract, label))
         total += len(normalized['queries'])
         print('binary-instance ' + label + ' contexts=2 queries=' + str(len(normalized['queries'])) + ' baseline=' + str(baseline), flush=True)
     if baseline:

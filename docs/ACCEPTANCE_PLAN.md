@@ -237,7 +237,7 @@ failure hints without changing the frozen records.
 
 The default declaration JSON remains version 1 with its original target shape
 and coarse identity precision. A separate `declaration --target-details` query
-requires `result.target_details_version: 1` and exact binary-method descriptor,
+requires `result.target_details_version: 2` and exact binary-method descriptor,
 binary name and declaring compilation context. These details distinguish
 same-name overloads without inventing source ranges or persistent symbol IDs.
 The gate compares whole records in both modes, not a normalized subset that

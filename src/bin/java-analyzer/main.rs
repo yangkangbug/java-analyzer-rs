@@ -267,7 +267,7 @@ fn encode(value: &Value) -> Result<Vec<u8>, Error> {
     Ok(out.0)
 }
 fn capabilities() -> Value {
-    json!({"binary_target_details":{"version":1,"option":"--target-details","command":"declaration","scope":"binary_methods_only"},
+    json!({"binary_target_details":{"version":2,"option":"--target-details","command":"declaration","scope":"binary_methods_and_fields"},
         "experimental": true,
         "declaration_navigation": "limited_name_binding",
         "method_argument_applicability": false,
@@ -451,13 +451,17 @@ fn target_json(
             .scope(id)
             .and_then(|scope| scope.inputs().project().class_signature(&target.path))
             .ok_or_else(|| Error::new("invalid_target", "binary target origin is absent from its declared context"))?;
+        // The identity describes an already selected declaration, not a new
+        // field lookup. Never validate a field against a same-named method.
+        let members = match target.kind {
+            java_engine::TargetKind::Method => &signature.methods,
+            java_engine::TargetKind::Field => &signature.fields,
+            _ => return Err(Error::new("invalid_target", "binary identity requires a method or field")),
+        };
         if signature.binary_name != identity.binary_name
-            || !signature
-                .methods
-                .iter()
-                .any(|member| member.name == target.name && member.descriptor == identity.descriptor)
+            || !members.iter().any(|member| member.name == target.name && member.descriptor == identity.descriptor)
         {
-            return Err(Error::new("invalid_target", "binary method identity does not match its selected signature"));
+            return Err(Error::new("invalid_target", "binary member identity does not match its selected signature"));
         }
         out.insert("binary_name".into(), json!(identity.binary_name));
         out.insert("descriptor".into(), json!(identity.descriptor));
@@ -623,7 +627,7 @@ fn run(raw_args: &[String]) -> Result<Value, Error> {
         _ => unreachable!("validated command"),
     };
     if args.target_details {
-        result["target_details_version"] = json!(1);
+        result["target_details_version"] = json!(2);
     }
     if let Some(state) = overlay_state {
         result["overlay_state"] = state;

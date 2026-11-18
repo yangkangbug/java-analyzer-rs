@@ -1,3 +1,4 @@
+# Current adapter fixture outputs use target-details v2; frozen historical inputs are unchanged.
 """Exact shared inherited data contract; no native or JVM required."""
 import copy
 import hashlib
@@ -241,7 +242,7 @@ class BinaryMethodControls(unittest.TestCase):
             row['file']=str(self.root/row['file'])
             for target in row['targets']:target['path']=target['path'].replace('@PLATFORM@',str(self.platform))
         result={'index_builds':1,'queries':rows}
-        if mode=='expected_details':result['target_details_version']=1
+        if mode=='expected_details':result['target_details_version']=2
         return {'result':result}
     def check(self, value, mode):
         self.c.check_binary_methods(value,self.plan,self.root,self.platform,
@@ -273,7 +274,7 @@ class BinaryMethodControls(unittest.TestCase):
             d=self.response('expected');d['result']['queries'][0]['targets'][0][key]=value
             with self.assertRaises(ValueError):self.check(d,'expected')
         for mode in ['baseline','expected','expected_details']:
-            d=self.response(mode);d['target_details_version']=1
+            d=self.response(mode);d['target_details_version']=2
             with self.assertRaises(ValueError):self.check(d,mode)
         d=self.response('expected_details');del d['result']['target_details_version']
         with self.assertRaises(ValueError):self.check(d,'expected_details')

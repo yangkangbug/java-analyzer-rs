@@ -419,9 +419,9 @@ or Maven/Gradle support. External project build scripts are never executed by
 the native acceptance or measurement paths.
 
 
-Binary method detail: `declaration --target-details` opts into result
-`target_details_version: 1`; default schema-v1 target projection is unchanged.
-See [binary method identities](BINARY_METHOD_CALLS.md). This option is not a
+Binary member detail: `declaration --target-details` opts into result
+`target_details_version: 2`; default schema-v1 target projection is unchanged.
+See [binary field/method identities and migration](BINARY_FIELD_IDENTITY.md). This option is not a
 request for binary source ranges and is not accepted by other commands.
 
 ### Source type-parameter targets (0.6)

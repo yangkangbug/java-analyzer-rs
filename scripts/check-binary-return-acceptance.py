@@ -115,6 +115,18 @@ def current_projection(plan):
     return result
 
 
+def current_details_v2(plan):
+    # Default results and historical 0.8 projection stay exact. Only the current
+    # opt-in envelope advances; this fixture has no binary Field targets.
+    result = current_projection(plan)
+    rich = result['details']
+    assert type(rich['target_details_version']) is int and rich['target_details_version'] == 1
+    assert all(t.get('origin') != 'binary' or t['kind'] != 'Field'
+               for row in rich['queries'] for t in row['targets'])
+    rich['target_details_version'] = 2
+    return result
+
+
 def controls(wanted):
     mutants = []
     def add(change):
@@ -180,9 +192,9 @@ def run(args):
             a.write_json(PLAN, plan)
         else:
             exact({k: plan[k] for k in metadata}, metadata, 'all corpus provenance and token positions')
-            exact(actual, plan['baseline'] if args.baseline else current_projection(plan), 'complete default and detailed records')
+            exact(actual, plan['baseline'] if args.baseline else current_details_v2(plan), 'complete default and detailed records')
         a.same({name: a.sha256(root / name) for name in sources}, hashes, 'all 249 source files unchanged')
-        count = controls(current_projection(plan)['details'])
+        count = controls(current_details_v2(plan)['details'])
         print('PASS: 8 complete Commons probes, 5 historical selections plus 1 reviewed additive projection, 1 refusal, 1 preserved inner target; '
               f'249 unchanged sources; {count} comparator controls; baseline={args.baseline}; capture={args.capture_baseline}')
 

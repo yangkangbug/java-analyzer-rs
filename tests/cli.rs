@@ -760,9 +760,51 @@ fn binary_target_details_are_explicit_and_default_projection_stays_v1() {
         ],
         true,
     );
-    assert_eq!(details["result"]["target_details_version"], 1);
+    assert_eq!(details["result"]["target_details_version"], 2);
     let target = &details["result"]["queries"][0]["targets"][0];
     assert_eq!(target["descriptor"], "()V");
+    assert_eq!(target["binary_name"], "lib/Lib");
+    assert_eq!(target["linking_context"], json!({"project":"app","source_set":"main"}));
+    assert_eq!(target["identity_precision"], "origin_binary_name_descriptor_linking_context");
+    assert_eq!(target["source_available"], false);
+    assert!(target.get("range").is_none());
+}
+
+#[test]
+fn binary_field_details_v2_leave_default_projection_and_source_availability_unchanged() {
+    let f = Fixture::new();
+    let text = "class A extends lib.Lib { void use() { value++; } }";
+    f.write("src/A.java", text);
+    f.write("deps/library.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    let mut manifest = minimal_manifest();
+    manifest["compilations"][0]["classpath"] = json!([{"kind":"jar","path":"deps/library.jar"}]);
+    let path = f.write("project.json", manifest.to_string());
+    let ordinary = f.declaration("src/A.java", text.rfind("value").unwrap());
+    let old = &ordinary["result"]["queries"][0]["targets"][0];
+    assert_eq!(old["identity_precision"], "origin_kind_owner_name_only");
+    assert!(old["linking_context"].is_null());
+    assert!(old.get("descriptor").is_none());
+    assert!(ordinary["result"].get("target_details_version").is_none());
+    let details = f.run(
+        &[
+            "declaration",
+            "--target-details",
+            "--manifest",
+            path.to_str().unwrap(),
+            "--project",
+            "app",
+            "--source-set",
+            "main",
+            "--file",
+            "src/A.java",
+            "--byte",
+            &text.rfind("value").unwrap().to_string(),
+        ],
+        true,
+    );
+    assert_eq!(details["result"]["target_details_version"], 2);
+    let target = &details["result"]["queries"][0]["targets"][0];
+    assert_eq!(target["descriptor"], "I");
     assert_eq!(target["binary_name"], "lib/Lib");
     assert_eq!(target["linking_context"], json!({"project":"app","source_set":"main"}));
     assert_eq!(target["identity_precision"], "origin_binary_name_descriptor_linking_context");

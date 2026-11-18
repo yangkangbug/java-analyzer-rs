@@ -617,5 +617,38 @@ class OwnFieldCurrentProjection(unittest.TestCase):
                 with self.assertRaises(AssertionError): oracle.current_reference_expectations(original, qs, ds)
 
 
+
+
+class BinaryFieldV2Projection(unittest.TestCase):
+    def test_exact_field_metadata_delta_preserves_frozen_history(self):
+        _, contract = oracle.binary_instance_fixture()
+        frozen = json.dumps(contract, sort_keys=True)
+        for label in contract['current']:
+            old = oracle.binary_instance_current_expected(contract, label)
+            current = oracle.binary_member_v2_expected(contract, label)
+            self.assertEqual(current['target_details_version'], 2)
+            changed = [i for i,(a,b) in enumerate(zip(old['queries'],current['queries'])) if a != b]
+            self.assertEqual(changed, [1,26] if label == 'valid' else [])
+            for i in changed:
+                before, after = old['queries'][i], current['queries'][i]
+                self.assertEqual(dict(after, targets=before['targets']), before)
+                self.assertEqual([oracle.binary_member_v2_default_projection(t) for t in after['targets']], before['targets'])
+                for t in after['targets']:
+                    for key in ['descriptor','linking_context','identity_precision']:
+                        wrong = dict(t); del wrong[key]
+                        with self.assertRaises((AssertionError,KeyError)): oracle.binary_member_v2_default_projection(wrong)
+        self.assertEqual(json.dumps(contract,sort_keys=True), frozen)
+
+    def test_v2_rejects_wrong_version_missing_descriptor_and_wrong_context(self):
+        _, contract = oracle.binary_instance_fixture()
+        expected = oracle.binary_member_v2_expected(contract, 'valid')
+        for change in ['version','missing','context','descriptor']:
+            actual = json.loads(json.dumps(expected))
+            if change == 'version': actual['target_details_version'] = 1
+            elif change == 'missing': del actual['queries'][1]['targets'][0]['descriptor']
+            elif change == 'context': actual['queries'][1]['targets'][0]['linking_context']['project'] = 'second'
+            else: actual['queries'][1]['targets'][0]['descriptor'] = 'J'
+            with self.assertRaises(AssertionError): oracle.binary_instance_compare_expected(actual, expected)
+
 if __name__ == "__main__":
     unittest.main()

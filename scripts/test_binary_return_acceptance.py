@@ -105,5 +105,29 @@ class BinaryReturnAcceptanceTests(unittest.TestCase):
             with self.assertRaises(m.a.AcceptanceError): m.load_plan()
 
 
+
+class CurrentDetailsV2EnvelopeTests(unittest.TestCase):
+    def test_only_protocol_envelope_changes_and_history_is_immutable(self):
+        contract = m.load_plan()
+        frozen = copy.deepcopy(contract)
+        old = m.current_projection(contract)
+        current = m.current_details_v2(contract)
+        rich = current['details']
+        self.assertEqual(rich['target_details_version'], 2)
+        rich['target_details_version'] = 1
+        self.assertEqual(current, old)
+        self.assertEqual(contract, frozen)
+
+    def test_unexpected_old_protocol_or_field_is_rejected(self):
+        contract = m.load_plan()
+        # V2 is an explicit migration from a verified v1 stage, never a union.
+        for kind in ['version', 'field']:
+            wrong = copy.deepcopy(contract)
+            rich = wrong['candidate']['details']
+            if kind == 'version': rich['target_details_version'] = 2
+            else:
+                rich['queries'][0]['targets'][0].update(origin='binary', kind='Field')
+            with self.assertRaises(AssertionError): m.current_details_v2(wrong)
+
 if __name__ == '__main__':
     unittest.main()

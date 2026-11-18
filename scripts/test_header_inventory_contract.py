@@ -1,3 +1,4 @@
+# Current adapter fixture outputs use target-details v2; frozen historical inputs are unchanged.
 """Frozen real-source old/new inventory stages; never a union of expectations."""
 import copy
 import importlib.util
@@ -30,7 +31,7 @@ class HeaderInventoryContract(unittest.TestCase):
             for target in row['targets']:
                 target['path'] = target['path'].replace('@PLATFORM@', '/java.base.jmod')
         result = {'index_builds': 1, 'queries': rows}
-        if details: result['target_details_version'] = 1
+        if details: result['target_details_version'] = 2
         return {'result': result}
 
     def check(self, response, plan, details):
@@ -51,6 +52,20 @@ class HeaderInventoryContract(unittest.TestCase):
                         mutated = copy.deepcopy(response)
                         mutated['result']['queries'][0]['targets'][0][key] = 'Wrong'
                         with self.assertRaises(gate.AcceptanceError): self.check(mutated, plan, details)
+
+    def test_current_and_sha_pinned_historical_details_versions_are_disjoint(self):
+        plan = gate.header_inventory_plan()
+        current = self.response(plan, True)
+        historical = copy.deepcopy(current)
+        historical['result']['target_details_version'] = 1
+        self.check(current, plan, True)
+        with self.assertRaises(gate.AcceptanceError):
+            self.check(historical, plan, True)
+        gate.check_binary_methods(historical, plan, Path('/fixture'),
+                                  Path('/java.base.jmod'), details=True, details_version=1)
+        with self.assertRaises(gate.AcceptanceError):
+            gate.check_binary_methods(current, plan, Path('/fixture'),
+                                      Path('/java.base.jmod'), details=True, details_version=1)
 
     def test_modified_prediction_is_rejected(self):
         prediction = gate.header_inventory_prediction()

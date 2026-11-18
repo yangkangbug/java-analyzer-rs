@@ -973,3 +973,108 @@ fn binary_return_ambiguous_types_and_dotted_raw_aliases_never_supply_values() {
     effective_class(&mut p, "lib/Outer$Result", "java/lang/Object", &[], false, &[member(1, "hit", "(I)V")]);
     assert_ne!(query(&p, "hit(1)").status, ResolveStatus::Resolved);
 }
+
+#[test]
+fn binary_fields_retain_exact_raw_declaration_identity() {
+    for descriptor in ["I", "[[I", "Ljava/lang/String;", "[[Ljava/lang/String;"] {
+        let mut p = project("class Use { void f(){lib.Lib.value;} }", &[]);
+        p.add_class_bytes(
+            "Lib.class",
+            &class_bytes("lib/Lib", Some("java/lang/Object"), 0x21, &[], &[member(9, "value", descriptor)], &[], None),
+        )
+        .unwrap();
+        let r = query(&p, "value");
+        assert_eq!(r.status, ResolveStatus::Resolved);
+        assert_eq!(r.targets.len(), 1);
+        let t = &r.targets[0];
+        assert_eq!(t.kind, java_engine::TargetKind::Field);
+        let id = t.binary.as_ref().expect("binary field declaration identity");
+        assert_eq!(id.binary_name, "lib/Lib");
+        assert_eq!(id.descriptor, descriptor);
+        assert_eq!(id.linking_context, java_engine::BinaryLinkingContext::Standalone);
+    }
+}
+
+#[test]
+fn binary_field_candidates_preserve_ambiguity_and_order() {
+    let mut p = project("class Use {void f(){lib.Lib.value;}}", &[]);
+    p.add_class_bytes(
+        "Lib.class",
+        &class_bytes(
+            "lib/Lib",
+            Some("java/lang/Object"),
+            0x21,
+            &[],
+            &[member(9, "value", "I"), member(9, "value", "J")],
+            &[],
+            None,
+        ),
+    )
+    .unwrap();
+    let r = query(&p, "value");
+    assert_eq!(r.status, ResolveStatus::Ambiguous);
+    assert_eq!(
+        r.targets.iter().map(|t| t.binary.as_ref().unwrap().descriptor.as_str()).collect::<Vec<_>>(),
+        vec!["I", "J"]
+    );
+    p.insert("Use.java", "class Use {int value; void f(){value++;}}");
+    let r = query(&p, "value++");
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert!(r.targets[0].binary.is_none());
+}
+
+#[test]
+fn binary_field_identity_survives_edits_and_old_snapshots() {
+    let source = "class Use {void f(){lib.Lib.value;}}";
+    let mut p = project(source, &[]);
+    p.add_class_bytes(
+        "Lib.class",
+        &class_bytes("lib/Lib", Some("java/lang/Object"), 0x21, &[], &[member(9, "value", "I")], &[], None),
+    )
+    .unwrap();
+    let old = p.clone();
+    let before = query(&old, "value");
+    p.edit("Use.java", java_engine::TextEdit { start_byte: 0, end_byte: 0, insert: "/*😀*/".into() }).unwrap();
+    let after = query(&p, "value");
+    assert_eq!(before, after);
+    let mut fresh = project(p.file("Use.java").unwrap().text(), &[]);
+    fresh
+        .add_class_bytes(
+            "Lib.class",
+            &class_bytes("lib/Lib", Some("java/lang/Object"), 0x21, &[], &[member(9, "value", "I")], &[], None),
+        )
+        .unwrap();
+    assert_eq!(after, query(&fresh, "value"));
+    assert_eq!(before, query(&old, "value"));
+}
+
+#[test]
+fn generic_binary_field_identity_is_raw_erased_descriptor_not_type_inference() {
+    let mut pool = Pool::new();
+    let name = pool.utf8("lib/Lib");
+    let owner = pool.class(name);
+    let name = pool.utf8("java/lang/Object");
+    let parent = pool.class(name);
+    let name = pool.utf8("value");
+    let descriptor = pool.utf8("Ljava/util/List;");
+    let attr = pool.utf8("Signature");
+    let signature = pool.utf8("Ljava/util/List<Ljava/lang/String;>;");
+    let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61];
+    bytes.extend(u2(pool.count));
+    bytes.extend(pool.bytes);
+    for n in [0x21, owner, parent, 0, 1, 9, name, descriptor, 1, attr] {
+        bytes.extend(u2(n));
+    }
+    bytes.extend(2u32.to_be_bytes());
+    bytes.extend(u2(signature));
+    bytes.extend([0, 0, 0, 0]);
+    let mut p = project("class Use {void f(){lib.Lib.value;}}", &[]);
+    p.add_class_bytes("Lib.class", &bytes).unwrap();
+    let r = query(&p, "value");
+    assert_eq!(r.status, ResolveStatus::Resolved);
+    assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "Ljava/util/List;");
+    assert_eq!(
+        p.class_signature("Lib.class").unwrap().fields[0].signature.as_deref(),
+        Some("Ljava/util/List<Ljava/lang/String;>;")
+    );
+}

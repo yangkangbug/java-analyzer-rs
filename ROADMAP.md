@@ -1,5 +1,9 @@
 # Native Java analysis roadmap
 
+[Binary field declaration identity](docs/BINARY_FIELD_IDENTITY.md) preserves existing
+field descriptors and declaration contexts without new resolution. Version 0.9.0
+expands the Rust metadata contract and opts into CLI target-details v2.
+
 ## Statement-sequence recovery cost
 
 [Nameless annotation recovery](docs/ANNOTATION_RECOVERY_COST.md) avoids repeated

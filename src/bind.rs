@@ -84,18 +84,18 @@ pub enum BinaryLinkingContext {
     Compilation(crate::workspace::CompilationId),
 }
 
-/// Exact modeled binary method declaration. The origin is `Target::path`.
+/// Exact modeled binary method or field declaration. The origin is `Target::path`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinaryTargetIdentity {
     pub binary_name: String,
-    /// Full JVM method descriptor, including its return descriptor.
+    /// Raw JVM field descriptor, or full method descriptor including its return.
     pub descriptor: String,
     pub linking_context: BinaryLinkingContext,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Target {
-    /// Present only for binary methods; source/class/field targets remain unrefined.
+    /// Present for binary methods and fields; source/class targets remain unrefined.
     pub binary: Option<BinaryTargetIdentity>,
     pub path: String,
     pub kind: TargetKind,
@@ -2703,7 +2703,7 @@ struct Step<'a> {
 
 fn member_target(class: &ClassRec, member: &Member) -> Target {
     Target {
-        binary: if class.binary && member.kind == TargetKind::Method {
+        binary: if class.binary && matches!(member.kind, TargetKind::Method | TargetKind::Field) {
             if let Shape::Binary { descriptor, .. } = &member.shape {
                 class.binary_signature.as_ref().map(|sig| BinaryTargetIdentity {
                     binary_name: sig.binary_name.clone(),

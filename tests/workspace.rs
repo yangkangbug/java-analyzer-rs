@@ -569,3 +569,50 @@ fn binary_method_identity_uses_actual_declaration_context_not_origin_guessing() 
     }
     assert_ne!(one.targets, two.targets);
 }
+
+#[test]
+fn binary_field_identity_uses_actual_declaration_context_not_origin_guessing() {
+    let f = Fixture::new();
+    let shared = f.write("shared.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    let a = f.write("a/A.java", "class A extends lib.Lib { void use(){value++;} }");
+    let b = f.write("b/B.java", "class B extends lib.Lib { void use(){value++;} }");
+    let mut first = compilation("z", "main", vec![f.0.join("a")], vec![]);
+    first.inputs.classpath = vec![ClasspathEntry::Jar(shared.clone())];
+    let mut second = compilation("a", "test", vec![f.0.join("b")], vec![]);
+    second.inputs.classpath = vec![ClasspathEntry::Jar(shared)];
+    let s =
+        WorkspaceSnapshot::load(&WorkspaceConfig { compilations: vec![first, second], ..Default::default() }).unwrap();
+    let one = query(&s, &id("z", "main"), &a, "value");
+    let two = query(&s, &id("a", "test"), &b, "value");
+    assert_eq!(one.status, ResolveStatus::Resolved);
+    assert_eq!(two.status, ResolveStatus::Resolved);
+    assert_eq!(one.targets[0].path, two.targets[0].path);
+    for (r, scope) in [(&one, id("z", "main")), (&two, id("a", "test"))] {
+        let identity = r.targets[0].binary.as_ref().unwrap();
+        assert_eq!(identity.binary_name, "lib/Lib");
+        assert_eq!(identity.descriptor, "I");
+        assert_eq!(identity.linking_context, java_engine::BinaryLinkingContext::Compilation(scope));
+    }
+    assert_ne!(one.targets, two.targets);
+}
+
+#[test]
+fn binary_field_identity_keeps_dependency_declaration_context() {
+    let f = Fixture::new();
+    let shared = f.write("shared.jar", include_bytes!("fixtures/project/deps/library.jar"));
+    f.write("lib/lib/Provider.java", "package lib; public class Provider extends Lib {}");
+    let a = f.write("app/A.java", "class A extends lib.Provider { void f(){value++;} }");
+    let mut lib = compilation("library", "main", vec![f.0.join("lib")], vec![]);
+    lib.inputs.classpath = vec![ClasspathEntry::Jar(shared)];
+    let app = compilation("app", "main", vec![f.0.join("app")], vec![id("library", "main")]);
+    let s = WorkspaceSnapshot::load(&WorkspaceConfig { compilations: vec![lib, app], ..Default::default() }).unwrap();
+    let path = key(&a);
+    let at = fs::read_to_string(&a).unwrap().rfind("value").unwrap() as u32;
+    let found = s.scope(&id("app", "main")).unwrap().resolve_at(&path, at);
+    assert_eq!(found, s.prepare().scope(&id("app", "main")).unwrap().resolve_at(&path, at));
+    assert_eq!(found.status, ResolveStatus::Resolved);
+    assert_eq!(
+        found.targets[0].binary.as_ref().unwrap().linking_context,
+        java_engine::BinaryLinkingContext::Compilation(id("library", "main"))
+    );
+}

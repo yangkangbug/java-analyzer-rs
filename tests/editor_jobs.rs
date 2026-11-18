@@ -394,3 +394,16 @@ fn anonymous_field_definition_uses_source_range_not_display_owner() {
         json!({"start":{"line":0,"character":start},"end":{"line":0,"character":start+5}})
     );
 }
+
+#[test]
+fn enriched_binary_field_identity_does_not_enable_source_attachment() {
+    let f = attached_binary_fixture();
+    f.write("attached/lib/Lib.java", "package lib; public class Lib { public int value; }");
+    let text = "class A extends lib.Lib { void f(){value++;} }";
+    let job = f.job(text, 0, text.find("value").unwrap() as u32);
+    let result = f.definition(&job, true)["result"].clone();
+    assert_eq!(result["status"], "Resolved");
+    assert_eq!(result["refusal"], "binary_source_unavailable");
+    assert!(result["location"].is_null());
+    assert!(result.get("source_association").is_none());
+}

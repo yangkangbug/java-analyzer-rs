@@ -92,6 +92,17 @@ def current_fixed_arity(contract):
     return result
 
 
+def current_details_v2(contract):
+    # Explicit envelope-only migration. Keep all frozen v1 records and earlier
+    # semantic-stage projections unchanged; these fixtures contain no fields.
+    result = current_fixed_arity(contract)
+    assert type(result['target_details_version']) is int and result['target_details_version'] == 1
+    assert all(t.get('origin') != 'binary' or t['kind'] != 'Field'
+               for row in result['queries'] for t in row['targets'])
+    result['target_details_version'] = 2
+    return result
+
+
 def compare(actual, expected):
     # Canonical JSON also rejects bool-as-int coordinates.
     assert json.dumps(actual, sort_keys=True) == json.dumps(expected, sort_keys=True), \
@@ -180,7 +191,7 @@ def run_suite(jdk, native, work, baseline=False, capture=False):
         compare(list(queries), contract['query_order'])
         compare(compiled, contract['compiler'])
         compare(rejected, contract['invalid_diagnostics'])
-        compare(actual, contract['baseline'] if baseline else current_fixed_arity(contract))
+        compare(actual, contract['baseline'] if baseline else current_details_v2(contract))
     controls = adversarial_controls(contract['candidate'])
     print(json.dumps({'compiler_queries': len(compiled), 'native_positive_predictions': len(prediction['native_positive']),
                       'native_conservative_refusals': len(prediction['native_refusal']),

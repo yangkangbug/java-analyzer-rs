@@ -61,6 +61,9 @@ available; final real-project verification is reported in acceptance logs.
 
 ## Exact method identity and CLI projection
 
+This section records the original method-only v1 stage. Version 0.9 extends
+identity to fields and opt-in output to v2; see [current contract](BINARY_FIELD_IDENTITY.md).
+
 `Target.binary: Option<BinaryTargetIdentity>` is present only for binary methods.
 It carries original JVM binary name (including `$`), full descriptor including
 return, and explicit declaration context: `Standalone` or the workspace's

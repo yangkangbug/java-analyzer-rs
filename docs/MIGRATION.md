@@ -92,3 +92,10 @@ root evidence requires `java/lang/Object`, not just its dotted spelling. This
 corrects previously unsupported success for a missing `Outer$Inner` ancestor
 replaced by the unrelated package-level `Outer/Inner`. It does not add nested-type
 selection, inherited binary calls, generic substitution or a persistent identity.
+
+## Binary field identity (0.9)
+
+See [0.9 public contract and opt-in v2 migration](BINARY_FIELD_IDENTITY.md).
+Target.binary now also represents binary Field declarations; consumers must use
+Target.kind to distinguish field and method descriptor grammars. The default CLI
+schema-v1 result projection remains unchanged, while --target-details emits v2.

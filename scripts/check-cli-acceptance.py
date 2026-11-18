@@ -563,12 +563,12 @@ def effective_binary_plan():
     return result
 
 
-def check_binary_methods(response, plan, source_root, platform, *, baseline=False, details=False):
+def check_binary_methods(response, plan, source_root, platform, *, baseline=False, details=False, details_version=2):
     require(not (baseline and details), "old binary has no details protocol")
     same(response['result']['index_builds'], 1, "one binary proof index")
     require("target_details_version" not in response, "details version belongs only in result")
     if details:
-        same(response['result'].get('target_details_version'), 1, "explicit target details version")
+        same(response['result'].get('target_details_version'), details_version, "explicit target details version")
     else:
         require('target_details_version' not in response['result'], "default protocol must not expose details version")
     rows = copy.deepcopy(response['result']['queries'])
@@ -611,7 +611,7 @@ def check_inherited_preservation(response, plan, source_root):
 
 def check_caller_isolation_details(response, source_root, platform):
     """Current-only q04 compiler-verified overload; frozen default rows stay intact."""
-    same(response["result"], {"target_details_version": 1, "index_builds": 1, "queries": [{
+    same(response["result"], {"target_details_version": 2, "index_builds": 1, "queries": [{
         "query_index": 0, "compilation": COMPILATION, "source_compilation": COMPILATION,
         "file": str(source_root / "org/apache/commons/lang3/StringUtils.java"),
         "position": {"encoding": "utf8", "offset": 59592}, "byte_offset": 59592,
@@ -756,7 +756,11 @@ def main():
             if not args.capture_binary_method_baseline:
                 detailed = run_cli(native, cwd, manifest, 'declaration', args.timeout_seconds,
                                    args.max_output_bytes, binary_requests, target_details=True)
-                check_binary_methods(detailed, binary_plan, source_root, platform, details=True)
+                # Only the independently SHA-pinned historical captures speak v1.
+                # Current acceptance remains strictly v2, never a version union.
+                check_binary_methods(detailed, binary_plan, source_root, platform, details=True,
+                                     details_version=1 if (args.capture_effective_binary_baseline or
+                                                          args.capture_header_inventory_baseline) else 2)
             print('binary_methods=10 exact complete records; effective_binary_predictions=' + str(0 if historical or args.capture_effective_binary_baseline else 3) + '; header_inventory_new_predictions=' +
                   ('0' if historical else '3') + '; stage=' +
                   ('baseline_verified_not_acceptance' if historical or args.capture_effective_binary_baseline else 'current'))
