@@ -2,7 +2,7 @@
 
 Class state can now enter the existing strict invocation proof, rather than only
 legacy name navigation. In an ordinary instance method, a directly declared
-instance field may supply a scalar actual or a receiver through both `field` and
+instance field may supply a scalar or explicit-array actual, or a receiver through both `field` and
 `this.field`. This connects existing argument selection, call-result composition
 and bounded binary receiver instantiation to object state; it adds no separate
 method selector or public type API.
@@ -29,7 +29,12 @@ caller-context checks. Access to that class's own private, package, protected or
 public field is allowed. Type names resolve at the field declaration, not at the
 use or from an initializer. Null initializers do not change declared types.
 
-Plain rank-zero reference and primitive fields supply strict actuals. Applied
+Plain reference and primitive fields supply strict actuals. Explicit array fields
+retain component identity, rank and declaration linking context through the same
+private declaration-to-array proof as locals/parameters. Existing indexing
+composes naturally: primitive ranks may decrement to a scalar, and the existing
+rank-one reference projection remains available as an argument. This does not
+add indexed receivers or field-array length/arithmetic evidence. Applied
 fields are receivers only, not erased scalar arguments. For example,
 `this.box.get().hit()` may use the same bounded binary substitution proof as an
 explicit local `Box<Item>`. Existing method-family limits still apply.
@@ -43,7 +48,7 @@ attempt the full inheritance, qualified access or capture-conversion rules.
 
 No strict field evidence for static fields/contexts, unsupported constructors, initializers,
 lambdas, nested/anonymous/local classes, `super`, qualified `Outer.this`, arbitrary
-`obj.field`, inherited fields, annotated or array fields, field updates, generic
+`obj.field`, inherited fields, unsupported annotated declarations, field updates, generic
 source owners, or initializer inference. Invalid/duplicate field modifiers,
 duplicate own fields and incomplete type/hierarchy identities refuse proof.
 All scans and expression recursion share the existing work/depth limits.
@@ -53,7 +58,7 @@ selection is unavailable. Those legacy results are not reused as argument or
 return-type evidence. Unrelated `obj.field` navigation is unchanged. No new claim
 is made that every public `Resolved` result checks full Java applicability.
 
-## Validation and real-project interpretation
+## Original scalar-field validation and real-project interpretation
 
 Eight native groups cover reference/primitive actuals, bare/this and applied
 receivers, lexical shadowing, own-versus-inherited fields, access, modifier/rank
@@ -70,7 +75,30 @@ entry point, not class-specific rules or promised coverage. The last example
 still needs inherited generic member handling, and other calls can remain blocked
 by unrelated caller, argument or inventory limits.
 
-The fixed 577-query and separate 30-query result records are completely unchanged.
+At the original scalar-field increment, the fixed 577-query and separate
+30-query result records were completely unchanged.
 This is a structural semantic improvement demonstrated by independent fixtures,
 not a measured rise in those projects' coverage. No new survey framework or
 acceptance stage was introduced.
+
+## Shared own-field array extension
+
+The existing own-field identity, access, shadowing and caller checks are unchanged.
+A reference component is resolved at its declaration and must pass the existing
+complete identity/access/graph proof. Unknown locals, duplicate fields, generic
+components and exhausted proofs do not fall through to a different field or type.
+No new field lookup, cache, budget, stored type model or public API is introduced.
+
+The original nine StrBuilder arraycopy calls were independently checked with
+javac. Only getChars (byte 64344) gains the exact System.arraycopy descriptor
+(Ljava/lang/Object;ILjava/lang/Object;II)V; the other eight remain refused.
+Their scalar-field arithmetic remains outside this extension. Original 1,297
+query records and independent 3,393 type-parameter, 94 local-type and 167 array
+records are unchanged. Five independent native groups, eight compiler targets
+and four disk/unsaved-Unicode LSP checks cover the shared behavior. Two previous
+field[0]/this.field[0] argument refusals now assert the complete compiler-exact
+Sink.take target; their receiver and other unsupported-array controls remain.
+
+Evidence: evidence/own-field-array-values-20261118 and
+evidence/own-field-review-20261118. This is declaration evidence reuse, not general
+field expression typing.

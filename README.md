@@ -759,3 +759,6 @@ not a general parser resource guarantee. Incremental block reparsing remains
 consistent with full parsing. Duplicate labels, jump-target validity and control
 flow are not analyzed. Labels do not disable existing type-based call selection:
 valid labeled bodies preserve the normal statement and declaration semantics.
+
+Certified [own source fields](docs/SOURCE_FIELD_VALUES.md) now retain explicit
+array component/rank evidence in invocation arguments and existing index projections.

@@ -7035,15 +7035,51 @@ impl<'a> ReferenceCallProof<'a> {
         self.own_field(name?, at)
     }
 
+    // Shared explicit declaration facts; callers separately establish local or
+    // own-field eligibility. No initializer inference or nominal fallback.
+    fn declared_array(
+        &mut self,
+        file: &'a FileRec,
+        reference: Option<&ReferenceDeclaration>,
+        primitive: Option<PrimitiveValue>,
+        at: u32,
+    ) -> Option<ArrayValue<'a>> {
+        let (parts, primitive, rank) = if let Some(reference) = reference {
+            let plain = reference.plain()?;
+            (Some(plain.parts.as_slice()), None, plain.array_rank)
+        } else {
+            let value = primitive?;
+            (None, Some(value.primitive), value.rank)
+        };
+        self.charge(1)?;
+        if !(1..=255).contains(&rank) {
+            return None;
+        }
+        let component = if let Some(parts) = parts {
+            let class = self.reference_type(file, parts, at)?;
+            self.accessible(class)?;
+            self.graph(class)?;
+            ArrayComponent::Reference(class)
+        } else {
+            ArrayComponent::Primitive(primitive?)
+        };
+        Some(ArrayValue { component, rank, link_scope: file.scope })
+    }
+
     fn field_actual(&mut self, field: &'a Member) -> Option<StrictActual<'a>> {
         let evidence = field.source_field.as_ref()?;
         if let Some(reference) = &evidence.reference {
             let plain = reference.plain()?;
             if plain.array_rank != 0 {
-                return None;
+                return self
+                    .declared_array(self.file, evidence.reference.as_ref(), evidence.primitive, field.start)
+                    .map(StrictActual::Array);
             }
             let class = self.reference_type(self.file, &plain.parts, field.start)?;
             return Some(StrictActual::Reference(ReferenceValue { class }));
+        }
+        if evidence.primitive.is_some_and(|v| v.rank > 0) {
+            return self.declared_array(self.file, None, evidence.primitive, field.start).map(StrictActual::Array);
         }
         evidence.primitive.filter(|v| v.rank == 0).map(StrictActual::Primitive)
     }
@@ -7999,34 +8035,15 @@ impl<'a> ReferenceCallProof<'a> {
                 && !local.catch_origin
                 && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)
             {
-                if let Some(ReferenceDeclaration::Plain(plain)) = &local.reference {
-                    if plain.array_rank > 0 {
-                        self.charge(1)?;
-                        if plain.array_rank > 255 {
-                            return None;
-                        }
-                        let component = self.reference_type(self.file, &plain.parts, local.start)?;
-                        self.accessible(component)?;
-                        self.graph(component)?;
-                        return Some(StrictActual::Array(ArrayValue {
-                            component: ArrayComponent::Reference(component),
-                            rank: plain.array_rank,
-                            link_scope: self.file.scope,
-                        }));
-                    }
-                } else if local.reference.is_none()
-                    && let Some(value) = local.primitive
-                    && value.rank > 0
-                {
-                    self.charge(1)?;
-                    if value.rank > 255 {
-                        return None;
-                    }
-                    return Some(StrictActual::Array(ArrayValue {
-                        component: ArrayComponent::Primitive(value.primitive),
-                        rank: value.rank,
-                        link_scope: self.file.scope,
-                    }));
+                let explicit_array = match &local.reference {
+                    Some(ReferenceDeclaration::Plain(plain)) => plain.array_rank > 0,
+                    None => local.primitive.is_some_and(|value| value.rank > 0),
+                    _ => false,
+                };
+                if explicit_array {
+                    return self
+                        .declared_array(self.file, local.reference.as_ref(), local.primitive, local.start)
+                        .map(StrictActual::Array);
                 }
             }
             if local.reference.is_some() {
@@ -10365,6 +10382,50 @@ mod own_static_budget_tests {
                 assert!(result.is_none());
                 assert!(proof.exhausted);
                 assert_eq!(proof.work_left, 0);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod own_field_array_budget_tests {
+    use super::*;
+    #[test]
+    fn declaration_array_and_own_field_share_the_actual_budget() {
+        for declaration in ["int[][] a;", "A[] a;"] {
+            for operand in ["a", "this.a", "a[0]", "this.a[0]"] {
+                let text = format!("class A {{}} class C {{ {declaration} void f(){{ use({operand}); }} }}");
+                let mut p = Project::new();
+                p.insert("C.java", &text);
+                let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+                bytes.extend(b"java/lang/Object");
+                bytes.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+                p.add_class_bytes("Object.class", &bytes).unwrap();
+                let index = Index::build(&p.files, &p.binaries);
+                let file = index.files.iter().find(|f| f.path == "C.java").unwrap();
+                let parsed = p.file("C.java").unwrap();
+                let at = text.rfind("use(").unwrap() as u32;
+                let caller = direct_caller(parsed.root(), at);
+                let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+                let (args, args_at) = hit.arguments.unwrap();
+                let operands = delimited_nodes(args, args_at).unwrap();
+                let (node, node_at) = operands[0];
+                let mut proof = ReferenceCallProof::new(&index, file, caller);
+                let initial = proof.work_left;
+                assert!(proof.actual(node, node_at, 0).is_some());
+                let used = initial - proof.work_left;
+                assert!(used > 0);
+                for budget in [0, used - 1] {
+                    let mut proof = ReferenceCallProof::new(&index, file, caller);
+                    proof.work_left = budget;
+                    assert!(proof.actual(node, node_at, 0).is_none());
+                    assert!(proof.exhausted);
+                    assert_eq!(proof.work_left, 0);
+                }
+                let mut proof = ReferenceCallProof::new(&index, file, caller);
+                proof.work_left = used;
+                assert!(proof.actual(node, node_at, 0).is_some());
+                assert!(!proof.exhausted);
             }
         }
     }

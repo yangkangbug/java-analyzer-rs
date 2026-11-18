@@ -776,3 +776,11 @@ and validated varargs declarations in fixed-arity form close two compatibility
 gaps without enabling spread invocation. Eighteen original source calls have
 independent exact compiler targets; old 1297/3393/94 query sets remain unchanged.
 Singleton navigation stays name-level; no budget, API or ancestor lookup expansion.
+
+### Own-field array declaration evidence
+
+Certified own instance fields now share local/parameter ArrayValue construction.
+Existing index projections compose without new field lookup or receiver typing.
+One original StrBuilder getChars call improves; eight related calls remain blocked
+by other expressions. Field-array length/arithmetic and inherited/foreign fields
+are not added. See [source field evidence](docs/SOURCE_FIELD_VALUES.md).

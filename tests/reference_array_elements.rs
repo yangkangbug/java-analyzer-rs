@@ -91,7 +91,26 @@ fn arrays_never_become_scalar_references() {
         let text = format!(
             "{TYPES} class Calls {{Item[] field; Item[] make(){{return null;}} void m(Item[] items, Item[][] matrix,Sink sink){{sink.take({expr});}}}}"
         );
-        checked(&text, &format!("take({expr})"), false);
+        if matches!(expr, "field[0]" | "this.field[0]") {
+            // Shared certified field ArrayValue now composes with the original
+            // rank-one argument projection, not general receiver inference.
+            let r = query(&project(&text), &format!("take({expr})"));
+            assert_eq!(r.status, ResolveStatus::Resolved);
+            assert_eq!(
+                r.targets,
+                vec![java_engine::Target {
+                    binary: None,
+                    path: "Calls.java".into(),
+                    kind: java_engine::TargetKind::Method,
+                    name: "take".into(),
+                    owner: "Sink".into(),
+                    start_byte: 121,
+                    end_byte: 125,
+                }]
+            );
+        } else {
+            checked(&text, &format!("take({expr})"), false);
+        }
     }
     let text = format!("{TYPES} class Calls {{void m(Item[] items){{items.run(1);}}}}");
     checked(&text, "run(1)", false);

@@ -1,7 +1,8 @@
 # Explicit array invocation types
 
 Existing fixed-arity invocation selection now retains array component identity,
-rank and declaration linking context for explicit local/parameter arguments and
+rank and declaration linking context for explicit local/parameter and certified
+own-field arguments, and
 source/binary formals. Arrays are private type evidence, not synthetic classes or
 navigation targets. Version 0.7 and public APIs are unchanged.
 
@@ -41,8 +42,12 @@ ancestor lookup is introduced.
 
 ## Boundaries
 
-Initial actual arrays are explicit local/parameter names with transparent
-parentheses. Fields, captures, inferred values, new/cast/index/call-result roots,
+Initial actual arrays are explicit local/parameter names or certified same-owner
+instance fields, with transparent parentheses. See [own-field evidence](SOURCE_FIELD_VALUES.md)
+for identity, shadowing and declaration-context limits. Existing primitive-rank
+indexing and rank-one reference indexing compose with these roots; this does not
+add field-array length or arithmetic proof. Captures, inferred values,
+new/cast/call-result roots,
 generic components, local types and array return propagation are not newly
 admitted. Runtime non-nullness, store compatibility and execution are not proved.
 Ordinary reference components use existing source/binary name/access/graph
