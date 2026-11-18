@@ -24,6 +24,31 @@ class QualifiedOracleTests(unittest.TestCase):
             native[q] = [status, str(len(targets)), *targets]
         return ds, qs, expected, compiler, native
 
+    def test_current_boxing_projection_is_exact(self):
+        ds, qs, expected, compiler, native = self.evidence()
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(current['mixed_boxed'], ('Resolved', 'boxed@mixed.Target', 'boxed@mixed.Target'))
+        self.assertEqual(expected['mixed_boxed'][0], 'CallNotResolved')
+        for changed in [('Resolved', 'boxed@mixed.Target', 'boxed@mixed.Target'),
+                        ('CallNotResolved', 'set@mixed.Target', 'boxed@mixed.Target'),
+                        ('CallNotResolved', 'boxed@mixed.Target', 'set@mixed.Target')]:
+            bad = dict(expected); bad['mixed_boxed'] = changed
+            with self.assertRaises(AssertionError):
+                c.current_expectations(bad, qs, ds)
+
+        for q, (status, selected, candidates) in current.items():
+            targets = [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')]
+            native[q] = [status, str(len(targets)), *targets]
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for mutation in ['status', 'kind', 'owner', 'range']:
+            bad = copy.deepcopy(native)
+            if mutation == 'status': bad['mixed_boxed'][0] = 'CallNotResolved'
+            elif mutation == 'kind': bad['mixed_boxed'][2] = bad['mixed_boxed'][2].replace('|Method|', '|Field|')
+            elif mutation == 'owner': bad['mixed_boxed'][2] = bad['mixed_boxed'][2].replace('.Target|', '.Wrong|')
+            else: bad['mixed_boxed'][2] += '0'
+            with self.assertRaises(AssertionError):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
+
     def test_complete_fixed_inventory(self):
         ds, qs, expected, compiler, native = self.evidence()
         self.assertEqual((len(qs), len(ds)), (11, 13))
@@ -94,7 +119,7 @@ class QualifiedOracleTests(unittest.TestCase):
         current = c.current_expectations(original, qs, ds)
         self.assertEqual(original, frozen)
         self.assertEqual(c.baseline_expectations(original), baseline)
-        self.assertEqual({q for q in prior if prior[q] != current[q]}, {'mixed_unknown'})
+        self.assertEqual({q for q in prior if prior[q] != current[q]}, {'mixed_unknown', 'mixed_boxed'})
         self.assertEqual(current['mixed_unknown'], ('Resolved', 'mix_int@mixed.Target', 'mix_int@mixed.Target'))
         for field in range(3):
             bad = dict(original)

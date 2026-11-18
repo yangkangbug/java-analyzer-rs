@@ -1,5 +1,8 @@
 # java-analyzer-rs
 
+[Fixed-arity loose invocation](docs/LOOSE_INVOCATION.md) adds bounded boxing and
+unboxing after a proved-empty strict applicability phase, without changing budgets.
+
 [Type-parameter declaration identity](docs/TYPE_PARAMETERS.md) resolves source
 formals without borrowing same-named classes or inferring generic receiver types.
 Version 0.7.0 adds the public TargetKind::LocalType Git-dependency migration.

@@ -5997,6 +5997,12 @@ struct ReferenceValue<'a> {
     class: &'a ClassRec,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InvocationPhase {
+    Strict,
+    Loose,
+}
+
 #[derive(Clone, Copy)]
 enum StrictActual<'a> {
     Null,
@@ -7425,6 +7431,96 @@ impl<'a> ReferenceCallProof<'a> {
         Some(true)
     }
 
+    // Names locate a configured platform declaration; they never establish
+    // compatibility or identity across linking scopes.
+    fn invocation_wrapper(&mut self, primitive: Primitive, scope: usize) -> Option<&'a ClassRec> {
+        let name = match primitive {
+            Primitive::Boolean => "java.lang.Boolean",
+            Primitive::Byte => "java.lang.Byte",
+            Primitive::Char => "java.lang.Character",
+            Primitive::Short => "java.lang.Short",
+            Primitive::Int => "java.lang.Integer",
+            Primitive::Long => "java.lang.Long",
+            Primitive::Float => "java.lang.Float",
+            Primitive::Double => "java.lang.Double",
+        };
+        self.charge(name.len() + 1)?;
+        let class = self.unique_named(scope, name)?;
+        if !class.binary
+            || class.access != Access::Public
+            || class.nesting.len() != 1
+            || class.is_interface
+            || class.reference_generic
+            || !class.reference_final
+        {
+            return None;
+        }
+        self.charge(name.len())?;
+        if class.binary_signature.as_ref()?.binary_name != name.replace('.', "/") {
+            return None;
+        }
+        self.accessible(class)?;
+        self.graph(class)?;
+        Some(class)
+    }
+
+    fn invocation_conversion(
+        &mut self,
+        actual: &StrictActual<'a>,
+        formal: &ReferenceFormal<'a>,
+        phase: InvocationPhase,
+    ) -> Option<bool> {
+        match (actual, formal) {
+            (StrictActual::Null, ReferenceFormal::Reference(_)) => {
+                self.charge(1)?;
+                Some(true)
+            }
+            (StrictActual::Primitive(actual), ReferenceFormal::Primitive(formal)) => {
+                self.charge(1)?;
+                Some(actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 }))
+            }
+            (StrictActual::Reference(actual), ReferenceFormal::Reference(formal)) => {
+                self.converts(actual.class, formal)
+            }
+            (StrictActual::Primitive(actual), ReferenceFormal::Reference(formal))
+                if phase == InvocationPhase::Loose =>
+            {
+                self.charge(1)?;
+                if actual.rank != 0 {
+                    return Some(false);
+                }
+                let wrapper = self.invocation_wrapper(actual.primitive, self.file.scope)?;
+                self.converts(wrapper, formal)
+            }
+            (StrictActual::Reference(actual), ReferenceFormal::Primitive(formal))
+                if phase == InvocationPhase::Loose =>
+            {
+                let raw = self.negative_raw_name(actual.class)?;
+                let primitive = match raw.as_str() {
+                    "java/lang/Boolean" => Primitive::Boolean,
+                    "java/lang/Byte" => Primitive::Byte,
+                    "java/lang/Character" => Primitive::Char,
+                    "java/lang/Short" => Primitive::Short,
+                    "java/lang/Integer" => Primitive::Int,
+                    "java/lang/Long" => Primitive::Long,
+                    "java/lang/Float" => Primitive::Float,
+                    "java/lang/Double" => Primitive::Double,
+                    _ => return Some(false),
+                };
+                let wrapper = self.invocation_wrapper(primitive, actual.class.scope)?;
+                self.charge(1)?;
+                if !same_class(actual.class, wrapper) {
+                    return None;
+                }
+                Some(PrimitiveValue { primitive, rank: 0 }.converts_to(PrimitiveValue { primitive: *formal, rank: 0 }))
+            }
+            _ => {
+                self.charge(1)?;
+                Some(false)
+            }
+        }
+    }
+
     fn strict_converts(&mut self, actual: &'a ClassRec, formal: &'a ClassRec) -> Option<bool> {
         let complete = self.graph(actual)?;
         self.graph(formal)?;
@@ -8521,34 +8617,24 @@ impl<'a> ReferenceCallProof<'a> {
             }
         }
         let mut applicable = Vec::new();
-        for (i, parameters) in formals.iter().enumerate() {
-            if hidden[i] || actuals.len() != parameters.len() {
-                continue;
+        for phase in [InvocationPhase::Strict, InvocationPhase::Loose] {
+            for (i, parameters) in formals.iter().enumerate() {
+                if hidden[i] || actuals.len() != parameters.len() {
+                    continue;
+                }
+                let mut applies = true;
+                for (actual, formal) in actuals.iter().zip(parameters) {
+                    // All slots require evidence, even after a negative slot.
+                    applies &= self.invocation_conversion(actual, formal, phase)?;
+                }
+                if applies {
+                    applicable.push(i);
+                }
             }
-            let mut applies = true;
-            for (actual, formal) in actuals.iter().zip(parameters) {
-                applies &= match (actual, formal) {
-                    (StrictActual::Null, ReferenceFormal::Reference(_)) => {
-                        self.charge(1)?;
-                        true
-                    }
-                    (StrictActual::Primitive(actual), ReferenceFormal::Primitive(formal)) => {
-                        self.charge(1)?;
-                        actual.converts_to(PrimitiveValue { primitive: *formal, rank: 0 })
-                    }
-                    (StrictActual::Reference(actual), ReferenceFormal::Reference(formal)) => {
-                        self.converts(actual.class, formal)?
-                    }
-                    // Strict invocation neither boxes nor unboxes. Do not skip
-                    // the other slots: they still need complete evidence.
-                    _ => {
-                        self.charge(1)?;
-                        false
-                    }
-                };
-            }
-            if applies {
-                applicable.push(i);
+            // Unknown above aborts the selection. A nonempty strict set never
+            // retries loose, even if specificity/access/static selection fails.
+            if !applicable.is_empty() {
+                break;
             }
         }
         let mut winner = None;

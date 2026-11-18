@@ -737,3 +737,10 @@ historical records remain intact.
 [Workspace load sessions](docs/WORKSPACE_LOAD_SESSIONS.md) retain bounded archive
 decoding across explicit fresh loads. Default loading and LSP behavior stay
 unchanged; source admission, budgets, graph and index construction still run.
+
+### Fixed-arity loose invocation
+
+[Shared strict/loose selection](docs/LOOSE_INVOCATION.md) now supports bounded
+boxing/reference widening and unboxing/primitive widening. Two original Gson
+TypeAdapter calls have independent exact compiler targets; JsonObject controls
+remain refused. No varargs phase, inference, receiver expansion or budget change.

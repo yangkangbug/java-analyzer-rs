@@ -125,6 +125,10 @@ def current_expectations(expected, queries, declarations):
               'wrapper_object@strict.Target,wrapper_scalar@strict.Target')
     assert result['strict_wrapper'] == before, 'strict_wrapper: previous current-stage result changed'
     result['strict_wrapper'] = ('Resolved', before[1], before[1])
+    # Fixed-arity loose applicability advances only this exact historical
+    # refusal; compare() still checks the independent compiler declaration.
+    assert result['strict_loose'] == ('CallNotResolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target')
+    result['strict_loose'] = ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target')
     return result
 
 def run_suite(jdk, native, work, baseline=False):

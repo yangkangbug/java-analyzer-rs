@@ -74,6 +74,9 @@ def current_expectations(expected, queries, declarations):
     # own-instance declared int return advances this unchanged input.
     assert result['primitive_unknown'] == ('OverloadNotResolved', 'pick_int@qualified.Target', 'pick_int@qualified.Target,pick_long@qualified.Target')
     result['primitive_unknown'] = ('Resolved', 'pick_int@qualified.Target', 'pick_int@qualified.Target')
+    # Exact current boxing upgrade; historical expected.tsv is unchanged.
+    assert result['primitive_boxed'] == ('CallNotResolved', 'boxed@qualified.Target', 'boxed@qualified.Target')
+    result['primitive_boxed'] = ('Resolved', 'boxed@qualified.Target', 'boxed@qualified.Target')
     return result
 
 

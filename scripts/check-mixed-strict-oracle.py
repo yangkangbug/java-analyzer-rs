@@ -69,6 +69,10 @@ def current_expectations(expected, queries, declarations):
     # own-instance declared int return advances this unchanged input.
     assert result['mixed_unknown'] == ('OverloadNotResolved', 'mix_int@mixed.Target', 'mix_int@mixed.Target,mix_long@mixed.Target')
     result['mixed_unknown'] = ('Resolved', 'mix_int@mixed.Target', 'mix_int@mixed.Target')
+    # Fixed-arity loose applicability advances only this exact historical
+    # refusal; compare() still checks the independent compiler declaration.
+    assert result['mixed_boxed'] == ('CallNotResolved', 'boxed@mixed.Target', 'boxed@mixed.Target')
+    result['mixed_boxed'] = ('Resolved', 'boxed@mixed.Target', 'boxed@mixed.Target')
     return result
 
 

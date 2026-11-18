@@ -36,6 +36,31 @@ class StrictReferenceOracleTests(unittest.TestCase):
         self.assertEqual(expected['strict_wrapper'][1], 'wrapper_object@strict.Target')
         self.assertEqual(expected['strict_loose'][0], 'CallNotResolved')
 
+    def test_current_loose_projection_is_exact(self):
+        ds, qs, expected, compiler, native = self.evidence()
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(current['strict_loose'], ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target'))
+        self.assertEqual(expected['strict_loose'][0], 'CallNotResolved')
+        for changed in [('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target'),
+                        ('CallNotResolved', 'wrapper_scalar@strict.Target', 'loose_scalar@strict.Target'),
+                        ('CallNotResolved', 'loose_scalar@strict.Target', 'wrapper_scalar@strict.Target')]:
+            bad = dict(expected); bad['strict_loose'] = changed
+            with self.assertRaises(AssertionError):
+                c.current_expectations(bad, qs, ds)
+
+        for q, (status, selected, candidates) in current.items():
+            targets = [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')]
+            native[q] = [status, str(len(targets)), *targets]
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for mutation in ['status', 'kind', 'owner', 'range']:
+            bad = copy.deepcopy(native)
+            if mutation == 'status': bad['strict_loose'][0] = 'CallNotResolved'
+            elif mutation == 'kind': bad['strict_loose'][2] = bad['strict_loose'][2].replace('|Method|', '|Field|')
+            elif mutation == 'owner': bad['strict_loose'][2] = bad['strict_loose'][2].replace('.Target|', '.Wrong|')
+            else: bad['strict_loose'][2] += '0'
+            with self.assertRaises(AssertionError):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
+
     def test_inventory_mutations(self):
         for change in ('extra_file', 'missing_query', 'duplicate_query', 'extra_golden', 'missing_invalid', 'duplicate_golden'):
             with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp:
@@ -100,10 +125,10 @@ class StrictReferenceOracleTests(unittest.TestCase):
         self.assertEqual(expected, original)
         self.assertEqual(c.baseline_expectations(expected), baseline)
         self.assertEqual(c.omitted_expectations(expected), omitted)
-        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper'})
+        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper', 'strict_loose'})
         self.assertEqual(current['strict_wrapper'],
                          ('Resolved', 'wrapper_object@strict.Target', 'wrapper_object@strict.Target'))
-        self.assertEqual(current['strict_loose'], prior['strict_loose'])
+        self.assertEqual(current['strict_loose'], ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target'))
         for replacement in [
             ('Resolved', prior['strict_wrapper'][1], prior['strict_wrapper'][2]),
             ('OverloadNotResolved', 'wrapper_scalar@strict.Target', prior['strict_wrapper'][2]),

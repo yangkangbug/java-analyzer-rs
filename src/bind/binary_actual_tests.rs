@@ -514,3 +514,313 @@ fn scheduled_conversion_keeps_unknown_targets_and_closed_negative_evidence() {
     assert_eq!(proof.converts(actual, formal), None);
     assert!(proof.exhausted);
 }
+
+fn wrapper_binary(name: &str, parent: Option<&str>, methods: &[(&str, &str)], public: bool) -> Vec<u8> {
+    fn u(b: &mut Vec<u8>, n: u16) {
+        b.extend(n.to_be_bytes());
+    }
+    fn utf(b: &mut Vec<u8>, s: &str) {
+        b.push(1);
+        u(b, s.len() as u16);
+        b.extend(s.as_bytes());
+    }
+    let mut b = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61];
+    u(&mut b, (5 + 2 * methods.len()) as u16);
+    utf(&mut b, name);
+    b.push(7);
+    u(&mut b, 1);
+    utf(&mut b, parent.unwrap_or(name));
+    b.push(7);
+    u(&mut b, 3);
+    for (name, descriptor) in methods {
+        utf(&mut b, name);
+        utf(&mut b, descriptor);
+    }
+    u(&mut b, if public { 0x31 } else { 0x30 });
+    u(&mut b, 2);
+    u(&mut b, if parent.is_some() { 4 } else { 0 });
+    u(&mut b, 0);
+    u(&mut b, 0);
+    u(&mut b, methods.len() as u16);
+    for i in 0..methods.len() {
+        u(&mut b, 0x101);
+        u(&mut b, 5 + 2 * i as u16);
+        u(&mut b, 6 + 2 * i as u16);
+        u(&mut b, 0);
+    }
+    u(&mut b, 0);
+    b
+}
+
+#[test]
+fn loose_invocation_initial_boxing_and_unboxing() {
+    for (methods, call, expected) in [
+        ("void pick(java.lang.Integer x) {}", "pick(1)", "pick(java.lang.Integer"),
+        ("void pick(long x) {} void pick(java.lang.Integer x) {}", "pick(1)", "pick(long"),
+        ("void pick(long x) {} void pick(double x) {}", "pick(value)", "pick(long"),
+        ("void pick(java.lang.Object x) {} void pick(int x) {}", "pick(value)", "pick(java.lang.Object"),
+    ] {
+        let mut p = Project::new();
+        p.add_class_bytes("platform!/java/lang/Object.class", &binary("java/lang/Object", None, &[], true)).unwrap();
+        p.add_class_bytes(
+            "platform!/java/lang/Integer.class",
+            &wrapper_binary("java/lang/Integer", Some("java/lang/Object"), &[], true),
+        )
+        .unwrap();
+        let text = format!("class C {{ {methods} void test(java.lang.Integer value) {{ {call}; }} }}");
+        p.insert("C.java", &text);
+        let got = p.resolve_at("C.java", text.rfind(call).unwrap() as u32);
+        assert_eq!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        assert_eq!(got.targets[0].start_byte, text.find(expected).unwrap() as u32, "{text}");
+    }
+}
+
+fn loose_platform() -> Project {
+    let mut p = Project::new();
+    p.add_class_bytes("platform!/Object", &binary("java/lang/Object", None, &[], true)).unwrap();
+    p.add_class_bytes("platform!/Number", &binary("java/lang/Number", Some("java/lang/Object"), &[], true)).unwrap();
+    for name in ["Boolean", "Byte", "Character", "Short", "Integer", "Long", "Float", "Double"] {
+        let parent = if matches!(name, "Boolean" | "Character") { "java/lang/Object" } else { "java/lang/Number" };
+        p.add_class_bytes(
+            format!("platform!/{name}"),
+            &wrapper_binary(&format!("java/lang/{name}"), Some(parent), &[], true),
+        )
+        .unwrap();
+    }
+    p
+}
+#[test]
+fn loose_invocation_complete_phase_matrix() {
+    for (methods, parameters, call, expected) in [
+        (
+            "void pick(java.lang.Number n){} void pick(java.lang.Object o){}",
+            "",
+            "pick(1)",
+            Some("pick(java.lang.Number"),
+        ),
+        ("void pick(long n){} void pick(java.lang.Integer o){}", "", "pick(1)", Some("pick(long")),
+        ("void pick(long n){} void pick(double o){}", "java.lang.Integer v", "pick(v)", Some("pick(long")),
+        (
+            "void pick(java.lang.Object n){} void pick(int o){}",
+            "java.lang.Integer v",
+            "pick(v)",
+            Some("pick(java.lang.Object"),
+        ),
+        ("void pick(java.lang.Long n){} void pick(java.lang.Boolean o){}", "", "pick(1)", None),
+        ("void pick(int n){} void pick(boolean o){}", "java.lang.Number v", "pick(v)", None),
+        ("void pick(int n){} void pick(long o){}", "", "pick(true)", None),
+        ("void pick(int n){} void pick(long o){}", "", "pick(null)", None),
+        ("void pick(java.lang.Byte n){} void pick(java.lang.Boolean o){}", "", "pick(1)", None),
+        ("void pick(int n,java.lang.Integer o){} void pick(java.lang.Integer n,int o){}", "", "pick(1,1)", None),
+        ("void pick(java.lang.Integer n){} void pick(Missing o){}", "", "pick(1)", None),
+        ("void pick(java.lang.Integer n,int o){} void pick(boolean n,Missing o){}", "", "pick(1,1)", None),
+        ("void pick(java.lang.Integer n){} void pick(int... o){}", "", "pick(1)", None),
+        ("void pick(java.lang.Integer n){} void pick(boolean o){}", "int[] v", "pick(v)", None),
+        ("void pick(long n){} static void pick(java.lang.Integer o){}", "", "C.pick(1)", None),
+    ] {
+        let mut p = loose_platform();
+        let text = format!("class C {{ {methods} void test({parameters}) {{ {call}; }} }}");
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let got = p.resolve_at("C.java", at as u32);
+        if let Some(expected) = expected {
+            assert_eq!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+            assert_eq!(got.targets[0].start_byte, text.find(expected).unwrap() as u32, "{text}");
+        } else {
+            assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        }
+    }
+}
+#[test]
+fn loose_wrapper_all_pairs_and_budget_identity() {
+    let mut p = loose_platform();
+    p.insert("Use.java", "class Use {}");
+    let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+    let file = &index.files[0];
+    for (primitive, name) in [
+        (Primitive::Boolean, "Boolean"),
+        (Primitive::Byte, "Byte"),
+        (Primitive::Char, "Character"),
+        (Primitive::Short, "Short"),
+        (Primitive::Int, "Integer"),
+        (Primitive::Long, "Long"),
+        (Primitive::Float, "Float"),
+        (Primitive::Double, "Double"),
+    ] {
+        let class = index.binaries.iter().find(|c| c.simple() == name).unwrap();
+        let actual = StrictActual::Primitive(PrimitiveValue { primitive, rank: 0 });
+        let formal = ReferenceFormal::Reference(class);
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.invocation_conversion(&actual, &formal, InvocationPhase::Strict), Some(false));
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        let before = proof.work_left;
+        assert_eq!(proof.invocation_conversion(&actual, &formal, InvocationPhase::Loose), Some(true));
+        let used = before - proof.work_left;
+        for budget in [0, used - 1, used] {
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            proof.work_left = budget;
+            assert_eq!(
+                proof.invocation_conversion(&actual, &formal, InvocationPhase::Loose),
+                if budget == used { Some(true) } else { None }
+            );
+            if budget < used {
+                assert!(proof.exhausted);
+                assert_eq!(proof.invocation_conversion(&actual, &formal, InvocationPhase::Strict), None);
+            }
+        }
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(
+            proof.invocation_conversion(
+                &StrictActual::Reference(ReferenceValue { class }),
+                &ReferenceFormal::Primitive(primitive),
+                InvocationPhase::Loose
+            ),
+            Some(true)
+        );
+    }
+}
+#[test]
+fn loose_wrapper_unknown_inventory_never_certifies_by_spelling() {
+    for variant in 0..5 {
+        let mut p = loose_platform();
+        p.insert("Use.java", "class Use {}");
+        match variant {
+            0 => {
+                p.remove_class("platform!/Integer");
+            }
+            1 => {
+                p.add_class_bytes(
+                    "other!/Integer",
+                    &wrapper_binary("java/lang/Integer", Some("java/lang/Number"), &[], true),
+                )
+                .unwrap();
+            }
+            2 => {
+                p.remove_class("platform!/Integer");
+                p.insert("Integer.java", "package java.lang; public final class Integer {}");
+            }
+            3 => {
+                p.remove_class("platform!/Number");
+            }
+            _ => {
+                Arc::make_mut(p.binaries.get_mut("platform!/Integer").unwrap()).class_signature.signature =
+                    Some("<T:Ljava/lang/Object;>Ljava/lang/Number;".into());
+            }
+        }
+        let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+        let file = index.files.iter().find(|f| f.path == "Use.java").unwrap();
+        let formal = index.binaries.iter().find(|c| c.simple() == "Object").unwrap();
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(
+            proof.invocation_conversion(
+                &StrictActual::Primitive(PrimitiveValue { primitive: Primitive::Int, rank: 0 }),
+                &ReferenceFormal::Reference(formal),
+                InvocationPhase::Loose
+            ),
+            None,
+            "variant {variant}"
+        );
+    }
+}
+
+#[test]
+fn loose_phase_never_retries_nonempty_strict_ambiguity() {
+    let mut p = loose_platform();
+    for name in ["A", "B"] {
+        p.add_class_bytes(format!("{name}.class"), &binary(name, Some("java/lang/Object"), &[], true)).unwrap();
+        Arc::make_mut(p.binaries.get_mut(&format!("{name}.class")).unwrap()).class_signature.is_interface = true;
+    }
+    Arc::make_mut(p.binaries.get_mut("platform!/Integer").unwrap()).class_signature.interfaces =
+        vec!["A".into(), "B".into()];
+    Arc::make_mut(p.binaries.get_mut("platform!/Integer").unwrap()).class_signature.binary_interfaces =
+        vec!["A".into(), "B".into()];
+    let text = "class C { void pick(A a){} void pick(B b){} void pick(int i){} void test(java.lang.Integer value){pick(value);} }";
+    p.insert("C.java", text);
+    let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+    let file = &index.files[0];
+    let actual = index.binaries.iter().find(|c| c.simple() == "Integer").unwrap();
+    for name in ["A", "B"] {
+        let formal = index.binaries.iter().find(|c| c.simple() == name).unwrap();
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(
+            proof.invocation_conversion(
+                &StrictActual::Reference(ReferenceValue { class: actual }),
+                &ReferenceFormal::Reference(formal),
+                InvocationPhase::Strict
+            ),
+            Some(true)
+        );
+    }
+    let mut proof = ReferenceCallProof::new(&index, file, None);
+    assert_eq!(
+        proof.invocation_conversion(
+            &StrictActual::Reference(ReferenceValue { class: actual }),
+            &ReferenceFormal::Primitive(Primitive::Int),
+            InvocationPhase::Loose
+        ),
+        Some(true)
+    );
+    let got = p.resolve_at("C.java", text.rfind("pick(").unwrap() as u32);
+    assert_ne!(got.status, ResolveStatus::Resolved, "{got:?}");
+}
+
+#[test]
+fn loose_unboxing_links_in_actual_scope_not_caller_scope() {
+    let mut lib = loose_platform();
+    let mut app = loose_platform();
+    lib.insert("Lib.java", "class Lib {}");
+    app.insert("Use.java", "class Use {}");
+    // An unrelated caller-scope replacement cannot stand in for a wrapper
+    // selected in the actual value's linking context.
+    app.remove_class("platform!/Integer");
+    app.insert("Integer.java", "package java.lang; public final class Integer {}");
+    let visibility = [BTreeSet::from([0]), BTreeSet::from([1])];
+    let index = Index::scoped(&[&lib, &app], &visibility);
+    let file = index.files.iter().find(|f| f.path == "Use.java").unwrap();
+    let actual = index.binaries.iter().find(|c| c.scope == 0 && c.simple() == "Integer").unwrap();
+    let mut proof = ReferenceCallProof::new(&index, file, None);
+    assert_eq!(
+        proof.invocation_conversion(
+            &StrictActual::Reference(ReferenceValue { class: actual }),
+            &ReferenceFormal::Primitive(Primitive::Long),
+            InvocationPhase::Loose
+        ),
+        Some(true)
+    );
+    let source = index.files.iter().find(|f| f.path == "Integer.java").unwrap().classes.first().unwrap();
+    let mut proof = ReferenceCallProof::new(&index, file, None);
+    assert_eq!(
+        proof.invocation_conversion(
+            &StrictActual::Reference(ReferenceValue { class: source }),
+            &ReferenceFormal::Primitive(Primitive::Long),
+            InvocationPhase::Loose
+        ),
+        None
+    );
+}
+
+#[test]
+fn loose_phase_edit_fresh_and_retained_snapshot() {
+    let mut p = loose_platform();
+    let text = "class C { void pick(java.lang.Integer a){} void pick(java.lang.Boolean b){} void test(){pick(1);} }";
+    p.insert("C.java", text);
+    let old = p.clone();
+    let position = text.rfind("pick(").unwrap() as u32;
+    let before = p.resolve_at("C.java", position);
+    assert_eq!(before.status, ResolveStatus::Resolved);
+    let at = text.rfind("1").unwrap() as u32;
+    p.edit("C.java", crate::TextEdit { start_byte: at, end_byte: at + 1, insert: "true".into() }).unwrap();
+    let mut fresh = loose_platform();
+    fresh.insert("C.java", &text.replace("pick(1)", "pick(true)"));
+    assert_eq!(p.resolve_at("C.java", position), fresh.resolve_at("C.java", position));
+    assert_eq!(
+        p.resolve_at("C.java", position).targets[0].start_byte,
+        text.find("pick(java.lang.Boolean").unwrap() as u32
+    );
+    assert_eq!(old.resolve_at("C.java", position), before);
+    p.edit("C.java", crate::TextEdit { start_byte: at, end_byte: at + 4, insert: "1".into() }).unwrap();
+    assert_eq!(p.resolve_at("C.java", position), before);
+    let visibility = [BTreeSet::from([0])];
+    let prepared = PreparedScopedIndex::new(vec![&p], &visibility);
+    assert_eq!(prepared.resolve_at(0, "C.java", position), before);
+}
