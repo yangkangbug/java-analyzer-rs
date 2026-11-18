@@ -1,5 +1,17 @@
 # Native Java analysis roadmap
 
+## Qualified class creation structure
+
+QualifiedNewExpr preserves expression-qualified creator structure, independent
+qualifier/argument/type-argument references, and anonymous lexical ownership.
+Created member names and resulting receiver types are not inferred. The original
+seven Gson occurrences lose 14 recovery diagnostics; 11 existing name targets
+remain compiler-exact, and 4 adjacent JUnit fail calls recover name-level targets.
+The original 848 receiver queries are unchanged. This does not complete constructor,
+capture, inherited member-type, or general receiver typing.
+See [scope and 0.5.0 Git migration](docs/QUALIFIED_CREATION.md).
+
+
 ## Goal and boundary
 
 Build a reusable, standalone Rust Java project-analysis engine. Editor and

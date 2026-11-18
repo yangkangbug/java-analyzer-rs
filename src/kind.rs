@@ -216,6 +216,8 @@ pub enum SyntaxKind {
     AnnotationBody,
     AnnotationElement,
     AnnotationDefault,
+    /// Expression-qualified inner class creation; its created type is not a lexical name.
+    QualifiedNewExpr,
 }
 
 impl SyntaxKind {

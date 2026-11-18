@@ -9,6 +9,10 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Qualified class creation](docs/QUALIFIED_CREATION.md) represents
+`outer.new Inner(args)` without inventing constructor or result types.
+The 0.5.0 Git-dependency migration adds a public syntax enum variant.
+
 [Method-reference boundaries](docs/METHOD_REFERENCE_BOUNDARY.md) refuse unsupported
 terminal selection instead of borrowing a same-named field or variable.
 

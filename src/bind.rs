@@ -1142,7 +1142,10 @@ impl Index {
     fn resolve_field(&self, file: &FileRec, parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
         // Super and class-literal reflection lookup are not implemented. Do not
         // discard an unsupported receiver and reinterpret its selector as a name.
-        if has_super_receiver(hit.node) || has_class_literal_receiver(hit.node) {
+        if has_super_receiver(hit.node)
+            || has_class_literal_receiver(hit.node)
+            || has_qualified_creation_receiver(hit.node)
+        {
             return ResolveResult::none(ResolveStatus::ReceiverNotBound);
         }
         if has_call_result_receiver(hit.node) {
@@ -2483,7 +2486,12 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
             let child_receiver = !saw_node
                 && matches!(node.kind(), SyntaxKind::FieldExpr | SyntaxKind::MethodRefExpr | SyntaxKind::IndexExpr);
             saw_node = true;
-            if let Some(mut hit) = innermost_ref(child_node, child_at, byte, child_called) {
+            let nested_hit = if node.kind() == SyntaxKind::QualifiedNewExpr && child_node.kind() == SyntaxKind::Type {
+                qualified_creator_reference(child_node, child_at, byte)
+            } else {
+                innermost_ref(child_node, child_at, byte, child_called)
+            };
+            if let Some(mut hit) = nested_hit {
                 if hit.wrapped_reference {
                     if child_receiver || child_called {
                         hit.imported_value = false;
@@ -2513,6 +2521,79 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
     } else {
         None
     }
+}
+
+// The created member name is relative to an unproved expression receiver.
+// Its type arguments and annotations remain independent lexical type uses.
+fn qualified_creator_reference(node: &GreenNode, start: u32, byte: u32) -> Option<Hit<'_>> {
+    let mut at = start;
+    for child in node.children() {
+        if let Some(inner) = child.as_node() {
+            if inner.kind() == SyntaxKind::Name {
+                let mut part_at = at;
+                for part in inner.children() {
+                    if let Some(arguments) = part.as_node()
+                        && arguments.kind() == SyntaxKind::TypeArgList
+                        && let Some(hit) = innermost_ref(arguments, part_at, byte, false)
+                    {
+                        return Some(hit);
+                    }
+                    part_at += part.utf8_len();
+                }
+            } else if let Some(hit) = innermost_ref(inner, at, byte, false) {
+                return Some(hit);
+            }
+        }
+        at += child.utf8_len();
+    }
+    None
+}
+
+// Unsupported result provenance, not receiver typing. Constructor arguments,
+// qualifier-independent call arguments, and index operands do not taint a base.
+fn has_qualified_creation_receiver(node: &GreenNode) -> bool {
+    let mut pending = vec![node];
+    let mut work = REFERENCE_PROOF_WORK;
+    while let Some(node) = pending.pop() {
+        // Bound both child/token scans and the pending stack. Exhaustion is
+        // unknown provenance, never evidence that qualified creation is absent.
+        let cost = node.children().len().saturating_mul(4).saturating_add(1);
+        let Some(left) = work.checked_sub(cost) else { return true };
+        work = left;
+        match node.kind() {
+            SyntaxKind::QualifiedNewExpr => return true,
+            SyntaxKind::FieldExpr
+            | SyntaxKind::MethodRefExpr
+            | SyntaxKind::CallExpr
+            | SyntaxKind::IndexExpr
+            | SyntaxKind::ParenExpr
+            | SyntaxKind::UnaryExpr => {
+                if let Some(base) = node.child_nodes().next() {
+                    pending.push(base);
+                }
+            }
+            SyntaxKind::CastExpr => {
+                if let Some(value) = node.child_nodes().last() {
+                    pending.push(value);
+                }
+            }
+            SyntaxKind::BinaryExpr => {
+                let operator = node
+                    .children()
+                    .iter()
+                    .filter_map(|c| c.as_token())
+                    .find(|t| !t.kind().is_trivia())
+                    .map(|t| t.kind());
+                match operator {
+                    Some(SyntaxKind::Question) => pending.extend(node.child_nodes().skip(1).map(|n| n.as_ref())),
+                    Some(SyntaxKind::Eq) => pending.extend(node.child_nodes().nth(1).map(|n| n.as_ref())),
+                    _ => pending.extend(node.child_nodes().map(|n| n.as_ref())),
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 struct Segment {
@@ -2994,7 +3075,9 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
         if let Some(child) = child.as_node() {
             // Anonymous lexical ownership is separate from canonical classes.
             // Arguments remain outside the body, including nested new expressions.
-            if node.kind() == SyntaxKind::NewExpr && child.kind() == SyntaxKind::ClassBody {
+            if matches!(node.kind(), SyntaxKind::NewExpr | SyntaxKind::QualifiedNewExpr)
+                && child.kind() == SyntaxKind::ClassBody
+            {
                 index_anonymous_body(child, offset, ctx);
             } else {
                 index_node(child, offset, ctx);
@@ -4744,6 +4827,7 @@ fn direct_caller(root: &GreenNode, byte: u32) -> Option<DirectCaller<'_>> {
         || path[4].0.kind() != SyntaxKind::Block
         || path[4..].iter().any(|(node, start)| {
             (node.kind() == SyntaxKind::NewExpr && array_dimension_context(node, *start, byte, &mut work).is_none())
+                || node.kind() == SyntaxKind::QualifiedNewExpr
                 || node.kind() == SyntaxKind::SynchronizedStmt && node.message().is_some()
                 || matches!(
                     node.kind(),

@@ -11,7 +11,7 @@ spec.loader.exec_module(contract)
 
 class CurrentParserContractTests(unittest.TestCase):
     def test_exact_delta_and_history_unchanged(self):
-        for corpus, count in [('commons', 0), ('gson', 44)]:
+        for corpus, count in [('commons', 0), ('gson', 30)]:
             before, hashes = contract.previous.load(corpus)
             frozen = copy.deepcopy(before)
             actual, actual_hashes = contract.load(corpus)
@@ -37,6 +37,10 @@ class CurrentParserContractTests(unittest.TestCase):
                 if decimal:
                     self.assertEqual(expected['reports'], decimal['before'])
                     expected['reports'] = decimal['after']
+                qualified = next((c for c in contract.QUALIFIED_CREATION_CHANGES[corpus] if c['path'] == old['path']), None)
+                if qualified:
+                    self.assertEqual(expected['reports'], qualified['before'])
+                    expected['reports'] = qualified['after']
                 self.assertEqual(new, expected)
             self.assertEqual(contract.previous.load(corpus)[0], frozen)
 
@@ -158,3 +162,24 @@ class CurrentParserContractTests(unittest.TestCase):
     def test_current_entry_never_reinterprets_historical_names(self):
         for stage in ['baseline', 'current', 'switch', 'labels', 'auto']:
             with self.assertRaises(AssertionError): contract.load('gson', stage)
+
+
+    def test_qualified_creation_delta_is_exact_and_cannot_drift(self):
+        self.assertEqual(contract.QUALIFIED_CREATION_CHANGES['commons'], [])
+        changes = contract.QUALIFIED_CREATION_CHANGES['gson']
+        self.assertEqual(len(changes), 2)
+        self.assertEqual(sorted(len(c['before']) for c in changes), [4, 10])
+        self.assertTrue(all(not c['after'] for c in changes))
+        for index in range(2):
+            for operation in ['path', 'owner', 'missing', 'extra', 'message',
+                              'classification', 'start_byte', 'end_byte', 'start_utf16', 'end_utf16']:
+                changed = copy.deepcopy(contract.QUALIFIED_CREATION_CHANGES)
+                row = changed['gson'][index]
+                if operation == 'path': row['path'] += '.wrong'
+                elif operation == 'owner': row['compilation']['source_set'] += '.wrong'
+                elif operation == 'missing': row['before'].pop()
+                elif operation == 'extra': row['before'].append(copy.deepcopy(row['before'][0]))
+                elif operation in ['message', 'classification']: row['before'][0][operation] += '.wrong'
+                else: row['before'][0]['range'][operation] += 1
+                with self.subTest(index=index, operation=operation), mock.patch.object(contract, 'QUALIFIED_CREATION_CHANGES', changed), self.assertRaises(AssertionError):
+                    contract.load('gson')

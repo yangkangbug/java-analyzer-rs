@@ -1,0 +1,165 @@
+{
+  "gson": [
+    {
+      "path": "gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1355,
+            "end_utf16": 1355,
+            "start_byte": 1355,
+            "start_utf16": 1355
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1355,
+            "end_utf16": 1355,
+            "start_byte": 1355,
+            "start_utf16": 1355
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1516,
+            "end_utf16": 1516,
+            "start_byte": 1516,
+            "start_utf16": 1516
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1516,
+            "end_utf16": 1516,
+            "start_byte": 1516,
+            "start_utf16": 1516
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 1791,
+            "end_utf16": 1791,
+            "start_byte": 1791,
+            "start_utf16": 1791
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 1791,
+            "end_utf16": 1791,
+            "start_byte": 1791,
+            "start_utf16": 1791
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2028,
+            "end_utf16": 2028,
+            "start_byte": 2028,
+            "start_utf16": 2028
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2028,
+            "end_utf16": 2028,
+            "start_byte": 2028,
+            "start_utf16": 2028
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 2189,
+            "end_utf16": 2189,
+            "start_byte": 2189,
+            "start_utf16": 2189
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 2189,
+            "end_utf16": 2189,
+            "start_byte": 2189,
+            "start_utf16": 2189
+          }
+        }
+      ],
+      "after": []
+    },
+    {
+      "path": "gson/src/test/java/com/google/gson/functional/ObjectTest.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "test"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 13961,
+            "end_utf16": 13961,
+            "start_byte": 13961,
+            "start_utf16": 13961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 13961,
+            "end_utf16": 13961,
+            "start_byte": 13961,
+            "start_utf16": 13961
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 14389,
+            "end_utf16": 14389,
+            "start_byte": 14389,
+            "start_utf16": 14389
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 14389,
+            "end_utf16": 14389,
+            "start_byte": 14389,
+            "start_utf16": 14389
+          }
+        }
+      ],
+      "after": []
+    }
+  ],
+  "commons": []
+}

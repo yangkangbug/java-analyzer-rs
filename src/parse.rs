@@ -1194,7 +1194,9 @@ impl<'a> Parser<'a> {
                 let expression = self.pop();
                 let valid = expression.as_node().is_some_and(|node| match node.kind() {
                     SyntaxKind::CallExpr => true,
-                    SyntaxKind::NewExpr => node.child_nodes().any(|n| n.kind() == SyntaxKind::ArgList),
+                    SyntaxKind::NewExpr | SyntaxKind::QualifiedNewExpr => {
+                        node.child_nodes().any(|n| n.kind() == SyntaxKind::ArgList)
+                    }
                     SyntaxKind::UnaryExpr => node
                         .children()
                         .iter()
@@ -2047,6 +2049,14 @@ impl<'a> Parser<'a> {
                 }
                 self.expect(SyntaxKind::RBracket, "expected ']'");
                 self.finish();
+            } else if self.at(SyntaxKind::Dot) && self.nth(1) == SyntaxKind::New {
+                let qualifier = self.pop();
+                self.start(SyntaxKind::QualifiedNewExpr);
+                self.push(qualifier);
+                self.bump(); // Dot.
+                self.bump(); // New.
+                self.parse_qualified_creator();
+                self.finish();
             } else if self.at(SyntaxKind::Dot) {
                 let base = self.pop();
                 self.start(SyntaxKind::FieldExpr);
@@ -2093,10 +2103,7 @@ impl<'a> Parser<'a> {
         self.bump();
         self.parse_creator_type();
         if self.at(SyntaxKind::LParen) {
-            self.parse_args();
-            if self.at(SyntaxKind::LBrace) {
-                self.parse_body(SyntaxKind::ClassBody);
-            }
+            self.parse_class_creation_tail();
         } else {
             let mut dims = false;
             while self.eat(SyntaxKind::LBracket) {
@@ -2114,6 +2121,40 @@ impl<'a> Parser<'a> {
             }
         }
         self.finish();
+    }
+
+    fn parse_class_creation_tail(&mut self) {
+        self.parse_args();
+        if self.at(SyntaxKind::LBrace) {
+            self.parse_body(SyntaxKind::ClassBody);
+        }
+    }
+
+    fn parse_qualified_creator(&mut self) {
+        // Constructor type arguments are distinct from the member class's
+        // arguments/diamond and cannot contain wildcards.
+        if self.at(SyntaxKind::Lt) {
+            let arguments = self.parse_type_args();
+            if !valid_invocation_type_args(&arguments, false) {
+                self.open(SyntaxKind::Error);
+                self.set_message("invalid explicit constructor type arguments");
+                self.finish();
+            }
+        }
+        self.open(SyntaxKind::Type);
+        while self.at(SyntaxKind::At) {
+            self.parse_annotation();
+        }
+        self.open(SyntaxKind::Name);
+        // Qualified creation selects one member type, not a package-qualified
+        // name or an array/primitive creator.
+        self.expect(SyntaxKind::Ident, "expected member class name");
+        if self.at(SyntaxKind::Lt) {
+            self.parse_type_args();
+        }
+        self.finish();
+        self.finish();
+        self.parse_class_creation_tail();
     }
 
     fn parse_creator_type(&mut self) {
