@@ -629,7 +629,7 @@ fn loose_invocation_complete_phase_matrix() {
         ("void pick(int n,java.lang.Integer o){} void pick(java.lang.Integer n,int o){}", "", "pick(1,1)", None),
         ("void pick(java.lang.Integer n){} void pick(Missing o){}", "", "pick(1)", None),
         ("void pick(java.lang.Integer n,int o){} void pick(boolean n,Missing o){}", "", "pick(1,1)", None),
-        ("void pick(java.lang.Integer n){} void pick(int... o){}", "", "pick(1)", None),
+        ("void pick(java.lang.Integer n){} void pick(int... o){}", "", "pick(1)", Some("pick(java.lang.Integer")),
         ("void pick(java.lang.Integer n){} void pick(boolean o){}", "int[] v", "pick(v)", None),
         ("void pick(long n){} static void pick(java.lang.Integer o){}", "", "C.pick(1)", None),
     ] {
@@ -1383,7 +1383,25 @@ fn explicit_array_lexical_component_and_root_refusals() {
         );
         p.insert("C.java", &text);
         let got = p.resolve_at("C.java", text.rfind("pick(").unwrap() as u32);
-        assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        if argument == "a[0]" {
+            assert_eq!(got.status, ResolveStatus::Resolved);
+            assert_eq!(got.targets.len(), 1);
+            let start = text.find("pick(java.lang.Object").unwrap() as u32;
+            assert_eq!(
+                got.targets[0],
+                Target {
+                    binary: None,
+                    path: "C.java".into(),
+                    kind: TargetKind::Method,
+                    name: "pick".into(),
+                    owner: "C".into(),
+                    start_byte: start,
+                    end_byte: start + 4,
+                }
+            );
+        } else {
+            assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        }
     }
 }
 

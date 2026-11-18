@@ -61,6 +61,26 @@ class StrictReferenceOracleTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 c.compare(current, qs, ds, compiler, bad, Path('/unused'))
 
+    def test_current_fixed_arity_varargs_exact(self):
+        ds, qs, expected, compiler, native = self.evidence()
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(current['strict_varargs'], ('Resolved', 'varargs_parent@strict.Target', 'varargs_parent@strict.Target'))
+        for q, (status, selected, candidates) in current.items():
+            ts = [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')]
+            native[q] = [status, str(len(ts)), *ts]
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for target in ['Target.java|Method|strict.Target|varargs|1541|1548',
+                       'Target.java|Field|strict.Target|varargs|1603|1610',
+                       'Target.java|Method|strict.Wrong|varargs|1603|1610',
+                       'Wrong.java|Method|strict.Target|varargs|1603|1610',
+                       'Target.java|Method|strict.Target|varargs|1603|1611']:
+            bad = copy.deepcopy(native); bad['strict_varargs'][2] = target
+            with self.assertRaises(AssertionError):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
+        for status in ['Resolved', 'CallNotResolved']:
+            old = dict(expected); old['strict_varargs'] = (status, *expected['strict_varargs'][1:])
+            with self.assertRaises(AssertionError): c.current_expectations(old, qs, ds)
+
     def test_inventory_mutations(self):
         for change in ('extra_file', 'missing_query', 'duplicate_query', 'extra_golden', 'missing_invalid', 'duplicate_golden'):
             with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp:
@@ -125,7 +145,7 @@ class StrictReferenceOracleTests(unittest.TestCase):
         self.assertEqual(expected, original)
         self.assertEqual(c.baseline_expectations(expected), baseline)
         self.assertEqual(c.omitted_expectations(expected), omitted)
-        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper', 'strict_loose', 'strict_array'})
+        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper', 'strict_loose', 'strict_array', 'strict_varargs'})
         self.assertEqual(current['strict_wrapper'],
                          ('Resolved', 'wrapper_object@strict.Target', 'wrapper_object@strict.Target'))
         self.assertEqual(current['strict_loose'], ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target'))

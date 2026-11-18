@@ -113,8 +113,12 @@ fn unsupported_competitors_and_incomplete_platform_do_not_manufacture_a_winner()
         ),
     ] {
         let result = query(&project(source, platform), "pick(1)");
-        assert_ne!(result.status, ResolveStatus::Resolved, "{source}: {result:?}");
-        assert!(!result.targets.is_empty(), "{source}: preserve source candidates");
+        if source.contains("public void pick(long... x) {}") {
+            winner(&project(source, platform), "pick(1)", "pick(int x)");
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved, "{source}: {result:?}");
+            assert!(!result.targets.is_empty(), "{source}: preserve source candidates");
+        }
     }
 }
 
@@ -174,6 +178,8 @@ fn no_field_call_result_array_or_budget_escape_supplies_scalar_proof() {
         if actual == "give()" {
             // A proven own-instance int return now participates in widening.
             winner(&project(&source, true), "pick(give())", "pick(int x)");
+        } else if actual == "values[0]" {
+            winner(&project(&source, true), "pick(values[0])", "pick(int x)");
         } else if actual == "this.value" {
             winner(&project(&source, true), "pick(this.value)", "pick(int x)");
         } else {

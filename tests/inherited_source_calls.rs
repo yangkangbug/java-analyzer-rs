@@ -91,7 +91,12 @@ fn inherited_same_signature_and_unknown_competitors_stay_refused() {
         let s = format!(
             "class Parent {{ public void pick(int x) {{}} }} class Child extends Parent {{ {other} }} class Calls {{ void run(Child c) {{ c.pick(1); }} }}"
         );
-        refused(&s, "pick(1)", 2);
+        if other == "public void pick(int... x) {}" {
+            winner(&s, "pick(1)", "pick(int x)");
+            assert_eq!(query(&project(&s), "pick(1)").targets[0].owner, "Parent");
+        } else {
+            refused(&s, "pick(1)", 2);
+        }
     }
 }
 

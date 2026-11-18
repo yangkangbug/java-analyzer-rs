@@ -132,6 +132,11 @@ def current_expectations(expected, queries, declarations):
     # Complete array formals now preserve exact component/rank evidence.
     assert result['strict_array'] == ('OverloadNotResolved', 'array_parent@strict.Target', 'array_parent@strict.Target,array_primitive@strict.Target')
     result['strict_array'] = ('Resolved', 'array_parent@strict.Target', 'array_parent@strict.Target')
+    before = ('OverloadNotResolved', 'varargs_parent@strict.Target',
+              'varargs_parent@strict.Target,varargs_scalar@strict.Target')
+    assert result['strict_varargs'] == before
+    assert declarations['varargs_parent'] == ('Target.java', 1603, 1610, 'varargs')
+    result['strict_varargs'] = ('Resolved', before[1], before[1])
     return result
 
 def run_suite(jdk, native, work, baseline=False):

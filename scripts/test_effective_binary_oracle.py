@@ -38,6 +38,21 @@ class EffectiveBinaryOracleTests(unittest.TestCase):
                 self.assertEqual(before, after)
                 self.assertNotEqual(after['status'], 'Resolved')
 
+    def test_fixed_arity_projection_and_identity_mutations(self):
+        current = m.current_fixed_arity(self.contract)
+        self.assertEqual(current['queries'][18]['targets'], [m.target('dep/Base', 'pick', '(I)I')])
+        self.assertEqual(self.contract['candidate']['queries'][18]['status'], 'OverloadNotResolved')
+        for key, value in [('descriptor', '(J)I'), ('owner', 'dep.VarargChild'),
+                           ('path', 'wrong'), ('kind', 'Field'), ('binary_name', 'dep/Wrong'),
+                           ('linking_context', None), ('loaded_contexts', [])]:
+            bad = copy.deepcopy(current); bad['queries'][18]['targets'][0][key] = value
+            with self.assertRaises(AssertionError): m.compare(bad, current)
+            old = copy.deepcopy(self.contract)
+            old['candidate']['queries'][18]['targets'][1][key] = value
+            with self.assertRaises(AssertionError): m.current_fixed_arity(old)
+        bad = copy.deepcopy(current); bad['queries'][18]['targets'].append(m.target('dep/Base', 'pick', '(J)I'))
+        with self.assertRaises(AssertionError): m.compare(bad, current)
+
     def test_numeric_type_and_inventory_changes_are_rejected(self):
         wanted = self.contract['candidate']
         wrong = copy.deepcopy(wanted)

@@ -13,6 +13,25 @@ oracle = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(oracle)
 
 
+class OwnStaticPrimitiveProjectionTests(unittest.TestCase):
+    def test_exact_previous_tuple_and_complete_target(self):
+        ds, qs, _ = oracle.fixture_markers(oracle.ORACLE / 'primitive-v1/source',
+                                         ('PrimitiveCalls.java', 'Boundaries.java', 'SingletonCalls.java'))
+        expected = {row[0]: tuple(row[1:]) for row in oracle.rows(oracle.ORACLE / 'primitive-v1/expected.tsv', 4)}
+        current = oracle.current_own_static_primitive(expected, ds)
+        self.assertEqual(current['null_refusal'], ('Resolved', 'null_b@oracle.Boundaries', 'null_b@oracle.Boundaries'))
+        native = ['Resolved', '1', 'Boundaries.java|Method|oracle.Boundaries|nullable|869|877']
+        oracle.check_candidates('null_refusal', 'Resolved', 'null_b@oracle.Boundaries', ds, native)
+        for field, value in [(0,'Wrong.java'),(1,'Field'),(2,'oracle.Wrong'),(3,'other'),(4,'868'),(5,'878')]:
+            bad = list(native); parts=bad[2].split('|');parts[field]=value;bad[2]='|'.join(parts)
+            with self.assertRaises(AssertionError):
+                oracle.check_candidates('null_refusal', 'Resolved', 'null_b@oracle.Boundaries', ds, bad)
+        bad = dict(expected); bad['null_refusal'] = ('Resolved', *expected['null_refusal'][1:])
+        with self.assertRaises(AssertionError): oracle.current_own_static_primitive(bad, ds)
+        bad = dict(ds); bad['null_b'] = ('Boundaries.java', 869, 878, 'nullable')
+        with self.assertRaises(AssertionError): oracle.current_own_static_primitive(expected, bad)
+
+
 class ReferenceComparatorTests(unittest.TestCase):
     def setUp(self):
         self.declarations = {"root": ("Target.java", 10, 14, "pick"),

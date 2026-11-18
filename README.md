@@ -1,5 +1,9 @@
 # java-analyzer-rs
 
+[Shared own-static invocation](docs/OWN_STATIC_INVOCATION.md) routes overloaded
+bare static calls through complete fixed-arity selection, preserving singleton
+name-level navigation and existing proof limits.
+
 [Nameless annotation recovery](docs/ANNOTATION_RECOVERY_COST.md) avoids repeated
 failed prefix classification while preserving each error node and all existing
 container decisions. This does not claim globally linear parsing.

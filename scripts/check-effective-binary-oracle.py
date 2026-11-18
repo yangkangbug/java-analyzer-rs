@@ -73,6 +73,25 @@ def target(owner, name, descriptor):
             'identity_precision': 'origin_binary_name_descriptor_linking_context', 'descriptor': descriptor}
 
 
+def current_fixed_arity(contract):
+    """Preserve the frozen three competitors; select the compiler-proven int."""
+    result = copy.deepcopy(contract['candidate'])
+    assert contract['query_order'][18] == 'varargs_competitor_refusal'
+    expected = {
+        'byte_offset': 1302, 'compilation': {'project': 'fixture', 'source_set': 'main'},
+        'file': '@SOURCE@/app/Use.java',
+        'position': {'encoding': 'utf8', 'offset': 1302}, 'query_index': 18,
+        'source_compilation': {'project': 'fixture', 'source_set': 'main'},
+        'status': 'OverloadNotResolved',
+        'targets': [target('dep/VarargChild', 'pick', '([I)I'),
+                    target('dep/Base', 'pick', '(I)I'),
+                    target('dep/Base', 'pick', '(J)I')]}
+    compare(result['queries'][18], expected)
+    result['queries'][18]['status'] = 'Resolved'
+    result['queries'][18]['targets'] = [target('dep/Base', 'pick', '(I)I')]
+    return result
+
+
 def compare(actual, expected):
     # Canonical JSON also rejects bool-as-int coordinates.
     assert json.dumps(actual, sort_keys=True) == json.dumps(expected, sort_keys=True), \
@@ -161,7 +180,7 @@ def run_suite(jdk, native, work, baseline=False, capture=False):
         compare(list(queries), contract['query_order'])
         compare(compiled, contract['compiler'])
         compare(rejected, contract['invalid_diagnostics'])
-        compare(actual, contract['baseline' if baseline else 'candidate'])
+        compare(actual, contract['baseline'] if baseline else current_fixed_arity(contract))
     controls = adversarial_controls(contract['candidate'])
     print(json.dumps({'compiler_queries': len(compiled), 'native_positive_predictions': len(prediction['native_positive']),
                       'native_conservative_refusals': len(prediction['native_refusal']),

@@ -382,7 +382,11 @@ fn complete_owner_and_explicit_unambiguous_object_are_required() {
         "record Calls()",
     ] {
         let s = source.replacen("class Calls", header, 1);
-        assert_ne!(query(&project(&s), "m(a)").status, ResolveStatus::Resolved, "{s}");
+        if header == "class Calls extends java.lang.Object" {
+            selected(&s, "m(a)", "m(float a)");
+        } else {
+            assert_ne!(query(&project(&s), "m(a)").status, ResolveStatus::Resolved, "{s}");
+        }
     }
     let mut p = project(source);
     p.insert("other.java", source);
@@ -401,7 +405,11 @@ fn unsupported_competitors_and_contexts_do_not_supply_proof() {
             "class Calls {{ static void m(float a) {{}} static void m(double a) {{}} {extra} static void test(float a) {{ m(a); }} }}"
         );
         let r = query(&project(&source), "m(a)");
-        assert_ne!(r.status, ResolveStatus::Resolved, "{source}\n{r:?}");
+        if extra == "void m(long x) {}" {
+            selected(&source, "m(a)", "m(float a)");
+        } else {
+            assert_ne!(r.status, ResolveStatus::Resolved, "{source}\n{r:?}");
+        }
     }
     for caller in [
         "void test(float a) { m(a); }",
@@ -564,7 +572,11 @@ fn boolean_literals_select_boolean_overloads_and_reject_numeric_targets() {
 fn boolean_literal_evidence_does_not_add_operators_boxing_or_ignore_competitors() {
     for extra in ["static void m(Missing x){}", "static <T> void m(T x){}", "static void m(Object... xs){}"] {
         let source = format!("class Calls{{static void m(boolean b){{}} {extra} static void test(){{m(true);}}}}");
-        assert_ne!(query(&project(&source), "m(true)").status, ResolveStatus::Resolved);
+        if extra == "static void m(Object... xs){}" {
+            selected(&source, "m(true)", "m(boolean b)");
+        } else {
+            assert_ne!(query(&project(&source), "m(true)").status, ResolveStatus::Resolved);
+        }
     }
     for value in ["!true", "true && false", "1 == 1", "unknown"] {
         let source = format!("class Calls{{static void m(boolean b){{}} static void test(){{m({value});}}}}");
@@ -607,7 +619,11 @@ fn decimal_int_evidence_rejects_contradictions_but_not_unknown_competitors() {
     }
     for competing in ["static void m(Missing x){}", "static <T> void m(T x){}", "static void m(Object... x){}"] {
         let s = format!("class Calls{{static void m(int x){{}}{competing} static void run(){{m(1);}}}}");
-        assert_ne!(query(&project(&s), "m(1)").status, ResolveStatus::Resolved, "{competing}");
+        if competing == "static void m(Object... x){}" {
+            selected(&s, "m(1)", "m(int x)");
+        } else {
+            assert_ne!(query(&project(&s), "m(1)").status, ResolveStatus::Resolved, "{competing}");
+        }
     }
 }
 

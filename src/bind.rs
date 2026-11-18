@@ -1208,6 +1208,25 @@ impl Index {
                 && crate::green::collect_errors(caller_node).is_empty()
             {
                 let mut proof = ReferenceCallProof::new(self, file, caller);
+                if result.status == ResolveStatus::OverloadNotResolved
+                    && source_call(caller_node, caller_start).is_some_and(|call| call.is_static)
+                {
+                    // Admission is distinct from selection failure. Once this
+                    // complete-family path is entered, a primitive-only retry
+                    // must not erase an unknown competitor or illegal winner.
+                    if let Some((owner, InvocationMode::OwnStatic)) = proof.implicit_own_owner(byte)
+                        && same_class(owner, class)
+                        && let Some(selected) =
+                            proof.select_mode(owner, name, args, args_at, 0, InvocationMode::OwnStatic)
+                        && !proof.exhausted
+                    {
+                        return ResolveResult::one(
+                            ResolveStatus::Resolved,
+                            member_target(selected.declaring, selected.member),
+                        );
+                    }
+                    return result;
+                }
                 if let Some(owner) = proof.implicit_instance_owner(byte)
                     && same_class(owner, class)
                     && let Some(selected) =
@@ -6068,10 +6087,19 @@ enum InvocationMode {
     TypeStatic,
     // Exact current source class in a nonstatic ordinary method; no inherited family.
     OwnInstance,
+    // Exact current source class in a static ordinary method; no inherited family.
+    OwnStatic,
 }
 
 const REFERENCE_PROOF_DEPTH: usize = 32;
 const REFERENCE_PROOF_WORK: usize = 4096;
+
+// Ellipsis is already normalized to one array dimension by source shape
+// extraction; JVM descriptors already encode that dimension. This validates a
+// fixed-arity declaration, not applicability by variable-arity expansion.
+fn fixed_arity_shape(parameters: &[ParameterType], varargs: bool) -> bool {
+    !varargs || parameters.last().is_some_and(|p| !p.unsupported && (1..=255).contains(&p.array_rank))
+}
 
 // Unlike name-navigation results, this private proof distinguishes actual
 // declared local types, complete raw inventories and justified conversions.
@@ -7921,6 +7949,31 @@ impl<'a> ReferenceCallProof<'a> {
             let [(inner, at)] = children.as_slice() else { return None };
             return self.actual(inner, *at, depth + 1);
         }
+        if node.kind() == SyntaxKind::IndexExpr {
+            let [(base, base_at), (index, index_at)] = index_operands(node, at)?;
+            // One value proof per operand, not a failed primitive probe followed
+            // by a second reference lookup. Receiver typing remains independent.
+            let StrictActual::Array(mut array) = self.actual(base, base_at, depth + 1)? else { return None };
+            let StrictActual::Primitive(index) = self.actual(index, index_at, depth + 1)? else { return None };
+            if index.rank != 0
+                || !matches!(index.primitive, Primitive::Byte | Primitive::Short | Primitive::Char | Primitive::Int)
+            {
+                return None;
+            }
+            match array.component {
+                ArrayComponent::Primitive(primitive) => {
+                    array.rank = array.rank.checked_sub(1)?;
+                    if array.rank == 0 {
+                        return Some(StrictActual::Primitive(PrimitiveValue { primitive, rank: 0 }));
+                    }
+                    return Some(StrictActual::Array(array));
+                }
+                ArrayComponent::Reference(class) if array.rank == 1 => {
+                    return Some(StrictActual::Reference(ReferenceValue { class }));
+                }
+                _ => return None,
+            }
+        }
         if node.kind() == SyntaxKind::CallExpr {
             return self.invocation_value(node, at, depth + 1);
         }
@@ -8160,6 +8213,11 @@ impl<'a> ReferenceCallProof<'a> {
     }
 
     fn implicit_instance_owner(&mut self, at: u32) -> Option<&'a ClassRec> {
+        let (owner, mode) = self.implicit_own_owner(at)?;
+        (mode == InvocationMode::OwnInstance).then_some(owner)
+    }
+
+    fn implicit_own_owner(&mut self, at: u32) -> Option<(&'a ClassRec, InvocationMode)> {
         self.call_inventory()?;
         if at < self.caller_start || at >= self.caller_end {
             return None;
@@ -8181,13 +8239,21 @@ impl<'a> ReferenceCallProof<'a> {
         if callers.next().is_some() {
             return None;
         }
-        match self.caller_kind? {
-            CallerKind::Method if !caller.source_call.as_ref()?.is_static => {}
-            CallerKind::Constructor if caller.source_call.is_none() && owner.nesting.last()? == &caller.name => {}
+        let mode = match self.caller_kind? {
+            CallerKind::Method => {
+                if caller.source_call.as_ref()?.is_static {
+                    InvocationMode::OwnStatic
+                } else {
+                    InvocationMode::OwnInstance
+                }
+            }
+            CallerKind::Constructor if caller.source_call.is_none() && owner.nesting.last()? == &caller.name => {
+                InvocationMode::OwnInstance
+            }
             _ => return None,
-        }
+        };
         let Shape::Source { variables, .. } = &caller.shape else { return None };
-        variables.is_empty().then_some(owner)
+        variables.is_empty().then_some((owner, mode))
     }
 
     fn invocation_value(&mut self, node: &GreenNode, at: u32, depth: usize) -> Option<StrictActual<'a>> {
@@ -8203,9 +8269,8 @@ impl<'a> ReferenceCallProof<'a> {
             {
                 return None;
             }
-            let owner = self.implicit_instance_owner(callee_at)?;
-            let selected =
-                self.select_mode(owner, &token_name(callee), args, args_at, depth + 1, InvocationMode::OwnInstance)?;
+            let (owner, mode) = self.implicit_own_owner(callee_at)?;
+            let selected = self.select_mode(owner, &token_name(callee), args, args_at, depth + 1, mode)?;
             return self.selected_value(&selected);
         }
         let (callee, callee_at) = child_kind(node, at, SyntaxKind::FieldExpr)?;
@@ -8444,15 +8509,18 @@ impl<'a> ReferenceCallProof<'a> {
             if *generic
                 || !matches!((access, member.access), (0, Access::Package) | (1, Access::Public))
                 || flags & !0x1dff != 0
-                || flags & (0x0040 | 0x0080 | 0x0400 | 0x1000) != 0
+                || flags & (0x0040 | 0x0400 | 0x1000) != 0
                 || flags & 0x0800 != 0 && !(46..=60).contains(&declaring.binary_signature.as_ref()?.major)
             {
                 // Abstract-owner consistency is not modeled here. Unknown
-                // generic/bridge/synthetic/varargs/private/protected forms refuse.
+                // generic/bridge/synthetic/private/protected forms refuse.
                 return None;
             }
             let (params, result) = descriptor_parts(descriptor)?;
-            if params.iter().any(|p| p.unsupported) || result.as_ref().is_some_and(|r| r.unsupported) {
+            if !fixed_arity_shape(&params, flags & 0x0080 != 0)
+                || params.iter().any(|p| p.unsupported)
+                || result.as_ref().is_some_and(|r| r.unsupported)
+            {
                 return None;
             }
             let slots: usize = params
@@ -8554,8 +8622,11 @@ impl<'a> ReferenceCallProof<'a> {
         {
             return None;
         }
-        if mode == InvocationMode::OwnInstance && (inherited || !same_class(self.implicit_instance_owner(at)?, owner)) {
-            return None;
+        if matches!(mode, InvocationMode::OwnInstance | InvocationMode::OwnStatic) {
+            let (caller_owner, caller_mode) = self.implicit_own_owner(at)?;
+            if inherited || caller_mode != mode || !same_class(caller_owner, owner) {
+                return None;
+            }
         }
         if mode == InvocationMode::TypeStatic && (owner.is_interface || inherited) {
             return None;
@@ -8663,7 +8734,7 @@ impl<'a> ReferenceCallProof<'a> {
                     || flags & 7 != 1
                     || mode == InvocationMode::Instance && flags & 0x0008 != 0
                     || mode == InvocationMode::TypeStatic && flags & 0x0400 != 0
-                    || flags & (0x0040 | 0x0080 | 0x1000) != 0
+                    || flags & (0x0040 | 0x1000) != 0
                     || flags & 0x0400 != 0
                         && (flags & (0x0010 | 0x0020 | 0x0100 | 0x0800) != 0 || declaring.reference_final)
                 {
@@ -8673,6 +8744,9 @@ impl<'a> ReferenceCallProof<'a> {
                     self.charge(descriptor.len() + signature.as_ref().map_or(0, String::len))?;
                 }
                 let parameters = descriptor_parameters(descriptor)?;
+                if !fixed_arity_shape(&parameters, flags & 0x0080 != 0) {
+                    return None;
+                }
                 let slots: usize = parameters
                     .iter()
                     .map(|p| {
@@ -8763,12 +8837,13 @@ impl<'a> ReferenceCallProof<'a> {
                 let file = self.index.files.iter().find(|f| f.scope == declaring.scope && f.path == declaring.path)?;
                 let source = member.source_call.as_ref()?;
                 let Shape::Source { parameters, variables } = &member.shape else { return None };
-                // OwnInstance proves the caller and declaration are exactly
+                // Own modes prove the caller and declaration are exactly
                 // the same class. Other receiver forms keep public-only access.
-                if (mode != InvocationMode::OwnInstance && member.access != Access::Public)
-                    || mode != InvocationMode::TypeStatic && source.is_static
+                if (!matches!(mode, InvocationMode::OwnInstance | InvocationMode::OwnStatic)
+                    && member.access != Access::Public)
+                    || matches!(mode, InvocationMode::Instance | InvocationMode::OwnInstance) && source.is_static
                     || mode == InvocationMode::TypeStatic && source.is_abstract
-                    || source.varargs
+                    || !fixed_arity_shape(parameters, source.varargs)
                     || !variables.is_empty()
                     || mode == InvocationMode::TypeStatic && !file.syntax_valid
                 {
@@ -8991,8 +9066,10 @@ impl<'a> ReferenceCallProof<'a> {
                 });
             }
         }
+        // No fixed-phase winner remains unknown: variable-arity expansion is
+        // not implemented and must not be interpreted as a proved Java error.
         let winner = winner?;
-        if mode == InvocationMode::TypeStatic {
+        if matches!(mode, InvocationMode::TypeStatic | InvocationMode::OwnStatic) {
             let is_static = match &winner.member.shape {
                 Shape::Binary { flags, .. } => flags & 0x0008 != 0,
                 Shape::Source { .. } => winner.member.source_call.as_ref()?.is_static,
@@ -10244,6 +10321,50 @@ mod type_parameter_inventory_tests {
                 assert!(matches!(got, FormalName::Local(_)));
             } else {
                 assert!(matches!(got, FormalName::Parameter(_)));
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod own_static_budget_tests {
+    use super::*;
+    #[test]
+    fn own_discovery_selection_and_result_use_one_budget() {
+        for text in [
+            "class C {private static int pick(int x){return x;} private static long pick(long x){return x;} static void run(){pick(1);}}",
+            "class C {private static int pick(int x){return x;} private static long pick(long... x){return 0;} static void run(int[][] a){pick(a[0][0]);}}",
+        ] {
+            let mut p = Project::new();
+            p.insert("C.java", text);
+            let mut bytes = vec![0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 61, 0, 3, 1, 0, 16];
+            bytes.extend(b"java/lang/Object");
+            bytes.extend([7, 0, 1, 0, 0x21, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+            p.add_class_bytes("Object.class", &bytes).unwrap();
+            let index = Index::build(&p.files, &p.binaries);
+            let file = index.files.iter().find(|f| f.path == "C.java").unwrap();
+            let parsed = p.file("C.java").unwrap();
+            let at = text.rfind("pick(").unwrap() as u32;
+            let caller = direct_caller(parsed.root(), at);
+            let hit = innermost_ref(parsed.root(), 0, at, false).unwrap();
+            let (args, args_at) = hit.arguments.unwrap();
+            let mut proof = ReferenceCallProof::new(&index, file, caller);
+            let initial = proof.work_left;
+            let (owner, mode) = proof.implicit_own_owner(at).unwrap();
+            assert!(mode == InvocationMode::OwnStatic);
+            let discovery = initial - proof.work_left;
+            let selected = proof.select_mode(owner, "pick", args, args_at, 0, mode).unwrap();
+            assert_eq!(selected.member.start, text.find("pick(int").unwrap() as u32);
+            let total = initial - proof.work_left;
+            assert!(total > discovery && discovery > 0);
+            for budget in [0, discovery, total - 1] {
+                let mut proof = ReferenceCallProof::new(&index, file, caller);
+                proof.work_left = budget;
+                let result =
+                    proof.implicit_own_owner(at).and_then(|(o, m)| proof.select_mode(o, "pick", args, args_at, 0, m));
+                assert!(result.is_none());
+                assert!(proof.exhausted);
+                assert_eq!(proof.work_left, 0);
             }
         }
     }

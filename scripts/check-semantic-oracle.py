@@ -339,6 +339,17 @@ def current_null_expectations(suite, expected, queries, declarations):
     return module.apply(ORACLE, suite, expected, queries, declarations)
 
 
+def current_own_static_primitive(expected, declarations):
+    """One exact current projection; immutable primitive goldens stay intact."""
+    before = ("OverloadNotResolved", "null_b@oracle.Boundaries",
+              "null_a@oracle.Boundaries,null_b@oracle.Boundaries")
+    assert expected["null_refusal"] == before
+    assert declarations["null_b"] == ("Boundaries.java", 869, 877, "nullable")
+    result = dict(expected)
+    result["null_refusal"] = ("Resolved", before[1], before[1])
+    return result
+
+
 def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     """Source-only strict primitive selections, plus explicit unknown/invalid cases."""
     root = ORACLE / "primitive-v1"
@@ -377,6 +388,7 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
         "pick_double_varargs@oracle.PrimitiveCalls")
     assert expected["literal_index_refusal"] == literal_before
     expected["literal_index_refusal"] = ("Resolved", literal_before[1], literal_before[1])
+    expected = current_own_static_primitive(expected, declarations)
     request = work / "primitive-requests.tsv"
     request.write_text(requests)
     javac = records(run([jdk / "bin/java", "-cp", helper, "BindingOracle",
@@ -447,12 +459,17 @@ def primitive_suite(jdk, native_binary, env, work, helper, empty, platform):
     omitted = records(run([native_binary, root / "source", request], {"PATH": "/nonexistent"}).stdout)
     newly_supported = [query for query, row in expected.items()
                        if row[0] == "Resolved" and not query.startswith("single_")]
-    assert len(newly_supported) == 14 and "literal_index_refusal" in newly_supported
+    assert set(newly_supported) == {
+        "arity_typed", "call_expression_refusal", "double_array", "float_array",
+        "identity_int", "identity_long", "instance_refusal", "literal_index_refusal",
+        "mixed_promote", "nested_inner", "nested_outer_refusal", "receiver_spine_inner",
+        "widen_byte", "widen_char", "null_refusal",
+    }
     assert set(omitted) == set(expected)
     assert all(omitted[q][0] != "Resolved" for q in newly_supported), "missing Object did not block new selections"
     must_reject(lambda: compare_primitive(expected, queries, declarations, javac, omitted), "omitted Object input")
-    print("PASS: 17 strict source bindings; 15 conservative refusals; "
-          "three scalar-return, one implicit-instance and one literal-index update to the unchanged 32-query corpus; "
+    print("PASS: 18 source bindings; 14 conservative refusals; "
+          "three scalar-return, one implicit-instance, one literal-index and one own-static null update to the unchanged 32-query corpus; "
           "exact candidates, target mutations, omitted Object and query-completeness controls verified")
 
 

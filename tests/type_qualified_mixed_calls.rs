@@ -146,7 +146,39 @@ fn source_unsupported_competitors_and_bad_declarations_refuse() {
         let api =
             format!("package lib; public abstract class Api {{public static int pick(int i){{return i;}} {other}}}");
         let t = text("Api.pick(1)");
-        strict(&project(&api, &t, None), "take(Api.pick(1))", false);
+        let p = project(&api, &t, None);
+        if other == "public int pick(int... xs){return 0;}" {
+            strict(&p, "take(Api.pick(1))", true);
+            let r = query(&p, "take(Api.pick(1))");
+            let start = t.find("take(int i)").unwrap() as u32;
+            assert_eq!(
+                r.targets[0],
+                java_engine::Target {
+                    binary: None,
+                    path: "Calls.java".into(),
+                    kind: java_engine::TargetKind::Method,
+                    name: "take".into(),
+                    owner: "Box".into(),
+                    start_byte: start,
+                    end_byte: start + 4,
+                }
+            );
+            let start = api.find("pick(int i)").unwrap() as u32;
+            assert_eq!(
+                query(&p, "pick(1)").targets[0],
+                java_engine::Target {
+                    binary: None,
+                    path: "Api.java".into(),
+                    kind: java_engine::TargetKind::Method,
+                    name: "pick".into(),
+                    owner: "lib.Api".into(),
+                    start_byte: start,
+                    end_byte: start + 4,
+                }
+            );
+        } else {
+            strict(&p, "take(Api.pick(1))", false);
+        }
     }
 }
 #[test]
@@ -162,7 +194,29 @@ fn binary_unsupported_competitors_refuse_even_with_other_arity() {
     ] {
         let methods = [("pick", "(I)I", 0x109, None), other];
         let t = text("Api.pick(1)");
-        strict(&project("", &t, Some(&methods)), "take(Api.pick(1))", false);
+        let p = project("", &t, Some(&methods));
+        if other == ("pick", "([I)I", 0x181, None) {
+            strict(&p, "take(Api.pick(1))", true);
+            let r = query(&p, "take(Api.pick(1))");
+            let start = t.find("take(int i)").unwrap() as u32;
+            assert_eq!(
+                r.targets[0],
+                java_engine::Target {
+                    binary: None,
+                    path: "Calls.java".into(),
+                    kind: java_engine::TargetKind::Method,
+                    name: "take".into(),
+                    owner: "Box".into(),
+                    start_byte: start,
+                    end_byte: start + 4,
+                }
+            );
+            let inner = query(&p, "pick(1)");
+            assert_eq!(inner.status, ResolveStatus::Resolved);
+            assert_eq!(inner.targets[0].binary.as_ref().unwrap().descriptor, "(I)I");
+        } else {
+            strict(&p, "take(Api.pick(1))", false);
+        }
     }
 }
 #[test]

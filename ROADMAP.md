@@ -767,3 +767,12 @@ without synthetic classes or new receiver inference. Complete candidate and
 identity checks remain mandatory. The original167 survey gains37 independently
 compiler-exact targets; the generic T[] arraycopy control remains unsupported.
 No public API/version, budget, cache or ancestor-member-type expansion.
+
+### Shared own-static invocation
+
+[Own-static fixed-arity selection](docs/OWN_STATIC_INVOCATION.md) reuses the common
+caller identity, full family and strict/loose phases. Primitive index arguments
+and validated varargs declarations in fixed-arity form close two compatibility
+gaps without enabling spread invocation. Eighteen original source calls have
+independent exact compiler targets; old 1297/3393/94 query sets remain unchanged.
+Singleton navigation stays name-level; no budget, API or ancestor lookup expansion.

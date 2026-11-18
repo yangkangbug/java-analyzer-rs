@@ -158,7 +158,11 @@ fn generic_and_static_competitors_are_not_filtered_out() {
         let source = format!(
             "class A {{}} class B extends A {{}} class C {{ public void m(A x) {{}} {competitor} }} class Calls {{ void run(C c, B b) {{ c.m(b); }} }}"
         );
-        assert_ne!(query(&project(&source), "Calls.java", "m(b)").status, ResolveStatus::Resolved);
+        if competitor == "public void m(A... x) {}" {
+            selected(&project(&source), "m(b)", "Calls.java", "m(A x)");
+        } else {
+            assert_ne!(query(&project(&source), "Calls.java", "m(b)").status, ResolveStatus::Resolved);
+        }
     }
 }
 #[test]
@@ -526,7 +530,11 @@ fn construction_arguments_keep_all_method_competitors_and_shared_limits() {
         let p = project(&format!(
             "class Leaf {{ public Leaf() {{}} }} class C {{ public void m(java.lang.Object x) {{}} {competitor} }} class Calls {{ void run(C c) {{ c.m(new Leaf()); }} }}"
         ));
-        assert_ne!(query(&p, "Calls.java", "m(new Leaf())").status, ResolveStatus::Resolved);
+        if competitor == "public void m(Leaf... x) {}" {
+            selected(&p, "m(new Leaf())", "Calls.java", "m(java.lang.Object x)");
+        } else {
+            assert_ne!(query(&p, "Calls.java", "m(new Leaf())").status, ResolveStatus::Resolved);
+        }
     }
     let p = project(
         "class Leaf { public Leaf() {} } class Parent { public void m(Leaf x) {} } class C extends Parent { public void m(java.lang.Object x) {} } class Calls { void run(C c) { c.m(new Leaf()); } }",
@@ -708,7 +716,7 @@ fn string_literals_preserve_competitor_and_budget_refusals() {
         let source = format!(
             "class C {{ public void m(String x) {{}} {competitor} }} class Calls {{ void run(C c) {{ c.m(\"x\"); }} }}"
         );
-        if competitor == "public void m(int x) {}" {
+        if matches!(competitor, "public void m(int x) {}" | "public void m(Object... x) {}") {
             // Intentional additive change: exact String beats a strict-inapplicable scalar.
             selected(&literal_project(&source), "m(\"x\")", "Calls.java", "m(String x)");
         } else {
@@ -993,7 +1001,13 @@ fn strict_reference_does_not_discard_unsupported_primitive_competitors() {
             "class A {{}} class Hidden<T> {{}} class C {{ public void m(A x) {{}} {competitor} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
         );
         let result = query(&project(&source), "Calls.java", "m(a)");
-        if matches!(competitor, "public void m(int[] x) {}" | "public void m(int x[]) {}" | "public void m(A[] x) {}") {
+        if matches!(
+            competitor,
+            "public void m(int[] x) {}"
+                | "public void m(int x[]) {}"
+                | "public void m(A[] x) {}"
+                | "public void m(int... x) {}"
+        ) {
             assert_eq!(result.status, ResolveStatus::Resolved, "{competitor}: {result:?}");
             assert_eq!(result.targets.len(), 1);
             assert_eq!(result.targets[0].owner, "C");

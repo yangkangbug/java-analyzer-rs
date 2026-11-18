@@ -96,7 +96,7 @@ fn same_package_private_protected_and_unknown_candidates_still_refuse() {
         ("(I)V", 0x0100, Some("(I)V")),
     ] {
         let result = query(&project(&source("package client;"), &[PUBLIC, ARRAY_HELPER, helper]));
-        if helper == ("([I)V", 0x0101, None) {
+        if matches!(helper, ("([I)V", 0x0101 | 0x0180, None)) {
             assert_eq!(result.status, ResolveStatus::Resolved);
             assert_eq!(result.targets.len(), 1);
             assert_eq!(result.targets[0].owner, "lib.Api");

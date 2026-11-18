@@ -99,6 +99,32 @@ fn check(query: &Query, result: &ResolveResult) {
         count = 1;
         assert!(result.targets.iter().all(|target| target.binary.is_none()));
     }
+    // Own-static selection proves the original String/int repeat declaration.
+    if query.id == "q26" {
+        assert_eq!(
+            &f[1..],
+            &["org/apache/commons/lang3/StringUtils.java", "259409", "repeat", "OverloadNotResolved", "3"]
+        );
+        assert_eq!(expected_targets.len(), 3);
+        for (row, start) in expected_targets.iter().zip([256362, 257188, 259273]) {
+            assert_eq!(
+                row,
+                &vec![
+                    "q26".to_owned(),
+                    "org/apache/commons/lang3/StringUtils.java".to_owned(),
+                    "Method".to_owned(),
+                    "org.apache.commons.lang3.StringUtils".to_owned(),
+                    "repeat".to_owned(),
+                    start.to_string(),
+                    (start + 6).to_string()
+                ]
+            );
+        }
+        expected_targets = vec![expected_targets[1].clone()];
+        status = "Resolved";
+        count = 1;
+        assert!(result.targets.iter().all(|target| target.binary.is_none()));
+    }
     if query.id == "q06" {
         assert_eq!(&f[1..], &["org/apache/commons/lang3/StringUtils.java", "15520", "length", "Resolved", "1"]);
         assert_eq!(result.targets.len(), 1);

@@ -85,6 +85,8 @@ fn every_actual_must_have_existing_proof() {
         if actual == "give()" {
             // The exact own-instance int return now supplies this argument.
             winner(&source, "pick(give(),a)", "pick(int i, A a)");
+        } else if actual == "values[0]" {
+            winner(&source, "pick(values[0],a)", "pick(int i, A a)");
         } else if actual == "this.value" {
             winner(&source, "pick(this.value,a)", "pick(int i, A a)");
         } else {
@@ -114,7 +116,11 @@ fn unknown_or_ineligible_competitors_cannot_be_filtered_by_arity() {
         let source = format!(
             "class A {{}} class Box {{ public void pick(int i, A a) {{}} {competitor} }} class Calls {{ void run(Box box, A a) {{ box.pick(1,a); }} }}"
         );
-        refused(&source, "pick(1,a)", 2);
+        if competitor == "public void pick(long... values) {}" {
+            winner(&source, "pick(1,a)", "pick(int i, A a)");
+        } else {
+            refused(&source, "pick(1,a)", 2);
+        }
     }
 }
 

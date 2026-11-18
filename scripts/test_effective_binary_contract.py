@@ -109,6 +109,56 @@ class EffectiveBinaryContract(unittest.TestCase):
             with self.assertRaises(gate.AcceptanceError):
                 check(row, expected=bad)
 
+    def test_q26_own_static_exact_current_and_historical(self):
+        queries = [["q26", "org/apache/commons/lang3/StringUtils.java", "259409", "repeat", "OverloadNotResolved", "3"]]
+        origin = "org/apache/commons/lang3/StringUtils.java"
+        starts = [256362, 257188, 259273]
+        targets = [["q26", origin, "Method", "org.apache.commons.lang3.StringUtils", "repeat", str(x), str(x + 6)] for x in starts]
+        def target(start):
+            return dict(kind="Method", owner="org.apache.commons.lang3.StringUtils", name="repeat",
+                        origin="source", source_available=True, path="/fixture/" + origin,
+                        compilation=gate.COMPILATION,
+                        range=dict(start_byte=start, end_byte=start+6,
+                                   start_utf16=start, end_utf16=start+6))
+        row = dict(query_index=0, compilation=gate.COMPILATION, source_compilation=gate.COMPILATION,
+                   file="/fixture/" + queries[0][1], position=dict(encoding="utf8", offset=259409),
+                   byte_offset=259409, status="Resolved", targets=[target(257188)])
+        def check(value, current=True, expected=targets):
+            gate.check_declarations({"result": {"index_builds": 1, "queries": [value]}},
+                queries, expected, Path("/fixture"), Path("/java.base.jmod"),
+                {origin: b" " * 260000}, effective_binary=current)
+        check(row)
+        old = copy.deepcopy(row)
+        old.update(status="OverloadNotResolved", targets=[target(x) for x in starts])
+        check(old, False)
+        for value, current in ((row, False), (old, True)):
+            with self.assertRaises(gate.AcceptanceError):
+                check(value, current)
+        # Other repeat overloads have the same owner/name but different declarations.
+        for start in starts:
+            if start == 257188:
+                continue
+            bad = copy.deepcopy(row)
+            bad["targets"] = [target(start)]
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for key, value in (("kind", "Field"), ("owner", "Wrong"), ("path", "/wrong"),
+                           ("source_available", False), ("name", "other")):
+            bad = copy.deepcopy(row)
+            bad["targets"][0][key] = value
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for key in ("start_byte", "end_byte", "start_utf16", "end_utf16"):
+            bad = copy.deepcopy(row)
+            bad["targets"][0]["range"][key] += 1
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for i in range(3):
+            bad = copy.deepcopy(targets)
+            bad[i][5] = "1"
+            with self.assertRaises(gate.AcceptanceError):
+                check(row, expected=bad)
+
     def test_forecast_cannot_be_modified(self):
         prediction = gate.effective_binary_prediction()
         prediction['changes'][0]['expected']['targets'].clear()

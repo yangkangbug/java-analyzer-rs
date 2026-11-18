@@ -200,7 +200,12 @@ fn inner_applicability_unknowns_and_competitors_are_not_discarded() {
         let p = project(&format!(
             "class Calls {{ static float field; {inner} static void outer(float a) {{}} static void outer(double a) {{}} static void test(float a) {{ {call}; }} }}"
         ));
-        if call == "outer(inner(1))" {
+        if inner == "static float inner(float a) { return a; } float inner(long a) { return 0; }" {
+            // Fixed-phase selection retains the instance competitor, which is
+            // inapplicable to float; both selected names are compiler-confirmed.
+            selected(&p, "inner(a)", "inner(float a");
+            selected(&p, &call, "outer(float a");
+        } else if call == "outer(inner(1))" {
             // Literal evidence proves inner's float parameter, then the
             // existing declared-return proof selects outer(float).
             selected(&p, "inner(1)", "inner(float a");

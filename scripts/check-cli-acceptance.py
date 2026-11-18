@@ -330,6 +330,15 @@ def check_declarations(response, queries, targets, source_root, platform, source
                 for start in (128952, 129271, 129587, 129905, 130224, 130540, 130855, 131163, 131482)
             ], "frozen q07 complete original array overloads")
             status, count = "Resolved", "1"
+        if identifier == "q26" and effective_binary:
+            same(query, ["q26", "org/apache/commons/lang3/StringUtils.java", "259409", "repeat", "OverloadNotResolved", "3"],
+                 "frozen q26 own-static migration")
+            same([t for t in targets if t[0] == identifier], [
+                ["q26", "org/apache/commons/lang3/StringUtils.java", "Method",
+                 "org.apache.commons.lang3.StringUtils", "repeat", str(start), str(start + 6)]
+                for start in (256362, 257188, 259273)
+            ], "frozen q26 complete original overloads")
+            status, count = "Resolved", "1"
         same(actual["query_index"], index, f"{identifier}: query order")
         same(actual["compilation"], COMPILATION, f"{identifier}: query compilation")
         same(actual["source_compilation"], COMPILATION, f"{identifier}: source ownership")
@@ -344,6 +353,8 @@ def check_declarations(response, queries, targets, source_root, platform, source
             expected_targets = expected_targets[:1]
         if identifier == "q07" and effective_binary:
             expected_targets = expected_targets[2:3]
+        if identifier == "q26" and effective_binary:
+            expected_targets = expected_targets[1:2]
         for candidate, expected in zip(actual["targets"], expected_targets):
             _, origin, kind, owner, name, start, end = expected
             same(candidate["kind"], kind, f"{identifier}: target kind")

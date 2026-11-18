@@ -135,7 +135,31 @@ fn unsupported_complete_families_never_supply_nested_values() {
     ] {
         let api = format!("package lib; public class Api {{public static int pick(int i){{return i;}} {other}}}");
         let text = wrapped("Api.pick(1)");
-        assert_ne!(query(&project(&api, &text), "take(Api.pick(1))").status, ResolveStatus::Resolved, "{other}");
+        if other == "public static int pick(int... xs){return 0;}" {
+            let p = project(&api, &text);
+            proved(&p, "take(Api.pick(1))", "Box");
+            assert_eq!(query(&p, "take(Api.pick(1))").targets[0].start_byte, text.find("take(int i)").unwrap() as u32);
+            proved(&p, "pick(1)", "lib.Api");
+            for (marker, path, owner, name, start) in [
+                ("take(Api.pick(1))", "Calls.java", "Box", "take", text.find("take(int i)").unwrap() as u32),
+                ("pick(1)", "Api.java", "lib.Api", "pick", api.find("pick(int i)").unwrap() as u32),
+            ] {
+                assert_eq!(
+                    query(&p, marker).targets[0],
+                    java_engine::Target {
+                        binary: None,
+                        path: path.into(),
+                        kind: java_engine::TargetKind::Method,
+                        name: name.into(),
+                        owner: owner.into(),
+                        start_byte: start,
+                        end_byte: start + name.len() as u32,
+                    }
+                );
+            }
+        } else {
+            assert_ne!(query(&project(&api, &text), "take(Api.pick(1))").status, ResolveStatus::Resolved, "{other}");
+        }
     }
 }
 #[test]

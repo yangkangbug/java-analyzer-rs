@@ -105,7 +105,26 @@ fn unsupported_complete_own_families_do_not_supply_values() {
         "long count(int i){return 1;}",
     ] {
         let text = strict_value_case(extra, "void run(Product product){product.use(count(1));}");
-        assert_ne!(query(&project(&text), "use(count(1))").status, ResolveStatus::Resolved, "{extra}");
+        if extra == "int count(int... xs){return 1;}" {
+            let r = query(&project(&text), "use(count(1))");
+            assert_eq!(r.status, ResolveStatus::Resolved);
+            assert_eq!(r.targets.len(), 1);
+            let start = text.find("use(int i)").unwrap() as u32;
+            assert_eq!(
+                r.targets[0],
+                java_engine::Target {
+                    binary: None,
+                    path: "Calls.java".into(),
+                    kind: java_engine::TargetKind::Method,
+                    name: "use".into(),
+                    owner: "Product".into(),
+                    start_byte: start,
+                    end_byte: start + 3,
+                }
+            );
+        } else {
+            assert_ne!(query(&project(&text), "use(count(1))").status, ResolveStatus::Resolved, "{extra}");
+        }
     }
 }
 #[test]

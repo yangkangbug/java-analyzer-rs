@@ -139,12 +139,22 @@ fn literal_receiver_preserves_method_inventory_and_budget_guards() {
     for methods in [
         vec![("length", "()I", 2, None)],
         vec![("length", "()I", 1, None), ("length", "([I)I", 0x81, None)],
+        // ACC_VARARGS without an array tail remains malformed inventory.
+        vec![("length", "()I", 1, None), ("length", "(I)I", 0x81, None)],
         vec![("length", "()I", 1, Some("<T:Ljava/lang/Object;>()I"))],
     ] {
         let mut p = project(source);
         p.add_class_bytes("String.class", &binary("java/lang/String", Some("java/lang/Object"), 0x31, &methods))
             .unwrap();
-        assert_ne!(query(&p).status, ResolveStatus::Resolved);
+        if methods == vec![("length", "()I", 1, None), ("length", "([I)I", 0x81, None)] {
+            let r = query(&p);
+            assert_eq!(r.status, ResolveStatus::Resolved);
+            assert_eq!(r.targets.len(), 1);
+            assert_eq!(r.targets[0].owner, "java.lang.String");
+            assert_eq!(r.targets[0].binary.as_ref().unwrap().descriptor, "()I");
+        } else {
+            assert_ne!(query(&p).status, ResolveStatus::Resolved);
+        }
     }
     for receiver in [format!("\"{}\"", "x".repeat(5000)), format!("{}\"x\"{}", "(".repeat(40), ")".repeat(40))] {
         assert_ne!(

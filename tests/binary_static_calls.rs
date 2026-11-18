@@ -114,7 +114,11 @@ fn unsupported_static_families_are_not_pruned_by_arity() {
         ("pick", "()I", 0x109, Some("<T:Ljava/lang/Object;>()I")),
     ] {
         let p = project("import lib.Api; class Calls {void run(){Api.pick(1);}}", &[INT, other]);
-        assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "{other:?}");
+        if other == ("pick", "([I)I", 0x189, None) {
+            selected(&p, "pick(1)", "lib.Api", "(I)I");
+        } else {
+            assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved, "{other:?}");
+        }
     }
 }
 #[test]
