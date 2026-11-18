@@ -12,6 +12,13 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Damaged declaration type facts
+
+Shared name-structure checks prevent already recognized source declarations from
+providing a shortened, wrong receiver type. Declaration identities and lexical
+shadowing remain; import, heritage, package and unrecognized-declaration recovery
+are separate gaps. See [declared-name evidence](docs/DECLARED_NAME_EVIDENCE.md).
+
 ## Annotation declaration structure
 
 Distinct annotation types, bodies, elements and defaults preserve declaration

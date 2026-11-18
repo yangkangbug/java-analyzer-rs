@@ -3164,6 +3164,10 @@ fn index_callable_contents(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>)
 // Keep the existing lossless CST layout and reset suffix rank at each comma.
 fn variable_declarators(node: &GreenNode, start: u32) -> Vec<(String, u32, u32, Option<QualName>)> {
     let shared = child_kind(node, start, SyntaxKind::Type).and_then(|(ty, at)| {
+        let (name, _) = child_kind(ty, at, SyntaxKind::Name)?;
+        if !complete_declared_name(name) {
+            return None;
+        }
         let parts = type_parts(ty, at)?;
         let array_rank = tokens(ty, at).iter().filter(|token| token.0 == SyntaxKind::LBracket).count();
         Some(QualName { parts, array_rank })
@@ -7890,9 +7894,55 @@ impl<'a> ReferenceCallProof<'a> {
     }
 }
 
+// Cursor-prefix navigation uses name_pieces independently. A declaration's
+// receiver type requires one complete, contiguous CST Name; recovery errors
+// must never be erased into a shorter type identity.
+fn declared_name_syntax_error(node: &GreenNode) -> bool {
+    node.kind() == SyntaxKind::Error
+        || node.children().iter().any(|child| match child {
+            GreenElement::Node(inner) => declared_name_syntax_error(inner),
+            GreenElement::Token(token) => token.kind() == SyntaxKind::ErrorToken,
+        })
+}
+
+fn complete_declared_name(node: &GreenNode) -> bool {
+    let mut need_ident = true;
+    let mut arguments_allowed = false;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            match token.kind() {
+                kind if kind.is_trivia() => {}
+                SyntaxKind::Ident if need_ident => {
+                    need_ident = false;
+                    arguments_allowed = true;
+                }
+                SyntaxKind::Dot if !need_ident => {
+                    need_ident = true;
+                    arguments_allowed = false;
+                }
+                _ => return false,
+            }
+        } else if let Some(inner) = child.as_node() {
+            // Existing catch syntax permits annotations before a segment;
+            // an annotation never completes that segment on its own.
+            if inner.kind() == SyntaxKind::Annotation && need_ident && !declared_name_syntax_error(inner) {
+                continue;
+            }
+            if inner.kind() != SyntaxKind::TypeArgList || !arguments_allowed || declared_name_syntax_error(inner) {
+                return false;
+            }
+            arguments_allowed = false;
+        }
+    }
+    !need_ident
+}
+
 fn read_type(node: &GreenNode, start: u32) -> Option<QualName> {
     let (type_node, type_at) = child_kind(node, start, SyntaxKind::Type)?;
     let parts = if let Some((name, name_at)) = child_kind(type_node, type_at, SyntaxKind::Name) {
+        if !complete_declared_name(name) {
+            return None;
+        }
         name_pieces(name, name_at).0.into_iter().map(|(part, _, _)| part).collect::<Vec<_>>()
     } else {
         Vec::new()
@@ -8907,5 +8957,41 @@ mod annotation_owner_inventory_tests {
         assert!(!file.lexical_owners.iter().any(|owner| owner.anonymous));
         assert!(file.classes[0].fields.is_empty());
         assert_eq!(file.classes[0].methods.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod declared_name_completeness_tests {
+    use super::*;
+    #[test]
+    fn annotation_without_following_segment_does_not_complete_name() {
+        let annotation = GreenNode::from_parts(SyntaxKind::Annotation, Vec::new(), None);
+        let name = GreenNode::from_parts(
+            SyntaxKind::Name,
+            vec![
+                GreenElement::Token(crate::green::GreenToken::new(SyntaxKind::Ident, "p".into())),
+                GreenElement::Token(crate::green::GreenToken::new(SyntaxKind::Dot, ".".into())),
+                GreenElement::Node(annotation),
+            ],
+            None,
+        );
+        assert!(!complete_declared_name(&name));
+    }
+    #[test]
+    fn lexical_error_token_inside_arguments_is_not_a_complete_name() {
+        let args = GreenNode::from_parts(
+            SyntaxKind::TypeArgList,
+            vec![GreenElement::Token(crate::green::GreenToken::new(SyntaxKind::ErrorToken, "#".into()))],
+            None,
+        );
+        let name = GreenNode::from_parts(
+            SyntaxKind::Name,
+            vec![
+                GreenElement::Token(crate::green::GreenToken::new(SyntaxKind::Ident, "C".into())),
+                GreenElement::Node(args),
+            ],
+            None,
+        );
+        assert!(!complete_declared_name(&name));
     }
 }
