@@ -12,12 +12,19 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Unified import evidence
+
+One private inventory preserves complete and malformed import facts across legacy
+and strict consumers, including unknown competition and namespace-specific
+budgets. It does not add parser syntax or broad static import capabilities.
+See [import evidence and boundaries](docs/IMPORT_EVIDENCE.md).
+
 ## Damaged declaration type facts
 
 Shared name-structure checks prevent already recognized source declarations from
 providing a shortened, wrong receiver type. Declaration identities and lexical
-shadowing remain; import, heritage, package and unrecognized-declaration recovery
-are separate gaps. See [declared-name evidence](docs/DECLARED_NAME_EVIDENCE.md).
+shadowing remain; heritage, package and unrecognized-declaration recovery
+are separate gaps. Malformed import evidence is handled independently above. See [declared-name evidence](docs/DECLARED_NAME_EVIDENCE.md).
 
 ## Annotation declaration structure
 

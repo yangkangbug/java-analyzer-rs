@@ -9,6 +9,9 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Import evidence](docs/IMPORT_EVIDENCE.md) keeps malformed imports as competing
+unknowns instead of shortening them into false targets or dropping them.
+
 [Declared-name evidence](docs/DECLARED_NAME_EVIDENCE.md) rejects malformed
 source receiver type facts without dropping the recognized declaration itself.
 

@@ -408,15 +408,107 @@ struct LexicalOwner {
 }
 
 #[derive(Clone, Debug)]
+enum ImportSelection {
+    Named(String),
+    Demand,
+    Unknown,
+}
+#[derive(Clone, Debug)]
+struct ImportRec {
+    is_static: bool,
+    selection: ImportSelection,
+    target: String,
+    complete: bool,
+    malformed_work: usize,
+}
+#[derive(Clone, Debug, Default)]
+struct Imports {
+    records: Vec<ImportRec>,
+    ordinary: Vec<usize>,
+    statics: Vec<usize>,
+}
+impl Imports {
+    fn push(&mut self, record: ImportRec) {
+        let ids = if record.is_static { &mut self.statics } else { &mut self.ordinary };
+        ids.push(self.records.len());
+        self.records.push(record);
+    }
+    fn singles(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.ordinary.iter().filter_map(|&id| {
+            let r = &self.records[id];
+            if let ImportSelection::Named(name) = &r.selection
+                && r.complete
+            {
+                Some((name, &r.target))
+            } else {
+                None
+            }
+        })
+    }
+    fn stars(&self) -> impl Iterator<Item = &String> {
+        self.ordinary.iter().filter_map(|&id| {
+            let r = &self.records[id];
+            (r.complete && matches!(r.selection, ImportSelection::Demand)).then_some(&r.target)
+        })
+    }
+    fn statics(&self) -> impl Iterator<Item = (&String, Option<&String>)> {
+        self.statics.iter().map(|&id| {
+            let r = &self.records[id];
+            (
+                &r.target,
+                match &r.selection {
+                    ImportSelection::Named(name) => Some(name),
+                    ImportSelection::Demand | ImportSelection::Unknown => None,
+                },
+            )
+        })
+    }
+    fn static_name(&self, name: &str) -> bool {
+        self.statics.iter().any(|&id| {
+            let r = &self.records[id];
+            match &r.selection {
+                ImportSelection::Named(member) => member == name,
+                ImportSelection::Unknown => true,
+                ImportSelection::Demand if !r.complete => true,
+                ImportSelection::Demand => r.target.rsplit('.').next() == Some(name),
+            }
+        })
+    }
+    fn explicit_static(&self, name: &str) -> bool {
+        self.statics.iter().any(|&id| {
+            let r = &self.records[id];
+            match &r.selection {
+                ImportSelection::Named(member) => member == name,
+                ImportSelection::Unknown => true,
+                ImportSelection::Demand => !r.complete,
+            }
+        })
+    }
+    fn unknown_single(&self, name: &str) -> bool {
+        self.ordinary.iter().any(|&id| {
+            let r = &self.records[id];
+            !r.complete
+                && match &r.selection {
+                    ImportSelection::Named(member) => member == name,
+                    ImportSelection::Unknown => true,
+                    ImportSelection::Demand => false,
+                }
+        })
+    }
+    fn unknown_demand(&self) -> bool {
+        self.ordinary.iter().any(|&id| {
+            let r = &self.records[id];
+            !r.complete && matches!(r.selection, ImportSelection::Demand | ImportSelection::Unknown)
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
 struct FileRec {
     scope: usize,
     path: String,
     package: String,
-    singles: Vec<(String, String)>,
-    stars: Vec<String>,
-    static_names: Vec<String>,
-    // None member denotes an on-demand import; never infer absence from it.
-    static_imports: Vec<(String, Option<String>)>,
+    imports: Imports,
     classes: Vec<ClassRec>,
     locals: Vec<LocalRec>,
     named_local_count: usize,
@@ -717,7 +809,7 @@ impl Index {
     // Only standalone value references opt into imported fields. Qualified
     // receivers, type names and calls retain their existing namespace paths.
     fn direct_reference(&self, file: &FileRec, byte: u32, name: &str) -> ResolveResult {
-        if !file.static_imports.iter().any(|(_, member)| member.as_deref() == Some(name)) {
+        if !file.imports.explicit_static(name) {
             return self.simple_name(file, byte, name, false);
         }
         if let Some(local) = self.locals_named(file, byte, name) {
@@ -852,7 +944,7 @@ impl Index {
             }
             return result;
         }
-        if file.static_names.iter().any(|imported| imported == name) {
+        if file.imports.static_name(name) {
             if let Some((args, args_at)) = arguments
                 && let Some(caller) = direct_caller(parsed.root(), byte)
                 && reference_method_header(caller.node, caller.start)
@@ -905,7 +997,7 @@ impl Index {
             if methods.status != ResolveStatus::Unresolved {
                 return methods;
             }
-            if file.static_names.iter().any(|imported| imported == name) {
+            if file.imports.static_name(name) {
                 return ResolveResult::none(ResolveStatus::StaticImportNotApplied);
             }
             return ResolveResult::none(ResolveStatus::Unresolved);
@@ -923,7 +1015,7 @@ impl Index {
             }
             TypeLookup::MissingImport => ResolveResult::none(ResolveStatus::Unresolved),
             TypeLookup::None => {
-                if file.static_names.iter().any(|imported| imported == name) {
+                if file.imports.static_name(name) {
                     ResolveResult::none(ResolveStatus::StaticImportNotApplied)
                 } else {
                     ResolveResult::none(ResolveStatus::Unresolved)
@@ -964,8 +1056,11 @@ impl Index {
             TypeLookup::None => {}
             member => return member,
         }
+        if file.imports.unknown_single(name) {
+            return TypeLookup::MissingImport;
+        }
         let imports: BTreeSet<_> =
-            file.singles.iter().filter(|(simple, _)| simple == name).map(|(_, full)| full).collect();
+            file.imports.singles().filter(|(simple, _)| *simple == name).map(|(_, full)| full).collect();
         // A missing or invisible import is still a competing declaration. Do
         // not choose whichever import was indexed first or happens to be loaded.
         // Exact repeated imports contribute only one name, as in strict lookup.
@@ -1003,7 +1098,10 @@ impl Index {
         if same_package.len() > 1 {
             return TypeLookup::Many(same_package);
         }
-        let mut stars = file.stars.clone();
+        if file.imports.unknown_demand() {
+            return TypeLookup::MissingImport;
+        }
+        let mut stars = file.imports.stars().cloned().collect::<Vec<_>>();
         if !stars.iter().any(|package| package == "java.lang") {
             stars.push("java.lang".to_string());
         }
@@ -1670,7 +1768,7 @@ impl Index {
             }
         }
         let imports: BTreeSet<_> =
-            file.singles.iter().filter(|(simple, _)| simple == first).map(|(_, full)| full).collect();
+            file.imports.singles().filter(|(simple, _)| *simple == first).map(|(_, full)| full).collect();
         if imports.len() > 1 {
             return None;
         }
@@ -2651,10 +2749,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         scope: 0,
         path: path.to_string(),
         package: String::new(),
-        singles: Vec::new(),
-        stars: Vec::new(),
-        static_names: Vec::new(),
-        static_imports: Vec::new(),
+        imports: Imports::default(),
         classes: Vec::new(),
         locals: Vec::new(),
         named_local_count: 0,
@@ -2933,29 +3028,97 @@ fn index_anonymous_body(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
 }
 
 fn index_import(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
-    let is_static = tokens(node, start).iter().any(|token| token.0 == SyntaxKind::Static);
-    let Some((name_node, name_at)) = child_kind(node, start, SyntaxKind::Name) else { return };
-    let (parts, star) = name_pieces(name_node, name_at);
-    if parts.is_empty() {
-        return;
-    }
-    if is_static {
-        if let Some((simple, _, _)) = parts.last() {
-            ctx.file.static_names.push(simple.clone());
+    let mut state = 0;
+    let mut is_static = false;
+    let mut name = None;
+    let mut closed = false;
+    let mut valid = true;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if token.kind().is_trivia() {
+                continue;
+            }
+            match (state, token.kind()) {
+                (0, SyntaxKind::Import) => state = 1,
+                (1, SyntaxKind::Static) => {
+                    is_static = true;
+                    state = 2;
+                }
+                (3, SyntaxKind::Semi) => {
+                    closed = true;
+                    state = 4;
+                }
+                _ => valid = false,
+            }
+        } else if let Some(child) = child.as_node() {
+            if matches!(state, 1 | 2) && child.kind() == SyntaxKind::Name {
+                name = Some(child.as_ref());
+                state = 3;
+            } else {
+                valid = false;
+            }
         }
-        let owner_parts = if star { &parts[..] } else { &parts[..parts.len() - 1] };
-        let owner = owner_parts.iter().map(|(name, _, _)| name.as_str()).collect::<Vec<_>>().join(".");
-        let member = (!star).then(|| parts.last().unwrap().0.clone());
-        ctx.file.static_imports.push((owner, member));
-        return;
     }
-    if star {
-        let package = parts.iter().map(|(name, _, _)| name.clone()).collect::<Vec<_>>().join(".");
-        ctx.file.stars.push(package);
-    } else if let Some((simple, _, _)) = parts.last() {
-        let full = parts.iter().map(|(name, _, _)| name.clone()).collect::<Vec<_>>().join(".");
-        ctx.file.singles.push((simple.clone(), full));
+    let mut parts = Vec::new();
+    let mut need_ident = true;
+    let mut star = false;
+    let mut name_valid = true;
+    let mut terminal = None;
+    if let Some(name) = name {
+        for child in name.children() {
+            if let Some(token) = child.as_token() {
+                if token.kind().is_trivia() {
+                    continue;
+                }
+                terminal = Some((token.kind(), token.text()));
+                match token.kind() {
+                    SyntaxKind::Ident if need_ident && !star => {
+                        parts.push(token.text());
+                        need_ident = false;
+                    }
+                    SyntaxKind::Dot if !need_ident && !star => need_ident = true,
+                    SyntaxKind::Star if need_ident && !parts.is_empty() && !star => {
+                        star = true;
+                        need_ident = false;
+                    }
+                    _ => name_valid = false,
+                }
+            } else {
+                name_valid = false;
+                terminal = None;
+            }
+        }
     }
+    let complete = valid
+        && state == 4
+        && name_valid
+        && !need_ident
+        && !parts.is_empty()
+        && (!is_static || star || parts.len() >= 2);
+    let selection = if closed {
+        match terminal {
+            Some((SyntaxKind::Ident, text)) => ImportSelection::Named(text.into()),
+            Some((SyntaxKind::Star, _)) => ImportSelection::Demand,
+            _ => ImportSelection::Unknown,
+        }
+    } else {
+        ImportSelection::Unknown
+    };
+    // A damaged prefix is evidence of competition, never a canonical owner.
+    let target = if complete {
+        let used = if is_static && !star { &parts[..parts.len() - 1] } else { &parts[..] };
+        used.join(".")
+    } else {
+        String::new()
+    };
+    let _ = start;
+    ctx.file.imports.push(ImportRec {
+        is_static,
+        selection,
+        target,
+        complete,
+        malformed_work: if complete { 0 } else { node.utf8_len() as usize },
+    });
 }
 
 fn index_class(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
@@ -5610,7 +5773,7 @@ impl<'a> ReferenceCallProof<'a> {
         Some(classes)
     }
     fn raw_type(&mut self, file: &'a FileRec, parts: &[String], at: u32) -> Option<&'a ClassRec> {
-        self.charge(file.singles.len() + file.stars.len() + file.classes.len() + file.local_types.len() + 1)?;
+        self.charge(file.imports.ordinary.len() + file.classes.len() + file.local_types.len() + 1)?;
         let first = parts.first()?;
         if first == "var"
             || local_type_shadows(file, first, at)
@@ -5626,8 +5789,11 @@ impl<'a> ReferenceCallProof<'a> {
                 break;
             }
         }
+        if lexical.is_none() && file.imports.unknown_single(first) {
+            return None;
+        }
         let imports: BTreeSet<_> =
-            file.singles.iter().filter(|(name, _)| name == first).map(|(_, name)| name).collect();
+            file.imports.singles().filter(|(name, _)| *name == first).map(|(_, name)| name).collect();
         if imports.len() > 1 {
             return None;
         }
@@ -5643,8 +5809,12 @@ impl<'a> ReferenceCallProof<'a> {
                 if file.package.is_empty() { first.clone() } else { format!("{}.{}", file.package, first) };
             let same_package = self.named(file.scope, &package_name)?;
             if same_package.is_empty() {
+                if file.imports.unknown_demand() {
+                    return None;
+                }
+
                 let mut found = Vec::new();
-                let stars: BTreeSet<_> = file.stars.iter().map(String::as_str).chain(["java.lang"]).collect();
+                let stars: BTreeSet<_> = file.imports.stars().map(String::as_str).chain(["java.lang"]).collect();
                 for star in stars {
                     found.extend(self.named(file.scope, &format!("{star}.{first}"))?);
                 }
@@ -6912,8 +7082,8 @@ impl<'a> ReferenceCallProof<'a> {
     // unknown/unsupported, never absence permitting a same-named type fallback.
     // This is navigation, not field type evidence.
     fn imported_own_field(&mut self, name: &str, at: u32) -> Option<Target> {
-        self.charge(self.file.static_imports.len().max(1))?;
-        if self.file.static_imports.iter().any(|(_, member)| member.is_none()) {
+        self.charge(self.file.imports.statics.len().max(1))?;
+        if self.file.imports.statics().any(|(_, member)| member.is_none()) {
             return None;
         }
         self.charge(self.file.classes.len().max(1))?;
@@ -6929,9 +7099,18 @@ impl<'a> ReferenceCallProof<'a> {
         }
         let mut selected: Option<(&ClassRec, usize)> = None;
         let mut owners = BTreeSet::new();
-        for (imported, member) in &self.file.static_imports {
-            self.charge(imported.len() + member.as_ref().map_or(0, String::len) + 1)?;
-            if member.as_deref() != Some(name) {
+        for &id in &self.file.imports.statics {
+            let record = &self.file.imports.records[id];
+            let imported = &record.target;
+            let member = match &record.selection {
+                ImportSelection::Named(name) => Some(name),
+                _ => None,
+            };
+            self.charge(imported.len() + member.map_or(0, String::len) + 1 + record.malformed_work)?;
+            if !record.complete && (member.is_none() || member.map(String::as_str) == Some(name)) {
+                return None;
+            }
+            if member.map(String::as_str) != Some(name) {
                 continue;
             }
             let owner = self.unique_named(self.file.scope, imported)?;
@@ -6994,11 +7173,20 @@ impl<'a> ReferenceCallProof<'a> {
         if at < self.caller_start || at >= self.caller_end {
             return None;
         }
-        self.charge(self.file.static_imports.len().max(1))?;
+        self.charge(self.file.imports.statics.len().max(1))?;
         let mut imported = None;
-        for (owner, member) in &self.file.static_imports {
-            self.charge(owner.len() + member.as_ref().map_or(0, String::len) + 1)?;
-            let member = member.as_ref()?; // Any on-demand import remains unsupported.
+        for &id in &self.file.imports.statics {
+            let record = &self.file.imports.records[id];
+            let owner = &record.target;
+            let member = match &record.selection {
+                ImportSelection::Named(name) => Some(name),
+                _ => None,
+            };
+            self.charge(owner.len() + member.map_or(0, String::len) + 1 + record.malformed_work)?;
+            if !record.complete && (member.is_none() || member.map(String::as_str) == Some(name)) {
+                return None;
+            }
+            let member = member?; // Any on-demand import remains unsupported.
             if member == name {
                 if imported.is_some_and(|prior| prior != owner.as_str()) {
                     return None;
@@ -8591,7 +8779,13 @@ mod static_import_proof_tests {
         // the otherwise-successful complete graph retained.
         let mut wildcard = Index::build(&p.files, &p.binaries);
         let file = wildcard.files.iter_mut().find(|f| f.path == "C.java").unwrap();
-        file.static_imports.push(("other.Api".into(), None));
+        file.imports.push(ImportRec {
+            is_static: true,
+            selection: ImportSelection::Demand,
+            target: "other.Api".into(),
+            complete: true,
+            malformed_work: 0,
+        });
         let file = wildcard.files.iter().find(|f| f.path == "C.java").unwrap();
         let mut proof = ReferenceCallProof::new(&wildcard, file, caller);
         assert!(proof.static_import_owner("pick", at).is_none());
@@ -8993,5 +9187,74 @@ mod declared_name_completeness_tests {
             None,
         );
         assert!(!complete_declared_name(&name));
+    }
+}
+
+#[cfg(test)]
+mod import_record_tests {
+    use super::*;
+    #[test]
+    fn lexical_type_beats_malformed_same_name_import() {
+        let text = "import p.C;import p..C;class Outer { class C{} C value; }";
+        let mut project = Project::new();
+        project.insert("Use.java", text);
+        project.insert("p/C.java", "package p;public class C{}");
+        let index = Index::build(&project.files, &project.binaries);
+        let file = index.files.iter().find(|f| f.path == "Use.java").unwrap();
+        let at = text.find("C value").unwrap() as u32;
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        let found = proof.raw_type(file, &["C".into()], at).unwrap();
+        assert_eq!(found.dotted(), "Outer.C");
+        assert_eq!(index.signature_type(file, &["C".into()], at).unwrap().dotted(), "Outer.C");
+    }
+    #[test]
+    fn malformed_records_are_not_filtered_from_namespace_or_budget() {
+        let mut project = Project::new();
+        project.insert("Use.java", "import p..C; class Use{}");
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        assert_eq!(file.imports.records.len(), 1);
+        assert_eq!(file.imports.ordinary, [0]);
+        assert!(!file.imports.records[0].complete);
+        assert!(file.imports.records[0].target.is_empty());
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        proof.work_left = 2;
+        assert!(proof.raw_type(file, &["C".into()], 30).is_none());
+        assert!(proof.exhausted);
+        let mut enough = ReferenceCallProof::new(&index, file, None);
+        enough.work_left = 3;
+        assert!(enough.raw_type(file, &["C".into()], 30).is_none());
+        assert!(!enough.exhausted);
+        assert_eq!(enough.work_left, 0);
+    }
+    #[test]
+    fn ordinary_lookup_does_not_charge_unrelated_static_inventory() {
+        fn remaining(imports: &str) -> usize {
+            let mut project = Project::new();
+            project.insert("Use.java", &format!("{imports} class Use {{}}"));
+            let index = Index::build(&project.files, &project.binaries);
+            let file = &index.files[0];
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            assert!(proof.raw_type(file, &["Use".into()], u32::MAX).is_some());
+            assert!(!proof.exhausted);
+            proof.work_left
+        }
+        assert_eq!(remaining(""), remaining(&"import static p.C.x;".repeat(100)));
+    }
+    #[test]
+    fn damaged_static_record_string_work_is_not_free_even_if_name_differs() {
+        let text = "import static p..C.x;";
+        let mut project = Project::new();
+        project.insert("Use.java", text);
+        let index = Index::build(&project.files, &project.binaries);
+        let file = &index.files[0];
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        proof.work_left = 3;
+        assert!(proof.imported_own_field("other", 0).is_none());
+        assert!(proof.exhausted);
+        let mut enough = ReferenceCallProof::new(&index, file, None);
+        assert!(enough.imported_own_field("other", 0).is_none());
+        assert!(!enough.exhausted);
+        assert!(enough.work_left < ReferenceCallProof::new(&index, file, None).work_left - text.len());
     }
 }

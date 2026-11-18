@@ -32,10 +32,10 @@ changes. Cursor-prefix navigation remains separate: clicking the complete
 
 ## Explicit remaining gaps
 
-This is not a universal malformed-name fix. Import, package and heritage
-inventories still use their existing paths. Their known malformed-name cases
-remain separate work; changing a failed import to absence could itself create a
-wrong fallback.
+This is not a universal malformed-name fix. Package and heritage inventories
+still use their existing paths. Malformed imports are handled by the separate
+[complete import evidence](IMPORT_EVIDENCE.md) model, which retains unknown
+competition rather than turning a failed import into absence.
 
 Likewise, `p.C<,> C=null` may be recovered as expressions rather than a LocalVar.
 There is then no declaration record for this check to preserve, and later
