@@ -1,5 +1,8 @@
 # java-analyzer-rs
 
+[Enhanced-for variable scope](docs/ENHANCED_FOR_SCOPE.md) keeps header variables
+out of their iterable expression while preserving body and declaration navigation.
+
 An independent Rust Java analysis project, extracted from OpenIDEA's
 `crates/java-engine`. The Cargo package remains `java-engine` so existing
 `java_engine` imports continue to work. This is an early analysis kernel,

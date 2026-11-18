@@ -1,5 +1,13 @@
 # Native Java analysis roadmap
 
+## Enhanced-for lexical visibility
+
+Header variables become visible at the actual body boundary, not in the iterable.
+This private indexing correction preserves ordinary-for and other lexical scopes;
+strict invocation guards and damaged-final recovery remain separate. See
+[validation and scope](docs/ENHANCED_FOR_SCOPE.md).
+
+
 ## Qualified class creation structure
 
 QualifiedNewExpr preserves expression-qualified creator structure, independent

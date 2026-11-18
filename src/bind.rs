@@ -2936,6 +2936,15 @@ enum ScopeKind {
 }
 
 fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
+    index_node_with_local_visibility(node, start, ctx, None);
+}
+
+fn index_node_with_local_visibility(
+    node: &GreenNode,
+    start: u32,
+    ctx: &mut IndexCtx<'_>,
+    local_visible_from: Option<u32>,
+) {
     // Invalid direct labeled declarations and bounded-chain recovery cannot
     // introduce variables into the enclosing block. Valid labels add no scope.
     if matches!(node.kind(), SyntaxKind::LabeledStmt | SyntaxKind::SynchronizedStmt) && node.message().is_some() {
@@ -3062,6 +3071,7 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             start,
             ctx,
             if node.kind() == SyntaxKind::Resource { TargetKind::Resource } else { TargetKind::Local },
+            local_visible_from,
         );
     }
     if node.kind() == SyntaxKind::Parameter {
@@ -3070,6 +3080,7 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
     if node.kind() == SyntaxKind::CatchClause {
         index_catch(node, start, ctx);
     }
+    let header_visibility = (node.kind() == SyntaxKind::ForStmt).then(|| for_local_visibility(node, start)).flatten();
     let mut offset = start;
     for child in node.children() {
         if let Some(child) = child.as_node() {
@@ -3080,7 +3091,10 @@ fn index_node(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             {
                 index_anonymous_body(child, offset, ctx);
             } else {
-                index_node(child, offset, ctx);
+                let visibility = header_visibility
+                    .filter(|(header_start, _)| *header_start == offset)
+                    .map(|(_, visible_from)| visible_from);
+                index_node_with_local_visibility(child, offset, ctx, visibility);
             }
         }
         offset += child.utf8_len();
@@ -3455,7 +3469,7 @@ fn variable_declarators(node: &GreenNode, start: u32) -> Vec<(String, u32, u32, 
     result
 }
 
-fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: TargetKind) {
+fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: TargetKind, visible_from: Option<u32>) {
     let Some((scope_start, scope_end, _)) = ctx.scope_stack.last().copied() else { return };
     for (name, name_start, name_end, declared) in variable_declarators(node, start) {
         ctx.file.locals.push(LocalRec {
@@ -3467,7 +3481,7 @@ fn index_local(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>, kind: Targe
             end: name_end,
             scope_start,
             scope_end,
-            visible_from: name_end,
+            visible_from: visible_from.unwrap_or(name_end),
             declared,
             primitive: primitive_declaration(node, start, name_start),
             postfix_after: (kind == TargetKind::Local)
@@ -3529,6 +3543,45 @@ fn index_parameter(node: &GreenNode, start: u32, ctx: &mut IndexCtx<'_>) {
             path: ctx.file.path.clone(),
         });
     }
+}
+
+// Only direct header children delimit a for statement. Nested calls,
+// annotations and conditional expressions cannot contribute its ':' or ')'.
+fn for_local_visibility(node: &GreenNode, start: u32) -> Option<(u32, u32)> {
+    let unavailable = start + node.utf8_len();
+    let mut header_start = None;
+    let mut state = 0;
+    let mut body = None;
+    let mut offset = start;
+    for child in node.children() {
+        if let Some(token) = child.as_token() {
+            if !token.kind().is_trivia() {
+                state = match (state, token.kind()) {
+                    (0, SyntaxKind::For) => 1,
+                    (1, SyntaxKind::LParen) => 2,
+                    (3, SyntaxKind::Semi) => return None, // existing basic-for scope
+                    (3, SyntaxKind::Colon) => 4,
+                    (5, SyntaxKind::RParen) => 6,
+                    _ => return header_start.map(|at| (at, unavailable)),
+                };
+            }
+        } else if let Some(child) = child.as_node() {
+            state = match state {
+                2 if child.kind() == SyntaxKind::LocalVar => {
+                    header_start = Some(offset);
+                    3
+                }
+                4 if child.kind() != SyntaxKind::Error => 5,
+                6 if child.kind() != SyntaxKind::Error => {
+                    body = Some(offset);
+                    7
+                }
+                _ => return header_start.map(|at| (at, unavailable)),
+            };
+        }
+        offset += child.utf8_len();
+    }
+    header_start.map(|at| (at, if state == 7 { body.unwrap_or(unavailable) } else { unavailable }))
 }
 
 fn scope_of(node: &GreenNode, start: u32) -> Option<(u32, u32, ScopeKind)> {
