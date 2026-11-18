@@ -925,14 +925,23 @@ impl<'a> Parser<'a> {
     fn parse_stmts(&mut self) {
         while !self.eof() && !self.at(SyntaxKind::RBrace) {
             let before = self.pos;
-            self.parse_stmt();
+            if self.parse_stmt() {
+                // The original classifier already rejected this nameless prefix.
+                // Reproduce each independent error node; the last @ is classified
+                // normally. Never replay recovery in a single-Statement caller.
+                while self.at(SyntaxKind::At) && self.nth(1) == SyntaxKind::At {
+                    self.recover_stmt();
+                }
+            }
             if self.pos == before {
                 self.error_one("expected statement");
             }
         }
     }
 
-    fn parse_stmt(&mut self) {
+    // True means only that a statement sequence may replay the same recovery;
+    // it is not a parse-success result. Single-Statement callers ignore it.
+    fn parse_stmt(&mut self) -> bool {
         match self.kind() {
             SyntaxKind::Semi => {
                 self.open(SyntaxKind::EmptyStmt);
@@ -963,8 +972,22 @@ impl<'a> Parser<'a> {
                 self.expect(SyntaxKind::Semi, "expected ';'");
                 self.finish();
             }
-            _ => self.recover_stmt(),
+            _ => {
+                // Removing a leading @ preserves the old modifier-lookahead
+                // suffix, except when the first token followed a dot: that
+                // context deliberately suppresses local-type recognition.
+                let repeatable = self.at(SyntaxKind::At)
+                    && self.nth(1) == SyntaxKind::At
+                    && !self.tokens[..self.next_sig()]
+                        .iter()
+                        .rev()
+                        .find(|token| !token.kind.is_trivia())
+                        .is_some_and(|token| token.kind == SyntaxKind::Dot);
+                self.recover_stmt();
+                return repeatable;
+            }
         }
+        false
     }
 
     fn parse_labeled(&mut self) {
@@ -1578,7 +1601,9 @@ impl<'a> Parser<'a> {
                     }
                     labeled = true;
                 }
-                _ if labeled => self.parse_stmt(),
+                _ if labeled => {
+                    self.parse_stmt();
+                }
                 _ => return false,
             }
             if self.pos == before {

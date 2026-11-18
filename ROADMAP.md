@@ -1,5 +1,11 @@
 # Native Java analysis roadmap
 
+## Statement-sequence recovery cost
+
+[Nameless annotation recovery](docs/ANNOTATION_RECOVERY_COST.md) avoids repeated
+failed prefix classification while preserving each error node and all existing
+container decisions. This does not claim globally linear parsing.
+
 ## Local-type declaration identity
 
 Lexical local class/enum/record names now have distinct source identities without

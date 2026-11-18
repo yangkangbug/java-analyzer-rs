@@ -1,5 +1,9 @@
 # java-analyzer-rs
 
+[Nameless annotation recovery](docs/ANNOTATION_RECOVERY_COST.md) avoids repeated
+failed prefix classification while preserving each error node and all existing
+container decisions. This does not claim globally linear parsing.
+
 [Explicit array invocation types](docs/ARRAY_INVOCATION.md) preserve component/rank
 identity across complete method families and shared conversion/specificity proofs.
 
