@@ -12,6 +12,12 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Decimal floating token boundaries
+
+One decimal scanner supports trailing-dot literals and validates digit separators
+in floating candidates. Integer/hex/binary behavior and invocation proof scope
+remain separate. See [token boundaries and known gaps](docs/DECIMAL_FLOAT_TOKENS.md).
+
 ## Contextual var names
 
 Shared syntax-role handling supports ordinary var names and qualified package

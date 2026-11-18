@@ -1,0 +1,35 @@
+{
+  "gson": [],
+  "commons": [
+    {
+      "path": "org/apache/commons/lang3/JavaVersion.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5071,
+            "end_utf16": 5071,
+            "start_byte": 5071,
+            "start_utf16": 5071
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected name",
+          "range": {
+            "end_byte": 5075,
+            "end_utf16": 5075,
+            "start_byte": 5075,
+            "start_utf16": 5075
+          }
+        }
+      ],
+      "after": []
+    }
+  ]
+}

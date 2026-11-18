@@ -38,6 +38,8 @@ ANNOTATION_CHANGES = json.loads(Path(__file__).with_name('annotation-structure-p
 
 VAR_CHANGES = json.loads(Path(__file__).with_name('contextual-var-parser-delta.json').read_text())
 
+DECIMAL_CHANGES = json.loads(Path(__file__).with_name('decimal-tail-parser-delta.json').read_text())
+
 def prior_reports(offsets):
     return [{'classification': 'parser_limit_or_invalid_syntax', 'message': message,
              'range': {'start_byte': at, 'end_byte': at + width, 'start_utf16': at, 'end_utf16': at + width}}
@@ -76,6 +78,13 @@ def load(corpus, stage='latest'):
         require(rows[0] == {'path': change['path'],
                            'compilation': change['compilation'],
                            'reports': change['before']}, 'exact prior contextual var parser records drift')
+        rows[0]['reports'] = copy.deepcopy(change['after'])
+    for change in DECIMAL_CHANGES[corpus]:
+        rows = [row for row in expected['files'] if row['path'] == change['path']]
+        require(len(rows) == 1, 'exact decimal tail file identity drift')
+        require(rows[0] == {'path': change['path'],
+                           'compilation': change['compilation'],
+                           'reports': change['before']}, 'exact prior decimal tail parser records drift')
         rows[0]['reports'] = copy.deepcopy(change['after'])
     expected['report_count'] = sum(len(row['reports']) for row in expected['files'])
     expected['files_with_reports'] = sum(bool(row['reports']) for row in expected['files'])

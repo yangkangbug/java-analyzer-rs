@@ -293,6 +293,8 @@ class InvocationControls(unittest.TestCase):
     def test_commons_exact_parser_stages_cannot_be_swapped_erased_or_invented(self):
         root = Path('/sources')
         contract = gate.load_tool('traditional-switch-parser-contract')
+        historical, _ = contract.load('commons', 'baseline')
+        historical_row = next(row for row in historical['files'] if row['reports'])
         for stage in ('baseline', 'switch', 'labels', 'latest'):
             if stage == 'latest':
                 parser, _ = gate.load_tool('current-parser-contract').load('commons')
@@ -305,13 +307,23 @@ class InvocationControls(unittest.TestCase):
             wrong = 'switch' if stage == 'baseline' else 'baseline'
             with self.assertRaises(gate.AcceptanceError):
                 gate.preserve_commons_parser(parser, root, wrong)
-            gap_index = next(i for i, row in enumerate(parser['files']) if row['reports'])
-            for operation in ('omit', 'add', 'summary', 'message', 'range', 'extra'):
+            gap_index = next((i for i, row in enumerate(parser['files']) if row['reports']), None)
+            operations = ['omit', 'add', 'summary', 'extra']
+            if gap_index is not None:
+                operations.extend(['message', 'range'])
+            for operation in operations:
                 changed = copy.deepcopy(parser)
                 if operation == 'omit':
                     changed['files'].pop()
                 elif operation == 'add':
-                    changed['files'][gap_index]['reports'].append({})
+                    # Even zero-report latest output must reject an invented
+                    # report with a real shape and self-consistent summaries.
+                    added = next(row for row in changed['files']
+                                 if row['path'] == str(root / historical_row['path']))
+                    added['reports'].append(copy.deepcopy(historical_row['reports'][0]))
+                    changed['report_count'] = sum(len(row['reports']) for row in changed['files'])
+                    changed['files_with_reports'] = sum(bool(row['reports']) for row in changed['files'])
+                    self.assertEqual(changed['report_count'], parser['report_count'] + 1)
                 elif operation == 'summary':
                     changed['report_count'] += 1
                 elif operation == 'message':

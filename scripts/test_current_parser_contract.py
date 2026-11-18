@@ -11,7 +11,7 @@ spec.loader.exec_module(contract)
 
 class CurrentParserContractTests(unittest.TestCase):
     def test_exact_delta_and_history_unchanged(self):
-        for corpus, count in [('commons', 2), ('gson', 44)]:
+        for corpus, count in [('commons', 0), ('gson', 44)]:
             before, hashes = contract.previous.load(corpus)
             frozen = copy.deepcopy(before)
             actual, actual_hashes = contract.load(corpus)
@@ -33,6 +33,10 @@ class CurrentParserContractTests(unittest.TestCase):
                 if var:
                     self.assertEqual(expected['reports'], var['before'])
                     expected['reports'] = var['after']
+                decimal = next((c for c in contract.DECIMAL_CHANGES[corpus] if c['path'] == old['path']), None)
+                if decimal:
+                    self.assertEqual(expected['reports'], decimal['before'])
+                    expected['reports'] = decimal['after']
                 self.assertEqual(new, expected)
             self.assertEqual(contract.previous.load(corpus)[0], frozen)
 
@@ -108,6 +112,26 @@ class CurrentParserContractTests(unittest.TestCase):
                 else: row['before'][0]['range'][operation] += 1
                 with self.subTest(corpus=corpus, operation=operation), mock.patch.object(contract, 'VAR_CHANGES', changed), self.assertRaises(AssertionError):
                     contract.load(corpus)
+
+    def test_decimal_tail_delta_is_exact_and_cannot_drift(self):
+        self.assertEqual(contract.DECIMAL_CHANGES['gson'], [])
+        changes = contract.DECIMAL_CHANGES['commons']
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]['path'], 'org/apache/commons/lang3/JavaVersion.java')
+        self.assertEqual(len(changes[0]['before']), 2)
+        self.assertEqual(changes[0]['after'], [])
+        for operation in ['path', 'owner', 'missing', 'extra', 'message',
+                          'classification', 'start_byte', 'end_byte', 'start_utf16', 'end_utf16']:
+            changed = copy.deepcopy(contract.DECIMAL_CHANGES)
+            row = changed['commons'][0]
+            if operation == 'path': row['path'] += '.wrong'
+            elif operation == 'owner': row['compilation']['source_set'] += '.wrong'
+            elif operation == 'missing': row['before'].pop()
+            elif operation == 'extra': row['before'].append(copy.deepcopy(row['before'][0]))
+            elif operation in ['message', 'classification']: row['before'][0][operation] += '.wrong'
+            else: row['before'][0]['range'][operation] += 1
+            with self.subTest(operation=operation), mock.patch.object(contract, 'DECIMAL_CHANGES', changed), self.assertRaises(AssertionError):
+                contract.load('commons')
 
     def test_complete_current_output_and_source_hashes_checked(self):
         expected, _ = contract.load('gson')

@@ -125,13 +125,21 @@ impl<'a> Lexer<'a> {
         if !leading_dot {
             self.eat_digits(|c| c.is_ascii_digit());
         }
+        // Java decimal floating literals permit an empty fractional part.
+        // Keep digit-separator validity local to decimal floating candidates;
+        // integer, hexadecimal and binary admission retain their old contract.
+        let mut valid_digits = leading_dot || decimal_digit_span(&self.text[start..self.i]);
         let mut real = leading_dot;
-        if !leading_dot && self.peek() == Some('.') && self.peek_at(1).is_some_and(|c| c.is_ascii_digit()) {
+        if !leading_dot && self.peek() == Some('.') {
             self.bump_char();
+            let fraction = self.i;
             self.eat_digits(|c| c.is_ascii_digit());
+            valid_digits &= fraction == self.i || decimal_digit_span(&self.text[fraction..self.i]);
             real = true;
         } else if leading_dot {
+            let fraction = self.i;
             self.eat_digits(|c| c.is_ascii_digit());
+            valid_digits &= decimal_digit_span(&self.text[fraction..self.i]);
         }
         if matches!(self.peek(), Some('e' | 'E')) {
             let saved = self.i;
@@ -139,13 +147,20 @@ impl<'a> Lexer<'a> {
             if matches!(self.peek(), Some('+' | '-')) {
                 self.bump_char();
             }
+            let exponent = self.i;
             if self.eat_digits(|c| c.is_ascii_digit()) == 0 {
                 self.i = saved;
             } else {
+                valid_digits &= decimal_digit_span(&self.text[exponent..self.i]);
                 real = true;
             }
         }
-        self.suffix(real)
+        let kind = self.suffix(real);
+        if matches!(kind, SyntaxKind::FloatLiteral | SyntaxKind::DoubleLiteral) && !valid_digits {
+            SyntaxKind::ErrorToken
+        } else {
+            kind
+        }
     }
 
     fn eat_digits(&mut self, digit: impl Fn(char) -> bool) -> usize {
@@ -354,6 +369,15 @@ fn is_ident_start(c: char) -> bool {
 
 fn is_ident_continue(c: char) -> bool {
     is_ident_start(c) || c.is_ascii_digit()
+}
+
+// One or more decimal digits, with separators only between digits. Multiple
+// adjacent separators are legal; no per-spelling repair or numeric evaluation.
+fn decimal_digit_span(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    bytes.first().is_some_and(u8::is_ascii_digit)
+        && bytes.last().is_some_and(u8::is_ascii_digit)
+        && bytes.iter().all(|b| b.is_ascii_digit() || *b == b'_')
 }
 
 #[cfg(test)]

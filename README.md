@@ -9,6 +9,9 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Decimal floating tokens](docs/DECIMAL_FLOAT_TOKENS.md) handle trailing decimal
+points and separators without claiming floating-point invocation inference.
+
 [Contextual var names](docs/CONTEXTUAL_VAR.md) distinguish ordinary identifiers
 from type names and inference markers without adding type inference.
 
