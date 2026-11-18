@@ -9,6 +9,9 @@ It parses a Java syntax subset, reparses balanced blocks after edits, reads
 class-file signatures, and resolves some names across registered source and
 class files. The analysis library and its tests do not start a JVM.
 
+[Method-reference boundaries](docs/METHOD_REFERENCE_BOUNDARY.md) refuse unsupported
+terminal selection instead of borrowing a same-named field or variable.
+
 [Decimal floating tokens](docs/DECIMAL_FLOAT_TOKENS.md) handle trailing decimal
 points and separators without claiming floating-point invocation inference.
 

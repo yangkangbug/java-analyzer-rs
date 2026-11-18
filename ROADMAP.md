@@ -12,6 +12,13 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Method-reference terminal correctness
+
+Unsupported method-reference selectors no longer enter the ordinary field/value
+namespace. Existing receiver-prefix navigation and constructor refusal remain;
+full method-reference applicability and complex field-receiver evidence are
+separate work. See [scope and remaining gaps](docs/METHOD_REFERENCE_BOUNDARY.md).
+
 ## Decimal floating token boundaries
 
 One decimal scanner supports trailing-dot literals and validates digit separators

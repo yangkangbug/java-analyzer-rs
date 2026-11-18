@@ -1520,11 +1520,15 @@ impl Index {
         current
     }
 
-    fn resolve_method_ref(&self, file: &FileRec, parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
+    fn resolve_method_ref(&self, _file: &FileRec, _parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
         if token_kind_covering(hit.node, hit.start, byte) == Some(SyntaxKind::New) {
             return ResolveResult::none(ResolveStatus::ConstructorRefNotBound);
         }
-        self.resolve_field(file, parsed, hit, byte)
+        // Method references name methods, not fields or lexical values. Until
+        // method-reference selection is modeled, never reuse ordinary field
+        // lookup for the terminal name. Receiver/type-prefix hits are handled
+        // independently by innermost_ref before reaching this entry.
+        ResolveResult::none(ResolveStatus::ReceiverNotBound)
     }
 
     fn member_of_enclosing(&self, file: &FileRec, byte: u32, name: &str, call: bool) -> ResolveResult {
