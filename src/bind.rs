@@ -73,6 +73,7 @@ pub enum TargetKind {
     Local,
     Parameter,
     Resource,
+    TypeParameter,
 }
 
 /// Linking context of a declaration in this snapshot, not a persistent or runtime identity.
@@ -99,8 +100,8 @@ pub struct Target {
     pub kind: TargetKind,
     pub name: String,
     /// Dotted package plus nesting, such as `demo.Outer.Inner`.
-    /// Empty for locals/parameters/resources and source fields of an anonymous
-    /// owner. Empty does not mean a top-level field or a persistent identity;
+    /// Empty for locals/parameters/resources/type parameters and source fields
+    /// of an anonymous owner. Empty does not mean a top-level field or a persistent identity;
     /// source declaration identity includes path and exact name range.
     pub owner: String,
     pub start_byte: u32,
@@ -504,6 +505,219 @@ impl Imports {
 }
 
 #[derive(Clone, Debug)]
+struct TypeParameterRec {
+    name: String,
+    start: u32,
+    end: u32,
+}
+impl TypeParameterRec {
+    fn target(&self, file: &FileRec) -> Target {
+        Target {
+            kind: TargetKind::TypeParameter,
+            name: self.name.clone(),
+            path: file.path.clone(),
+            owner: String::new(),
+            start_byte: self.start,
+            end_byte: self.end,
+            binary: None,
+        }
+    }
+}
+#[derive(Clone, Debug)]
+struct FormalScope {
+    start: u32,
+    end: u32,
+    body: u32,
+    class_boundary: bool,
+    class_name: Option<String>,
+    static_boundary: bool,
+    parameters: Vec<TypeParameterRec>,
+    complete: bool,
+    member_types: Vec<String>,
+    member_types_complete: bool,
+}
+enum FormalName<'a> {
+    Absent,
+    Parameter(&'a TypeParameterRec),
+    Unknown,
+}
+fn formal_name<'a>(file: &'a FileRec, name: &str, byte: u32) -> FormalName<'a> {
+    formal_name_charged(file, name, byte, |_| true)
+}
+fn formal_name_charged<'a>(
+    file: &'a FileRec,
+    name: &str,
+    byte: u32,
+    mut charge: impl FnMut(usize) -> bool,
+) -> FormalName<'a> {
+    // One visitor for both consumers. Pay before the work actually visited,
+    // including range checks; never scan an unrelated owner's parameter list.
+    let mut crossed_class = false;
+    let mut static_context = false;
+    for scope in &file.formal_scopes {
+        if !charge(1) {
+            return FormalName::Unknown;
+        }
+        if byte < scope.start || byte >= scope.end {
+            continue;
+        }
+        if !charge(scope.parameters.len()) {
+            return FormalName::Unknown;
+        }
+        let mut matching = scope.parameters.iter().filter(|p| p.name == name);
+        let selected = matching.next();
+        let duplicate = matching.next().is_some();
+        if !crossed_class && selected.is_none() && scope.complete && scope.class_name.as_deref() == Some(name) {
+            return FormalName::Absent;
+        }
+        if !crossed_class && scope.class_boundary && byte >= scope.body && scope.member_types_complete {
+            if !charge(scope.member_types.len()) {
+                return FormalName::Unknown;
+            }
+            if scope.member_types.iter().any(|n| n == name) {
+                return FormalName::Absent;
+            }
+        }
+        if selected.is_some() || !scope.complete {
+            if crossed_class || static_context || !scope.complete || selected.is_none() || duplicate {
+                return FormalName::Unknown;
+            }
+            // A class's own member type shadows its formal only in its body.
+            // Inherited member types do not shadow this class's own formal.
+            if scope.class_boundary && byte >= scope.body {
+                if !scope.member_types_complete {
+                    return FormalName::Unknown;
+                }
+                if !charge(scope.member_types.len()) {
+                    return FormalName::Unknown;
+                }
+                if scope.member_types.iter().any(|n| n == name) {
+                    return FormalName::Absent;
+                }
+            }
+            if !charge(file.local_types.len()) {
+                return FormalName::Unknown;
+            }
+            if local_type_shadows(file, name, byte) {
+                return FormalName::Unknown;
+            }
+            return FormalName::Parameter(selected.unwrap());
+        }
+        static_context |= scope.static_boundary;
+        crossed_class |= scope.class_boundary;
+    }
+    FormalName::Absent
+}
+fn type_parameter_records(node: &GreenNode, start: u32) -> Vec<TypeParameterRec> {
+    let Some((params, at)) = child_kind(node, start, SyntaxKind::TypeParamList) else { return Vec::new() };
+    let mut out = Vec::new();
+    let mut offset = at;
+    for child in params.children() {
+        if let Some(parameter) = child.as_node()
+            && parameter.kind() == SyntaxKind::TypeParam
+            && let Some((name, start, end)) = direct_ident(parameter, offset)
+        {
+            out.push(TypeParameterRec { name, start, end });
+        }
+        offset += child.utf8_len();
+    }
+    out
+}
+fn index_formal_scopes(
+    node: &GreenNode,
+    start: u32,
+    parent: Option<SyntaxKind>,
+    outer_formals: bool,
+    out: &mut Vec<FormalScope>,
+) {
+    let class = matches!(
+        node.kind(),
+        SyntaxKind::Class
+            | SyntaxKind::Interface
+            | SyntaxKind::Enum
+            | SyntaxKind::Record
+            | SyntaxKind::AnnotationType
+            | SyntaxKind::LocalType
+    ) || node.kind() == SyntaxKind::ClassBody
+        && matches!(parent, Some(SyntaxKind::NewExpr | SyntaxKind::QualifiedNewExpr | SyntaxKind::EnumConstant));
+    let implicit_static = node.kind() == SyntaxKind::Field
+        && matches!(parent, Some(SyntaxKind::InterfaceBody | SyntaxKind::AnnotationBody));
+    let static_boundary = implicit_static
+        || child_kind(node, start, SyntaxKind::ModifierList).is_some_and(|(m, _)| {
+            m.children().iter().any(|c| c.as_token().is_some_and(|t| t.kind() == SyntaxKind::Static))
+        });
+    let has_formals = child_kind(node, start, SyntaxKind::TypeParamList).is_some();
+    if has_formals || outer_formals && (class || static_boundary) {
+        let parameters = type_parameter_records(node, start);
+        let complete = child_kind(node, start, SyntaxKind::TypeParamList).is_none_or(|(p, _)| {
+            crate::green::collect_errors(p).is_empty()
+                && parameters.iter().map(|p| &p.name).collect::<BTreeSet<_>>().len() == parameters.len()
+        });
+        let mut body = start + node.utf8_len();
+        let mut member_types = Vec::new();
+        let mut member_types_complete = true;
+        let mut at = start;
+        for c in node.children() {
+            if let Some(n) = c.as_node()
+                && matches!(
+                    n.kind(),
+                    SyntaxKind::ClassBody
+                        | SyntaxKind::InterfaceBody
+                        | SyntaxKind::EnumBody
+                        | SyntaxKind::RecordBody
+                        | SyntaxKind::AnnotationBody
+                        | SyntaxKind::Block
+                )
+            {
+                body = at;
+                let mut member_at = at;
+                for member in n.children() {
+                    if let Some(m) = member.as_node() {
+                        if matches!(
+                            m.kind(),
+                            SyntaxKind::Class
+                                | SyntaxKind::Interface
+                                | SyntaxKind::Enum
+                                | SyntaxKind::Record
+                                | SyntaxKind::AnnotationType
+                        ) {
+                            if let Some((name, _, _)) = direct_ident(m, member_at) {
+                                member_types.push(name);
+                            } else {
+                                member_types_complete = false;
+                            }
+                        } else if m.kind() == SyntaxKind::Error {
+                            member_types_complete = false;
+                        }
+                    }
+                    member_at += member.utf8_len();
+                }
+            }
+            at += c.utf8_len();
+        }
+        out.push(FormalScope {
+            start,
+            end: start + node.utf8_len(),
+            body,
+            class_boundary: class,
+            static_boundary,
+            class_name: class.then(|| direct_ident(node, start).map(|n| n.0)).flatten(),
+            parameters,
+            complete,
+            member_types,
+            member_types_complete,
+        });
+    }
+    let mut at = start;
+    for child in node.children() {
+        if let Some(n) = child.as_node() {
+            index_formal_scopes(n, at, Some(node.kind()), outer_formals || has_formals, out);
+        }
+        at += child.utf8_len();
+    }
+}
+
+#[derive(Clone, Debug)]
 struct FileRec {
     scope: usize,
     path: String,
@@ -513,6 +727,7 @@ struct FileRec {
     locals: Vec<LocalRec>,
     named_local_count: usize,
     lexical_owners: Vec<LexicalOwner>,
+    formal_scopes: Vec<FormalScope>,
     local_types: Vec<LocalTypeRec>,
     opaque_class_bodies: Vec<(u32, u32)>,
     syntax_valid: bool,
@@ -739,6 +954,11 @@ impl Index {
         {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
+        if let Some(parameter) =
+            file.formal_scopes.iter().flat_map(|s| &s.parameters).find(|p| p.start <= byte && byte < p.end)
+        {
+            return ResolveResult::one(ResolveStatus::Resolved, parameter.target(file));
+        }
         if let Some(owner_id) = file.lexical_owner(byte)
             && file.lexical_owners[owner_id].anonymous
         {
@@ -749,6 +969,20 @@ impl Index {
             // This terminal lexical entry never enters a member/type/call proof.
             // The ordinary selector retains declaration order, shadowing and guards.
             if let Some(hit) = innermost_ref(parsed.root(), 0, byte, false) {
+                if hit.node.kind() == SyntaxKind::Name && hit.type_role {
+                    let (parts, _) = name_pieces(hit.node, hit.start);
+                    if let Some((name, _, _)) = parts.first() {
+                        match formal_name(file, name, byte) {
+                            FormalName::Parameter(p) if parts[0].1 <= byte && byte < parts[0].2 => {
+                                return ResolveResult::one(ResolveStatus::Resolved, p.target(file));
+                            }
+                            FormalName::Parameter(_) | FormalName::Unknown => {
+                                return ResolveResult::none(ResolveStatus::Unresolved);
+                            }
+                            FormalName::Absent => {}
+                        }
+                    }
+                }
                 return if hit.node.kind() == SyntaxKind::ReferenceExpr && !hit.call {
                     local_resolution(
                         file.locals.iter().filter(|local| local.owner == Some(owner_id)),
@@ -1049,6 +1283,12 @@ impl Index {
     }
 
     fn simple_type<'a>(&'a self, file: &'a FileRec, name: &str, byte: u32) -> TypeLookup<'a> {
+        if !matches!(formal_name(file, name, byte), FormalName::Absent) {
+            return TypeLookup::MissingImport;
+        }
+        self.simple_type_without_formals(file, name, byte)
+    }
+    fn simple_type_without_formals<'a>(&'a self, file: &'a FileRec, name: &str, byte: u32) -> TypeLookup<'a> {
         if local_type_shadows(file, name, byte) {
             return TypeLookup::MissingImport;
         }
@@ -1122,8 +1362,19 @@ impl Index {
             return ResolveResult::none(ResolveStatus::Unresolved);
         };
         let prefix = parts[..=index].iter().map(|(name, _, _)| name.clone()).collect::<Vec<_>>();
+        if hit.type_role {
+            match formal_name(file, &prefix[0], byte) {
+                FormalName::Parameter(p) if prefix.len() == 1 => {
+                    return ResolveResult::one(ResolveStatus::Resolved, p.target(file));
+                }
+                FormalName::Parameter(_) | FormalName::Unknown => {
+                    return ResolveResult::none(ResolveStatus::Unresolved);
+                }
+                FormalName::Absent => {}
+            }
+        }
         if prefix.len() == 1 {
-            return match self.simple_type(file, &prefix[0], byte) {
+            return match self.simple_type_without_formals(file, &prefix[0], byte) {
                 TypeLookup::One(class) => ResolveResult::one(ResolveStatus::Resolved, class.target()),
                 TypeLookup::Many(classes) => {
                     ResolveResult::many(ResolveStatus::Ambiguous, classes.into_iter().map(ClassRec::target).collect())
@@ -1136,7 +1387,7 @@ impl Index {
         if matches!(member_type_here(file, byte, &prefix[0]), TypeLookup::Many(_)) {
             return ResolveResult::none(ResolveStatus::Ambiguous);
         }
-        self.qualify(file, &prefix, false, byte)
+        self.qualify_without_formals(file, &prefix, false, byte)
     }
 
     fn resolve_field(&self, file: &FileRec, parsed: &ParsedFile, hit: Hit<'_>, byte: u32) -> ResolveResult {
@@ -1585,7 +1836,9 @@ impl Index {
                             }
                         }
                     }
-                    TargetKind::Method => ResolveResult::none(ResolveStatus::ReceiverNotBound),
+                    TargetKind::Method | TargetKind::TypeParameter => {
+                        ResolveResult::none(ResolveStatus::ReceiverNotBound)
+                    }
                 }
             }
             ResolveStatus::Package => {
@@ -1612,6 +1865,12 @@ impl Index {
     }
 
     fn qualify(&self, file: &FileRec, parts: &[String], call: bool, byte: u32) -> ResolveResult {
+        if parts.first().is_some_and(|n| !matches!(formal_name(file, n, byte), FormalName::Absent)) {
+            return ResolveResult::none(ResolveStatus::Unresolved);
+        }
+        self.qualify_without_formals(file, parts, call, byte)
+    }
+    fn qualify_without_formals(&self, file: &FileRec, parts: &[String], call: bool, byte: u32) -> ResolveResult {
         if parts.is_empty() || local_type_shadows(file, &parts[0], byte) {
             return ResolveResult::none(ResolveStatus::Unresolved);
         }
@@ -1662,6 +1921,9 @@ impl Index {
     }
 
     fn lookup_type_name<'a>(&'a self, file: &'a FileRec, parts: &[String], byte: u32) -> TypeLookup<'a> {
+        if parts.first().is_some_and(|n| !matches!(formal_name(file, n, byte), FormalName::Absent)) {
+            return TypeLookup::MissingImport;
+        }
         if parts.first().is_some_and(|name| local_type_shadows(file, name, byte)) {
             return TypeLookup::MissingImport;
         }
@@ -1736,6 +1998,9 @@ impl Index {
     // Resolve the leading type in its declaration scope, then member nesting.
     // Do not reinterpret a missing explicit import as a fully qualified name.
     fn signature_type<'a>(&'a self, file: &'a FileRec, parts: &[String], byte: u32) -> Option<&'a ClassRec> {
+        if parts.first().is_some_and(|n| !matches!(formal_name(file, n, byte), FormalName::Absent)) {
+            return None;
+        }
         let first = parts.first()?;
         if local_type_shadows(file, first, byte) {
             return None;
@@ -2416,7 +2681,7 @@ fn declared_of<'a>(file: &'a FileRec, target: &Target) -> Option<&'a QualName> {
                 })
             })
             .and_then(|field| field.declared.as_ref()),
-        TargetKind::Class | TargetKind::Method => None,
+        TargetKind::Class | TargetKind::Method | TargetKind::TypeParameter => None,
     }
 }
 
@@ -2467,6 +2732,7 @@ struct Hit<'a> {
     imported_value: bool,
     // True only through transparent parentheses around this reference.
     wrapped_reference: bool,
+    type_role: bool,
 }
 
 fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Option<Hit<'_>> {
@@ -2492,6 +2758,11 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
                 innermost_ref(child_node, child_at, byte, child_called)
             };
             if let Some(mut hit) = nested_hit {
+                if node.kind() == SyntaxKind::Type
+                    || node.kind() == SyntaxKind::Annotation && std::ptr::eq(hit.node, child_node.as_ref())
+                {
+                    hit.type_role = true;
+                }
                 if hit.wrapped_reference {
                     if child_receiver || child_called {
                         hit.imported_value = false;
@@ -2517,6 +2788,7 @@ fn innermost_ref(node: &GreenNode, start: u32, byte: u32, called: bool) -> Optio
             arguments: None,
             imported_value: node.kind() == SyntaxKind::ReferenceExpr,
             wrapped_reference: node.kind() == SyntaxKind::ReferenceExpr,
+            type_role: false,
         })
     } else {
         None
@@ -2839,6 +3111,7 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
         locals: Vec::new(),
         named_local_count: 0,
         lexical_owners: Vec::new(),
+        formal_scopes: Vec::new(),
         local_types: Vec::new(),
         opaque_class_bodies: Vec::new(),
         syntax_valid,
@@ -2857,6 +3130,8 @@ fn index_file(path: &str, parsed: &ParsedFile) -> FileRec {
             lexical_owner: None,
         },
     );
+    index_formal_scopes(parsed.root(), 0, None, false, &mut file.formal_scopes);
+    file.formal_scopes.sort_by_key(|s| s.end - s.start);
     index_pattern_guards(parsed.root(), 0, None, &mut file);
     let (named, anonymous): (Vec<_>, Vec<_>) = std::mem::take(&mut file.locals)
         .into_iter()
@@ -3881,22 +4156,9 @@ fn source_formals(node: &GreenNode, start: u32) -> Option<Vec<SourceFormal>> {
 }
 
 fn type_variables(node: &GreenNode, start: u32) -> Vec<String> {
-    let Some((params, at)) = child_kind(node, start, SyntaxKind::TypeParamList) else {
-        return Vec::new();
-    };
-    let mut out = Vec::new();
-    let mut offset = at;
-    for child in params.children() {
-        if let Some(node) = child.as_node()
-            && node.kind() == SyntaxKind::TypeParam
-            && let Some((name, _, _)) = direct_ident(node, offset)
-        {
-            out.push(name);
-        }
-        offset += child.utf8_len();
-    }
-    out
+    type_parameter_records(node, start).into_iter().map(|p| p.name).collect()
 }
+
 fn contains_kind(node: &GreenNode, kind: SyntaxKind) -> bool {
     node.kind() == kind
         || node.children().iter().filter_map(|child| child.as_node()).any(|node| contains_kind(node, kind))
@@ -5914,6 +6176,11 @@ impl<'a> ReferenceCallProof<'a> {
         Some(classes)
     }
     fn raw_type(&mut self, file: &'a FileRec, parts: &[String], at: u32) -> Option<&'a ClassRec> {
+        if parts.first().is_some_and(|n| {
+            !matches!(formal_name_charged(file, n, at, |work| self.charge(work).is_some()), FormalName::Absent)
+        }) {
+            return None;
+        }
         self.charge(file.imports.ordinary.len() + file.classes.len() + file.local_types.len() + 1)?;
         let first = parts.first()?;
         if first == "var"
@@ -9397,5 +9664,71 @@ mod import_record_tests {
         assert!(enough.imported_own_field("other", 0).is_none());
         assert!(!enough.exhausted);
         assert!(enough.work_left < ReferenceCallProof::new(&index, file, None).work_left - text.len());
+    }
+}
+
+#[cfg(test)]
+mod type_parameter_inventory_tests {
+    use super::*;
+    #[test]
+    fn unrelated_methods_do_not_grow_formal_inventory_or_its_work() {
+        let methods = "void f(){}".repeat(100);
+        for (text, groups) in [(format!("class C{{{methods}}}"), 0), (format!("class C<T>{{T value;{methods}}}"), 1)] {
+            let mut p = Project::new();
+            p.insert("Use.java", &text);
+            let index = Index::build(&p.files, &p.binaries);
+            let file = &index.files[0];
+            assert_eq!(file.formal_scopes.len(), groups);
+        }
+    }
+    #[test]
+    fn exact_formal_inventory_work_and_exhaustion_are_terminal() {
+        let text = "class T{} class C<T>{T value;}";
+        let mut p = Project::new();
+        p.insert("Use.java", text);
+        let index = Index::build(&p.files, &p.binaries);
+        let file = &index.files[0];
+        assert_eq!(file.formal_scopes.len(), 1);
+        for (budget, exhausted) in [(1, true), (2, false)] {
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            proof.work_left = budget;
+            assert!(proof.raw_type(file, &["T".into()], text.find("T value").unwrap() as u32).is_none());
+            assert_eq!(proof.exhausted, exhausted);
+            assert_eq!(proof.work_left, 0);
+        }
+    }
+
+    #[test]
+    fn formal_work_tracks_only_visited_inventory_and_inner_early_return() {
+        let many = (0..4096).map(|i| format!("T{i}")).collect::<Vec<_>>().join(",");
+        for (text, query, name, budget, exhausted, remaining) in [
+            ("class C{}".to_string(), "C{}", "Other", 0, false, 0),
+            (format!("class Many<{many}>{{}} class Use{{}}"), "Use{}", "Other", 1, false, 0),
+            (format!("class Many<{many}>{{T4095 value;}}"), "T4095 value", "T4095", 4096, true, 0),
+            (format!("class Many<{many}>{{T4095 value;}}"), "T4095 value", "T4095", 4097, false, 0),
+            (format!("class Many<{many}>{{<U> U f(U v){{return v;}}}}"), "U f", "U", 2, false, 0),
+            (format!("class Many<{many}>{{<U> U f(U v){{return v;}}}}"), "U f", "U", 1, true, 0),
+            ("class C<T>{void f(){class T{} T value;}}".into(), "T value", "T", 3, true, 0),
+            ("class C<T>{void f(){class T{} T value;}}".into(), "T value", "T", 4, false, 0),
+        ] {
+            let mut p = Project::new();
+            p.insert("Use.java", &text);
+            let index = Index::build(&p.files, &p.binaries);
+            let file = &index.files[0];
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            proof.work_left = budget;
+            let got = formal_name_charged(file, name, text.find(query).unwrap() as u32, |w| proof.charge(w).is_some());
+            assert_eq!(proof.exhausted, exhausted, "{query}, budget={budget}");
+            assert_eq!(proof.work_left, remaining, "{query}, budget={budget}");
+            if exhausted {
+                assert!(matches!(got, FormalName::Unknown));
+            } else if name == "Other" {
+                assert!(matches!(got, FormalName::Absent));
+            } else if text.contains("class T{}") {
+                assert!(matches!(got, FormalName::Unknown));
+            } else {
+                assert!(matches!(got, FormalName::Parameter(_)));
+            }
+        }
     }
 }

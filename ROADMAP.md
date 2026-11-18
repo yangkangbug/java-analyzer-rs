@@ -1,5 +1,14 @@
 # Native Java analysis roadmap
 
+## Type-parameter declaration identity
+
+Shared lexical formal records now distinguish source type parameters from nominal
+classes across definition and receiver consumers. The original type-name census
+adds 2,437 compiler-exact uses and 852 exact declaration clicks; 104 queries and
+the existing 427/848 suites remain unchanged. Cross-owner and static boundaries
+remain conservative, with no bound-member lookup or generic invocation inference.
+See [scope, evidence and 0.6 Git migration](docs/TYPE_PARAMETERS.md).
+
 ## Final-prefixed declaration recovery
 
 Leading final can establish a local declaration despite damaged type lookahead.

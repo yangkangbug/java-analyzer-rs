@@ -423,3 +423,12 @@ Binary method detail: `declaration --target-details` opts into result
 `target_details_version: 1`; default schema-v1 target projection is unchanged.
 See [binary method identities](BINARY_METHOD_CALLS.md). This option is not a
 request for binary source ranges and is not accepted by other commands.
+
+### Source type-parameter targets (0.6)
+
+Declaration responses may contain `kind: "TypeParameter"` with empty `owner`,
+the source path and exact name range. This extends the kind vocabulary, not the
+response structure or protocol version. Closed kind allowlists must accept it;
+do not interpret it as a nominal class, value parameter or binary attachment.
+Editor/LSP locations retain normal source provenance and UTF-16 conversion.
+See [type-parameter scope and migration](TYPE_PARAMETERS.md).

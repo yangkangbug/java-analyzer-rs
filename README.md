@@ -1,5 +1,9 @@
 # java-analyzer-rs
 
+[Type-parameter declaration identity](docs/TYPE_PARAMETERS.md) resolves source
+formals without borrowing same-named classes or inferring generic receiver types.
+Version 0.6.0 adds the public TargetKind::TypeParameter Git-dependency migration.
+
 [Final-prefixed local recovery](docs/FINAL_LOCAL_RECOVERY.md) preserves real
 declaration names after damaged types without inventing receiver-type facts.
 
