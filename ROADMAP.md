@@ -12,6 +12,13 @@ JVM tools; their output must cross a clear boundary into the native core.
 IntelliJ's separation of syntax, symbols/stubs, indexes, and project services
 is a design reference, not a claim that its PSI or type system has been ported.
 
+## Contextual var names
+
+Shared syntax-role handling supports ordinary var names and qualified package
+prefixes while preserving type-identifier restrictions and inference markers.
+No new inference or generic invocation proof is added. See
+[contextual var and CST compatibility](docs/CONTEXTUAL_VAR.md).
+
 ## Unified import evidence
 
 One private inventory preserves complete and malformed import facts across legacy

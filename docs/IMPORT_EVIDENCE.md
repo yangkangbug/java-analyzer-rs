@@ -50,7 +50,7 @@ imports, budgets, and edit/fresh/undo/old snapshots. The fixed real comparisons
 preserve 427 complete result records, 18 anonymous targets and capture refusals;
 these are regression evidence, not language-coverage percentages.
 
-Malformed package and heritage facts, declarations lost during parser recovery,
-and contextual `var` remain separate work. The paused `var` prototype is not
-included in this change. Existing cursor-prefix navigation is not a certificate
+Malformed package and heritage facts and declarations lost during parser recovery
+remain separate work. [Contextual var syntax](CONTEXTUAL_VAR.md) is a separate
+parser capability built on this unchanged import inventory. Existing cursor-prefix navigation is not a certificate
 that an entire import is complete.

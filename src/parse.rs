@@ -8,6 +8,21 @@ use crate::green::{GreenElement, GreenNode, GreenToken};
 use crate::kind::SyntaxKind;
 use crate::lex::{Token, lex};
 
+#[derive(Clone, Copy)]
+enum NameRole {
+    Package,
+    Type,
+    Import,
+    StaticImport,
+}
+
+fn is_identifier(kind: SyntaxKind) -> bool {
+    matches!(kind, SyntaxKind::Ident | SyntaxKind::Var)
+}
+fn type_segment(kind: SyntaxKind, next: SyntaxKind, type_boundary: bool) -> bool {
+    kind == SyntaxKind::Ident || kind == SyntaxKind::Var && next == SyntaxKind::Dot && !type_boundary
+}
+
 pub fn parse_file(text: &str) -> Arc<GreenNode> {
     let mut p = Parser::new(text, lex(text));
     p.start(SyntaxKind::File);
@@ -189,6 +204,30 @@ impl<'a> Parser<'a> {
         self.pos += 1;
     }
 
+    fn bump_as(&mut self, kind: SyntaxKind) {
+        self.drain();
+        if let Some(token) = self.tokens.get(self.pos) {
+            let text = self.src[token.start as usize..token.end as usize].to_owned();
+            self.stack.last_mut().expect("frame").children.push(GreenElement::Token(GreenToken::new(kind, text)));
+            self.pos += 1;
+        }
+    }
+    fn eat_identifier(&mut self) -> bool {
+        if is_identifier(self.kind()) {
+            self.bump_as(SyntaxKind::Ident);
+            true
+        } else {
+            false
+        }
+    }
+    fn expect_identifier(&mut self, message: &'static str) {
+        if !self.eat_identifier() {
+            self.open(SyntaxKind::Error);
+            self.set_message(message);
+            self.finish();
+        }
+    }
+
     fn eat(&mut self, kind: SyntaxKind) -> bool {
         if self.at(kind) {
             self.bump();
@@ -259,7 +298,7 @@ impl<'a> Parser<'a> {
         }
         self.open(SyntaxKind::PackageDecl);
         self.bump();
-        self.parse_qualified_name(false);
+        self.parse_qualified_name(NameRole::Package);
         self.expect(SyntaxKind::Semi, "expected ';'");
         self.finish();
     }
@@ -267,20 +306,33 @@ impl<'a> Parser<'a> {
     fn parse_import(&mut self) {
         self.open(SyntaxKind::ImportDecl);
         self.bump();
-        self.eat(SyntaxKind::Static);
-        self.parse_qualified_name(true);
+        let static_member = self.eat(SyntaxKind::Static);
+        self.parse_qualified_name(if static_member { NameRole::StaticImport } else { NameRole::Import });
         self.expect(SyntaxKind::Semi, "expected ';'");
         self.finish();
     }
 
-    fn parse_qualified_name(&mut self, allow_star: bool) {
+    fn parse_qualified_name(&mut self, role: NameRole) {
+        let allow_star = matches!(role, NameRole::Import | NameRole::StaticImport);
+        let terminal_type = matches!(role, NameRole::Type | NameRole::Import);
+        let static_owner = matches!(role, NameRole::StaticImport);
         self.open(SyntaxKind::Name);
-        self.expect(SyntaxKind::Ident, "expected name");
-        while self.eat(SyntaxKind::Dot) {
+        loop {
+            let invalid_owner = static_owner
+                && self.nth(1) == SyntaxKind::Dot
+                && (self.nth(2) == SyntaxKind::Star || self.nth(3) != SyntaxKind::Dot);
+            if self.at(SyntaxKind::Var) && (terminal_type && self.nth(1) != SyntaxKind::Dot || invalid_owner) {
+                self.expect(SyntaxKind::Ident, "expected type name");
+                self.bump();
+            } else {
+                self.expect_identifier("expected name");
+            }
+            if !self.eat(SyntaxKind::Dot) {
+                break;
+            }
             if allow_star && self.eat(SyntaxKind::Star) {
                 break;
             }
-            self.expect(SyntaxKind::Ident, "expected name");
         }
         self.finish();
     }
@@ -362,7 +414,7 @@ impl<'a> Parser<'a> {
             self.set_message("annotation elements cannot return void");
             self.finish();
         }
-        self.expect(SyntaxKind::Ident, "expected annotation element name");
+        self.expect_identifier("expected annotation element name");
         let empty = self.at(SyntaxKind::LParen) && self.nth(1) == SyntaxKind::RParen;
         self.parse_params();
         if !empty {
@@ -539,7 +591,7 @@ impl<'a> Parser<'a> {
         while self.at(SyntaxKind::At) {
             self.parse_annotation();
         }
-        self.expect(SyntaxKind::Ident, "expected enum constant");
+        self.expect_identifier("expected enum constant");
         if self.at(SyntaxKind::LParen) {
             self.parse_args();
         }
@@ -565,16 +617,16 @@ impl<'a> Parser<'a> {
         if look.kind() == SyntaxKind::Lt {
             let mut after = look;
             if after.scan_type_params() {
-                if after.kind() == SyntaxKind::Ident && after.nth(1) == SyntaxKind::LParen {
+                if is_identifier(after.kind()) && after.nth(1) == SyntaxKind::LParen {
                     return MemberShape::Constructor;
                 }
                 return MemberShape::Method;
             }
         }
-        if look.kind() == SyntaxKind::Ident && look.nth(1) == SyntaxKind::LParen {
+        if is_identifier(look.kind()) && look.nth(1) == SyntaxKind::LParen {
             return MemberShape::Constructor;
         }
-        if look.scan_type() && look.kind() == SyntaxKind::Ident && look.nth(1) == SyntaxKind::LParen {
+        if look.scan_type() && is_identifier(look.kind()) && look.nth(1) == SyntaxKind::LParen {
             return MemberShape::Method;
         }
         MemberShape::Field
@@ -627,7 +679,7 @@ impl<'a> Parser<'a> {
             self.parse_type_params();
         }
         self.parse_type();
-        self.expect(SyntaxKind::Ident, "expected method name");
+        self.expect_identifier("expected method name");
         self.parse_params();
         if self.eat(SyntaxKind::Throws) {
             self.parse_type_list();
@@ -651,7 +703,7 @@ impl<'a> Parser<'a> {
 
     fn parse_declarators(&mut self) {
         loop {
-            self.expect(SyntaxKind::Ident, "expected name");
+            self.expect_identifier("expected name");
             self.parse_array_dimensions();
             if self.eat(SyntaxKind::Eq) {
                 self.parse_expr();
@@ -684,20 +736,20 @@ impl<'a> Parser<'a> {
     fn parse_annotation(&mut self) {
         self.open(SyntaxKind::Annotation);
         self.expect(SyntaxKind::At, "expected '@'");
-        self.parse_qualified_name(false);
+        self.parse_qualified_name(NameRole::Type);
         if self.eat(SyntaxKind::LParen) {
             if !self.at(SyntaxKind::RParen) {
-                let named = self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Eq;
+                let named = is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Eq;
                 let mut first = true;
                 loop {
-                    let entry_named = self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Eq;
+                    let entry_named = is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Eq;
                     if entry_named != named || !named && !first {
                         self.open(SyntaxKind::Error);
                         self.set_message("expected a uniform annotation element list");
                         self.finish();
                     }
                     if entry_named {
-                        self.bump();
+                        self.bump_as(SyntaxKind::Ident);
                         self.bump();
                     }
                     self.parse_element_value();
@@ -766,7 +818,7 @@ impl<'a> Parser<'a> {
         self.parse_modifier_list();
         self.parse_type();
         let varargs = self.eat(SyntaxKind::DotDotDot);
-        self.expect(SyntaxKind::Ident, "expected parameter name");
+        self.expect_identifier("expected parameter name");
         if !varargs {
             self.parse_array_dimensions();
         }
@@ -800,14 +852,22 @@ impl<'a> Parser<'a> {
             return;
         }
         self.open(SyntaxKind::Name);
-        self.expect(SyntaxKind::Ident, "expected type name");
-        if self.at(SyntaxKind::Lt) {
-            self.parse_type_args();
-        }
-        while self.eat(SyntaxKind::Dot) {
-            self.expect(SyntaxKind::Ident, "expected type name");
+        let mut type_boundary = false;
+        loop {
+            if type_segment(self.kind(), self.nth(1), type_boundary) {
+                self.bump_as(SyntaxKind::Ident);
+            } else {
+                self.expect(SyntaxKind::Ident, "expected type name");
+                if self.at(SyntaxKind::Var) {
+                    self.bump();
+                }
+            }
             if self.at(SyntaxKind::Lt) {
                 self.parse_type_args();
+                type_boundary = true;
+            }
+            if !self.eat(SyntaxKind::Dot) {
+                break;
             }
         }
         self.finish();
@@ -894,7 +954,7 @@ impl<'a> Parser<'a> {
             SyntaxKind::Assert => self.parse_assert(),
             SyntaxKind::Try => self.parse_try(),
             SyntaxKind::Switch => self.parse_switch(),
-            SyntaxKind::Ident if self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
+            SyntaxKind::Ident | SyntaxKind::Var if self.nth(1) == SyntaxKind::Colon => self.parse_labeled(),
             _ if self.looks_like_local_type_decl() => self.parse_local_type(),
             _ if self.looks_like_decl() => self.parse_local(true),
             _ if self.can_start_expr() => {
@@ -911,17 +971,17 @@ impl<'a> Parser<'a> {
         // Consecutive prefixes are iterative, with a local tree-depth bound.
         // This is not a general statement/parser resource budget.
         let mut labels = 0;
-        while self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Colon {
+        while is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Colon {
             if labels == 32 {
                 self.set_message("consecutive label limit exceeded");
-                while self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Colon {
-                    self.bump();
+                while is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Colon {
+                    self.bump_as(SyntaxKind::Ident);
                     self.bump();
                 }
                 break;
             }
             self.open(SyntaxKind::LabeledStmt);
-            self.bump(); // label is a token, never a value/type reference
+            self.bump_as(SyntaxKind::Ident); // label is a token, never a value/type reference
             self.bump(); // colon (distinct from a method-reference :: token)
             labels += 1;
         }
@@ -1185,8 +1245,8 @@ impl<'a> Parser<'a> {
             if !self.at(SyntaxKind::Semi) && self.can_start_expr() {
                 self.parse_expr();
             }
-        } else if self.at(SyntaxKind::Ident) {
-            self.bump();
+        } else if is_identifier(self.kind()) {
+            self.bump_as(SyntaxKind::Ident);
         }
         self.expect(SyntaxKind::Semi, "expected ';'");
         self.finish();
@@ -1212,8 +1272,12 @@ impl<'a> Parser<'a> {
                 loop {
                     self.open(SyntaxKind::Resource);
                     self.parse_modifier_list();
-                    self.parse_type();
-                    self.expect(SyntaxKind::Ident, "expected name");
+                    if self.at(SyntaxKind::Var) && is_identifier(self.nth(1)) {
+                        self.bump();
+                    } else {
+                        self.parse_type();
+                    }
+                    self.expect_identifier("expected name");
                     self.expect(SyntaxKind::Eq, "expected '='");
                     self.parse_expr();
                     self.finish();
@@ -1236,8 +1300,8 @@ impl<'a> Parser<'a> {
             while self.eat(SyntaxKind::Pipe) {
                 self.parse_catch_type();
             }
-            let named = self.at(SyntaxKind::Ident);
-            self.expect(SyntaxKind::Ident, "expected name");
+            let named = is_identifier(self.kind());
+            self.expect_identifier("expected name");
             self.parse_catch_dimensions();
             // Without a ')' an immediately following local declaration belongs
             // to the enclosing block, even if its initializer contains ')'.
@@ -1301,13 +1365,25 @@ impl<'a> Parser<'a> {
             // Retain the direct Type/Name shape used by index_catch, while
             // keeping nested generic annotations on the bounded catch path.
             self.open(SyntaxKind::Name);
-            self.expect(SyntaxKind::Ident, "expected catch type name");
+            let mut type_boundary = false;
+            if type_segment(self.kind(), self.nth(1), false) {
+                self.bump_as(SyntaxKind::Ident);
+            } else {
+                self.expect(SyntaxKind::Ident, "expected catch type name");
+            }
+            type_boundary |= self.at(SyntaxKind::Lt);
             self.parse_catch_type_args();
             while self.eat(SyntaxKind::Dot) {
                 while self.at(SyntaxKind::At) {
+                    type_boundary = true;
                     self.parse_catch_annotation();
                 }
-                self.expect(SyntaxKind::Ident, "expected catch type name");
+                if type_segment(self.kind(), self.nth(1), type_boundary) {
+                    self.bump_as(SyntaxKind::Ident);
+                } else {
+                    self.expect(SyntaxKind::Ident, "expected catch type name");
+                }
+                type_boundary |= self.at(SyntaxKind::Lt);
                 self.parse_catch_type_args();
             }
             self.finish();
@@ -1354,8 +1430,12 @@ impl<'a> Parser<'a> {
         let start = self.pos;
         let mut look = Look::from(self);
         look.eat(SyntaxKind::At);
-        look.eat(SyntaxKind::Ident);
-        while look.eat(SyntaxKind::Dot) && look.eat(SyntaxKind::Ident) {}
+        if is_identifier(look.kind()) {
+            look.bump();
+        }
+        while look.eat(SyntaxKind::Dot) && is_identifier(look.kind()) {
+            look.bump();
+        }
         let mut complete = true;
         if look.eat(SyntaxKind::LParen) {
             let mut delimiters = vec![SyntaxKind::RParen];
@@ -1593,13 +1673,14 @@ impl<'a> Parser<'a> {
     fn parse_local(&mut self, semi: bool) {
         self.open(SyntaxKind::LocalVar);
         self.parse_modifier_list();
-        if self.eat(SyntaxKind::Var) {
-            self.expect(SyntaxKind::Ident, "expected name");
+        if self.at(SyntaxKind::Var) && is_identifier(self.nth(1)) {
+            self.bump();
+            self.expect_identifier("expected name");
             if self.eat(SyntaxKind::Eq) {
                 self.parse_expr();
             }
             while self.eat(SyntaxKind::Comma) {
-                self.expect(SyntaxKind::Ident, "expected name");
+                self.expect_identifier("expected name");
                 if self.eat(SyntaxKind::Eq) {
                     self.parse_expr();
                 }
@@ -1617,10 +1698,10 @@ impl<'a> Parser<'a> {
     fn looks_like_decl(&self) -> bool {
         let mut look = Look::from(self);
         look.skip_mods();
-        if look.eat(SyntaxKind::Var) {
-            return look.kind() == SyntaxKind::Ident;
+        if look.kind() == SyntaxKind::Var && is_identifier(look.nth(1)) {
+            return true;
         }
-        look.scan_type() && look.kind() == SyntaxKind::Ident
+        look.scan_type() && is_identifier(look.kind())
     }
 
     fn can_start_expr(&self) -> bool {
@@ -1673,11 +1754,11 @@ impl<'a> Parser<'a> {
             if op == SyntaxKind::Instanceof {
                 let mut look = Look::from(&*self);
                 look.skip_mods();
-                if look.scan_type() && look.kind() == SyntaxKind::Ident {
+                if look.scan_type() && is_identifier(look.kind()) {
                     self.open(SyntaxKind::TypePattern);
                     self.parse_modifier_list();
                     self.parse_type();
-                    self.expect(SyntaxKind::Ident, "expected pattern variable");
+                    self.expect_identifier("expected pattern variable");
                     self.set_message("type pattern flow scope is unsupported");
                     self.finish();
                 } else {
@@ -1735,7 +1816,7 @@ impl<'a> Parser<'a> {
     /// `(a, b)`, `(a)`, modifiers or primitives, and a type followed by a name
     /// are lambdas only when `->` is next. A failed attempt is not parsed.
     fn lambda_decision(&self) -> Option<bool> {
-        if self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Arrow {
+        if is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Arrow {
             return Some(false);
         }
         if !self.at(SyntaxKind::LParen) {
@@ -1753,16 +1834,15 @@ impl<'a> Parser<'a> {
         if first == SyntaxKind::RParen && second == SyntaxKind::Arrow {
             return Some(false);
         }
-        if first == SyntaxKind::Ident
+        if is_identifier(first)
             && (second == SyntaxKind::Comma || (second == SyntaxKind::RParen && third == SyntaxKind::Arrow))
         {
             return Some(false);
         }
-        if first == SyntaxKind::Ident && second == SyntaxKind::Arrow {
+        if is_identifier(first) && second == SyntaxKind::Arrow {
             return None;
         }
-        let typed_start =
-            first == SyntaxKind::At || first.is_modifier() || look.is_primitive() || first == SyntaxKind::Ident;
+        let typed_start = first == SyntaxKind::At || first.is_modifier() || look.is_primitive() || is_identifier(first);
         if typed_start && self.typed_lambda_arrow() {
             return Some(true);
         }
@@ -1780,13 +1860,15 @@ impl<'a> Parser<'a> {
         }
         loop {
             look.skip_mods();
-            if !look.scan_type() {
+            if look.kind() == SyntaxKind::Var && is_identifier(look.nth(1)) {
+                look.bump();
+            } else if !look.scan_type() {
                 return false;
             }
             if look.kind() == SyntaxKind::DotDotDot {
                 look.bump();
             }
-            if look.kind() != SyntaxKind::Ident {
+            if !is_identifier(look.kind()) {
                 return false;
             }
             look.bump();
@@ -1801,10 +1883,10 @@ impl<'a> Parser<'a> {
     fn parse_lambda(&mut self) {
         let typed = self.lambda_decision().unwrap_or(false);
         self.open(SyntaxKind::LambdaExpr);
-        if self.at(SyntaxKind::Ident) && self.nth(1) == SyntaxKind::Arrow {
+        if is_identifier(self.kind()) && self.nth(1) == SyntaxKind::Arrow {
             self.open(SyntaxKind::ParamList);
             self.open(SyntaxKind::Parameter);
-            self.bump();
+            self.bump_as(SyntaxKind::Ident);
             self.finish();
             self.finish();
         } else {
@@ -1815,10 +1897,14 @@ impl<'a> Parser<'a> {
                     self.open(SyntaxKind::Parameter);
                     if typed {
                         self.parse_modifier_list();
-                        self.parse_type();
+                        if self.at(SyntaxKind::Var) && is_identifier(self.nth(1)) {
+                            self.bump();
+                        } else {
+                            self.parse_type();
+                        }
                         self.eat(SyntaxKind::DotDotDot);
                     }
-                    self.expect(SyntaxKind::Ident, "expected parameter name");
+                    self.expect_identifier("expected parameter name");
                     self.finish();
                     if !self.eat(SyntaxKind::Comma) || self.at(SyntaxKind::RParen) {
                         break;
@@ -1843,7 +1929,7 @@ impl<'a> Parser<'a> {
 
     fn type_then_colon_colon(&self) -> bool {
         let mut look = Look::from(self);
-        if !(look.is_primitive() || look.kind() == SyntaxKind::Ident) {
+        if !(look.is_primitive() || is_identifier(look.kind())) {
             return false;
         }
         look.scan_type() && look.kind() == SyntaxKind::ColonColon
@@ -1860,8 +1946,8 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::Lt) {
             self.parse_type_args();
         }
-        if !self.eat(SyntaxKind::Ident) && !self.eat(SyntaxKind::New) {
-            self.expect(SyntaxKind::Ident, "expected name");
+        if !self.eat_identifier() && !self.eat(SyntaxKind::New) {
+            self.expect_identifier("expected name");
         }
         self.finish();
     }
@@ -1891,7 +1977,11 @@ impl<'a> Parser<'a> {
             | SyntaxKind::Null => self.leaf_expr(SyntaxKind::LiteralExpr),
             SyntaxKind::This => self.leaf_expr(SyntaxKind::ThisExpr),
             SyntaxKind::Super => self.leaf_expr(SyntaxKind::SuperExpr),
-            SyntaxKind::Ident => self.leaf_expr(SyntaxKind::ReferenceExpr),
+            SyntaxKind::Ident | SyntaxKind::Var => {
+                self.open(SyntaxKind::ReferenceExpr);
+                self.bump_as(SyntaxKind::Ident);
+                self.finish();
+            }
             SyntaxKind::LParen => {
                 self.open(SyntaxKind::ParenExpr);
                 self.bump();
@@ -1966,7 +2056,7 @@ impl<'a> Parser<'a> {
                 // list keeps ordinary recovery; dot/less-than comparisons are
                 // not reinterpreted as invocation type arguments.
                 let mut look = Look::from(&*self);
-                let typed = self.at(SyntaxKind::Lt) && look.scan_args() && look.kind() == SyntaxKind::Ident;
+                let typed = self.at(SyntaxKind::Lt) && look.scan_args() && is_identifier(look.kind());
                 if typed {
                     let arguments = self.parse_type_args();
                     if !valid_invocation_type_args(&arguments, false) {
@@ -1974,16 +2064,16 @@ impl<'a> Parser<'a> {
                         self.set_message("invalid explicit invocation type arguments");
                         self.finish();
                     }
-                    self.expect(SyntaxKind::Ident, "expected method name");
+                    self.expect_identifier("expected method name");
                     if !self.at(SyntaxKind::LParen) {
                         self.expect(SyntaxKind::LParen, "expected invocation arguments");
                     }
-                } else if !self.eat(SyntaxKind::Ident)
+                } else if !self.eat_identifier()
                     && !self.eat(SyntaxKind::This)
                     && !self.eat(SyntaxKind::Super)
                     && !self.eat(SyntaxKind::ClassKw)
                 {
-                    self.expect(SyntaxKind::Ident, "expected name");
+                    self.expect_identifier("expected name");
                 }
                 self.finish();
             } else if matches!(self.kind(), SyntaxKind::PlusPlus | SyntaxKind::MinusMinus) {
@@ -2091,6 +2181,7 @@ fn can_start_unary(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::Ident
+            | SyntaxKind::Var
             | SyntaxKind::IntLiteral
             | SyntaxKind::LongLiteral
             | SyntaxKind::FloatLiteral
@@ -2285,9 +2376,9 @@ impl<'a> Look<'a> {
         if !self.eat(SyntaxKind::At) {
             return;
         }
-        if self.kind() == SyntaxKind::Ident {
+        if is_identifier(self.kind()) {
             self.bump();
-            while self.eat(SyntaxKind::Dot) && self.kind() == SyntaxKind::Ident {
+            while self.eat(SyntaxKind::Dot) && is_identifier(self.kind()) {
                 self.bump();
             }
         }
@@ -2326,23 +2417,22 @@ impl<'a> Look<'a> {
     }
 
     fn scan_class(&mut self) -> bool {
-        if self.kind() != SyntaxKind::Ident {
-            return false;
-        }
-        self.bump();
-        if self.kind() == SyntaxKind::Lt && !self.scan_args() {
-            return false;
-        }
-        while self.eat(SyntaxKind::Dot) {
-            if self.kind() != SyntaxKind::Ident {
+        let mut type_boundary = false;
+        loop {
+            if !type_segment(self.kind(), self.nth(1), type_boundary) {
                 return false;
             }
             self.bump();
-            if self.kind() == SyntaxKind::Lt && !self.scan_args() {
-                return false;
+            if self.kind() == SyntaxKind::Lt {
+                if !self.scan_args() {
+                    return false;
+                }
+                type_boundary = true;
+            }
+            if !self.eat(SyntaxKind::Dot) {
+                return true;
             }
         }
-        true
     }
 
     fn scan_args(&mut self) -> bool {

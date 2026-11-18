@@ -1,0 +1,346 @@
+{
+  "gson": [
+    {
+      "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+      "compilation": {
+        "project": "gson",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7679,
+            "end_utf16": 7679,
+            "start_byte": 7678,
+            "start_utf16": 7678
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7684,
+            "end_utf16": 7684,
+            "start_byte": 7681,
+            "start_utf16": 7681
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 7882,
+            "end_utf16": 7882,
+            "start_byte": 7879,
+            "start_utf16": 7879
+          }
+        }
+      ],
+      "after": []
+    }
+  ],
+  "commons": [
+    {
+      "path": "org/apache/commons/lang3/reflect/TypeUtils.java",
+      "compilation": {
+        "project": "commons-lang",
+        "source_set": "main"
+      },
+      "before": [
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ')'",
+          "range": {
+            "end_byte": 18842,
+            "end_utf16": 18842,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18847,
+            "end_utf16": 18847,
+            "start_byte": 18842,
+            "start_utf16": 18842
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18862,
+            "end_utf16": 18862,
+            "start_byte": 18861,
+            "start_utf16": 18861
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18867,
+            "end_utf16": 18867,
+            "start_byte": 18864,
+            "start_utf16": 18864
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18868,
+            "end_utf16": 18868,
+            "start_byte": 18868,
+            "start_utf16": 18868
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18869,
+            "end_utf16": 18869,
+            "start_byte": 18868,
+            "start_utf16": 18868
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 18879,
+            "end_utf16": 18879,
+            "start_byte": 18879,
+            "start_utf16": 18879
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 18880,
+            "end_utf16": 18880,
+            "start_byte": 18879,
+            "start_utf16": 18879
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18935,
+            "end_utf16": 18935,
+            "start_byte": 18932,
+            "start_utf16": 18932
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 18985,
+            "end_utf16": 18985,
+            "start_byte": 18982,
+            "start_utf16": 18982
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 19035,
+            "end_utf16": 19035,
+            "start_byte": 19032,
+            "start_utf16": 19032
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected statement expression",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ')'",
+          "range": {
+            "end_byte": 45380,
+            "end_utf16": 45380,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45385,
+            "end_utf16": 45385,
+            "start_byte": 45380,
+            "start_utf16": 45380
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45400,
+            "end_utf16": 45400,
+            "start_byte": 45399,
+            "start_utf16": 45399
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45405,
+            "end_utf16": 45405,
+            "start_byte": 45402,
+            "start_utf16": 45402
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45406,
+            "end_utf16": 45406,
+            "start_byte": 45406,
+            "start_utf16": 45406
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45407,
+            "end_utf16": 45407,
+            "start_byte": 45406,
+            "start_utf16": 45406
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected ';'",
+          "range": {
+            "end_byte": 45433,
+            "end_utf16": 45433,
+            "start_byte": 45433,
+            "start_utf16": 45433
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "unexpected token",
+          "range": {
+            "end_byte": 45434,
+            "end_utf16": 45434,
+            "start_byte": 45433,
+            "start_utf16": 45433
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45501,
+            "end_utf16": 45501,
+            "start_byte": 45498,
+            "start_utf16": 45498
+          }
+        },
+        {
+          "classification": "parser_limit_or_invalid_syntax",
+          "message": "expected expression",
+          "range": {
+            "end_byte": 45588,
+            "end_utf16": 45588,
+            "start_byte": 45585,
+            "start_utf16": 45585
+          }
+        }
+      ],
+      "after": []
+    }
+  ]
+}
