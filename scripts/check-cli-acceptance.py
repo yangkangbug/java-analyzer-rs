@@ -320,6 +320,16 @@ def check_declarations(response, queries, targets, source_root, platform, source
             same(original, [["q04", "!/classes/java/lang/Character.class", "Method", "java.lang.Character", "isWhitespace", "0", "0"]] * 2,
                  "frozen q04 original candidates")
             status, count = "Resolved", "1"
+        if identifier == "q07" and effective_binary:
+            same(query, ["q07", "org/apache/commons/lang3/StringUtils.java", "44758", "isEmpty", "OverloadNotResolved", "9"],
+                 "frozen q07 array invocation migration")
+            original = [t for t in targets if t[0] == identifier]
+            same(original, [
+                ["q07", "org/apache/commons/lang3/ArrayUtils.java", "Method",
+                 "org.apache.commons.lang3.ArrayUtils", "isEmpty", str(start), str(start + 7)]
+                for start in (128952, 129271, 129587, 129905, 130224, 130540, 130855, 131163, 131482)
+            ], "frozen q07 complete original array overloads")
+            status, count = "Resolved", "1"
         same(actual["query_index"], index, f"{identifier}: query order")
         same(actual["compilation"], COMPILATION, f"{identifier}: query compilation")
         same(actual["source_compilation"], COMPILATION, f"{identifier}: source ownership")
@@ -332,6 +342,8 @@ def check_declarations(response, queries, targets, source_root, platform, source
         expected_targets = [target for target in targets if target[0] == identifier]
         if identifier == "q04" and effective_binary:
             expected_targets = expected_targets[:1]
+        if identifier == "q07" and effective_binary:
+            expected_targets = expected_targets[2:3]
         for candidate, expected in zip(actual["targets"], expected_targets):
             _, origin, kind, owner, name, start, end = expected
             same(candidate["kind"], kind, f"{identifier}: target kind")

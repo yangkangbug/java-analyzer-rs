@@ -112,13 +112,20 @@ fn cast_null_depth_remains_bounded() {
 
 #[test]
 fn cast_null_keeps_all_competitors_and_does_not_enable_receivers() {
-    for other in
-        ["public void pick(Missing x, int i) {}", "public <T> void pick(T x) {}", "public void pick(Token[] x) {}"]
-    {
+    for other in [
+        "public void pick(Missing x, int i) {}",
+        "public <T> void pick(T x) {}",
+        "public void pick(Token[] x) {}",
+        "public void pick(Missing[] x) {}",
+    ] {
         let source = format!(
             "class Token {{}} class Box {{ public void pick(Token x) {{}} {other} }} class Calls {{ void run(Box box) {{ box.pick((Token)null); }} }}"
         );
-        refused(&source, "pick((Token)null)", 2);
+        if other == "public void pick(Token[] x) {}" {
+            winner(&source, "pick((Token)null)", "pick(Token x)");
+        } else {
+            refused(&source, "pick((Token)null)", 2);
+        }
     }
     let source = "class Token { public void next() {} } class Calls { void run() { ((Token)null).next(); } }";
     assert_ne!(query(&project(source), "next();").status, ResolveStatus::Resolved);

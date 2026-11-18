@@ -125,7 +125,7 @@ class StrictReferenceOracleTests(unittest.TestCase):
         self.assertEqual(expected, original)
         self.assertEqual(c.baseline_expectations(expected), baseline)
         self.assertEqual(c.omitted_expectations(expected), omitted)
-        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper', 'strict_loose'})
+        self.assertEqual({q for q in prior if current[q] != prior[q]}, {'strict_wrapper', 'strict_loose', 'strict_array'})
         self.assertEqual(current['strict_wrapper'],
                          ('Resolved', 'wrapper_object@strict.Target', 'wrapper_object@strict.Target'))
         self.assertEqual(current['strict_loose'], ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target'))
@@ -202,6 +202,32 @@ class StrictReferenceOracleTests(unittest.TestCase):
                     c.verify_jdk(Path(tmp), path)
                 archive.assert_not_called()
 
+
+    def test_array_projection_exact_identity_and_history(self):
+        ds, qs, expected, compiler, _ = self.evidence()
+        old = copy.deepcopy(expected)
+        current = c.current_expectations(expected, qs, ds)
+        self.assertEqual(expected, old)
+        self.assertEqual(current['strict_array'], ('Resolved', 'array_parent@strict.Target', 'array_parent@strict.Target'))
+        for field in range(3):
+            saved = expected['strict_array']
+            row = list(saved); row[field] = 'wrong'; expected['strict_array'] = tuple(row)
+            with self.assertRaises(AssertionError):
+                c.current_expectations(expected, qs, ds)
+            expected['strict_array'] = saved
+        native = {q: [status, str(0 if candidates == '-' else len(candidates.split(','))),
+                   *([] if candidates == '-' else [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')])]
+                  for q, (status, _, candidates) in current.items()}
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for mutation in ('status', 'count', 'kind', 'owner', 'range'):
+            bad = copy.deepcopy(native)
+            if mutation == 'status': bad['strict_array'][0] = 'CallNotResolved'
+            elif mutation == 'count': bad['strict_array'][1] = '2'
+            elif mutation == 'kind': bad['strict_array'][2] = bad['strict_array'][2].replace('|Method|', '|Field|')
+            elif mutation == 'owner': bad['strict_array'][2] = bad['strict_array'][2].replace('.Target|', '.Wrong|')
+            else: bad['strict_array'][2] += '0'
+            with self.assertRaises((AssertionError, ValueError)):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
 
 if __name__ == '__main__':
     unittest.main()

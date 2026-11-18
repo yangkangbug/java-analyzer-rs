@@ -72,6 +72,33 @@ fn check(query: &Query, result: &ResolveResult) {
         assert_eq!(identity.binary_name, "java/lang/Character");
         assert_eq!(identity.descriptor, "(C)Z");
     }
+    // Array invocation proves the original char[] overload; retain all nine golden rows.
+    if query.id == "q07" {
+        assert_eq!(
+            &f[1..],
+            &["org/apache/commons/lang3/StringUtils.java", "44758", "isEmpty", "OverloadNotResolved", "9"]
+        );
+        let starts = [128952, 129271, 129587, 129905, 130224, 130540, 130855, 131163, 131482];
+        assert_eq!(expected_targets.len(), starts.len());
+        for (row, start) in expected_targets.iter().zip(starts) {
+            assert_eq!(
+                row,
+                &vec![
+                    "q07".to_owned(),
+                    "org/apache/commons/lang3/ArrayUtils.java".to_owned(),
+                    "Method".to_owned(),
+                    "org.apache.commons.lang3.ArrayUtils".to_owned(),
+                    "isEmpty".to_owned(),
+                    start.to_string(),
+                    (start + 7).to_string()
+                ]
+            );
+        }
+        expected_targets = vec![expected_targets[2].clone()];
+        status = "Resolved";
+        count = 1;
+        assert!(result.targets.iter().all(|target| target.binary.is_none()));
+    }
     if query.id == "q06" {
         assert_eq!(&f[1..], &["org/apache/commons/lang3/StringUtils.java", "15520", "length", "Resolved", "1"]);
         assert_eq!(result.targets.len(), 1);

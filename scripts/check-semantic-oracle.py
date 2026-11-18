@@ -1371,9 +1371,20 @@ def binary_instance_current_expected(contract, label):
         ['invokevirtual', 'dep/Token', 'id', '()I']]
     assert contract['baseline']['compiler']['probe_calls']['genericOwnerRefusal'] == [
         ['invokevirtual', 'dep/GenericOwner', 'plain', '(I)I']]
+    assert contract['baseline']['compiler']['probe_calls']['arrayFormalRefusal'] == [
+        ['invokevirtual', 'dep/Methods', 'arrayFormal', '([I)I']]
+    array_changed = []
     generic_changed = []
     changed = []
     for row in wanted['queries']:
+        if row['query_index'] in (18, 43):
+            scope = row['source_compilation']['project']
+            assert row['status'] == 'CallNotResolved'
+            assert row['byte_offset'] == 1632 and row['position'] == {'encoding': 'utf8', 'offset': 1632}
+            assert row['targets'] == [binary_instance_target('dep/Methods', 'arrayFormal', '([I)I', scope)]
+            row['status'] = 'Resolved'
+            array_changed.append(scope)
+            continue
         if row['query_index'] in (21, 46):
             scope = row['source_compilation']['project']
             assert row['status'] == 'CallNotResolved'
@@ -1390,6 +1401,7 @@ def binary_instance_current_expected(contract, label):
         row['status'] = 'Resolved'
         row['targets'] = [binary_instance_target('dep/Token', 'id', '()I', scope)]
         changed.append(scope)
+    assert array_changed == ['first', 'second']
     assert generic_changed == ['first', 'second']
     assert changed == ['first', 'second']
     return wanted

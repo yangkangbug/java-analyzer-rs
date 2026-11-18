@@ -58,6 +58,57 @@ class EffectiveBinaryContract(unittest.TestCase):
             with self.assertRaises(gate.AcceptanceError):
                 gate.check_declarations(response, queries, targets, Path('/fixture'), Path('/java.base.jmod'), {}, effective_binary=not current)
 
+    def test_q07_array_overload_exact_current_and_historical(self):
+        queries = [["q07", "org/apache/commons/lang3/StringUtils.java", "44758", "isEmpty", "OverloadNotResolved", "9"]]
+        origin = "org/apache/commons/lang3/ArrayUtils.java"
+        starts = [128952, 129271, 129587, 129905, 130224, 130540, 130855, 131163, 131482]
+        targets = [["q07", origin, "Method", "org.apache.commons.lang3.ArrayUtils", "isEmpty", str(x), str(x + 7)] for x in starts]
+        def target(start):
+            return dict(kind="Method", owner="org.apache.commons.lang3.ArrayUtils", name="isEmpty",
+                        origin="source", source_available=True, path="/fixture/" + origin,
+                        compilation=gate.COMPILATION,
+                        range=dict(start_byte=start, end_byte=start+7,
+                                   start_utf16=start, end_utf16=start+7))
+        row = dict(query_index=0, compilation=gate.COMPILATION, source_compilation=gate.COMPILATION,
+                   file="/fixture/" + queries[0][1], position=dict(encoding="utf8", offset=44758),
+                   byte_offset=44758, status="Resolved", targets=[target(129587)])
+        def check(value, current=True, expected=targets):
+            gate.check_declarations({"result": {"index_builds": 1, "queries": [value]}},
+                queries, expected, Path("/fixture"), Path("/java.base.jmod"),
+                {origin: b" " * 132000}, effective_binary=current)
+        check(row)
+        old = copy.deepcopy(row)
+        old.update(status="OverloadNotResolved", targets=[target(x) for x in starts])
+        check(old, False)
+        for value, current in ((row, False), (old, True)):
+            with self.assertRaises(gate.AcceptanceError):
+                check(value, current)
+        # Other primitive/reference array overloads have the same name/owner,
+        # but not the char[] declaration identity (including wrong rank stand-ins).
+        for start in starts:
+            if start == 129587:
+                continue
+            bad = copy.deepcopy(row)
+            bad["targets"] = [target(start)]
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for key, value in (("kind", "Field"), ("owner", "Wrong"), ("path", "/wrong"),
+                           ("source_available", False), ("name", "other")):
+            bad = copy.deepcopy(row)
+            bad["targets"][0][key] = value
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for key in ("start_byte", "end_byte", "start_utf16", "end_utf16"):
+            bad = copy.deepcopy(row)
+            bad["targets"][0]["range"][key] += 1
+            with self.assertRaises(gate.AcceptanceError):
+                check(bad)
+        for i in range(9):
+            bad = copy.deepcopy(targets)
+            bad[i][5] = "1"
+            with self.assertRaises(gate.AcceptanceError):
+                check(row, expected=bad)
+
     def test_forecast_cannot_be_modified(self):
         prediction = gate.effective_binary_prediction()
         prediction['changes'][0]['expected']['targets'].clear()

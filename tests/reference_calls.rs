@@ -993,8 +993,17 @@ fn strict_reference_does_not_discard_unsupported_primitive_competitors() {
             "class A {{}} class Hidden<T> {{}} class C {{ public void m(A x) {{}} {competitor} }} class Calls {{ void run(C c, A a) {{ c.m(a); }} }}"
         );
         let result = query(&project(&source), "Calls.java", "m(a)");
-        assert_ne!(result.status, ResolveStatus::Resolved, "{competitor}: {result:?}");
-        assert!(result.targets.len() >= 2, "{competitor}: {result:?}");
+        if matches!(competitor, "public void m(int[] x) {}" | "public void m(int x[]) {}" | "public void m(A[] x) {}") {
+            assert_eq!(result.status, ResolveStatus::Resolved, "{competitor}: {result:?}");
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].owner, "C");
+            assert_eq!(result.targets[0].path, "Calls.java");
+            let start = source.find("m(A x)").unwrap() as u32;
+            assert_eq!((result.targets[0].start_byte, result.targets[0].end_byte), (start, start + 1));
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved, "{competitor}: {result:?}");
+            assert!(result.targets.len() >= 2, "{competitor}: {result:?}");
+        }
     }
 }
 

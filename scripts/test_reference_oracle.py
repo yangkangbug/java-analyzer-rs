@@ -518,7 +518,7 @@ class BinaryCurrentHistoricalProjection(unittest.TestCase):
             old = oracle.binary_instance_effective_expected(contract, label)
             current = oracle.binary_instance_current_expected(contract, label)
             changed = [i for i, (a, b) in enumerate(zip(old['queries'], current['queries'])) if a != b]
-            self.assertEqual(changed, [21, 24, 46, 49] if label == 'valid' else [])
+            self.assertEqual(changed, [18, 21, 24, 43, 46, 49] if label == 'valid' else [])
             for i in changed:
                 row = old['queries'][i]
                 expected = dict(row, status='Resolved')
@@ -546,6 +546,28 @@ class BinaryCurrentHistoricalProjection(unittest.TestCase):
                 wrong['current']['valid']['queries'][46]['targets'] = [{}]
             with self.assertRaises(AssertionError):
                 oracle.binary_instance_current_expected(wrong, 'valid')
+
+
+    def test_array_compiler_old_identity_and_complete_current_mutations(self):
+        _, contract = oracle.binary_instance_fixture()
+        current = oracle.binary_instance_current_expected(contract, 'valid')
+        for mode in ('compiler', 'status', 'position', 'descriptor', 'context'):
+            wrong = json.loads(json.dumps(contract))
+            row = wrong['current']['valid']['queries'][18]
+            if mode == 'compiler': wrong['baseline']['compiler']['probe_calls']['arrayFormalRefusal'][0][3] = '(I)I'
+            elif mode == 'status': row['status'] = 'Resolved'
+            elif mode == 'position': row['byte_offset'] += 1
+            elif mode == 'descriptor': row['targets'][0]['descriptor'] = '(I)I'
+            else: row['targets'][0]['linking_context']['project'] = 'wrong'
+            with self.assertRaises(AssertionError): oracle.binary_instance_current_expected(wrong, 'valid')
+        for mode in ('status', 'duplicate', 'descriptor', 'owner', 'context'):
+            wrong = json.loads(json.dumps(current)); row = wrong['queries'][43]
+            if mode == 'status': row['status'] = 'CallNotResolved'
+            elif mode == 'duplicate': row['targets'].append(dict(row['targets'][0]))
+            elif mode == 'descriptor': row['targets'][0]['descriptor'] = '(I)I'
+            elif mode == 'owner': row['targets'][0]['owner'] = 'wrong.Owner'
+            else: row['targets'][0]['linking_context']['project'] = 'wrong'
+            with self.assertRaises(AssertionError): oracle.binary_instance_compare_expected(wrong, current)
 
 
 class OwnFieldCurrentProjection(unittest.TestCase):

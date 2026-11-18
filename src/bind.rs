@@ -4710,7 +4710,8 @@ fn source_call(node: &GreenNode, start: u32) -> Option<SourceCall> {
         let (ty, at) = child_kind(node, start, SyntaxKind::Type)?;
         if tokens(ty, at).iter().any(|t| t.0 == SyntaxKind::Void)
             && (tokens(ty, at).iter().filter(|t| !t.0.is_trivia()).count() != 1
-                || tokens(node, start).iter().any(|t| t.0 == SyntaxKind::LBracket))
+                || node.children().iter().any(|c| c.as_token().is_some_and(|t| t.kind() == SyntaxKind::LBracket))
+                || node.child_nodes().any(|c| c.kind() == SyntaxKind::Error))
         {
             return None;
         }
@@ -6087,20 +6088,59 @@ enum InvocationPhase {
 }
 
 #[derive(Clone, Copy)]
+enum ArrayComponent<'a> {
+    Primitive(Primitive),
+    Reference(&'a ClassRec),
+}
+#[derive(Clone, Copy)]
+struct ArrayValue<'a> {
+    component: ArrayComponent<'a>,
+    rank: usize,
+    link_scope: usize,
+}
+impl ArrayValue<'_> {
+    fn same_type(self, other: Self) -> bool {
+        self.rank == other.rank
+            && match (self.component, other.component) {
+                (ArrayComponent::Primitive(a), ArrayComponent::Primitive(b)) => a == b,
+                (ArrayComponent::Reference(a), ArrayComponent::Reference(b)) => same_class(a, b),
+                _ => false,
+            }
+    }
+    fn definitely_different(self, other: Self) -> bool {
+        self.rank != other.rank
+            || match (self.component, other.component) {
+                (ArrayComponent::Primitive(a), ArrayComponent::Primitive(b)) => a != b,
+                (ArrayComponent::Reference(a), ArrayComponent::Reference(b)) => {
+                    if a.scope == b.scope {
+                        !same_class(a, b)
+                    } else {
+                        a.dotted() != b.dotted()
+                    }
+                }
+                _ => true,
+            }
+    }
+}
+#[derive(Clone, Copy)]
 enum StrictActual<'a> {
     Null,
+    Array(ArrayValue<'a>),
     Reference(ReferenceValue<'a>),
     Primitive(PrimitiveValue),
 }
 
 // Primitive and reference evidence never cross via boxing in strict invocation.
+#[derive(Clone, Copy)]
 enum ReferenceFormal<'a> {
+    Array(ArrayValue<'a>),
     Reference(&'a ClassRec),
     Primitive(Primitive),
 }
 impl ReferenceFormal<'_> {
     fn same_type(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Array(a), Self::Array(b)) => a.same_type(*b),
             (Self::Reference(a), Self::Reference(b)) => same_class(a, b),
             (Self::Primitive(a), Self::Primitive(b)) => a == b,
             _ => false,
@@ -7574,6 +7614,114 @@ impl<'a> ReferenceCallProof<'a> {
         Some(class)
     }
 
+    // Array roots are configured platform declarations, never synthetic classes.
+    fn array_platform(&mut self, scope: usize, raw: &str) -> Option<&'a ClassRec> {
+        self.charge(raw.len() + 1)?;
+        let class = self.unique_named(scope, &raw.replace('/', "."))?;
+        let sig = class.binary_signature.as_ref()?;
+        self.charge(sig.binary_name.len() + sig.binary_interfaces.len() + 1)?;
+        if !class.binary
+            || class.access != Access::Public
+            || class.reference_generic
+            || class.nesting.len() != 1
+            || sig.binary_name != raw
+            || !sig.binary_interfaces.is_empty()
+            || sig.is_final
+        {
+            return None;
+        }
+        if raw == "java/lang/Object" {
+            if sig.is_interface || sig.binary_super_class.is_some() {
+                return None;
+            }
+        } else {
+            if !sig.is_interface || sig.binary_super_class.as_deref() != Some("java/lang/Object") {
+                return None;
+            }
+            self.array_platform(scope, "java/lang/Object")?;
+        }
+        self.accessible(class)?;
+        self.graph(class)?;
+        Some(class)
+    }
+
+    fn array_to_reference(&mut self, array: ArrayValue<'a>, formal: &'a ClassRec) -> Option<bool> {
+        self.graph(formal)?;
+        let raw = self.negative_raw_name(formal)?;
+        if matches!(raw.as_str(), "java/lang/Object" | "java/lang/Cloneable" | "java/io/Serializable") {
+            let platform = self.array_platform(array.link_scope, &raw)?;
+            self.charge(1)?;
+            if same_class(platform, formal) {
+                return Some(true);
+            }
+            // Also prove the requested formal is the standard platform shape;
+            // same spelling or a source replacement is not a bridge.
+            let counterpart = self.array_platform(formal.scope, &raw)?;
+            if !same_class(counterpart, formal) || platform.scope == formal.scope {
+                return None;
+            }
+            self.binary_closure_evidence(platform, formal)?;
+            return Some(true);
+        }
+        if formal.is_interface {
+            self.array_platform(array.link_scope, "java/lang/Cloneable")?;
+            self.array_platform(array.link_scope, "java/io/Serializable")?;
+        }
+        self.charge(1)?;
+        Some(false)
+    }
+
+    fn array_conversion(&mut self, mut actual: ArrayValue<'a>, formal: &ReferenceFormal<'a>) -> Option<bool> {
+        if let ReferenceFormal::Reference(formal) = formal {
+            return self.array_to_reference(actual, formal);
+        }
+        let ReferenceFormal::Array(mut formal) = *formal else {
+            self.charge(1)?;
+            return Some(false);
+        };
+        loop {
+            self.charge(1)?;
+            if actual.rank == 0 || formal.rank == 0 || actual.rank > 255 || formal.rank > 255 {
+                return None;
+            }
+            actual.rank -= 1;
+            formal.rank -= 1;
+            match (actual.rank > 0, formal.rank > 0) {
+                (true, true) => continue,
+                (true, false) => {
+                    return match formal.component {
+                        ArrayComponent::Reference(class) => self.array_to_reference(actual, class),
+                        ArrayComponent::Primitive(_) => Some(false),
+                    };
+                }
+                (false, true) => return Some(false),
+                (false, false) => {
+                    return match (actual.component, formal.component) {
+                        (ArrayComponent::Primitive(a), ArrayComponent::Primitive(b)) => Some(a == b),
+                        (ArrayComponent::Reference(a), ArrayComponent::Reference(b)) => self.converts(a, b),
+                        _ => Some(false),
+                    };
+                }
+            }
+        }
+    }
+
+    // Applicability and specificity share this exact strict relation.
+    fn formal_conversion(&mut self, actual: &ReferenceFormal<'a>, formal: &ReferenceFormal<'a>) -> Option<bool> {
+        match (actual, formal) {
+            (ReferenceFormal::Array(a), b) => self.array_conversion(*a, b),
+            (ReferenceFormal::Reference(a), ReferenceFormal::Reference(b)) => self.converts(a, b),
+            (ReferenceFormal::Primitive(a), ReferenceFormal::Primitive(b)) => {
+                self.charge(1)?;
+                Some(PrimitiveValue { primitive: *a, rank: 0 }.converts_to(PrimitiveValue { primitive: *b, rank: 0 }))
+            }
+            _ => {
+                self.charge(1)?;
+                Some(false)
+            }
+        }
+    }
+
     fn invocation_conversion(
         &mut self,
         actual: &StrictActual<'a>,
@@ -7581,7 +7729,8 @@ impl<'a> ReferenceCallProof<'a> {
         phase: InvocationPhase,
     ) -> Option<bool> {
         match (actual, formal) {
-            (StrictActual::Null, ReferenceFormal::Reference(_)) => {
+            (StrictActual::Array(a), b) => self.array_conversion(*a, b),
+            (StrictActual::Null, ReferenceFormal::Array(_) | ReferenceFormal::Reference(_)) => {
                 self.charge(1)?;
                 Some(true)
             }
@@ -7793,6 +7942,40 @@ impl<'a> ReferenceCallProof<'a> {
             };
             // A reference declaration failing its type proof cannot become a
             // primitive guess. Each category uses only its own stored evidence.
+            if !local.guard_only
+                && !local.catch_origin
+                && matches!(local.kind, TargetKind::Local | TargetKind::Parameter)
+            {
+                if let Some(ReferenceDeclaration::Plain(plain)) = &local.reference {
+                    if plain.array_rank > 0 {
+                        self.charge(1)?;
+                        if plain.array_rank > 255 {
+                            return None;
+                        }
+                        let component = self.reference_type(self.file, &plain.parts, local.start)?;
+                        self.accessible(component)?;
+                        self.graph(component)?;
+                        return Some(StrictActual::Array(ArrayValue {
+                            component: ArrayComponent::Reference(component),
+                            rank: plain.array_rank,
+                            link_scope: self.file.scope,
+                        }));
+                    }
+                } else if local.reference.is_none()
+                    && let Some(value) = local.primitive
+                    && value.rank > 0
+                {
+                    self.charge(1)?;
+                    if value.rank > 255 {
+                        return None;
+                    }
+                    return Some(StrictActual::Array(ArrayValue {
+                        component: ArrayComponent::Primitive(value.primitive),
+                        rank: value.rank,
+                        link_scope: self.file.scope,
+                    }));
+                }
+            }
             if local.reference.is_some() {
                 let class = self.local_reference(local)?;
                 return Some(StrictActual::Reference(ReferenceValue { class }));
@@ -8525,19 +8708,21 @@ impl<'a> ReferenceCallProof<'a> {
                         instantiation::MethodTemplate::parse(signature.as_deref(), descriptor, &env.declaration)?;
                     for parameter in &method.parameters {
                         types.push(match self.template_value(declaring, env, parameter)?? {
-                            StrictActual::Primitive(value) => ReferenceFormal::Primitive(value.primitive),
+                            StrictActual::Primitive(value) if value.rank == 0 => {
+                                ReferenceFormal::Primitive(value.primitive)
+                            }
                             StrictActual::Reference(value) => ReferenceFormal::Reference(value.class),
-                            StrictActual::Null => return None,
+                            StrictActual::Null | StrictActual::Array(_) | StrictActual::Primitive(_) => return None,
                         });
                     }
                     instantiated_result = self.template_value(declaring, env, &method.result)?;
                 } else {
                     for parameter in parameters {
                         self.charge(1)?;
-                        if parameter.unsupported || parameter.array_rank != 0 {
+                        if parameter.unsupported || parameter.array_rank > 255 {
                             return None;
                         }
-                        types.push(match parameter.primitive {
+                        let scalar = match parameter.primitive {
                             Some(primitive) => ReferenceFormal::Primitive(primitive),
                             None => {
                                 // Use the existing descriptor parser's raw name, not a
@@ -8557,6 +8742,20 @@ impl<'a> ReferenceCallProof<'a> {
                                 self.graph(class)?;
                                 ReferenceFormal::Reference(class)
                             }
+                        };
+                        types.push(if parameter.array_rank == 0 {
+                            scalar
+                        } else {
+                            let component = match scalar {
+                                ReferenceFormal::Primitive(p) => ArrayComponent::Primitive(p),
+                                ReferenceFormal::Reference(c) => ArrayComponent::Reference(c),
+                                ReferenceFormal::Array(_) => return None,
+                            };
+                            ReferenceFormal::Array(ArrayValue {
+                                component,
+                                rank: parameter.array_rank,
+                                link_scope: declaring.scope,
+                            })
                         });
                     }
                 }
@@ -8593,12 +8792,23 @@ impl<'a> ReferenceCallProof<'a> {
                 let mut erased = Vec::new();
                 for parameter in parameters {
                     self.charge(1)?;
-                    if parameter.unsupported || parameter.array_rank != 0 {
+                    if parameter.unsupported
+                        || parameter.array_rank > 255
+                        || (parameter.array_rank != 0 && declaration_env.is_some())
+                    {
                         return None;
                     }
                     match parameter.primitive {
                         Some(primitive) => {
-                            types.push(ReferenceFormal::Primitive(primitive));
+                            types.push(if parameter.array_rank == 0 {
+                                ReferenceFormal::Primitive(primitive)
+                            } else {
+                                ReferenceFormal::Array(ArrayValue {
+                                    component: ArrayComponent::Primitive(primitive),
+                                    rank: parameter.array_rank,
+                                    link_scope: declaring.scope,
+                                })
+                            });
                             if declaration_env.is_some() {
                                 erased.push(ReferenceFormal::Primitive(primitive));
                             }
@@ -8610,7 +8820,15 @@ impl<'a> ReferenceCallProof<'a> {
                                 let class = self.reference_type(file, &parameter.name, member.start)?;
                                 (class, class)
                             };
-                            types.push(ReferenceFormal::Reference(actual));
+                            types.push(if parameter.array_rank == 0 {
+                                ReferenceFormal::Reference(actual)
+                            } else {
+                                ReferenceFormal::Array(ArrayValue {
+                                    component: ArrayComponent::Reference(actual),
+                                    rank: parameter.array_rank,
+                                    link_scope: declaring.scope,
+                                })
+                            });
                             if declaration_env.is_some() {
                                 erased.push(ReferenceFormal::Reference(erasure));
                             }
@@ -8671,6 +8889,7 @@ impl<'a> ReferenceCallProof<'a> {
                         for (a, b) in left.iter().zip(right) {
                             self.charge(1)?;
                             different |= match (a, b) {
+                                (ReferenceFormal::Array(a), ReferenceFormal::Array(b)) => a.definitely_different(*b),
                                 (ReferenceFormal::Primitive(a), ReferenceFormal::Primitive(b)) => a != b,
                                 (ReferenceFormal::Reference(a), ReferenceFormal::Reference(b)) => {
                                     if a.scope == b.scope {
@@ -8758,20 +8977,7 @@ impl<'a> ReferenceCallProof<'a> {
             let mut specific = true;
             for &j in &applicable {
                 for (left, right) in formals[i].iter().zip(&formals[j]) {
-                    specific &= match (left, right) {
-                        (ReferenceFormal::Primitive(left), ReferenceFormal::Primitive(right)) => {
-                            self.charge(1)?;
-                            PrimitiveValue { primitive: *left, rank: 0 }
-                                .converts_to(PrimitiveValue { primitive: *right, rank: 0 })
-                        }
-                        (ReferenceFormal::Reference(left), ReferenceFormal::Reference(right)) => {
-                            self.converts(left, right)?
-                        }
-                        _ => {
-                            self.charge(1)?;
-                            false
-                        }
-                    };
+                    specific &= self.formal_conversion(left, right)?;
                 }
             }
             if specific {

@@ -95,11 +95,15 @@ fn same_package_private_protected_and_unknown_candidates_still_refuse() {
         ("(I)V", 0x0400, None),
         ("(I)V", 0x0100, Some("(I)V")),
     ] {
-        assert_ne!(
-            query(&project(&source("package client;"), &[PUBLIC, ARRAY_HELPER, helper])).status,
-            ResolveStatus::Resolved,
-            "{helper:?}"
-        );
+        let result = query(&project(&source("package client;"), &[PUBLIC, ARRAY_HELPER, helper]));
+        if helper == ("([I)V", 0x0101, None) {
+            assert_eq!(result.status, ResolveStatus::Resolved);
+            assert_eq!(result.targets.len(), 1);
+            assert_eq!(result.targets[0].owner, "lib.Api");
+            assert_eq!(result.targets[0].binary.as_ref().unwrap().descriptor, "(J)V");
+        } else {
+            assert_ne!(result.status, ResolveStatus::Resolved, "{helper:?}");
+        }
     }
 }
 #[test]

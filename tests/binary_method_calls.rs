@@ -208,6 +208,15 @@ fn invalid_flags_and_array_formals_never_hide_competitors() {
         "class Use { void run(lib.Lib lib) { lib.pick(1); } }",
         &[member(1, "pick", "(I)V"), member(1, "pick", "([I)V")],
     );
+    let result = query(&p, "pick(1)");
+    assert_eq!(result.status, ResolveStatus::Resolved);
+    assert_eq!(result.targets.len(), 1);
+    assert_eq!(result.targets[0].binary.as_ref().unwrap().descriptor, "(I)V");
+    // Supported array competitors are compared; missing components are not filtered.
+    let p = project(
+        "class Use { void run(lib.Lib lib) { lib.pick(1); } }",
+        &[member(1, "pick", "(I)V"), member(1, "pick", "([Lmissing/Type;)V")],
+    );
     assert_ne!(query(&p, "pick(1)").status, ResolveStatus::Resolved);
 }
 #[test]

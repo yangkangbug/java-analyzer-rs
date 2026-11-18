@@ -129,6 +129,9 @@ def current_expectations(expected, queries, declarations):
     # refusal; compare() still checks the independent compiler declaration.
     assert result['strict_loose'] == ('CallNotResolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target')
     result['strict_loose'] = ('Resolved', 'loose_scalar@strict.Target', 'loose_scalar@strict.Target')
+    # Complete array formals now preserve exact component/rank evidence.
+    assert result['strict_array'] == ('OverloadNotResolved', 'array_parent@strict.Target', 'array_parent@strict.Target,array_primitive@strict.Target')
+    result['strict_array'] = ('Resolved', 'array_parent@strict.Target', 'array_parent@strict.Target')
     return result
 
 def run_suite(jdk, native, work, baseline=False):

@@ -752,3 +752,12 @@ explicit local/parameter arrays in existing invocation proofs. The original
 167-query survey gains 38 independently compiler-certified targets (37 binary
 descriptors and one source declaration); old query sets remain unchanged.
 No synthetic length target, general array receiver model or budget change.
+
+### Explicit array invocation types
+
+[Shared array value/formal evidence](docs/ARRAY_INVOCATION.md) handles bounded
+primitive invariance, reference covariance, multidimensional conversion and null
+without synthetic classes or new receiver inference. Complete candidate and
+identity checks remain mandatory. The original167 survey gains37 independently
+compiler-exact targets; the generic T[] arraycopy control remains unsupported.
+No public API/version, budget, cache or ancestor-member-type expansion.

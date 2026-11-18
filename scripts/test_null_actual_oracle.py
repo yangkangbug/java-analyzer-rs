@@ -40,7 +40,7 @@ class NullOracleTests(unittest.TestCase):
         old = copy.deepcopy(expected)
         current = c.current_expectations(expected)
         self.assertEqual(expected, old)
-        self.assertEqual({q for q in old if old[q] != current[q]}, {'null_unknown', 'null_field'})
+        self.assertEqual({q for q in old if old[q] != current[q]}, {'null_unknown', 'null_field', 'null_array'})
         self.assertEqual(current['null_field'], ('Resolved', 'only@nulls.Target', 'only@nulls.Target'))
         self.assertEqual(c.baseline_expectations(expected)['null_field'][0], 'CallNotResolved')
         for i in range(3):
@@ -116,6 +116,32 @@ class NullOracleTests(unittest.TestCase):
             result[0] = 'Resolved'
             with self.assertRaises(AssertionError): c.o.check_reference_candidates(q, status, candidates, ds, result, Path('/unused'))
 
+
+    def test_array_projection_exact_identity_and_history(self):
+        ds, qs, expected, compiler, _ = self.evidence()
+        old = copy.deepcopy(expected)
+        current = c.current_expectations(expected)
+        self.assertEqual(expected, old)
+        self.assertEqual(current['null_array'], ('Resolved', 'array@nulls.Target', 'array@nulls.Target'))
+        for field in range(3):
+            saved = expected['null_array']
+            row = list(saved); row[field] = 'wrong'; expected['null_array'] = tuple(row)
+            with self.assertRaises(AssertionError):
+                c.current_expectations(expected)
+            expected['null_array'] = saved
+        native = {q: [status, str(0 if candidates == '-' else len(candidates.split(','))),
+                   *([] if candidates == '-' else [c.o.reference_target(ds, item, Path('/unused')) for item in candidates.split(',')])]
+                  for q, (status, _, candidates) in current.items()}
+        c.compare(current, qs, ds, compiler, native, Path('/unused'))
+        for mutation in ('status', 'count', 'kind', 'owner', 'range'):
+            bad = copy.deepcopy(native)
+            if mutation == 'status': bad['null_array'][0] = 'CallNotResolved'
+            elif mutation == 'count': bad['null_array'][1] = '2'
+            elif mutation == 'kind': bad['null_array'][2] = bad['null_array'][2].replace('|Method|', '|Field|')
+            elif mutation == 'owner': bad['null_array'][2] = bad['null_array'][2].replace('.Target|', '.Wrong|')
+            else: bad['null_array'][2] += '0'
+            with self.assertRaises((AssertionError, ValueError)):
+                c.compare(current, qs, ds, compiler, bad, Path('/unused'))
 
 if __name__ == '__main__':
     unittest.main()

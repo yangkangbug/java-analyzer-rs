@@ -1,5 +1,8 @@
 # java-analyzer-rs
 
+[Explicit array invocation types](docs/ARRAY_INVOCATION.md) preserve component/rank
+identity across complete method families and shared conversion/specificity proofs.
+
 [Explicit array length arguments](docs/ARRAY_LENGTH_ARGUMENTS.md) share bounded
 local/parameter array evidence across invocation proofs, without type inference.
 

@@ -189,7 +189,22 @@ fn generic_arrays_cycles_and_unknown_competitors_remain_refused() {
                 lib.insert("Box.java", "package api; public class Box { public void pick(lib.Token value) {} public void pick(Missing x, int y) {} }");
             }
         }
-        refused(&lib, &app);
+        if mode == 1 {
+            // Plain arrays now retain the same exact cross-scope component proof.
+            selected(&lib, &app);
+            let mut different = app.clone();
+            different
+                .add_class_bytes(
+                    "library.jar!/lib/Token.class",
+                    &binary("lib/Token", Some("java/lang/Object"), &[("extra", "()I")], true),
+                )
+                .unwrap();
+            refused(&lib, &different);
+            app.insert("Token.java", "package lib; public class Token {}");
+            refused(&lib, &app);
+        } else {
+            refused(&lib, &app);
+        }
     }
 }
 #[test]
@@ -1095,4 +1110,314 @@ fn array_length_preserves_existing_declaration_facts_not_annotation_inference() 
     p.insert("Target.java", "public class Target {public static void pick(int x){} public static void pick(long x){}}");
     p.insert("C.java", source);
     assert_ne!(p.resolve_at("C.java", source.rfind("pick(").unwrap() as u32).status, ResolveStatus::Resolved);
+}
+
+#[test]
+fn explicit_array_invocation_model() {
+    for (methods, params, call, expected) in [
+        (
+            "public static void pick(java.lang.Object x){} public static void pick(int x){}",
+            "int[] a",
+            "C.pick(a)",
+            "pick(java.lang.Object",
+        ),
+        (
+            "public static void pick(int[] x){} public static void pick(java.lang.Object x){}",
+            "int[] a",
+            "C.pick(a)",
+            "pick(int[]",
+        ),
+        (
+            "public static void pick(java.lang.Object[] x){} public static void pick(java.lang.Object x){}",
+            "int[][] a",
+            "C.pick(a)",
+            "pick(java.lang.Object[]",
+        ),
+        (
+            "public static void pick(java.lang.Number[] x){} public static void pick(java.lang.Object[] x){}",
+            "java.lang.Integer[] a",
+            "C.pick(a)",
+            "pick(java.lang.Number[]",
+        ),
+        (
+            "public static void pick(int[] x){} public static void pick(java.lang.Object x){}",
+            "",
+            "C.pick(null)",
+            "pick(int[]",
+        ),
+    ] {
+        let mut p = loose_platform();
+        let text = format!("class C {{ {methods} void run({params}) {{ {call}; }} }}");
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let got = p.resolve_at("C.java", at as u32);
+        assert_eq!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+        assert_eq!(got.targets[0].start_byte, text.find(expected).unwrap() as u32, "{text}");
+    }
+}
+
+fn array_platform_project() -> Project {
+    let mut p = loose_platform();
+    for (path, raw) in
+        [("Cloneable", "java/lang/Cloneable"), ("Serializable", "java/io/Serializable"), ("Other", "api/Other")]
+    {
+        p.add_class_bytes(path, &binary(raw, Some("java/lang/Object"), &[], true)).unwrap();
+        Arc::make_mut(p.binaries.get_mut(path).unwrap()).class_signature.is_interface = true;
+    }
+    p.insert("Use.java", "class Use {}");
+    p
+}
+#[test]
+fn explicit_array_platform_relation_and_budget() {
+    let p = array_platform_project();
+    let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+    let file = &index.files[0];
+    let find = |name: &str| index.binaries.iter().find(|c| c.dotted() == name).unwrap();
+    let arr = ArrayValue { component: ArrayComponent::Primitive(Primitive::Int), rank: 1, link_scope: 0 };
+    for (name, expected) in [
+        ("java.lang.Object", true),
+        ("java.lang.Cloneable", true),
+        ("java.io.Serializable", true),
+        ("api.Other", false),
+        ("java.lang.Number", false),
+    ] {
+        let formal = ReferenceFormal::Reference(find(name));
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.array_conversion(arr, &formal), Some(expected), "{name}");
+        let used = REFERENCE_PROOF_WORK - proof.work_left;
+        assert!(used > 0);
+        for budget in [0, used - 1, used] {
+            let mut proof = ReferenceCallProof::new(&index, file, None);
+            proof.work_left = budget;
+            assert_eq!(proof.array_conversion(arr, &formal), if budget == used { Some(expected) } else { None });
+            if budget < used {
+                assert!(proof.exhausted);
+            }
+        }
+    }
+    for (ar, fr, component, expected) in [
+        (1, 1, ArrayComponent::Primitive(Primitive::Long), false),
+        (2, 1, ArrayComponent::Reference(find("java.lang.Object")), true),
+        (2, 2, ArrayComponent::Reference(find("java.lang.Object")), false),
+        (1, 2, ArrayComponent::Primitive(Primitive::Int), false),
+    ] {
+        let a = ArrayValue { rank: ar, ..arr };
+        let f = ReferenceFormal::Array(ArrayValue { component, rank: fr, link_scope: 0 });
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.array_conversion(a, &f), Some(expected));
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.formal_conversion(&ReferenceFormal::Array(a), &f), Some(expected));
+        let mut proof = ReferenceCallProof::new(&index, file, None);
+        assert_eq!(proof.invocation_conversion(&StrictActual::Array(a), &f, InvocationPhase::Loose), Some(expected));
+    }
+}
+#[test]
+fn explicit_array_platform_unknown_is_not_negative() {
+    for mode in 0..5 {
+        let mut p = array_platform_project();
+        match mode {
+            0 => {
+                p.binaries.remove("Cloneable");
+            }
+            1 => {
+                let sig = &mut Arc::make_mut(p.binaries.get_mut("Cloneable").unwrap()).class_signature;
+                sig.binary_interfaces.push("api/Other".into());
+                sig.interfaces.push("api.Other".into());
+            }
+            2 => {
+                p.add_class_bytes("duplicate", &binary("java/lang/Cloneable", Some("java/lang/Object"), &[], true))
+                    .unwrap();
+            }
+            3 => {
+                p.binaries.remove("Cloneable");
+                p.insert("Cloneable.java", "package java.lang; public interface Cloneable {}");
+            }
+            _ => {
+                Arc::make_mut(p.binaries.get_mut("Serializable").unwrap()).class_signature.signature =
+                    Some("<T:Ljava/lang/Object;>Ljava/lang/Object;".into());
+            }
+        }
+        let index = Index::scoped(&[&p], &[BTreeSet::from([0])]);
+        let arr = ArrayValue { component: ArrayComponent::Primitive(Primitive::Int), rank: 1, link_scope: 0 };
+        let find = |name: &str| index.binaries.iter().find(|c| c.dotted() == name).unwrap();
+        let mut proof = ReferenceCallProof::new(&index, &index.files[0], None);
+        assert_eq!(proof.array_to_reference(arr, find("api.Other")), None, "mode{mode}");
+        let mut proof = ReferenceCallProof::new(&index, &index.files[0], None);
+        assert_eq!(
+            proof.array_to_reference(arr, find("java.lang.Object")),
+            Some(true),
+            "Object is demand-directed {mode}"
+        );
+    }
+}
+#[test]
+fn explicit_array_cross_scope_identity_and_collisions() {
+    let left = array_platform_project();
+    let mut right = left.clone();
+    for changed in [false, true] {
+        if changed {
+            right
+                .add_class_bytes("platform!/Object", &binary("java/lang/Object", None, &[("extra", "()I")], true))
+                .unwrap();
+        }
+        let index = Index::scoped(&[&left, &right], &[BTreeSet::from([0]), BTreeSet::from([1])]);
+        let target = index.binaries.iter().find(|c| c.scope == 1 && c.dotted() == "java.lang.Object").unwrap();
+        let mut proof = ReferenceCallProof::new(&index, &index.files[0], None);
+        assert_eq!(
+            proof.array_to_reference(
+                ArrayValue { component: ArrayComponent::Primitive(Primitive::Int), rank: 1, link_scope: 0 },
+                target
+            ),
+            if changed { None } else { Some(true) }
+        );
+    }
+}
+#[test]
+fn explicit_array_complete_families_and_no_element_boxing() {
+    for (methods, params, call) in [
+        ("public static void pick(long[] a){} public static void pick(boolean[] a){}", "int[] a", "C.pick(a)"),
+        (
+            "public static void pick(java.lang.Integer[] a){} public static void pick(boolean[] a){}",
+            "int[] a",
+            "C.pick(a)",
+        ),
+        (
+            "public static void pick(java.lang.Cloneable a){} public static void pick(java.io.Serializable a){}",
+            "int[] a",
+            "C.pick(a)",
+        ),
+        (
+            "public static void pick(java.lang.Object a){} public static void pick(Missing[] a){}",
+            "int[] a",
+            "C.pick(a)",
+        ),
+        (
+            "public static void pick(java.lang.Object a,int b){} public static void pick(int a,Missing[] b){}",
+            "int[] a",
+            "C.pick(a,1)",
+        ),
+        ("public static void pick(int[] a){} public static void pick(int[] b){}", "int[] a", "C.pick(a)"),
+        ("public static <T> void pick(T[] a){} public static void pick(java.lang.Object a){}", "int[] a", "C.pick(a)"),
+    ] {
+        let mut p = array_platform_project();
+        let text = format!("class C {{ {methods} void run({params}) {{ {call}; }} }}");
+        p.insert("C.java", &text);
+        let at = text.rfind(call).unwrap() + call.find("pick").unwrap();
+        let got = p.resolve_at("C.java", at as u32);
+        assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+    }
+}
+#[test]
+fn explicit_array_void_header_only_checks_result_dimensions() {
+    fn method(n: &GreenNode, at: u32) -> Option<(&GreenNode, u32)> {
+        if n.kind() == SyntaxKind::Method {
+            return Some((n, at));
+        }
+        let mut offset = at;
+        for c in n.children() {
+            if let Some(node) = c.as_node()
+                && let Some(found) = method(node, offset)
+            {
+                return Some(found);
+            }
+            offset += c.utf8_len();
+        }
+        None
+    }
+    for (text, valid) in [
+        ("class C { void f(int[] a){} }", true),
+        ("class C { void f(int a){ int[] b=null; } }", true),
+        ("class C { void f()[]{} }", false),
+        ("class C { void[] f(){} }", false),
+    ] {
+        let mut p = Project::new();
+        p.insert("C.java", text);
+        let parsed = p.file("C.java").unwrap();
+        let (n, at) = method(parsed.root(), 0).unwrap();
+        assert_eq!(source_call(n, at).is_some(), valid, "{text}");
+    }
+}
+
+#[test]
+fn explicit_array_binary_formals_and_edit_snapshots() {
+    let mut p = array_platform_project();
+    p.add_class_bytes(
+        "Box",
+        &binary("api/Box", Some("java/lang/Object"), &[("pick", "([I)V"), ("pick", "(Ljava/lang/Object;)V")], true),
+    )
+    .unwrap();
+    let text = "class C { void run(api.Box box,int[] a) { box.pick(a); } }";
+    p.insert("C.java", text);
+    let at = text.find("pick(a)").unwrap() as u32;
+    let before = p.resolve_at("C.java", at);
+    assert_eq!(before.status, ResolveStatus::Resolved, "{before:?}");
+    assert_eq!(before.targets[0].binary.as_ref().unwrap().descriptor, "([I)V");
+    let old = p.clone();
+    let array_at = text.find("[]").unwrap() as u32;
+    p.edit("C.java", crate::TextEdit { start_byte: array_at, end_byte: array_at + 2, insert: "  ".into() }).unwrap();
+    let mut fresh = old.clone();
+    fresh.insert("C.java", &text.replacen("[]", "  ", 1));
+    assert_eq!(p.resolve_at("C.java", at), fresh.resolve_at("C.java", at));
+    // Scalar int can box to Object; it must not retain the old array winner.
+    let after = p.resolve_at("C.java", at);
+    assert_eq!(after.status, ResolveStatus::Resolved, "{after:?}");
+    assert_eq!(after.targets[0].binary.as_ref().unwrap().descriptor, "(Ljava/lang/Object;)V");
+    assert_eq!(old.resolve_at("C.java", at), before);
+    p.edit("C.java", crate::TextEdit { start_byte: array_at, end_byte: array_at + 2, insert: "[]".into() }).unwrap();
+    assert_eq!(p.resolve_at("C.java", at), before);
+    let prepared = PreparedScopedIndex::new(vec![&p], &[BTreeSet::from([0])]);
+    assert_eq!(prepared.resolve_at(0, "C.java", at), before);
+}
+#[test]
+fn explicit_array_lexical_component_and_root_refusals() {
+    for (prefix, parameters, argument) in [
+        ("class C<T>", "T[] a", "a"),
+        ("class C", "Missing[] a", "a"),
+        ("class C", "int[] a", "new int[1]"),
+        ("class C", "int[] a", "(int[])null"),
+        ("class C", "int[][] a", "a[0]"),
+    ] {
+        let mut p = array_platform_project();
+        let text = format!(
+            "{prefix} {{ public static void pick(java.lang.Object x){{}} public static void pick(int x){{}} void run({parameters}) {{ C.pick({argument}); }} }}"
+        );
+        p.insert("C.java", &text);
+        let got = p.resolve_at("C.java", text.rfind("pick(").unwrap() as u32);
+        assert_ne!(got.status, ResolveStatus::Resolved, "{text}: {got:?}");
+    }
+}
+
+#[test]
+fn explicit_array_inherited_signature_identity_is_not_assignability() {
+    let left = array_platform_project();
+    let right = left.clone();
+    let index = Index::scoped(&[&left, &right], &[BTreeSet::from([0]), BTreeSet::from([1])]);
+    let get = |scope, name: &str| index.binaries.iter().find(|c| c.scope == scope && c.dotted() == name).unwrap();
+    let a = ArrayValue { component: ArrayComponent::Reference(get(0, "java.lang.Integer")), rank: 1, link_scope: 0 };
+    let same_name =
+        ArrayValue { component: ArrayComponent::Reference(get(1, "java.lang.Integer")), rank: 1, link_scope: 1 };
+    assert!(!a.same_type(same_name), "different declaration scopes are not identity");
+    assert!(!a.definitely_different(same_name), "same logical component cannot discard an inherited competitor");
+    assert!(!ReferenceFormal::Array(a).same_type(&ReferenceFormal::Array(same_name)));
+    let mut proof = ReferenceCallProof::new(&index, &index.files[0], None);
+    assert_eq!(
+        proof.array_conversion(a, &ReferenceFormal::Array(same_name)),
+        Some(true),
+        "conversion compatibility must not become override equality"
+    );
+    assert!(a.definitely_different(ArrayValue { rank: 2, ..same_name }));
+    assert!(a.definitely_different(ArrayValue {
+        component: ArrayComponent::Reference(get(1, "java.lang.Long")),
+        ..same_name
+    }));
+    let primitive = ArrayValue { component: ArrayComponent::Primitive(Primitive::Int), rank: 1, link_scope: 0 };
+    let identical = ArrayValue { link_scope: 1, ..primitive };
+    assert!(primitive.same_type(identical));
+    assert!(!primitive.definitely_different(identical));
+    assert!(
+        primitive
+            .definitely_different(ArrayValue { component: ArrayComponent::Primitive(Primitive::Long), ..identical })
+    );
+    assert!(primitive.definitely_different(ArrayValue { rank: 2, ..identical }));
+    assert!(primitive.definitely_different(a));
 }

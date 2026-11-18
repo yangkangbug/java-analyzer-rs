@@ -74,6 +74,9 @@ def current_expectations(expected):
     result['null_unknown'] = ('Resolved', 'related_parent@nulls.Target', 'related_parent@nulls.Target')
     assert result['null_field'] == ('CallNotResolved', 'only@nulls.Target', 'only@nulls.Target')
     result['null_field'] = ('Resolved', 'only@nulls.Target', 'only@nulls.Target')
+    # Complete array formals now preserve exact component/rank evidence.
+    assert result['null_array'] == ('CallNotResolved', 'array@nulls.Target', 'array@nulls.Target')
+    result['null_array'] = ('Resolved', 'array@nulls.Target', 'array@nulls.Target')
     return result
 
 
